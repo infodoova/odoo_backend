@@ -1,0 +1,327 @@
+"""
+Sales API service
+"""
+
+import asyncio
+import io
+import csv
+from typing import List, Optional, Dict, Generator
+from datetime import timedelta, date
+from django.utils import timezone
+from django.db.models import Sum, Avg, Count, Prefetch
+from django.db.models.functions import TruncDate
+from odoo_app.models.sales_order import SalesOrder
+from odoo_app.models.sales_order_line import SalesOrderLine
+from doova_one_view.api.common.exceptions import NotFoundError
+from doova_one_view.api.sales.schemas import (
+    SalesOrderRead, SalesOrderWithLinesRead, SalesSummary, 
+    AdvancedSearchRequest, PaginatedResponse, SalesDashboard,
+    KPIMetric, TimeSeriesPoint, EntityMetric
+)
+
+class SalesService:
+    """Service for sales operations"""
+    
+    @staticmethod
+    async def list_orders(
+        tenant_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        partner_id: Optional[int] = None
+    ) -> PaginatedResponse[SalesOrderRead]:
+        """List sales orders for a tenant"""
+        def _list():
+            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            if partner_id:
+                qs = qs.filter(partner_id=partner_id)
+            
+            total = qs.count()
+            qs = qs.select_related('partner', 'user', 'company')
+            qs = qs.order_by('-date_order')
+            items = list(qs[offset:offset+limit])
+            return items, total
+        
+        orders, total = await asyncio.to_thread(_list)
+        return PaginatedResponse(
+            items=[SalesOrderRead.model_validate(o) for o in orders],
+            total=total,
+            limit=limit,
+            offset=offset
+        )
+    
+    @staticmethod
+    async def get_order(tenant_id: str, order_id: int) -> SalesOrderWithLinesRead:
+        """Get a specific sales order with its lines"""
+        def _get():
+            try:
+                # Optimized fetching: prefetch lines and their related products in one go
+                return SalesOrder.objects.select_related(
+                    'partner', 'user', 'company'
+                ).prefetch_related(
+                    Prefetch('lines', queryset=SalesOrderLine.objects.select_related('product'))
+                ).get(
+                    tenant_id=tenant_id, id=order_id
+                )
+            except SalesOrder.DoesNotExist:
+                raise NotFoundError("SalesOrder", str(order_id))
+        
+        order = await asyncio.to_thread(_get)
+        return SalesOrderWithLinesRead.model_validate(order)
+
+    @staticmethod
+    async def get_sales_summary(tenant_id: str) -> SalesSummary:
+        """Get summarized sales metrics for dashboard"""
+        def _summary():
+            stats = SalesOrder.objects.filter(tenant_id=tenant_id).aggregate(
+                total_count=Count('id'),
+                total_amount=Sum('amount_total'),
+                total_margin=Sum('margin'),
+                avg_val=Avg('amount_total')
+            )
+            
+            invoiced_count = SalesOrder.objects.filter(
+                tenant_id=tenant_id, 
+                invoice_status='invoiced'
+            ).count()
+            
+            total_count = stats['total_count'] or 0
+            
+            return SalesSummary(
+                total_count=total_count,
+                total_amount=float(stats['total_amount'] or 0),
+                total_margin=float(stats['total_margin'] or 0),
+                average_order_value=float(stats['avg_val'] or 0),
+                invoiced_percentage=(invoiced_count / total_count * 100) if total_count > 0 else 0
+            )
+            
+            
+        return await asyncio.to_thread(_summary)
+
+    @staticmethod
+    async def export_orders_csv(tenant_id: str, partner_id: Optional[int] = None) -> Generator[str, None, None]:
+        """Export sales orders to CSV format as a generator"""
+        def _get_orders():
+            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            if partner_id:
+                qs = qs.filter(partner_id=partner_id)
+            return list(qs.select_related('partner', 'user', 'company').order_by('-date_order'))
+
+        orders = await asyncio.to_thread(_get_orders)
+
+        def generate():
+            output = io.StringIO()
+            writer = csv.writer(output)
+            
+            # Header
+            writer.writerow([
+                "Order ID", "Odoo Name", "Partner", "User", "Company", 
+                "Date", "State", "Invoice Status", "Untaxed Amount", 
+                "Tax Amount", "Total Amount", "Margin"
+            ])
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+            for order in orders:
+                writer.writerow([
+                    order.id,
+                    order.odoo_name,
+                    order.partner.name if order.partner else "",
+                    order.user.name if order.user else "",
+                    order.company.name if order.company else "",
+                    order.date_order.isoformat() if order.date_order else "",
+                    order.state,
+                    order.invoice_status,
+                    float(order.amount_untaxed),
+                    float(order.amount_tax),
+                    float(order.amount_total),
+                    float(order.margin)
+                ])
+                yield output.getvalue()
+                output.seek(0)
+                output.truncate(0)
+
+        return generate()
+
+    @staticmethod
+    async def advanced_search(tenant_id: str, request: AdvancedSearchRequest) -> PaginatedResponse[SalesOrderRead]:
+        """Advanced search for sales orders with complex filters"""
+        def _search():
+            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            
+            for f in request.filters:
+                field = f.field
+                # Clean up the operator
+                op = f.operator.lower().strip()
+                val = f.value
+                
+                # Map friendly field names to ORM paths
+                field_mapping = {
+                    'partner_name': 'partner__name',
+                    'user_name': 'user__name',
+                    'company_name': 'company__name',
+                }
+                field = field_mapping.get(field, field)
+                
+                # String operators
+                if op in ['contain', 'contains']:
+                    qs = qs.filter(**{f"{field}__icontains": val})
+                elif op in ['starts with', 'startswith', 'starts_with']:
+                    qs = qs.filter(**{f"{field}__istartswith": val})
+                elif op in ['ends with', 'endswith', 'ends_with']:
+                    qs = qs.filter(**{f"{field}__iendswith": val})
+                
+                # Numerical / Date operators
+                elif op in ['eq', 'equal', 'equals']:
+                    qs = qs.filter(**{field: val})
+                elif op in ['gt', 'greater than', 'greater_than', 'after']:
+                    qs = qs.filter(**{f"{field}__gt": val})
+                elif op in ['lt', 'less than', 'less_than', 'before']:
+                    qs = qs.filter(**{f"{field}__lt": val})
+                elif op in ['gte', 'greater than or equal', 'greater_than_or_equal']:
+                    qs = qs.filter(**{f"{field}__gte": val})
+                elif op in ['lte', 'less than or equal', 'less_than_or_equal']:
+                    qs = qs.filter(**{f"{field}__lte": val})
+                elif op == 'between':
+                    if isinstance(val, list) and len(val) == 2:
+                        qs = qs.filter(**{f"{field}__range": (val[0], val[1])})
+            
+            total = qs.count()
+            qs = qs.select_related('partner', 'user', 'company').order_by('-date_order')
+            items = list(qs[request.offset : request.offset + request.limit])
+            return items, total
+
+        orders, total = await asyncio.to_thread(_search)
+        return PaginatedResponse(
+            items=[SalesOrderRead.model_validate(o) for o in orders],
+            total=total,
+            limit=request.limit,
+            offset=request.offset
+        )
+
+    @staticmethod
+    async def get_dashboard(
+        tenant_id: str,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> SalesDashboard:
+        """Get comprehensive sales dashboard metrics within a date range"""
+        def _get():
+            # Default to last 30 days if not provided
+            if not end_date:
+                final_date = timezone.now().date()
+            else:
+                final_date = end_date
+                
+            if not start_date:
+                initial_date = final_date - timedelta(days=30)
+            else:
+                initial_date = start_date
+            
+            # Calculate previous period for comparison
+            duration = final_date - initial_date
+            prev_end = initial_date
+            prev_start = initial_date - duration
+            
+            base_qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            
+            # 1. Summary Metrics
+            def get_stats(qs):
+                return qs.aggregate(
+                    revenue=Sum('amount_total'),
+                    margin=Sum('margin'),
+                    count=Count('id'),
+                    avg_val=Avg('amount_total')
+                )
+            
+            current_stats = get_stats(base_qs.filter(date_order__date__range=(initial_date, final_date)))
+            prev_stats = get_stats(base_qs.filter(date_order__date__range=(prev_start, prev_end)))
+            
+            def make_kpi(curr, prev):
+                curr_val = float(curr or 0)
+                prev_val = float(prev or 0)
+                change = None
+                if prev_val > 0:
+                    change = ((curr_val - prev_val) / prev_val) * 100
+                elif curr_val > 0:
+                    change = 100.0
+                return KPIMetric(value=curr_val, previous_value=prev_val, change_percentage=change)
+
+            # Pipeline Value (Quotes) - All time draft/sent
+            pipeline = base_qs.filter(state__in=['draft', 'sent']).aggregate(val=Sum('amount_total'))['val'] or 0
+            
+            # Conversion Rate (All time)
+            drafts = base_qs.filter(state__in=['draft', 'sent', 'sale', 'done']).count()
+            sales = base_qs.filter(state__in=['sale', 'done']).count()
+            conversion = (sales / drafts * 100) if drafts > 0 else 0
+            
+            # 2. Trends (Revenue within range)
+            trend = base_qs.filter(date_order__date__range=(initial_date, final_date)) \
+                .annotate(date=TruncDate('date_order')) \
+                .values('date') \
+                .annotate(value=Sum('amount_total')) \
+                .order_by('date')
+            
+            # 3. Rankings (Within range)
+            range_filter = {'date_order__date__range': (initial_date, final_date)}
+            
+            top_customers = base_qs.filter(**range_filter) \
+                .values('partner__name', 'partner_id') \
+                .annotate(value=Sum('amount_total')) \
+                .order_by('-value')[:5]
+            
+            top_products = SalesOrderLine.objects.filter(
+                tenant_id=tenant_id, 
+                sales_order__date_order__date__range=(initial_date, final_date)
+            ).values('product__name', 'product_id') \
+                .annotate(value=Sum('price_total')) \
+                .order_by('-value')[:5]
+            
+            top_salespeople = base_qs.filter(**range_filter) \
+                .values('user__name', 'user_id') \
+                .annotate(value=Sum('amount_total')) \
+                .order_by('-value')[:5]
+            
+            # 4. Status Distribution (All time)
+            dist = base_qs.values('state').annotate(count=Count('id'))
+            state_dist = {d['state']: d['count'] for d in dist}
+            
+            return SalesDashboard(
+                total_revenue=make_kpi(current_stats['revenue'], prev_stats['revenue']),
+                profit_margin_pct=make_kpi(
+                    (current_stats['margin'] / current_stats['revenue'] * 100) if current_stats['revenue'] else 0,
+                    (prev_stats['margin'] / prev_stats['revenue'] * 100) if prev_stats['revenue'] else 0
+                ),
+                avg_order_value=make_kpi(current_stats['avg_val'], prev_stats['avg_val']),
+                pipeline_value=KPIMetric(value=float(pipeline)),
+                order_count=current_stats['count'] or 0,
+                conversion_rate=float(conversion),
+                revenue_trend=[TimeSeriesPoint(date=t['date'], value=float(t['value'])) for t in trend],
+                state_distribution=state_dist,
+                top_customers=[EntityMetric(id=c['partner_id'], name=c['partner__name'] or "Unknown", value=float(c['value'])) for c in top_customers],
+                top_products=[EntityMetric(id=p['product_id'], name=p['product__name'] or "Unknown", value=float(p['value'])) for p in top_products],
+                top_salespeople=[EntityMetric(id=s['user_id'], name=s['user__name'] or "Unknown", value=float(s['value'])) for s in top_salespeople]
+            )
+        
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_distinct_enums(tenant_id: str) -> Dict[str, List[str]]:
+        """Get distinct values for enum-like fields in SalesOrder"""
+        def _get():
+            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            states = list(qs.values_list('state', flat=True).distinct())
+            invoice_statuses = list(qs.values_list('invoice_status', flat=True).distinct())
+            currencies = list(qs.values_list('currency_code', flat=True).distinct())
+            
+            # Remove None if present
+            invoice_statuses = [s for s in invoice_statuses if s is not None]
+            currencies = [c for c in currencies if c is not None]
+            
+            return {
+                "state": states,
+                "invoice_status": invoice_statuses,
+                "currencies": currencies
+            }
+        
+        return await asyncio.to_thread(_get)
