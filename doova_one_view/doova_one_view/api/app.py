@@ -24,6 +24,7 @@ from doova_one_view.api.inventory.routes import router as inventory_router
 from doova_one_view.api.master_data.routes import router as master_data_router
 from doova_one_view.api.files.routes import router as files_router
 from doova_one_view.api.kpi.routes import router as kpi_router
+from doova_one_view.api.agent.routes import router as agent_router
 from doova_one_view.api.jobs.sync_job import SyncJobManager
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(master_data_router)
     app.include_router(files_router)
     app.include_router(kpi_router)
+    app.include_router(agent_router)
     
     # Health check endpoint
     @app.get("/health", tags=["Health"])

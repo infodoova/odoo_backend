@@ -1,0 +1,47 @@
+"""
+AI Agent configuration.
+
+Reads secrets from environment / Django settings.
+All Claude model identifiers and token budgets live here.
+"""
+
+import os
+from django.conf import settings as django_settings
+
+
+class AgentConfig:
+    """Centralised knobs for the AI financial-advisor agent."""
+
+    # ── LLM provider ──────────────────────────────────────────────────
+    ANTHROPIC_API_KEY: str = (
+        getattr(django_settings, "ANTHROPIC_API_KEY", None)
+        or os.getenv("ANTHROPIC_API_KEY", "")
+    )
+
+    # Odoo Connection
+    ODOO_URL = os.getenv("ODOO_URL")
+    ODOO_DB = os.getenv("ODOO_DB")
+    ODOO_USERNAME = os.getenv("ODOO_USERNAME")
+    ODOO_API_KEY = os.getenv("ODOO_API_KEY")
+
+    # ── Claude models ─────────────────────────────────────────────────
+    ROUTER_MODEL = "claude-haiku-4-5-20251001"
+    FAST_MODEL = "claude-sonnet-4-6"
+    REASONING_MODEL = "claude-sonnet-4-6"
+    SUMMARIZER_MODEL = "claude-haiku-4-5-20251001"
+    SQL_AGENT_MODEL = "claude-haiku-4-5-20251001"
+
+    # ── Token budgets ─────────────────────────────────────────────────
+    MAX_FAST_TOKENS = 1024
+    MAX_REASONING_TOKENS = 8000
+    MAX_ROUTER_TOKENS = 20
+    MAX_SUMMARIZER_TOKENS = 512
+
+    # ── Memory ────────────────────────────────────────────────────────
+    SUMMARIZE_EVERY_N = 4
+
+    # ── Business thresholds ───────────────────────────────────────────
+    LOW_MARGIN_THRESHOLD = 15.0
+    HIGH_RECEIVABLES_DAYS = 60
+    LOW_STOCK_THRESHOLD = 10
+    EXPIRY_WARNING_DAYS = 30

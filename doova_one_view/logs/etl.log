@@ -159638,3 +159638,1501 @@ INFO 2026-05-12 14:55:52,201 middleware 14696 17320 GET /api/v1/kpi/category-per
 INFO 2026-05-12 14:55:52,203 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.035s
 INFO 2026-05-12 14:55:52,328 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
 INFO 2026-05-12 14:55:52,341 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-12 14:56:17,938 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 14:56:17,945 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 14:56:17,994 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 14:56:17,996 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:17,997 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:17,997 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,019 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,020 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,020 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,025 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,025 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.032s
+INFO 2026-05-12 14:56:18,032 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.035s
+INFO 2026-05-12 14:56:18,039 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.042s
+INFO 2026-05-12 14:56:18,041 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.045s
+INFO 2026-05-12 14:56:18,054 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.034s
+INFO 2026-05-12 14:56:18,055 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.035s
+INFO 2026-05-12 14:56:18,058 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,068 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.049s
+INFO 2026-05-12 14:56:18,079 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,087 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.030s
+INFO 2026-05-12 14:56:18,093 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.014s
+INFO 2026-05-12 14:56:18,106 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.081s
+INFO 2026-05-12 14:56:18,233 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,235 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,245 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,246 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,254 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.020s
+INFO 2026-05-12 14:56:18,256 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,266 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.031s
+INFO 2026-05-12 14:56:18,271 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.015s
+INFO 2026-05-12 14:56:18,274 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.029s
+INFO 2026-05-12 14:56:18,277 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.032s
+INFO 2026-05-12 14:56:18,280 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,280 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,294 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,296 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,299 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.019s
+INFO 2026-05-12 14:56:18,301 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.020s
+INFO 2026-05-12 14:56:18,325 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.030s
+INFO 2026-05-12 14:56:18,325 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.030s
+INFO 2026-05-12 14:56:18,331 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,377 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.046s
+INFO 2026-05-12 14:56:18,404 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,413 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 14:56:18,545 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,553 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 14:56:18,684 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:18,694 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 14:56:20,909 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 14:56:20,917 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 14:56:21,070 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,077 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 14:56:21,176 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,190 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.014s
+INFO 2026-05-12 14:56:21,212 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,216 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,248 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.032s
+INFO 2026-05-12 14:56:21,273 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,274 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,274 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,274 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,275 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,275 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,275 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,284 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.072s
+INFO 2026-05-12 14:56:21,318 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.043s
+INFO 2026-05-12 14:56:21,323 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.050s
+INFO 2026-05-12 14:56:21,334 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.060s
+INFO 2026-05-12 14:56:21,337 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,338 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.063s
+INFO 2026-05-12 14:56:21,338 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.065s
+INFO 2026-05-12 14:56:21,340 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.065s
+INFO 2026-05-12 14:56:21,340 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.066s
+INFO 2026-05-12 14:56:21,350 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-12 14:56:21,388 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,414 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.026s
+INFO 2026-05-12 14:56:21,425 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,459 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,468 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,475 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,476 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.017s
+INFO 2026-05-12 14:56:21,491 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.023s
+INFO 2026-05-12 14:56:21,492 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.067s
+INFO 2026-05-12 14:56:21,504 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.029s
+INFO 2026-05-12 14:56:21,515 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,521 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,521 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,540 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,541 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,557 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.037s
+INFO 2026-05-12 14:56:21,558 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.037s
+INFO 2026-05-12 14:56:21,559 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.044s
+INFO 2026-05-12 14:56:21,570 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.030s
+INFO 2026-05-12 14:56:21,579 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.038s
+INFO 2026-05-12 14:56:21,700 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 14:56:21,709 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:02:48,650 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,658 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:02:48,692 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,692 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:02:48,712 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,712 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,713 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,713 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,713 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,714 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,714 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,714 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,714 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,715 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,715 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,715 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,716 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.004s
+INFO 2026-05-12 15:02:48,717 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.004s
+INFO 2026-05-12 15:02:48,718 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.005s
+INFO 2026-05-12 15:02:48,719 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:02:48,720 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:02:48,720 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:02:48,721 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:02:48,721 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:02:48,722 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:02:48,722 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:02:48,723 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:02:48,723 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:02:48,752 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,753 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,754 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,754 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:02:48,755 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:02:48,756 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:02:48,788 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,795 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:02:48,812 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,813 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,813 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:02:48,814 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:02:48,840 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,848 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,849 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,854 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,858 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,866 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,868 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,870 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,870 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:02:48,896 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.048s
+INFO 2026-05-12 15:02:48,903 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.053s
+INFO 2026-05-12 15:02:48,910 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.056s
+INFO 2026-05-12 15:02:48,912 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.053s
+INFO 2026-05-12 15:02:48,925 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.055s
+INFO 2026-05-12 15:02:48,926 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.060s
+INFO 2026-05-12 15:02:48,927 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.058s
+INFO 2026-05-12 15:02:48,927 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.087s
+INFO 2026-05-12 15:02:48,928 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.058s
+INFO 2026-05-12 15:02:49,026 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,033 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,042 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,047 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.021s
+INFO 2026-05-12 15:02:49,048 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,058 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.025s
+INFO 2026-05-12 15:02:49,062 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.015s
+INFO 2026-05-12 15:02:49,064 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.022s
+INFO 2026-05-12 15:02:49,072 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,075 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,076 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,076 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,076 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,099 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.027s
+INFO 2026-05-12 15:02:49,105 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.029s
+INFO 2026-05-12 15:02:49,113 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.038s
+INFO 2026-05-12 15:02:49,115 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.040s
+INFO 2026-05-12 15:02:49,150 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.073s
+INFO 2026-05-12 15:02:49,465 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,475 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:02:49,606 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,615 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:02:49,750 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,759 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:02:49,888 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:02:49,896 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:08:22,782 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:08:22,786 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 401 - Time: 0.004s
+ERROR 2026-05-12 15:08:23,160 log 14696 3856 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:08:26,624 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:08:26,625 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:08:26,627 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:08:26,628 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:08:26,767 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:08:26,777 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:08:26,910 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:08:26,918 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:08:27,057 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,059 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,062 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,069 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,090 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.027s
+INFO 2026-05-12 15:08:27,091 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.034s
+INFO 2026-05-12 15:08:27,095 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.025s
+INFO 2026-05-12 15:08:27,110 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,112 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,115 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,117 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,120 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,136 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.077s
+INFO 2026-05-12 15:08:27,155 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.044s
+INFO 2026-05-12 15:08:27,156 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.046s
+INFO 2026-05-12 15:08:27,157 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.037s
+INFO 2026-05-12 15:08:27,158 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.041s
+INFO 2026-05-12 15:08:27,159 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.044s
+INFO 2026-05-12 15:08:27,247 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,248 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,261 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:08:27,269 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.022s
+INFO 2026-05-12 15:08:27,289 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,292 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,296 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,302 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,309 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.020s
+INFO 2026-05-12 15:08:27,313 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,323 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,334 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,336 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.034s
+INFO 2026-05-12 15:08:27,338 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.042s
+INFO 2026-05-12 15:08:27,339 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,341 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,342 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:08:27,344 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.005s
+INFO 2026-05-12 15:08:27,349 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,351 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:08:27,355 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.042s
+INFO 2026-05-12 15:08:27,357 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.065s
+INFO 2026-05-12 15:08:27,358 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,359 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:08:27,362 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.039s
+INFO 2026-05-12 15:08:27,368 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.026s
+INFO 2026-05-12 15:08:27,479 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,487 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:08:27,624 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,633 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:08:27,762 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,772 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:08:27,915 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:08:27,923 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:10:45,713 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,716 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,733 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.017s
+INFO 2026-05-12 15:10:45,765 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.053s
+INFO 2026-05-12 15:10:45,773 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,777 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,777 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,778 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,778 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,800 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.024s
+INFO 2026-05-12 15:10:45,813 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:10:45,813 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.041s
+INFO 2026-05-12 15:10:45,814 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.036s
+INFO 2026-05-12 15:10:45,815 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.036s
+INFO 2026-05-12 15:10:45,841 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,856 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.016s
+INFO 2026-05-12 15:10:45,897 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:10:45,916 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.018s
+INFO 2026-05-12 15:11:58,303 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,311 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:11:58,557 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,563 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:11:58,698 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,702 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,714 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:11:58,767 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,796 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,798 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,798 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,798 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,799 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,799 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,820 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.122s
+INFO 2026-05-12 15:11:58,834 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:11:58,847 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.051s
+INFO 2026-05-12 15:11:58,852 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.053s
+INFO 2026-05-12 15:11:58,854 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.057s
+INFO 2026-05-12 15:11:58,856 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.057s
+INFO 2026-05-12 15:11:58,862 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.064s
+INFO 2026-05-12 15:11:58,871 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.105s
+INFO 2026-05-12 15:11:58,928 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:11:58,936 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:11:59,051 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,063 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:11:59,108 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,109 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,113 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,114 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,114 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,114 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,115 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,115 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,139 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.032s
+INFO 2026-05-12 15:11:59,149 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.040s
+INFO 2026-05-12 15:11:59,157 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.043s
+INFO 2026-05-12 15:11:59,161 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.048s
+INFO 2026-05-12 15:11:59,163 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.049s
+INFO 2026-05-12 15:11:59,164 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.049s
+INFO 2026-05-12 15:11:59,168 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.053s
+INFO 2026-05-12 15:11:59,182 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,191 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.077s
+INFO 2026-05-12 15:11:59,192 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:11:59,329 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,340 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:11:59,527 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:11:59,535 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:13:04,648 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:13:04,654 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:13:04,799 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:13:04,807 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:13:04,997 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,005 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:13:05,045 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,046 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:13:05,058 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,058 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,059 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,059 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,059 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,060 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:13:05,060 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:13:05,061 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:13:05,061 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:13:05,062 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:13:05,075 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,075 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:13:05,078 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,078 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,079 middleware 14696 17320 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:13:05,080 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:13:05,082 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,082 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,082 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,083 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,083 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,083 middleware 14696 17320 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:13:05,084 middleware 14696 17320 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:13:05,085 middleware 14696 17320 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:13:05,085 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:13:05,086 middleware 14696 17320 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:13:05,100 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,100 middleware 14696 17320 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.000s
+INFO 2026-05-12 15:13:05,145 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,145 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:13:05,155 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,155 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.000s
+INFO 2026-05-12 15:13:05,163 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,172 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:13:05,183 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,183 middleware 14696 17320 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:13:05,199 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,211 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,214 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.015s
+INFO 2026-05-12 15:13:05,215 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,236 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,238 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.023s
+INFO 2026-05-12 15:13:05,291 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,293 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,293 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,294 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,307 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,313 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.102s
+INFO 2026-05-12 15:13:05,314 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.078s
+INFO 2026-05-12 15:13:05,326 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,327 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.034s
+INFO 2026-05-12 15:13:05,328 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:13:05,330 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.039s
+INFO 2026-05-12 15:13:05,332 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.040s
+INFO 2026-05-12 15:13:05,338 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:13:05,358 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,372 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.014s
+INFO 2026-05-12 15:13:05,375 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.068s
+INFO 2026-05-12 15:13:05,388 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,404 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.016s
+INFO 2026-05-12 15:13:05,449 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,458 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,470 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:13:05,476 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,480 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,486 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,488 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,489 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,498 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.049s
+INFO 2026-05-12 15:13:05,501 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.025s
+INFO 2026-05-12 15:13:05,512 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.031s
+INFO 2026-05-12 15:13:05,514 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.028s
+INFO 2026-05-12 15:13:05,515 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.027s
+INFO 2026-05-12 15:13:05,516 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:13:05,523 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.034s
+INFO 2026-05-12 15:13:05,532 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.017s
+INFO 2026-05-12 15:14:55,999 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,010 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:14:56,031 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,045 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,046 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,046 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,046 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,047 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,048 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,054 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,056 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,272 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,349 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.304s
+INFO 2026-05-12 15:14:56,363 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.317s
+INFO 2026-05-12 15:14:56,365 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.334s
+INFO 2026-05-12 15:14:56,374 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.320s
+INFO 2026-05-12 15:14:56,376 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.330s
+INFO 2026-05-12 15:14:56,376 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.330s
+INFO 2026-05-12 15:14:56,377 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.105s
+INFO 2026-05-12 15:14:56,378 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.322s
+INFO 2026-05-12 15:14:56,481 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,493 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:14:56,513 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,514 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,583 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.070s
+INFO 2026-05-12 15:14:56,584 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,588 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,592 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,600 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,604 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.557s
+INFO 2026-05-12 15:14:56,613 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.565s
+INFO 2026-05-12 15:14:56,618 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.034s
+INFO 2026-05-12 15:14:56,628 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,638 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.050s
+INFO 2026-05-12 15:14:56,640 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.048s
+INFO 2026-05-12 15:14:56,643 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.129s
+INFO 2026-05-12 15:14:56,643 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.043s
+INFO 2026-05-12 15:14:56,663 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:14:56,740 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,749 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:14:56,751 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,756 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,766 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:14:56,783 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.032s
+INFO 2026-05-12 15:14:56,895 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:14:56,903 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:14:57,042 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:14:57,063 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.021s
+INFO 2026-05-12 15:15:03,775 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:15:03,783 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:15:03,911 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:15:03,920 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:15:04,064 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,075 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:15:04,106 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,107 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,108 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,125 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,133 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,150 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.043s
+INFO 2026-05-12 15:15:04,156 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.048s
+INFO 2026-05-12 15:15:04,162 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,168 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.043s
+INFO 2026-05-12 15:15:04,170 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,170 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,187 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,195 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.089s
+INFO 2026-05-12 15:15:04,197 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.028s
+INFO 2026-05-12 15:15:04,201 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.068s
+INFO 2026-05-12 15:15:04,219 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.057s
+INFO 2026-05-12 15:15:04,223 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.052s
+INFO 2026-05-12 15:15:04,224 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,236 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:15:04,237 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.051s
+INFO 2026-05-12 15:15:04,284 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,303 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.019s
+INFO 2026-05-12 15:15:04,398 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,419 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,424 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,425 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,426 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,426 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,427 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,427 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,428 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,467 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.070s
+INFO 2026-05-12 15:15:04,494 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.069s
+INFO 2026-05-12 15:15:04,508 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.088s
+INFO 2026-05-12 15:15:04,516 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.088s
+INFO 2026-05-12 15:15:04,517 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.091s
+INFO 2026-05-12 15:15:04,520 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.093s
+INFO 2026-05-12 15:15:04,523 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.099s
+INFO 2026-05-12 15:15:04,524 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.096s
+INFO 2026-05-12 15:15:04,573 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.147s
+INFO 2026-05-12 15:15:04,651 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:04,662 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:15:30,483 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:15:30,491 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:15:30,632 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:15:30,640 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:15:30,929 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:30,941 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:15:31,081 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,090 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:15:31,188 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,189 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,190 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,190 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,190 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,191 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,191 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,191 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,192 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,248 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.060s
+INFO 2026-05-12 15:15:31,255 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.064s
+INFO 2026-05-12 15:15:31,258 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,261 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.072s
+INFO 2026-05-12 15:15:31,263 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.072s
+INFO 2026-05-12 15:15:31,264 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.072s
+INFO 2026-05-12 15:15:31,265 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.074s
+INFO 2026-05-12 15:15:31,265 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.075s
+INFO 2026-05-12 15:15:31,266 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.076s
+INFO 2026-05-12 15:15:31,277 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.019s
+INFO 2026-05-12 15:15:31,280 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.089s
+INFO 2026-05-12 15:15:31,387 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,389 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,393 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,400 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,405 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.018s
+INFO 2026-05-12 15:15:31,414 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.025s
+INFO 2026-05-12 15:15:31,495 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,496 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.103s
+INFO 2026-05-12 15:15:31,498 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.098s
+INFO 2026-05-12 15:15:31,500 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,501 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,502 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,513 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,515 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:15:31,530 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:15:31,540 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.038s
+INFO 2026-05-12 15:15:31,632 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.131s
+INFO 2026-05-12 15:15:31,635 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.135s
+INFO 2026-05-12 15:15:31,637 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.122s
+INFO 2026-05-12 15:15:31,665 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.152s
+INFO 2026-05-12 15:16:41,886 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,887 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,888 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,889 middleware 14696 17320 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:16:41,890 middleware 14696 17320 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:16:41,904 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.018s
+INFO 2026-05-12 15:16:41,941 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,942 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,942 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,987 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,988 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:16:41,988 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:16:42,005 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.063s
+INFO 2026-05-12 15:16:42,023 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:16:42,024 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.082s
+INFO 2026-05-12 15:16:42,037 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:16:42,037 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:16:42,038 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.051s
+INFO 2026-05-12 15:16:42,039 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.097s
+INFO 2026-05-12 15:16:42,040 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.051s
+INFO 2026-05-12 15:16:42,055 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.018s
+INFO 2026-05-12 15:16:42,085 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.048s
+INFO 2026-05-12 15:16:50,029 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,031 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,031 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,032 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,053 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.024s
+INFO 2026-05-12 15:16:50,057 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.026s
+INFO 2026-05-12 15:16:50,062 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.031s
+INFO 2026-05-12 15:16:50,085 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.054s
+INFO 2026-05-12 15:16:50,089 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,090 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,091 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,091 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,091 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:16:50,113 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.023s
+INFO 2026-05-12 15:16:50,124 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:16:50,126 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:16:50,126 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.035s
+INFO 2026-05-12 15:16:50,127 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.037s
+INFO 2026-05-12 15:17:42,111 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:17:42,112 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:17:42,160 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:17:42,161 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.000s
+INFO 2026-05-12 15:17:42,247 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:17:42,826 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.579s
+INFO 2026-05-12 15:17:42,958 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:17:43,008 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.050s
+INFO 2026-05-12 15:17:45,587 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:17:45,588 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.13
+INFO 2026-05-12 15:17:45,589 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:17:45,590 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:17:45,720 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:17:45,749 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.13
+INFO 2026-05-12 15:17:45,800 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.080s
+INFO 2026-05-12 15:17:46,124 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.375s
+INFO 2026-05-12 15:17:48,255 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/export - Client: 178.135.15.13
+INFO 2026-05-12 15:17:48,255 middleware 14696 17320 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/export - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:17:48,397 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/export - Client: 178.135.15.13
+INFO 2026-05-12 15:17:54,399 middleware 14696 17320 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/export - Status: 200 - Time: 6.002s
+INFO 2026-05-12 15:18:02,251 middleware 14696 17320 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:02,252 middleware 14696 17320 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:02,252 middleware 14696 17320 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:18:02,254 middleware 14696 17320 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:18:02,384 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:02,441 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.057s
+INFO 2026-05-12 15:18:02,572 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:02,582 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:03,950 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:18:03,952 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:18:04,158 log 14696 21244 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:18:11,969 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:11,977 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:18:12,106 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:12,115 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:12,161 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:12,166 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:18:12,248 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:12,259 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:18:12,295 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:12,304 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:12,396 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:12,405 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:18:29,673 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:18:29,674 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:18:29,676 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:18:29,677 middleware 14696 17320 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:18:29,805 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:18:29,814 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:18:29,943 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:18:29,949 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:18:30,047 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,048 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,049 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:18:30,050 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:18:30,052 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,053 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:18:30,070 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,075 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,076 middleware 14696 17320 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:18:30,080 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:30,179 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,188 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:30,214 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,221 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:18:30,331 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,340 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:30,478 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,488 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:30,623 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:30,631 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:18:37,679 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:18:37,682 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.002s
+ERROR 2026-05-12 15:18:37,917 log 14696 12012 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:18:43,406 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:43,415 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:43,549 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:43,559 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:43,581 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:43,591 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:43,691 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:43,698 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:18:43,723 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:43,730 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:18:43,828 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:43,837 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:52,953 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:18:52,955 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:18:53,175 log 14696 9072 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:18:56,390 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:56,397 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:18:56,525 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:56,535 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:56,547 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:56,555 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:18:56,669 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:18:56,678 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:18:56,713 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:56,722 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:18:56,864 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:18:56,872 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:19:10,617 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:19:10,618 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:19:10,836 log 14696 2892 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:19:54,992 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:19:54,993 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:19:55,176 log 14696 12012 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:19:56,569 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:19:56,570 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:19:56,764 log 14696 3856 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:19:58,245 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:19:58,254 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:19:58,385 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:19:58,393 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:19:58,521 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:19:58,529 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:19:58,658 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:19:58,667 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:19:59,004 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:19:59,011 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:19:59,145 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:19:59,153 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:00,028 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,035 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:20:00,163 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,172 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:20:00,270 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,278 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:00,403 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,410 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:20:00,430 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,440 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:20:00,540 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,546 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:20:00,613 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,620 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:00,766 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:00,776 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:20:01,525 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:20:01,527 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.002s
+ERROR 2026-05-12 15:20:01,775 log 14696 9540 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:20:06,735 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:06,743 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:06,875 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:06,880 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:06,888 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-12 15:20:06,890 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:20:07,017 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:07,024 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:07,026 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:20:07,032 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:07,167 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:07,175 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:20:17,208 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,215 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:20:17,350 middleware 14696 17320 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,357 middleware 14696 17320 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:20:17,405 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,413 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:17,546 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,555 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:20:17,693 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,702 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:20:17,824 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,826 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,831 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,834 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,835 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,835 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,839 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,843 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,857 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.033s
+INFO 2026-05-12 15:20:17,876 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.045s
+INFO 2026-05-12 15:20:17,898 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,905 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.070s
+INFO 2026-05-12 15:20:17,905 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.070s
+INFO 2026-05-12 15:20:17,907 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.068s
+INFO 2026-05-12 15:20:17,908 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:20:17,910 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.066s
+INFO 2026-05-12 15:20:17,920 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.085s
+INFO 2026-05-12 15:20:17,924 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.026s
+INFO 2026-05-12 15:20:17,928 middleware 14696 17320 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.020s
+INFO 2026-05-12 15:20:17,930 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.104s
+INFO 2026-05-12 15:20:18,034 middleware 14696 17320 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,036 middleware 14696 17320 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,051 middleware 14696 17320 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.015s
+INFO 2026-05-12 15:20:18,054 middleware 14696 17320 GET /api/v1/kpi/trends - Status: 200 - Time: 0.020s
+INFO 2026-05-12 15:20:18,096 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,098 middleware 14696 17320 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,110 middleware 14696 17320 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,126 middleware 14696 17320 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,128 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,130 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,130 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:20:18,132 middleware 14696 17320 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.036s
+INFO 2026-05-12 15:20:18,136 middleware 14696 17320 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.038s
+INFO 2026-05-12 15:20:18,163 middleware 14696 17320 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.033s
+INFO 2026-05-12 15:20:18,173 middleware 14696 17320 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.043s
+INFO 2026-05-12 15:20:18,176 middleware 14696 17320 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.050s
+INFO 2026-05-12 15:20:18,178 middleware 14696 17320 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.050s
+INFO 2026-05-12 15:20:18,190 middleware 14696 17320 GET /api/v1/kpi/overview - Status: 200 - Time: 0.080s
+INFO 2026-05-12 15:20:21,959 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:21,966 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:20:22,104 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:22,112 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:20:23,308 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:20:23,308 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:20:23,510 log 14696 16292 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:20:27,407 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:27,416 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:20:27,545 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:20:27,552 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:20:33,907 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:20:33,908 middleware 14696 17320 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+ERROR 2026-05-12 15:20:34,115 log 14696 4132 Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\deprecation.py", line 321, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )(request)
+    ^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\http\request.py", line 206, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'zeppelin-reproach-twitter.ngrok-free.dev'. You may need to add 'zeppelin-reproach-twitter.ngrok-free.dev' to ALLOWED_HOSTS.
+INFO 2026-05-12 15:22:21,827 sync_job 14696 17320 Background Sync Job stopped
+INFO 2026-05-12 15:22:42,922 sync_job 12352 6492 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-12 15:22:42,923 sync_job 12352 6492 Starting scheduled sync run at 2026-05-12 15:22:42.923028
+INFO 2026-05-12 15:22:43,242 sync_job 12352 6492 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-12 15:22:43,802 utils 12352 20992 decrypt_api_key called
+INFO 2026-05-12 15:22:43,802 utils 12352 20992 Incoming type: <class 'memoryview'>
+INFO 2026-05-12 15:22:43,802 utils 12352 20992 Detected memoryview, converting using tobytes()
+INFO 2026-05-12 15:22:43,803 utils 12352 20992 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-12 15:22:43,803 utils 12352 20992 Data length after normalization: 40
+INFO 2026-05-12 15:22:43,803 utils 12352 20992 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-12 15:22:43,803 utils 12352 20992 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-12 15:22:43,804 utils 12352 20992 Falling back to plain decode
+INFO 2026-05-12 15:22:43,804 utils 12352 20992 Plain decode successful, result length: 40
+INFO 2026-05-12 15:22:43,804 odoo_client 12352 20992 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-12 15:22:43,836 database_manager 12352 20992 Connected to PostgreSQL
+INFO 2026-05-12 15:22:43,992 database_manager 12352 20992 Closed PostgreSQL connection
+INFO 2026-05-12 15:22:43,992 orchestrator 12352 20992 History exists. Triggering smart incremental sync...
+INFO 2026-05-12 15:22:43,992 orchestrator 12352 20992 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-12 15:22:44,097 database_manager 12352 20992 Connected to PostgreSQL
+INFO 2026-05-12 15:22:44,104 database_manager 12352 20992 Closed PostgreSQL connection
+INFO 2026-05-12 15:22:44,105 sync_job 12352 6492 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-12 15:22:46,015 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,070 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.055s
+INFO 2026-05-12 15:22:46,198 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,204 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,210 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:22:46,236 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,252 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.048s
+INFO 2026-05-12 15:22:46,286 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.050s
+INFO 2026-05-12 15:22:46,366 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,375 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:22:46,414 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,424 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:22:46,555 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,564 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:22:46,695 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:46,705 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:22:47,802 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:22:47,803 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+INFO 2026-05-12 15:22:53,057 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,065 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:22:53,210 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,217 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:22:53,323 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,332 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:22:53,347 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,352 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:22:53,462 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,471 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:22:53,488 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,496 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:22:53,600 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,609 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:22:53,741 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:22:53,749 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:22:55,626 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:22:55,627 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+WARNING 2026-05-12 15:23:03,742 log 12352 11544 Not Found: /favicon.ico
+WARNING 2026-05-12 15:23:03,888 log 12352 6120 Not Found: /favicon.ico
+INFO 2026-05-12 15:23:30,039 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:23:30,048 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:23:30,186 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:23:30,197 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:23:30,242 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:23:30,250 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:23:30,352 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:23:30,360 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:23:30,383 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:23:30,393 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:23:30,508 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:23:30,517 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:23:32,047 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:23:32,050 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.003s
+INFO 2026-05-12 15:23:49,578 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:23:49,579 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+INFO 2026-05-12 15:24:05,011 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:24:05,018 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:05,147 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:24:05,154 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:07,467 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:24:07,475 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:07,609 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:24:07,616 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:07,721 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:07,731 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:24:07,838 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:24:07,847 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:24:07,872 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:07,881 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:24:07,974 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:24:07,981 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:08,013 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:08,024 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:24:08,155 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:08,165 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:24:09,876 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:24:09,881 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.005s
+INFO 2026-05-12 15:24:10,009 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,015 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:24:10,103 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,111 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:24:10,230 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,237 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:10,264 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,272 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:24:10,367 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,373 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:24:10,405 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,412 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:24:10,544 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:24:10,552 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:25:32,561 middleware 12352 6492 GET /api/v1/docs - Client: 178.135.15.13
+INFO 2026-05-12 15:25:32,563 middleware 12352 6492 GET /api/v1/docs - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:25:33,223 middleware 12352 6492 GET /api/v1/openapi.json - Client: 178.135.15.13
+INFO 2026-05-12 15:25:33,499 middleware 12352 6492 GET /api/v1/openapi.json - Status: 200 - Time: 0.276s
+INFO 2026-05-12 15:26:04,771 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:04,778 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:26:19,497 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:26:19,504 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:26:19,642 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:26:19,648 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:26:19,752 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:19,761 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:26:19,797 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:19,802 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:26:19,912 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:19,922 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:26:19,945 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:19,950 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.005s
+INFO 2026-05-12 15:26:20,066 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:20,075 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:26:20,216 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:20,224 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:26:22,142 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:26:22,143 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+INFO 2026-05-12 15:26:24,182 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:24,191 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:26:24,325 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:24,333 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:26:24,391 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:24,397 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:26:24,464 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:24,472 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:26:24,545 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:24,551 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:26:24,607 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:24,614 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:26:30,930 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:26:30,937 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:26:31,140 middleware 12352 6492 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:26:31,146 middleware 12352 6492 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-12 15:26:31,280 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:31,286 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:31,291 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:26:31,296 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:26:31,422 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:26:31,429 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:26:31,438 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:31,445 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:26:31,679 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:31,689 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:26:32,006 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:26:32,015 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:26:32,343 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:26:32,344 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+INFO 2026-05-12 15:27:08,847 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:27:08,857 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:27:08,987 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:27:08,995 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:27:09,011 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:27:09,024 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.014s
+INFO 2026-05-12 15:27:09,139 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:27:09,146 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:27:09,162 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:27:09,171 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:27:09,319 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:27:09,328 middleware 12352 6492 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:27:11,703 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:27:11,704 middleware 12352 6492 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 401 - Time: 0.001s
+INFO 2026-05-12 15:28:26,049 sync_job 12352 6492 Background Sync Job stopped
+INFO 2026-05-12 15:28:30,751 sync_job 20364 13096 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-12 15:28:30,751 sync_job 20364 13096 Starting scheduled sync run at 2026-05-12 15:28:30.751757
+INFO 2026-05-12 15:28:30,897 sync_job 20364 13096 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-12 15:28:31,128 utils 20364 1588 decrypt_api_key called
+INFO 2026-05-12 15:28:31,128 utils 20364 1588 Incoming type: <class 'memoryview'>
+INFO 2026-05-12 15:28:31,128 utils 20364 1588 Detected memoryview, converting using tobytes()
+INFO 2026-05-12 15:28:31,128 utils 20364 1588 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-12 15:28:31,128 utils 20364 1588 Data length after normalization: 40
+INFO 2026-05-12 15:28:31,128 utils 20364 1588 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-12 15:28:31,129 utils 20364 1588 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-12 15:28:31,129 utils 20364 1588 Falling back to plain decode
+INFO 2026-05-12 15:28:31,129 utils 20364 1588 Plain decode successful, result length: 40
+INFO 2026-05-12 15:28:31,129 odoo_client 20364 1588 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-12 15:28:31,163 database_manager 20364 1588 Connected to PostgreSQL
+INFO 2026-05-12 15:28:31,235 database_manager 20364 1588 Closed PostgreSQL connection
+INFO 2026-05-12 15:28:31,236 orchestrator 20364 1588 History exists. Triggering smart incremental sync...
+INFO 2026-05-12 15:28:31,236 orchestrator 20364 1588 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-12 15:28:31,286 database_manager 20364 1588 Connected to PostgreSQL
+INFO 2026-05-12 15:28:31,295 database_manager 20364 1588 Closed PostgreSQL connection
+INFO 2026-05-12 15:28:31,295 sync_job 20364 13096 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-12 15:28:38,017 sync_job 20364 13096 Background Sync Job stopped
+INFO 2026-05-12 15:28:45,110 sync_job 8928 10892 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-12 15:28:45,111 sync_job 8928 10892 Starting scheduled sync run at 2026-05-12 15:28:45.111485
+INFO 2026-05-12 15:28:45,172 sync_job 8928 10892 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-12 15:28:45,355 utils 8928 6504 decrypt_api_key called
+INFO 2026-05-12 15:28:45,355 utils 8928 6504 Incoming type: <class 'memoryview'>
+INFO 2026-05-12 15:28:45,355 utils 8928 6504 Detected memoryview, converting using tobytes()
+INFO 2026-05-12 15:28:45,356 utils 8928 6504 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-12 15:28:45,356 utils 8928 6504 Data length after normalization: 40
+INFO 2026-05-12 15:28:45,356 utils 8928 6504 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-12 15:28:45,356 utils 8928 6504 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-12 15:28:45,356 utils 8928 6504 Falling back to plain decode
+INFO 2026-05-12 15:28:45,356 utils 8928 6504 Plain decode successful, result length: 40
+INFO 2026-05-12 15:28:45,356 odoo_client 8928 6504 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-12 15:28:45,449 database_manager 8928 6504 Connected to PostgreSQL
+INFO 2026-05-12 15:28:45,453 database_manager 8928 6504 Closed PostgreSQL connection
+INFO 2026-05-12 15:28:45,453 orchestrator 8928 6504 History exists. Triggering smart incremental sync...
+INFO 2026-05-12 15:28:45,453 orchestrator 8928 6504 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-12 15:28:45,520 database_manager 8928 6504 Connected to PostgreSQL
+INFO 2026-05-12 15:28:45,523 database_manager 8928 6504 Closed PostgreSQL connection
+INFO 2026-05-12 15:28:45,524 sync_job 8928 10892 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-12 15:29:00,093 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,093 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,094 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:29:00,095 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:29:00,339 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,341 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,342 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:29:00,344 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:29:00,345 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,346 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.000s
+INFO 2026-05-12 15:29:00,364 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,365 middleware 8928 10892 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:29:00,399 middleware 8928 10892 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,399 middleware 8928 10892 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,400 middleware 8928 10892 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:29:00,401 middleware 8928 10892 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:29:00,475 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,512 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.037s
+INFO 2026-05-12 15:29:00,547 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,555 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:29:00,643 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,650 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:29:00,692 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,779 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.087s
+INFO 2026-05-12 15:29:00,794 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,807 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-12 15:29:00,948 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:00,958 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:29:02,263 middleware 8928 10892 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,271 middleware 8928 10892 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:29:02,401 middleware 8928 10892 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,411 middleware 8928 10892 GET /api/v1/tenants/ - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:29:02,522 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,535 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:29:02,630 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,636 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:29:02,680 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,686 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:29:02,802 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,809 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29 - Status: 200 - Time: 0.007s
+INFO 2026-05-12 15:29:02,837 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,845 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-12 15:29:02,992 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:29:02,999 middleware 8928 10892 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-12 15:29:04,888 middleware 8928 10892 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:29:04,889 middleware 8928 10892 OPTIONS /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:29:05,022 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Client: 178.135.15.13
+INFO 2026-05-12 15:29:05,140 middleware 8928 10892 GET /api/v1/files/65168de7-ac28-4063-b866-337afca05e29/6/content - Status: 200 - Time: 0.118s
+INFO 2026-05-12 15:34:21,747 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Client: 209.38.75.242
+INFO 2026-05-12 15:34:27,916 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Client: 64.23.171.189
+INFO 2026-05-12 15:34:40,839 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 21.577s
+INFO 2026-05-12 15:34:42,965 middleware 8928 10892 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 15.049s
+INFO 2026-05-12 15:38:31,230 sync_job 4500 14696 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-12 15:38:31,231 sync_job 4500 14696 Starting scheduled sync run at 2026-05-12 15:38:31.231318
+INFO 2026-05-12 15:38:32,586 sync_job 4500 14696 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-12 15:38:33,441 utils 4500 8968 decrypt_api_key called
+INFO 2026-05-12 15:38:33,442 utils 4500 8968 Incoming type: <class 'memoryview'>
+INFO 2026-05-12 15:38:33,442 utils 4500 8968 Detected memoryview, converting using tobytes()
+INFO 2026-05-12 15:38:33,442 utils 4500 8968 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-12 15:38:33,442 utils 4500 8968 Data length after normalization: 40
+INFO 2026-05-12 15:38:33,442 utils 4500 8968 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-12 15:38:33,443 utils 4500 8968 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-12 15:38:33,443 utils 4500 8968 Falling back to plain decode
+INFO 2026-05-12 15:38:33,443 utils 4500 8968 Plain decode successful, result length: 40
+INFO 2026-05-12 15:38:33,443 odoo_client 4500 8968 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-12 15:38:33,739 database_manager 4500 8968 Connected to PostgreSQL
+INFO 2026-05-12 15:38:34,497 database_manager 4500 8968 Closed PostgreSQL connection
+INFO 2026-05-12 15:38:34,498 orchestrator 4500 8968 History exists. Triggering smart incremental sync...
+INFO 2026-05-12 15:38:34,498 orchestrator 4500 8968 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-12 15:38:34,639 database_manager 4500 8968 Connected to PostgreSQL
+INFO 2026-05-12 15:38:34,649 database_manager 4500 8968 Closed PostgreSQL connection
+INFO 2026-05-12 15:38:34,652 sync_job 4500 14696 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-12 15:38:43,508 middleware 4500 14696 OPTIONS /api/v1/auth/login - Client: 178.135.15.13
+INFO 2026-05-12 15:38:43,509 middleware 4500 14696 OPTIONS /api/v1/auth/login - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:38:44,205 middleware 4500 14696 POST /api/v1/auth/login - Client: 178.135.15.13
+INFO 2026-05-12 15:38:54,169 middleware 4500 14696 POST /api/v1/auth/login - Status: 401 - Time: 9.964s
+INFO 2026-05-12 15:39:07,238 middleware 4500 14696 POST /api/v1/auth/login - Client: 178.135.15.13
+INFO 2026-05-12 15:39:09,649 middleware 4500 14696 POST /api/v1/auth/login - Status: 200 - Time: 2.411s
+INFO 2026-05-12 15:39:09,824 middleware 4500 14696 OPTIONS /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:39:09,825 middleware 4500 14696 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:09,958 middleware 4500 14696 GET /api/v1/tenants/ - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,054 middleware 4500 14696 GET /api/v1/tenants/ - Status: 200 - Time: 0.097s
+INFO 2026-05-12 15:39:10,373 middleware 4500 14696 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,373 middleware 4500 14696 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:10,403 middleware 4500 14696 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,403 middleware 4500 14696 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:10,479 middleware 4500 14696 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,480 middleware 4500 14696 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,481 middleware 4500 14696 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:10,481 middleware 4500 14696 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:10,502 middleware 4500 14696 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,983 middleware 4500 14696 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:39:10,984 middleware 4500 14696 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:11,126 middleware 4500 14696 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:39:11,130 middleware 4500 14696 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:39:11,130 middleware 4500 14696 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:11,388 middleware 4500 14696 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:11,389 middleware 4500 14696 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:11,575 middleware 4500 14696 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:39:11,575 middleware 4500 14696 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:11,720 middleware 4500 14696 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:11,720 middleware 4500 14696 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:11,769 middleware 4500 14696 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:11,983 middleware 4500 14696 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,123 middleware 4500 14696 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,124 middleware 4500 14696 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,126 middleware 4500 14696 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.002s
+INFO 2026-05-12 15:39:12,127 middleware 4500 14696 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,132 middleware 4500 14696 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,133 middleware 4500 14696 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:12,273 middleware 4500 14696 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,333 middleware 4500 14696 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,779 middleware 4500 14696 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:39:12,781 middleware 4500 14696 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:39:13,426 middleware 4500 14696 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.645s
+INFO 2026-05-12 15:39:13,559 middleware 4500 14696 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.13
+INFO 2026-05-12 15:39:13,571 middleware 4500 14696 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-12 15:39:16,890 middleware 4500 14696 GET /api/v1/kpi/overview - Status: 200 - Time: 6.388s
+INFO 2026-05-12 15:39:16,892 middleware 4500 14696 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 4.909s
+INFO 2026-05-12 15:39:16,961 middleware 4500 14696 GET /api/v1/kpi/trends - Status: 200 - Time: 4.834s
+INFO 2026-05-12 15:39:17,252 middleware 4500 14696 GET /api/v1/kpi/top-customers - Status: 200 - Time: 4.473s
+INFO 2026-05-12 15:39:18,492 middleware 4500 14696 GET /api/v1/kpi/category-performance - Status: 200 - Time: 6.159s
+INFO 2026-05-12 15:39:18,493 middleware 4500 14696 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 6.369s
+INFO 2026-05-12 15:39:18,494 middleware 4500 14696 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 6.726s
+INFO 2026-05-12 15:39:18,495 middleware 4500 14696 GET /api/v1/kpi/top-products - Status: 200 - Time: 6.222s
+INFO 2026-05-12 15:39:20,893 middleware 4500 14696 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 9.767s
+INFO 2026-05-12 15:39:32,099 middleware 4500 14696 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:39:32,099 middleware 4500 14696 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:32,272 middleware 4500 14696 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:39:32,368 middleware 4500 14696 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.096s
+INFO 2026-05-12 15:39:33,479 middleware 4500 14696 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:39:33,479 middleware 4500 14696 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:33,608 middleware 4500 14696 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:39:33,619 middleware 4500 14696 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.011s
+INFO 2026-05-12 15:39:33,764 middleware 4500 14696 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.13
+INFO 2026-05-12 15:39:33,764 middleware 4500 14696 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:33,894 middleware 4500 14696 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.13
+INFO 2026-05-12 15:39:34,071 middleware 4500 14696 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.177s
+INFO 2026-05-12 15:39:39,714 middleware 4500 14696 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,715 middleware 4500 14696 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,715 middleware 4500 14696 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,715 middleware 4500 14696 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,716 middleware 4500 14696 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,717 middleware 4500 14696 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,717 middleware 4500 14696 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:39:39,717 middleware 4500 14696 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:39:39,718 middleware 4500 14696 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:39:39,718 middleware 4500 14696 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:39:39,719 middleware 4500 14696 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.003s
+INFO 2026-05-12 15:39:39,720 middleware 4500 14696 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.004s
+INFO 2026-05-12 15:39:39,849 middleware 4500 14696 GET /api/v1/kpi/category-performance - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,852 middleware 4500 14696 GET /api/v1/kpi/overview - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,883 middleware 4500 14696 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.033s
+INFO 2026-05-12 15:39:39,903 middleware 4500 14696 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,903 middleware 4500 14696 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:39,906 middleware 4500 14696 GET /api/v1/kpi/currency-impact - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,916 middleware 4500 14696 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.010s
+INFO 2026-05-12 15:39:39,954 middleware 4500 14696 GET /api/v1/kpi/trends - Client: 178.135.15.13
+INFO 2026-05-12 15:39:39,971 middleware 4500 14696 GET /api/v1/kpi/trends - Status: 200 - Time: 0.017s
+INFO 2026-05-12 15:39:40,005 middleware 4500 14696 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,022 middleware 4500 14696 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.017s
+INFO 2026-05-12 15:39:40,033 middleware 4500 14696 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,056 middleware 4500 14696 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.023s
+INFO 2026-05-12 15:39:40,107 middleware 4500 14696 GET /api/v1/kpi/bottom-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,116 middleware 4500 14696 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,117 middleware 4500 14696 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:40,122 middleware 4500 14696 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.015s
+INFO 2026-05-12 15:39:40,123 middleware 4500 14696 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,124 middleware 4500 14696 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.000s
+INFO 2026-05-12 15:39:40,244 middleware 4500 14696 GET /api/v1/kpi/top-products - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,251 middleware 4500 14696 GET /api/v1/kpi/top-customers - Client: 178.135.15.13
+INFO 2026-05-12 15:39:40,261 middleware 4500 14696 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.018s
+INFO 2026-05-12 15:39:40,264 middleware 4500 14696 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.013s
+INFO 2026-05-12 15:39:48,468 middleware 4500 14696 GET /api/v1/kpi/overview - Status: 200 - Time: 8.616s
+INFO 2026-05-12 15:39:54,610 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:39:54,611 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:54,742 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/dashboard - Client: 178.135.15.13
+INFO 2026-05-12 15:39:58,865 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/pickings - Client: 178.135.15.13
+INFO 2026-05-12 15:39:58,866 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/pickings - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:39:58,871 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:39:58,871 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.000s
+INFO 2026-05-12 15:39:58,990 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/dashboard - Status: 200 - Time: 4.248s
+INFO 2026-05-12 15:39:58,994 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/pickings - Client: 178.135.15.13
+INFO 2026-05-12 15:39:58,999 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:39:59,127 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/pickings - Status: 200 - Time: 0.133s
+INFO 2026-05-12 15:40:00,367 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.13
+INFO 2026-05-12 15:40:00,368 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:40:00,499 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.13
+INFO 2026-05-12 15:40:02,555 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/quants - Client: 178.135.15.13
+INFO 2026-05-12 15:40:02,556 middleware 4500 14696 OPTIONS /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/quants - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:40:02,684 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/quants - Client: 178.135.15.13
+INFO 2026-05-12 15:40:04,025 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/quants - Status: 200 - Time: 1.341s
+INFO 2026-05-12 15:40:04,775 middleware 4500 14696 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.13
+INFO 2026-05-12 15:40:04,775 middleware 4500 14696 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:40:04,902 middleware 4500 14696 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.13
+INFO 2026-05-12 15:40:04,903 middleware 4500 14696 GET /api/v1/financial-advisor/sessions - Status: 404 - Time: 0.001s
+INFO 2026-05-12 15:40:05,552 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 5.053s
+INFO 2026-05-12 15:40:08,031 middleware 4500 14696 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.13
+INFO 2026-05-12 15:40:08,031 middleware 4500 14696 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.001s
+INFO 2026-05-12 15:40:08,164 middleware 4500 14696 POST /api/v1/financial-advisor/chat - Client: 178.135.15.13
+INFO 2026-05-12 15:40:08,165 middleware 4500 14696 POST /api/v1/financial-advisor/chat - Status: 404 - Time: 0.001s
+INFO 2026-05-12 15:40:08,811 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 9.811s
+INFO 2026-05-12 15:40:08,947 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:40:09,143 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.196s
+INFO 2026-05-12 15:40:09,321 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.13
+INFO 2026-05-12 15:40:09,579 middleware 4500 14696 GET /api/v1/inventory/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.258s
+INFO 2026-05-12 16:08:58,212 sync_job 4500 14696 Starting scheduled sync run at 2026-05-12 16:08:57.950651
+INFO 2026-05-12 16:09:00,486 sync_job 4500 14696 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-12 16:09:00,818 utils 4500 19016 decrypt_api_key called
+INFO 2026-05-12 16:09:00,820 utils 4500 19016 Incoming type: <class 'memoryview'>
+INFO 2026-05-12 16:09:00,822 utils 4500 19016 Detected memoryview, converting using tobytes()
+INFO 2026-05-12 16:09:00,828 utils 4500 19016 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-12 16:09:00,830 utils 4500 19016 Data length after normalization: 40
+INFO 2026-05-12 16:09:00,833 utils 4500 19016 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-12 16:09:00,866 utils 4500 19016 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-12 16:09:00,867 utils 4500 19016 Falling back to plain decode
+INFO 2026-05-12 16:09:00,867 utils 4500 19016 Plain decode successful, result length: 40
+INFO 2026-05-12 16:09:00,965 odoo_client 4500 19016 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-12 16:09:01,321 database_manager 4500 19016 Connected to PostgreSQL
+INFO 2026-05-12 16:09:01,350 database_manager 4500 19016 Closed PostgreSQL connection
+INFO 2026-05-12 16:09:01,350 orchestrator 4500 19016 History exists. Triggering smart incremental sync...
+INFO 2026-05-12 16:09:01,350 orchestrator 4500 19016 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-12 16:09:01,414 database_manager 4500 19016 Connected to PostgreSQL
+INFO 2026-05-12 16:09:01,417 database_manager 4500 19016 Closed PostgreSQL connection
+INFO 2026-05-12 16:09:01,436 sync_job 4500 14696 Scheduled sync run completed. Sleeping for 30 minutes.
