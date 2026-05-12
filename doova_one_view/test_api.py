@@ -225,6 +225,43 @@ class APITester:
             self.log(f'✗ Tenant list error: {str(e)}', 'ERROR')
             return False
     
+    def get_companies(self, tenant_id: str):
+        """Test getting companies for a tenant"""
+        self.log('Testing company list retrieval...', 'TEST')
+        
+        if not self.access_token:
+            self.log('✗ No access token available', 'ERROR')
+            return False
+        
+        headers = HEADERS.copy()
+        headers['Authorization'] = f'Bearer {self.access_token}'
+        
+        try:
+            # Match the implemented route: /master-data/{tenant_id}/companies
+            response = requests.get(
+                f'{self.base_url}/master-data/{tenant_id}/companies',
+                headers=headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get('items', [])
+                total = data.get('total', 0)
+                
+                self.log(f'✓ Companies retrieved successfully', 'SUCCESS')
+                self.log(f'  Total count: {total}', 'INFO')
+                for company in items[:3]:
+                    self.log(f'  - {company.get("name")} (Odoo ID: {company.get("odoo_id")}, Currency: {company.get("currency_code")})', 'INFO')
+                return True
+            else:
+                self.log(f'✗ Company list failed: {response.status_code} - {response.text}', 'ERROR')
+                return False
+                
+        except Exception as e:
+            self.log(f'✗ Company list error: {str(e)}', 'ERROR')
+            return False
+    
     def refresh_token(self):
         """Test token refresh"""
         self.log('Testing token refresh...', 'TEST')
@@ -296,6 +333,12 @@ class APITester:
             # Step 5: List tenants
             self.log('\n--- Step 5: List Tenants ---', 'INFO')
             self.list_tenants()
+            
+            # Step 5.1: List companies for the created tenant
+            tenant_id = self.tenant_data.get('id')
+            if tenant_id:
+                self.log('\n--- Step 5.1: List Companies ---', 'INFO')
+                self.get_companies(tenant_id)
         
         # Step 6: Refresh token
         self.log('\n--- Step 6: Token Refresh ---', 'INFO')

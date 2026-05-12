@@ -128,3 +128,96 @@ class SalesDashboard(BaseModel):
     top_customers: List[EntityMetric]
     top_products: List[EntityMetric]
     top_salespeople: List[EntityMetric]
+
+
+# ── New PostgreSQL-aligned Schemas ──────────────────────────────────────────
+
+class CountMetric(BaseModel):
+    """Same shape as KPIMetric but kept as a separate class for clarity in routes."""
+    value: float
+    previous_value: float
+    change_pct: float
+
+# ── Entity refs ────────────────────────────────────────────────────────────
+
+class Partner(BaseModel):
+    id: int
+    name: str
+
+class User(BaseModel):
+    id: int
+    name: str
+
+class Company(BaseModel):
+    id: int
+    name: str
+
+class Product(BaseModel):
+    id: int
+    name: str
+    sku: str
+
+# ── Order shapes ───────────────────────────────────────────────────────────
+
+class OrderListItem(BaseModel):
+    id: int
+    name: str
+    date_order: str
+    state: str
+    invoice_status: Optional[str]
+    amount_total: float
+    currency: str
+    partner: Optional[Partner]
+    user: Optional[User]
+    company: Optional[Company]
+
+class OrderLine(BaseModel):
+    id: int
+    product: Optional[Product]
+    quantity: float
+    price_unit: float
+    subtotal: float
+
+class OrderDetail(OrderListItem):
+    """Full order — adds line items to the list-item shape."""
+    lines: list[OrderLine] = Field(default_factory=list)
+
+class OrderListResponse(BaseModel):
+    items: list[OrderListItem] = Field(default_factory=list)
+    total: int
+    limit: int
+    offset: int
+    applied_filters: dict[str, Any] = Field(default_factory=dict)
+
+# ── Dashboard ──────────────────────────────────────────────────────────────
+
+class DashboardResponse(BaseModel):
+    total_revenue: KPIMetric
+    order_count: CountMetric
+    avg_order_value: KPIMetric
+    gross_margin: KPIMetric
+    top_customers: list[EntityMetric] = Field(default_factory=list)
+    top_products: list[EntityMetric] = Field(default_factory=list)
+    revenue_trend: list[TimeSeriesPoint] = Field(default_factory=list)
+    state_distribution: dict[str, int] = Field(default_factory=dict)
+    applied_filters: dict[str, Any] = Field(default_factory=dict)
+
+# ── Filters meta ───────────────────────────────────────────────────────────
+
+class FiltersResponse(BaseModel):
+    state: list[str] = Field(default_factory=list)
+    invoice_status: list[str] = Field(default_factory=list)
+    currencies: list[str] = Field(default_factory=list)
+
+# ── Search ─────────────────────────────────────────────────────────────────
+
+class SearchRequest(BaseModel):
+    filters: list[SearchFilter] = Field(default_factory=list)
+    limit: int = 50
+    offset: int = 0
+    companies: Optional[str] = None
+    
+CompanyRef = Company
+PartnerRef = Partner
+UserRef = User
+ProductRef = Product

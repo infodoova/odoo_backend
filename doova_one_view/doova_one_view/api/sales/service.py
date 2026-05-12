@@ -5,14 +5,14 @@ Sales API service
 import asyncio
 import io
 import csv
-from typing import List, Optional, Dict, Generator
+from typing import List, Optional, Dict
 from datetime import timedelta, date
 from django.utils import timezone
-from django.db.models import Sum, Avg, Count, Prefetch
+from django.db.models import Sum, Avg, Count, Prefetch, Q
 from django.db.models.functions import TruncDate
 from odoo_app.models.sales_order import SalesOrder
 from odoo_app.models.sales_order_line import SalesOrderLine
-from doova_one_view.api.common.exceptions import NotFoundError
+from doova_one_view.api.common.exceptions import NotFoundError, ValidationError
 from doova_one_view.api.sales.schemas import (
     SalesOrderRead, SalesOrderWithLinesRead, SalesSummary, 
     AdvancedSearchRequest, PaginatedResponse, SalesDashboard,
@@ -50,16 +50,51 @@ class SalesService:
         )
     
     @staticmethod
-    async def get_order(tenant_id: str, order_id: int) -> SalesOrderWithLinesRead:
+    async def get_orders(
+        tenant_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        partner_id: Optional[int] = None,
+        company_ids: Optional[list[int]] = None
+    ) -> PaginatedResponse[SalesOrderRead]:
+        """List sales orders for a tenant, optionally filtering by partner or company."""
+        def _list():
+            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            if partner_id:
+                qs = qs.filter(partner_id=partner_id)
+            if company_ids:
+                qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+            total = qs.count()
+            qs = qs.select_related('partner', 'user', 'company').order_by('-date_order')
+            items = list(qs[offset:offset+limit])
+            return items, total
+        
+        orders, total = await asyncio.to_thread(_list)
+        return PaginatedResponse(
+            items=[SalesOrderRead.model_validate(o) for o in orders],
+            total=total,
+            limit=limit,
+            offset=offset
+        )
+
+    @staticmethod
+    async def get_order(
+        tenant_id: str,
+        order_id: int,
+        company_ids: Optional[list[int]] = None
+    ) -> SalesOrderWithLinesRead:
         """Get a specific sales order with its lines"""
         def _get():
             try:
                 # Optimized fetching: prefetch lines and their related products in one go
-                return SalesOrder.objects.select_related(
+                qs = SalesOrder.objects.select_related(
                     'partner', 'user', 'company'
                 ).prefetch_related(
                     Prefetch('lines', queryset=SalesOrderLine.objects.select_related('product'))
-                ).get(
+                )
+                if company_ids:
+                    qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+                return qs.get(
                     tenant_id=tenant_id, id=order_id
                 )
             except SalesOrder.DoesNotExist:
@@ -67,6 +102,68 @@ class SalesService:
         
         order = await asyncio.to_thread(_get)
         return SalesOrderWithLinesRead.model_validate(order)
+
+    @staticmethod
+    async def search_orders(
+        tenant_id: str,
+        filters,
+        limit: int,
+        offset: int,
+        company_ids: Optional[list[int]] = None
+    ) -> PaginatedResponse[SalesOrderRead]:
+        """Search sales orders with filters and optional company restriction."""
+        request = AdvancedSearchRequest(filters=filters, limit=limit, offset=offset)
+
+        def _search():
+            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            if company_ids:
+                qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+
+            for f in request.filters:
+                field = f.field
+                op = f.operator.lower().strip()
+                val = f.value
+                field_mapping = {
+                    'partner_name': 'partner__name',
+                    'user_name': 'user__name',
+                    'company_name': 'company__name',
+                }
+                field = field_mapping.get(field, field)
+                if op in ['contain', 'contains']:
+                    qs = qs.filter(**{f"{field}__icontains": val})
+                elif op in ['starts with', 'startswith', 'starts_with']:
+                    qs = qs.filter(**{f"{field}__istartswith": val})
+                elif op in ['ends with', 'endswith', 'ends_with']:
+                    qs = qs.filter(**{f"{field}__iendswith": val})
+                elif op in ['eq', 'equal', 'equals']:
+                    qs = qs.filter(**{field: val})
+                elif op in ['gt', 'greater than', 'greater_than', 'after']:
+                    qs = qs.filter(**{f"{field}__gt": val})
+                elif op in ['lt', 'less than', 'less_than', 'before']:
+                    qs = qs.filter(**{f"{field}__lt": val})
+                elif op in ['gte', 'greater than or equal', 'greater_than_or_equal']:
+                    qs = qs.filter(**{f"{field}__gte": val})
+                elif op in ['lte', 'less than or equal', 'less_than_or_equal']:
+                    qs = qs.filter(**{f"{field}__lte": val})
+                elif op == 'between' and isinstance(val, list) and len(val) == 2:
+                    qs = qs.filter(**{f"{field}__range": (val[0], val[1])})
+
+            total = qs.count()
+            qs = qs.select_related('partner', 'user', 'company').order_by('-date_order')
+            items = list(qs[request.offset : request.offset + request.limit])
+            return items, total
+
+        orders, total = await asyncio.to_thread(_search)
+        return PaginatedResponse(
+            items=[SalesOrderRead.model_validate(o) for o in orders],
+            total=total,
+            limit=request.limit,
+            offset=request.offset
+        )
+
+    @staticmethod
+    async def get_filters(tenant_id: str) -> Dict[str, List[str]]:
+        return await SalesService.get_distinct_enums(tenant_id)
 
     @staticmethod
     async def get_sales_summary(tenant_id: str) -> SalesSummary:
@@ -98,50 +195,45 @@ class SalesService:
         return await asyncio.to_thread(_summary)
 
     @staticmethod
-    async def export_orders_csv(tenant_id: str, partner_id: Optional[int] = None) -> Generator[str, None, None]:
-        """Export sales orders to CSV format as a generator"""
+    async def export_orders_csv(
+        tenant_id: str,
+        company_ids: Optional[list[int]] = None
+    ) -> str:
+        """Export sales orders to CSV format."""
         def _get_orders():
             qs = SalesOrder.objects.filter(tenant_id=tenant_id)
-            if partner_id:
-                qs = qs.filter(partner_id=partner_id)
+            if company_ids:
+                qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
             return list(qs.select_related('partner', 'user', 'company').order_by('-date_order'))
 
         orders = await asyncio.to_thread(_get_orders)
 
-        def generate():
-            output = io.StringIO()
-            writer = csv.writer(output)
-            
-            # Header
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        writer.writerow([
+            "Order ID", "Odoo Name", "Partner", "User", "Company",
+            "Date", "State", "Invoice Status", "Untaxed Amount",
+            "Tax Amount", "Total Amount", "Margin"
+        ])
+
+        for order in orders:
             writer.writerow([
-                "Order ID", "Odoo Name", "Partner", "User", "Company", 
-                "Date", "State", "Invoice Status", "Untaxed Amount", 
-                "Tax Amount", "Total Amount", "Margin"
+                order.id,
+                order.odoo_name,
+                order.partner.name if order.partner else "",
+                order.user.name if order.user else "",
+                order.company.name if order.company else "",
+                order.date_order.isoformat() if order.date_order else "",
+                order.state,
+                order.invoice_status,
+                float(order.amount_untaxed),
+                float(order.amount_tax),
+                float(order.amount_total),
+                float(order.margin)
             ])
-            yield output.getvalue()
-            output.seek(0)
-            output.truncate(0)
 
-            for order in orders:
-                writer.writerow([
-                    order.id,
-                    order.odoo_name,
-                    order.partner.name if order.partner else "",
-                    order.user.name if order.user else "",
-                    order.company.name if order.company else "",
-                    order.date_order.isoformat() if order.date_order else "",
-                    order.state,
-                    order.invoice_status,
-                    float(order.amount_untaxed),
-                    float(order.amount_tax),
-                    float(order.amount_total),
-                    float(order.margin)
-                ])
-                yield output.getvalue()
-                output.seek(0)
-                output.truncate(0)
-
-        return generate()
+        return output.getvalue()
 
     @staticmethod
     async def advanced_search(tenant_id: str, request: AdvancedSearchRequest) -> PaginatedResponse[SalesOrderRead]:
@@ -200,23 +292,40 @@ class SalesService:
         )
 
     @staticmethod
+    def _parse_date(value: Optional[str]) -> Optional[date]:
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            raise ValidationError(
+                f"Invalid date format for dashboard filter: '{value}'. Expected YYYY-MM-DD"
+            )
+
+    @staticmethod
     async def get_dashboard(
         tenant_id: str,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None
     ) -> SalesDashboard:
         """Get comprehensive sales dashboard metrics within a date range"""
         def _get():
+            start_date_parsed = SalesService._parse_date(start_date)
+            end_date_parsed = SalesService._parse_date(end_date)
+
             # Default to last 30 days if not provided
-            if not end_date:
+            if not end_date_parsed:
                 final_date = timezone.now().date()
             else:
-                final_date = end_date
+                final_date = end_date_parsed
                 
-            if not start_date:
+            if not start_date_parsed:
                 initial_date = final_date - timedelta(days=30)
             else:
-                initial_date = start_date
+                initial_date = start_date_parsed
             
             # Calculate previous period for comparison
             duration = final_date - initial_date
@@ -224,6 +333,8 @@ class SalesService:
             prev_start = initial_date - duration
             
             base_qs = SalesOrder.objects.filter(tenant_id=tenant_id)
+            if company_ids:
+                base_qs = base_qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
             
             # 1. Summary Metrics
             def get_stats(qs):

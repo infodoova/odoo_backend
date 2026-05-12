@@ -2,8 +2,8 @@
 Purchase API schemas
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
-from typing import Optional, List
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any, Optional, List, Union
 from datetime import datetime
 from doova_one_view.api.common.schemas import (
     PartnerRead, UserRead, CompanyRead, ProductRead, PaginatedResponse
@@ -65,3 +65,18 @@ class PurchaseSummary(BaseModel):
     total_amount: float
     average_order_value: float
     billed_percentage: float
+
+
+class SearchFilter(BaseModel):
+    """Filter criteria for advanced purchase search."""
+    field: str
+    operator: str
+    value: Union[str, int, float, List[Any], None] = None
+
+
+class SearchRequest(BaseModel):
+    """Advanced search request."""
+    filters: List[SearchFilter] = Field(default_factory=list)
+    limit: int = Field(50, ge=1, le=500)
+    offset: int = Field(0, ge=0)
+    companies: Optional[str] = None

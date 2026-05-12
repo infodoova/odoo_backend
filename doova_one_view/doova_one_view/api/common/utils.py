@@ -3,7 +3,7 @@ Common utility functions
 """
 
 from django.conf import settings
-from typing import Optional
+from typing import Optional, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -121,3 +121,37 @@ def decrypt_api_key(encrypted) -> str:
     except Exception as e:
         logger.exception(f"Unexpected error in decrypt_api_key: {e}")
         return ""
+
+
+def parse_company_ids(value: Optional[Any]) -> Optional[list[int]]:
+    """
+    Parse company filter input into a list of integers.
+    Handles:
+    - Single integer: 1
+    - Comma-separated string: "1,2,3"
+    - Sentinel value: "all"
+    - List of integers/strings: [1, "2"]
+    """
+    if value is None:
+        return None
+        
+    if isinstance(value, str):
+        val_clean = value.strip().lower()
+        if not val_clean or val_clean == "all":
+            return None
+        try:
+            return [int(x.strip()) for x in value.split(",") if x.strip()]
+        except ValueError:
+            logger.warning(f"Failed to parse companies string: {value}")
+            return None
+            
+    if isinstance(value, int):
+        return [value]
+        
+    if isinstance(value, list):
+        try:
+            return [int(x) for x in value if str(x).strip().isdigit()]
+        except (ValueError, TypeError):
+            return None
+            
+    return None

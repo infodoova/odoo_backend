@@ -36,7 +36,7 @@ class PurchaseOrderSynchronizer(BaseSynchronizer):
             line_fields = self.with_retry(self.odoo.get_fields, 'purchase.order.line').keys()
             
             req_order_fields = [
-                'id', 'name', 'partner_id', 'user_id', 'date_order', 'date_planned',
+                'id', 'name', 'partner_id', 'user_id', 'company_id', 'date_order', 'date_planned',
                 'date_approve', 'state', 'invoice_status', 'amount_untaxed',
                 'amount_tax', 'amount_total', 'currency_id', 'partner_ref', 'write_date'
             ]

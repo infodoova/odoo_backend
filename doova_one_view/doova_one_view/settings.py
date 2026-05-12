@@ -86,11 +86,11 @@ WSGI_APPLICATION = 'doova_one_view.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'Unified',
+        'NAME': 'odoo',
         'USER': 'postgres',
-        'PASSWORD': '123456',
+        'PASSWORD': 'imamali1234',
         'HOST': 'localhost',
-        'PORT': '5433',
+        'PORT': '5432',
     }
 }
 

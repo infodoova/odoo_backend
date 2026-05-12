@@ -6,6 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+import os
+import django
+
+# Setup Django before importing any models
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "doova_one_view.settings")
+django.setup()
 
 from doova_one_view.api.config import settings
 from doova_one_view.api.middleware import logging_middleware
@@ -16,6 +22,8 @@ from doova_one_view.api.purchase.routes import router as purchase_router
 from doova_one_view.api.accounting.routes import router as accounting_router
 from doova_one_view.api.inventory.routes import router as inventory_router
 from doova_one_view.api.master_data.routes import router as master_data_router
+from doova_one_view.api.files.routes import router as files_router
+from doova_one_view.api.kpi.routes import router as kpi_router
 from doova_one_view.api.jobs.sync_job import SyncJobManager
 
 logger = logging.getLogger(__name__)
@@ -83,6 +91,8 @@ def create_app() -> FastAPI:
     app.include_router(accounting_router)
     app.include_router(inventory_router)
     app.include_router(master_data_router)
+    app.include_router(files_router)
+    app.include_router(kpi_router)
     
     # Health check endpoint
     @app.get("/health", tags=["Health"])
