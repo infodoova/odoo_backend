@@ -28,3 +28,5 @@ from odoo_app.models.anomaly import *
 from odoo_app.models.app_user import *
 from odoo_app.models.user_tenant_access import *
 from odoo_app.models.stored_file import *
+from odoo_app.models.agent import *
+

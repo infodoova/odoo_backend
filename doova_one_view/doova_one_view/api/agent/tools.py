@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from pathlib import Path
 from datetime import datetime
 from .query_context import extract_date_range, normalize_company_ids, build_company_filter_sql
+from .config import AgentConfig
 
 
 # ─────────────────────────────
@@ -379,7 +380,7 @@ def get_top_products_tool(
         COALESCE(SUM(l.price_total), 0) AS revenue
     FROM fact_sales_order_lines l
     JOIN fact_sales_orders o
-      ON o.id = l.order_local_id
+      ON o.id = l.sales_order_id
      AND o.tenant_id = l.tenant_id
     WHERE l.tenant_id = :tenant_id
       AND l.state IN ('sale', 'done')
@@ -1275,7 +1276,7 @@ def analyze_variance_tool(
 
     query = """
     WITH monthly_sales AS (
-        SELECT
+        SELECTdef select_fast_tool(message: str) -> str | None:
             DATE_TRUNC('month', date_order) AS month,
             COALESCE(SUM(amount_total), 0) AS revenue,
             COUNT(*) AS order_count,
@@ -2449,6 +2450,13 @@ def run_fast_tool(
             forecast_periods=3,
         )
 
+    if tool_name == "generate_report_tool":
+        return generate_report_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+        )
+
+
     if tool_name == "get_customer_metrics_tool":
         return get_customer_metrics_tool(
             tenant_id=tenant_id,
@@ -2933,40 +2941,73 @@ def generate_report_tool(
 
     # ─────────────────────────────
     # Pull real data from existing tools
+    # Each section is independently protected so the report
+    # still generates even if some data sources are unavailable.
     # ─────────────────────────────
-    sales = get_sales_summary_tool(
-        tenant_id=tenant_id,
-        company_id=company_id,
-    )
+    try:
+        sales = get_sales_summary_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+        )
+    except Exception:
+        sales = {
+            "total_revenue": 0, "order_count": 0, "average_order_value": 0,
+            "first_order_date": None, "last_order_date": None,
+        }
 
-    top_products = get_top_products_tool(
-        tenant_id=tenant_id,
-        company_id=company_id,
-        limit=5,
-    )
+    try:
+        top_products = get_top_products_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+            limit=5,
+        )
+    except Exception:
+        top_products = {"products": []}
 
-    cash_flow = get_cash_flow_health_tool(
-        tenant_id=tenant_id,
-        company_id=company_id,
-    )
+    try:
+        cash_flow = get_cash_flow_health_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+        )
+    except Exception:
+        cash_flow = {
+            "accounts_receivable": 0, "accounts_payable": 0,
+            "liquidity_ratio": 0, "liquidity_status": "Not available",
+        }
 
-    receivables = get_receivables_analysis_tool(
-        tenant_id=tenant_id,
-        company_id=company_id,
-        limit=5,
-    )
+    try:
+        receivables = get_receivables_analysis_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+            limit=5,
+        )
+    except Exception:
+        receivables = {
+            "total_receivables": 0, "overdue_receivables": 0,
+            "open_invoice_count": 0, "overdue_invoice_count": 0,
+            "risk_level": "Not available", "top_overdue_customers": [],
+        }
 
-    inventory_efficiency = get_inventory_efficiency_tool(
-        tenant_id=tenant_id,
-        company_id=company_id,
-    )
+    try:
+        inventory_efficiency = get_inventory_efficiency_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+        )
+    except Exception:
+        inventory_efficiency = {
+            "total_inventory_value": 0, "total_sku_count": 0,
+            "turnover_ratio": 0, "days_inventory_on_hand": None,
+            "efficiency_rating": "Not available",
+        }
 
-    inventory_alerts = get_inventory_alerts_tool(
-        tenant_id=tenant_id,
-        company_id=company_id,
-    )
+    try:
+        inventory_alerts = get_inventory_alerts_tool(
+            tenant_id=tenant_id,
+            company_id=company_id,
+        )
+    except Exception:
+        inventory_alerts = {"low_stock_items": [], "expiring_soon": []}
 
-    # Business health is optional because maybe you did not test it yet
     try:
         health = get_business_health_score_tool(
             tenant_id=tenant_id,
@@ -3101,6 +3142,7 @@ def generate_report_tool(
         "report_ready": True,
         "report_path": str(report_path),
         "report_filename": filename,
+        "download_url": f"{AgentConfig.API_BASE_URL}/reports/{filename}",
         "summary": {
             "total_revenue": sales.get("total_revenue"),
             "business_health_score": health.get("business_health_score"),
@@ -3216,3 +3258,37 @@ def send_email_tool(
             "It can later be connected to SMTP, SendGrid, Gmail API, or Odoo mail."
         ),
     }
+
+
+def get_last_report_tool(
+    tenant_id: str,
+    company_id: int | None = None,
+) -> dict:
+    """
+    Find the most recent PDF report for this tenant and provide a download link.
+    """
+    reports_dir = Path("reports")
+    if not reports_dir.exists():
+        return {"status": "no_reports", "message": "No reports directory found."}
+
+    # Match files like business_report_{tenant_id}_*.pdf
+    pattern = f"business_report_{tenant_id}_*.pdf"
+    files = list(reports_dir.glob(pattern))
+
+    if not files:
+        return {"status": "no_reports", "message": f"No reports found for tenant {tenant_id}."}
+
+    # Sort by creation time (newest first)
+    files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+    last_file = files[0]
+    filename = last_file.name
+
+    return {
+        "tool_name": "get_last_report_tool",
+        "tenant_id": tenant_id,
+        "filename": filename,
+        "download_url": f"{AgentConfig.API_BASE_URL}/reports/{filename}",
+        "generated_at": datetime.fromtimestamp(last_file.stat().st_mtime).isoformat(),
+        "status": "success",
+        "message": f"Found the most recent report: {filename}",
+    }

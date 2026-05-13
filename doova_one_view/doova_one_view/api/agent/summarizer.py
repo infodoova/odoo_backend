@@ -9,8 +9,12 @@ from .config import AgentConfig
 
 class MemorySummarizer:
     """
-    Progressively summarises conversation history.
-    Keeps key figures, dates, and metrics; drops greetings and filler.
+    Summarizes chatbot memory every N turns.
+
+    Goal:
+    - Keep important facts, numbers, dates, metrics
+    - Remove greetings/filler
+    - Keep summary short
     """
 
     def __init__(self):
@@ -28,6 +32,7 @@ class MemorySummarizer:
         for turn in recent_turns:
             user_msg = turn.get("user", "")
             assistant_msg = turn.get("assistant", "")
+
             turns_text += f"User: {user_msg}\n"
             turns_text += f"Assistant: {assistant_msg}\n\n"
 

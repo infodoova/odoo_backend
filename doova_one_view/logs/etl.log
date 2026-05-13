@@ -161136,3 +161136,1672 @@ INFO 2026-05-12 16:09:01,350 orchestrator 4500 19016 Starting professional delta
 INFO 2026-05-12 16:09:01,414 database_manager 4500 19016 Connected to PostgreSQL
 INFO 2026-05-12 16:09:01,417 database_manager 4500 19016 Closed PostgreSQL connection
 INFO 2026-05-12 16:09:01,436 sync_job 4500 14696 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:18:16,788 sync_job 21576 10672 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:18:16,790 sync_job 21576 10672 Starting scheduled sync run at 2026-05-13 10:18:16.790576
+INFO 2026-05-13 10:18:17,836 sync_job 21576 10672 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:18:19,677 utils 21576 20272 decrypt_api_key called
+INFO 2026-05-13 10:18:19,677 utils 21576 20272 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:18:19,678 utils 21576 20272 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:18:19,678 utils 21576 20272 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:18:19,678 utils 21576 20272 Data length after normalization: 40
+INFO 2026-05-13 10:18:19,678 utils 21576 20272 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:18:19,679 utils 21576 20272 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:18:19,679 utils 21576 20272 Falling back to plain decode
+INFO 2026-05-13 10:18:19,679 utils 21576 20272 Plain decode successful, result length: 40
+INFO 2026-05-13 10:18:19,679 odoo_client 21576 20272 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:18:19,755 database_manager 21576 20272 Connected to PostgreSQL
+INFO 2026-05-13 10:18:19,839 database_manager 21576 20272 Closed PostgreSQL connection
+INFO 2026-05-13 10:18:19,839 orchestrator 21576 20272 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:18:19,839 orchestrator 21576 20272 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:18:19,891 database_manager 21576 20272 Connected to PostgreSQL
+INFO 2026-05-13 10:18:19,902 database_manager 21576 20272 Closed PostgreSQL connection
+INFO 2026-05-13 10:18:19,906 sync_job 21576 10672 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:18:38,706 sync_job 21576 10672 Background Sync Job stopped
+INFO 2026-05-13 10:18:43,067 sync_job 5956 19340 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:18:43,067 sync_job 5956 19340 Starting scheduled sync run at 2026-05-13 10:18:43.067634
+INFO 2026-05-13 10:18:43,163 sync_job 5956 19340 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:18:43,392 utils 5956 2444 decrypt_api_key called
+INFO 2026-05-13 10:18:43,393 utils 5956 2444 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:18:43,393 utils 5956 2444 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:18:43,393 utils 5956 2444 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:18:43,393 utils 5956 2444 Data length after normalization: 40
+INFO 2026-05-13 10:18:43,394 utils 5956 2444 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:18:43,394 utils 5956 2444 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:18:43,394 utils 5956 2444 Falling back to plain decode
+INFO 2026-05-13 10:18:43,395 utils 5956 2444 Plain decode successful, result length: 40
+INFO 2026-05-13 10:18:43,395 odoo_client 5956 2444 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:18:43,435 database_manager 5956 2444 Connected to PostgreSQL
+INFO 2026-05-13 10:18:43,440 database_manager 5956 2444 Closed PostgreSQL connection
+INFO 2026-05-13 10:18:43,441 orchestrator 5956 2444 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:18:43,441 orchestrator 5956 2444 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:18:43,489 database_manager 5956 2444 Connected to PostgreSQL
+INFO 2026-05-13 10:18:43,493 database_manager 5956 2444 Closed PostgreSQL connection
+INFO 2026-05-13 10:18:43,494 sync_job 5956 19340 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:18:55,218 middleware 5956 19340 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 10:18:55,218 middleware 5956 19340 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:18:55,353 middleware 5956 19340 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 10:18:55,379 middleware 5956 19340 GET /api/v1/tenants/ - Status: 401 - Time: 0.026s
+INFO 2026-05-13 10:19:09,648 middleware 5956 19340 OPTIONS /api/v1/auth/login - Client: 178.135.15.252
+INFO 2026-05-13 10:19:09,649 middleware 5956 19340 OPTIONS /api/v1/auth/login - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:19:09,781 middleware 5956 19340 POST /api/v1/auth/login - Client: 178.135.15.252
+INFO 2026-05-13 10:19:10,665 middleware 5956 19340 POST /api/v1/auth/login - Status: 401 - Time: 0.883s
+INFO 2026-05-13 10:19:16,575 middleware 5956 19340 POST /api/v1/auth/login - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,475 middleware 5956 19340 POST /api/v1/auth/login - Status: 200 - Time: 0.900s
+INFO 2026-05-13 10:19:17,794 middleware 5956 19340 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,795 middleware 5956 19340 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:19:17,932 middleware 5956 19340 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,988 middleware 5956 19340 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,990 middleware 5956 19340 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:17,992 middleware 5956 19340 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,992 middleware 5956 19340 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,993 middleware 5956 19340 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,993 middleware 5956 19340 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:17,993 middleware 5956 19340 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:17,994 middleware 5956 19340 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:17,995 middleware 5956 19340 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:17,995 middleware 5956 19340 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:18,020 middleware 5956 19340 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,021 middleware 5956 19340 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:19:18,023 middleware 5956 19340 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,024 middleware 5956 19340 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,024 middleware 5956 19340 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,025 middleware 5956 19340 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:18,026 middleware 5956 19340 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:18,026 middleware 5956 19340 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:19:18,073 middleware 5956 19340 GET /api/v1/tenants/ - Status: 200 - Time: 0.141s
+INFO 2026-05-13 10:19:18,120 middleware 5956 19340 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,138 middleware 5956 19340 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,142 middleware 5956 19340 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,145 middleware 5956 19340 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,145 middleware 5956 19340 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,180 middleware 5956 19340 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,196 middleware 5956 19340 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,197 middleware 5956 19340 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,200 middleware 5956 19340 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,238 middleware 5956 19340 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,243 middleware 5956 19340 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:19:18,254 middleware 5956 19340 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,257 middleware 5956 19340 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.003s
+INFO 2026-05-13 10:19:18,384 middleware 5956 19340 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,657 middleware 5956 19340 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.273s
+INFO 2026-05-13 10:19:18,791 middleware 5956 19340 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:19:18,808 middleware 5956 19340 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 10:19:19,309 middleware 5956 19340 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 1.113s
+INFO 2026-05-13 10:19:19,309 middleware 5956 19340 GET /api/v1/kpi/top-customers - Status: 200 - Time: 1.165s
+INFO 2026-05-13 10:19:19,310 middleware 5956 19340 GET /api/v1/kpi/overview - Status: 200 - Time: 1.191s
+INFO 2026-05-13 10:19:19,432 middleware 5956 19340 GET /api/v1/kpi/trends - Status: 200 - Time: 1.290s
+INFO 2026-05-13 10:19:19,770 middleware 5956 19340 GET /api/v1/kpi/top-products - Status: 200 - Time: 1.625s
+INFO 2026-05-13 10:19:19,771 middleware 5956 19340 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 1.574s
+INFO 2026-05-13 10:19:19,772 middleware 5956 19340 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 1.573s
+INFO 2026-05-13 10:19:19,773 middleware 5956 19340 GET /api/v1/kpi/category-performance - Status: 200 - Time: 1.593s
+INFO 2026-05-13 10:19:20,119 middleware 5956 19340 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 1.981s
+INFO 2026-05-13 10:19:28,367 middleware 5956 19340 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,368 middleware 5956 19340 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:19:28,394 middleware 5956 19340 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,413 middleware 5956 19340 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.018s
+INFO 2026-05-13 10:19:28,428 middleware 5956 19340 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,433 middleware 5956 19340 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,442 middleware 5956 19340 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,445 middleware 5956 19340 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,458 middleware 5956 19340 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,461 middleware 5956 19340 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,462 middleware 5956 19340 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,462 middleware 5956 19340 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.034s
+INFO 2026-05-13 10:19:28,463 middleware 5956 19340 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.031s
+INFO 2026-05-13 10:19:28,464 middleware 5956 19340 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.023s
+INFO 2026-05-13 10:19:28,466 middleware 5956 19340 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.021s
+INFO 2026-05-13 10:19:28,469 middleware 5956 19340 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.011s
+INFO 2026-05-13 10:19:28,470 middleware 5956 19340 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.009s
+INFO 2026-05-13 10:19:28,477 middleware 5956 19340 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.015s
+INFO 2026-05-13 10:19:28,531 middleware 5956 19340 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,584 middleware 5956 19340 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,611 middleware 5956 19340 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,647 middleware 5956 19340 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.063s
+INFO 2026-05-13 10:19:28,651 middleware 5956 19340 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,683 middleware 5956 19340 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.072s
+INFO 2026-05-13 10:19:28,690 middleware 5956 19340 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,696 middleware 5956 19340 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,697 middleware 5956 19340 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,698 middleware 5956 19340 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,699 middleware 5956 19340 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 10:19:28,799 middleware 5956 19340 GET /api/v1/kpi/trends - Status: 200 - Time: 0.147s
+INFO 2026-05-13 10:19:28,843 middleware 5956 19340 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.147s
+INFO 2026-05-13 10:19:28,846 middleware 5956 19340 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.149s
+INFO 2026-05-13 10:19:28,848 middleware 5956 19340 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.158s
+INFO 2026-05-13 10:19:28,849 middleware 5956 19340 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.151s
+INFO 2026-05-13 10:19:28,852 middleware 5956 19340 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.154s
+INFO 2026-05-13 10:19:30,090 middleware 5956 19340 GET /api/v1/kpi/overview - Status: 200 - Time: 1.558s
+INFO 2026-05-13 10:19:35,760 middleware 5956 19340 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:19:35,761 middleware 5956 19340 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:19:35,913 middleware 5956 19340 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:19:35,929 middleware 5956 19340 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.016s
+INFO 2026-05-13 10:22:26,120 sync_job 5956 19340 Background Sync Job stopped
+INFO 2026-05-13 10:22:36,708 sync_job 11992 19012 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:22:36,708 sync_job 11992 19012 Starting scheduled sync run at 2026-05-13 10:22:36.708904
+INFO 2026-05-13 10:22:36,777 sync_job 11992 19012 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:22:37,098 utils 11992 2956 decrypt_api_key called
+INFO 2026-05-13 10:22:37,099 utils 11992 2956 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:22:37,099 utils 11992 2956 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:22:37,099 utils 11992 2956 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:22:37,099 utils 11992 2956 Data length after normalization: 40
+INFO 2026-05-13 10:22:37,099 utils 11992 2956 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:22:37,100 utils 11992 2956 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:22:37,100 utils 11992 2956 Falling back to plain decode
+INFO 2026-05-13 10:22:37,100 utils 11992 2956 Plain decode successful, result length: 40
+INFO 2026-05-13 10:22:37,101 odoo_client 11992 2956 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:22:37,175 database_manager 11992 2956 Connected to PostgreSQL
+INFO 2026-05-13 10:22:37,193 database_manager 11992 2956 Closed PostgreSQL connection
+INFO 2026-05-13 10:22:37,193 orchestrator 11992 2956 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:22:37,193 orchestrator 11992 2956 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:22:37,834 database_manager 11992 2956 Connected to PostgreSQL
+INFO 2026-05-13 10:22:37,906 database_manager 11992 2956 Closed PostgreSQL connection
+INFO 2026-05-13 10:22:37,907 sync_job 11992 19012 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:23:16,385 sync_job 11992 19012 Background Sync Job stopped
+INFO 2026-05-13 10:23:21,898 sync_job 6264 20736 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:23:21,899 sync_job 6264 20736 Starting scheduled sync run at 2026-05-13 10:23:21.899149
+INFO 2026-05-13 10:23:22,101 sync_job 6264 20736 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:23:22,373 utils 6264 6940 decrypt_api_key called
+INFO 2026-05-13 10:23:22,373 utils 6264 6940 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:23:22,374 utils 6264 6940 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:23:22,374 utils 6264 6940 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:23:22,374 utils 6264 6940 Data length after normalization: 40
+INFO 2026-05-13 10:23:22,374 utils 6264 6940 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:23:22,375 utils 6264 6940 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:23:22,375 utils 6264 6940 Falling back to plain decode
+INFO 2026-05-13 10:23:22,375 utils 6264 6940 Plain decode successful, result length: 40
+INFO 2026-05-13 10:23:22,376 odoo_client 6264 6940 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:23:22,419 database_manager 6264 6940 Connected to PostgreSQL
+INFO 2026-05-13 10:23:22,634 database_manager 6264 6940 Closed PostgreSQL connection
+INFO 2026-05-13 10:23:22,634 orchestrator 6264 6940 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:23:22,635 orchestrator 6264 6940 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:23:22,673 database_manager 6264 6940 Connected to PostgreSQL
+INFO 2026-05-13 10:23:22,718 database_manager 6264 6940 Closed PostgreSQL connection
+INFO 2026-05-13 10:23:22,719 sync_job 6264 20736 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:24:42,533 middleware 6264 20736 OPTIONS /api/v1/auth/login - Client: 178.135.15.252
+INFO 2026-05-13 10:24:42,544 middleware 6264 20736 OPTIONS /api/v1/auth/login - Status: 200 - Time: 0.012s
+INFO 2026-05-13 10:24:42,743 middleware 6264 20736 POST /api/v1/auth/login - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,067 middleware 6264 20736 POST /api/v1/auth/login - Status: 200 - Time: 2.323s
+INFO 2026-05-13 10:24:45,268 middleware 6264 20736 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,269 middleware 6264 20736 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:24:45,397 middleware 6264 20736 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,651 middleware 6264 20736 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,652 middleware 6264 20736 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:24:45,672 middleware 6264 20736 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,674 middleware 6264 20736 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:24:45,732 middleware 6264 20736 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,735 middleware 6264 20736 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,736 middleware 6264 20736 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,736 middleware 6264 20736 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,736 middleware 6264 20736 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,737 middleware 6264 20736 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:24:45,738 middleware 6264 20736 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,739 middleware 6264 20736 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:24:45,740 middleware 6264 20736 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:24:45,741 middleware 6264 20736 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:24:45,741 middleware 6264 20736 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:24:45,743 middleware 6264 20736 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:24:45,799 middleware 6264 20736 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,804 middleware 6264 20736 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,819 middleware 6264 20736 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.015s
+INFO 2026-05-13 10:24:45,853 middleware 6264 20736 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,958 middleware 6264 20736 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,961 middleware 6264 20736 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,962 middleware 6264 20736 GET /api/v1/tenants/ - Status: 200 - Time: 0.564s
+INFO 2026-05-13 10:24:45,971 middleware 6264 20736 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,972 middleware 6264 20736 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,973 middleware 6264 20736 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 10:24:45,974 middleware 6264 20736 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 10:24:46,298 middleware 6264 20736 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 10:24:46,312 middleware 6264 20736 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:24:46,343 middleware 6264 20736 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.031s
+INFO 2026-05-13 10:24:46,344 middleware 6264 20736 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:24:46,365 middleware 6264 20736 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.022s
+INFO 2026-05-13 10:24:46,480 middleware 6264 20736 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:24:47,010 middleware 6264 20736 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 1.049s
+INFO 2026-05-13 10:24:47,124 middleware 6264 20736 GET /api/v1/kpi/trends - Status: 200 - Time: 0.826s
+INFO 2026-05-13 10:24:47,228 middleware 6264 20736 GET /api/v1/kpi/top-customers - Status: 200 - Time: 1.256s
+INFO 2026-05-13 10:24:47,243 middleware 6264 20736 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.762s
+INFO 2026-05-13 10:24:47,418 middleware 6264 20736 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 10:24:47,443 middleware 6264 20736 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.025s
+INFO 2026-05-13 10:24:47,535 middleware 6264 20736 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 1.564s
+INFO 2026-05-13 10:24:47,632 middleware 6264 20736 GET /api/v1/kpi/top-products - Status: 200 - Time: 1.779s
+INFO 2026-05-13 10:24:47,633 middleware 6264 20736 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 1.661s
+INFO 2026-05-13 10:24:47,634 middleware 6264 20736 GET /api/v1/kpi/category-performance - Status: 200 - Time: 1.660s
+INFO 2026-05-13 10:24:48,298 middleware 6264 20736 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 2.340s
+INFO 2026-05-13 10:24:48,938 middleware 6264 20736 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:24:48,939 middleware 6264 20736 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:24:49,068 middleware 6264 20736 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+ERROR 2026-05-13 10:24:49,073 middleware 6264 20736 Error processing request: You cannot call this from an async context - use a thread or sync_to_async.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2433, in list_financial_advisor_sessions
+    sessions = memory.list_sessions()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\memory.py", line 169, in list_sessions
+    for s in sessions:
+             ^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\query.py", line 390, in __iter__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\query.py", line 2000, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\query.py", line 95, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\asyncio.py", line 24, in inner
+    raise SynchronousOnlyOperation(message)
+django.core.exceptions.SynchronousOnlyOperation: You cannot call this from an async context - use a thread or sync_to_async.
+INFO 2026-05-13 10:24:49,719 middleware 6264 20736 GET /api/v1/kpi/overview - Status: 200 - Time: 3.920s
+INFO 2026-05-13 10:24:55,064 middleware 6264 20736 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+ERROR 2026-05-13 10:24:55,066 middleware 6264 20736 Error processing request: You cannot call this from an async context - use a thread or sync_to_async.
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2433, in list_financial_advisor_sessions
+    sessions = memory.list_sessions()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\memory.py", line 169, in list_sessions
+    for s in sessions:
+             ^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\query.py", line 390, in __iter__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\query.py", line 2000, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\query.py", line 95, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\django\utils\asyncio.py", line 24, in inner
+    raise SynchronousOnlyOperation(message)
+django.core.exceptions.SynchronousOnlyOperation: You cannot call this from an async context - use a thread or sync_to_async.
+INFO 2026-05-13 10:28:25,388 sync_job 6264 20736 Background Sync Job stopped
+INFO 2026-05-13 10:36:45,117 sync_job 12392 20624 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:36:45,117 sync_job 12392 20624 Starting scheduled sync run at 2026-05-13 10:36:45.117788
+INFO 2026-05-13 10:36:45,126 middleware 12392 20624 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:36:45,126 middleware 12392 20624 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:36:46,208 sync_job 12392 20624 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:36:46,208 middleware 12392 20624 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 1.082s
+INFO 2026-05-13 10:36:46,209 middleware 12392 20624 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 1.082s
+INFO 2026-05-13 10:36:46,580 utils 12392 21696 decrypt_api_key called
+INFO 2026-05-13 10:36:46,580 utils 12392 21696 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:36:46,581 utils 12392 21696 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:36:46,581 utils 12392 21696 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:36:46,581 utils 12392 21696 Data length after normalization: 40
+INFO 2026-05-13 10:36:46,581 utils 12392 21696 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:36:46,582 utils 12392 21696 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:36:46,582 utils 12392 21696 Falling back to plain decode
+INFO 2026-05-13 10:36:46,582 utils 12392 21696 Plain decode successful, result length: 40
+INFO 2026-05-13 10:36:46,583 odoo_client 12392 21696 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:36:46,653 database_manager 12392 21696 Connected to PostgreSQL
+INFO 2026-05-13 10:36:46,801 database_manager 12392 21696 Closed PostgreSQL connection
+INFO 2026-05-13 10:36:46,802 orchestrator 12392 21696 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:36:46,802 orchestrator 12392 21696 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:36:46,837 database_manager 12392 21696 Connected to PostgreSQL
+INFO 2026-05-13 10:36:46,845 database_manager 12392 21696 Closed PostgreSQL connection
+INFO 2026-05-13 10:36:46,846 sync_job 12392 20624 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:37:06,219 middleware 12392 20624 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:37:06,220 middleware 12392 20624 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:37:06,371 middleware 12392 20624 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:37:06,374 middleware 12392 20624 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:37:09,752 middleware 12392 20624 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:37:09,752 middleware 12392 20624 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:37:09,908 middleware 12392 20624 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+ERROR 2026-05-13 10:37:09,967 middleware 12392 20624 Error processing request: "Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2323, in financial_advisor_chat
+    return await run_frontend_chat(body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2274, in run_frontend_chat
+    result = await run_agent_chat(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2077, in run_agent_chat
+    answer = fast_node.run(
+        message=message,
+    ...<4 lines>...
+        memory_summary=memory_summary,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\fast_path.py", line 112, in run
+    response = self.client.messages.create(
+        model=AgentConfig.FAST_MODEL,
+    ...<3 lines>...
+        ],
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\_utils\_utils.py", line 294, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\resources\messages\messages.py", line 1003, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/v1/messages",
+        ^^^^^^^^^^^^^^^
+    ...<30 lines>...
+        stream_cls=Stream[RawMessageStreamEvent],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\_base_client.py", line 1374, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\_base_client.py", line 1064, in request
+    request = self._build_request(options, retries_taken=retries_taken)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\_base_client.py", line 522, in _build_request
+    headers = self._build_headers(options, retries_taken=retries_taken)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\_base_client.py", line 452, in _build_headers
+    self._validate_headers(headers_dict, custom_headers)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\anthropic\_client.py", line 385, in _validate_headers
+    raise TypeError(
+        '"Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"'
+    )
+TypeError: "Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"
+INFO 2026-05-13 10:37:45,169 sync_job 12392 20624 Background Sync Job stopped
+INFO 2026-05-13 10:37:51,665 sync_job 8140 9436 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:37:51,665 sync_job 8140 9436 Starting scheduled sync run at 2026-05-13 10:37:51.665618
+INFO 2026-05-13 10:37:51,789 sync_job 8140 9436 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:37:51,998 utils 8140 19132 decrypt_api_key called
+INFO 2026-05-13 10:37:51,999 utils 8140 19132 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:37:51,999 utils 8140 19132 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:37:51,999 utils 8140 19132 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:37:51,999 utils 8140 19132 Data length after normalization: 40
+INFO 2026-05-13 10:37:51,999 utils 8140 19132 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:37:52,000 utils 8140 19132 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:37:52,000 utils 8140 19132 Falling back to plain decode
+INFO 2026-05-13 10:37:52,000 utils 8140 19132 Plain decode successful, result length: 40
+INFO 2026-05-13 10:37:52,000 odoo_client 8140 19132 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:37:52,139 database_manager 8140 19132 Connected to PostgreSQL
+INFO 2026-05-13 10:37:52,144 database_manager 8140 19132 Closed PostgreSQL connection
+INFO 2026-05-13 10:37:52,144 orchestrator 8140 19132 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:37:52,144 orchestrator 8140 19132 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:37:52,306 database_manager 8140 19132 Connected to PostgreSQL
+INFO 2026-05-13 10:37:52,309 database_manager 8140 19132 Closed PostgreSQL connection
+INFO 2026-05-13 10:37:52,309 sync_job 8140 9436 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:42:56,539 sync_job 8140 9436 Background Sync Job stopped
+INFO 2026-05-13 10:43:05,311 sync_job 16708 3912 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:43:05,312 sync_job 16708 3912 Starting scheduled sync run at 2026-05-13 10:43:05.312121
+INFO 2026-05-13 10:43:05,389 sync_job 16708 3912 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:43:05,604 utils 16708 15772 decrypt_api_key called
+INFO 2026-05-13 10:43:05,604 utils 16708 15772 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:43:05,604 utils 16708 15772 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:43:05,605 utils 16708 15772 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:43:05,605 utils 16708 15772 Data length after normalization: 40
+INFO 2026-05-13 10:43:05,605 utils 16708 15772 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:43:05,606 utils 16708 15772 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:43:05,606 utils 16708 15772 Falling back to plain decode
+INFO 2026-05-13 10:43:05,606 utils 16708 15772 Plain decode successful, result length: 40
+INFO 2026-05-13 10:43:05,606 odoo_client 16708 15772 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:43:05,638 database_manager 16708 15772 Connected to PostgreSQL
+INFO 2026-05-13 10:43:05,781 database_manager 16708 15772 Closed PostgreSQL connection
+INFO 2026-05-13 10:43:05,781 orchestrator 16708 15772 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:43:05,781 orchestrator 16708 15772 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:43:05,811 database_manager 16708 15772 Connected to PostgreSQL
+INFO 2026-05-13 10:43:05,835 database_manager 16708 15772 Closed PostgreSQL connection
+INFO 2026-05-13 10:43:05,835 sync_job 16708 3912 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:43:14,529 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:43:16,858 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:43:16,996 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 2.467s
+INFO 2026-05-13 10:43:17,518 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:43:17,530 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.013s
+INFO 2026-05-13 10:43:23,539 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:43:23,541 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:43:23,676 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:43:23,684 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.008s
+INFO 2026-05-13 10:43:29,271 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:29,272 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.002s
+INFO 2026-05-13 10:43:29,407 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:29,419 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.012s
+INFO 2026-05-13 10:43:35,928 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:43:35,932 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:43:36,070 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:43:36,076 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:43:37,354 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:37,361 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.007s
+INFO 2026-05-13 10:43:39,203 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:43:39,204 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:43:39,387 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:43:41,150 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:43:41,185 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 1.798s
+INFO 2026-05-13 10:43:41,320 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:43:41,323 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 10:43:45,491 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:45,492 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:43:45,623 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:45,627 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:43:46,764 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:43:48,610 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 1.846s
+INFO 2026-05-13 10:43:48,611 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:43:48,612 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:43:48,747 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:43:48,759 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.012s
+INFO 2026-05-13 10:43:50,752 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:50,756 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:43:50,890 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:50,894 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:43:57,262 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:43:57,267 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:43:58,756 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:43:58,766 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.011s
+INFO 2026-05-13 10:43:59,703 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:43:59,762 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.058s
+INFO 2026-05-13 10:44:00,816 middleware 16708 3912 DELETE /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:44:00,832 middleware 16708 3912 DELETE /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.016s
+INFO 2026-05-13 10:44:00,968 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:44:00,971 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 10:44:02,047 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 10:44:02,051 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 10:44:14,491 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:44:29,107 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:44:31,363 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:44:31,420 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 16.929s
+INFO 2026-05-13 10:44:31,422 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:44:31,425 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 10:44:31,618 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 10:44:31,623 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:45:10,170 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:45:10,177 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.007s
+INFO 2026-05-13 10:45:16,176 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:45:16,203 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.027s
+INFO 2026-05-13 10:45:23,332 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:45:23,588 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.255s
+INFO 2026-05-13 10:46:15,622 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+ERROR 2026-05-13 10:46:15,672 middleware 16708 3912 Error processing request: (psycopg2.errors.UndefinedColumn) column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+[SQL: 
+    SELECT
+        l.product_id,
+        l.product_name,
+        COALESCE(SUM(l.product_uom_qty), 0) AS quantity,
+        COALESCE(SUM(l.price_total), 0) AS revenue
+    FROM fact_sales_order_lines l
+    JOIN fact_sales_orders o
+      ON o.id = l.order_local_id
+     AND o.tenant_id = l.tenant_id
+    WHERE l.tenant_id = %(tenant_id)s
+      AND l.state IN ('sale', 'done')
+      AND o.state IN ('sale', 'done')
+      AND l.product_id IS NOT NULL
+     AND l.company_id IN (%(company_0)s, %(company_1)s, %(company_2)s, %(company_3)s, %(company_4)s)
+    GROUP BY l.product_id, l.product_name
+    ORDER BY revenue DESC
+    LIMIT %(limit)s
+    ]
+[parameters: {'tenant_id': '65168de7-ac28-4063-b866-337afca05e29', 'company_0': 2, 'company_1': 3, 'company_2': 4, 'company_3': 5, 'company_4': 11, 'limit': 5}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2323, in financial_advisor_chat
+    return await run_frontend_chat(body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2274, in run_frontend_chat
+    result = await run_agent_chat(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 1915, in run_agent_chat
+    report_result = generate_report_tool(
+        tenant_id=tenant_id,
+        company_id=company_id,
+        report_type=report_type,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\tools.py", line 2942, in generate_report_tool
+    top_products = get_top_products_tool(
+        tenant_id=tenant_id,
+        company_id=company_id,
+        limit=5,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\tools.py", line 418, in get_top_products_tool
+    rows = run_query(query, params)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\db.py", line 41, in run_query
+    result = conn.execute(text(query), params or {})
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+[SQL: 
+    SELECT
+        l.product_id,
+        l.product_name,
+        COALESCE(SUM(l.product_uom_qty), 0) AS quantity,
+        COALESCE(SUM(l.price_total), 0) AS revenue
+    FROM fact_sales_order_lines l
+    JOIN fact_sales_orders o
+      ON o.id = l.order_local_id
+     AND o.tenant_id = l.tenant_id
+    WHERE l.tenant_id = %(tenant_id)s
+      AND l.state IN ('sale', 'done')
+      AND o.state IN ('sale', 'done')
+      AND l.product_id IS NOT NULL
+     AND l.company_id IN (%(company_0)s, %(company_1)s, %(company_2)s, %(company_3)s, %(company_4)s)
+    GROUP BY l.product_id, l.product_name
+    ORDER BY revenue DESC
+    LIMIT %(limit)s
+    ]
+[parameters: {'tenant_id': '65168de7-ac28-4063-b866-337afca05e29', 'company_0': 2, 'company_1': 3, 'company_2': 4, 'company_3': 5, 'company_4': 11, 'limit': 5}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO 2026-05-13 10:47:03,228 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:47:04,095 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:47:14,878 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:47:14,930 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 11.702s
+INFO 2026-05-13 10:47:29,624 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:47:29,625 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:47:29,758 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+ERROR 2026-05-13 10:47:30,008 middleware 16708 3912 Error processing request: (psycopg2.errors.UndefinedColumn) column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+[SQL: 
+    SELECT
+        l.product_id,
+        l.product_name,
+        COALESCE(SUM(l.product_uom_qty), 0) AS quantity,
+        COALESCE(SUM(l.price_total), 0) AS revenue
+    FROM fact_sales_order_lines l
+    JOIN fact_sales_orders o
+      ON o.id = l.order_local_id
+     AND o.tenant_id = l.tenant_id
+    WHERE l.tenant_id = %(tenant_id)s
+      AND l.state IN ('sale', 'done')
+      AND o.state IN ('sale', 'done')
+      AND l.product_id IS NOT NULL
+     AND l.company_id IN (%(company_0)s, %(company_1)s, %(company_2)s, %(company_3)s, %(company_4)s)
+    GROUP BY l.product_id, l.product_name
+    ORDER BY revenue DESC
+    LIMIT %(limit)s
+    ]
+[parameters: {'tenant_id': '65168de7-ac28-4063-b866-337afca05e29', 'company_0': 2, 'company_1': 3, 'company_2': 4, 'company_3': 5, 'company_4': 11, 'limit': 10}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2323, in financial_advisor_chat
+    return await run_frontend_chat(body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2274, in run_frontend_chat
+    result = await run_agent_chat(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 1731, in run_agent_chat
+    answer = reasoning_node.execute_plan(
+        message=message,
+    ...<3 lines>...
+        memory_summary=memory_summary,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\reasoning.py", line 159, in execute_plan
+    tool_results = run_reasoning_tools(
+        message=message, tenant_id=tenant_id, company_id=company_id, plan=plan
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\tools.py", line 2609, in run_reasoning_tools
+    results["tool_results"][tool_name] = get_top_products_tool(
+                                         ~~~~~~~~~~~~~~~~~~~~~^
+        tenant_id=tenant_id,
+        ^^^^^^^^^^^^^^^^^^^^
+        company_id=company_id,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\tools.py", line 418, in get_top_products_tool
+    rows = run_query(query, params)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\db.py", line 41, in run_query
+    result = conn.execute(text(query), params or {})
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+[SQL: 
+    SELECT
+        l.product_id,
+        l.product_name,
+        COALESCE(SUM(l.product_uom_qty), 0) AS quantity,
+        COALESCE(SUM(l.price_total), 0) AS revenue
+    FROM fact_sales_order_lines l
+    JOIN fact_sales_orders o
+      ON o.id = l.order_local_id
+     AND o.tenant_id = l.tenant_id
+    WHERE l.tenant_id = %(tenant_id)s
+      AND l.state IN ('sale', 'done')
+      AND o.state IN ('sale', 'done')
+      AND l.product_id IS NOT NULL
+     AND l.company_id IN (%(company_0)s, %(company_1)s, %(company_2)s, %(company_3)s, %(company_4)s)
+    GROUP BY l.product_id, l.product_name
+    ORDER BY revenue DESC
+    LIMIT %(limit)s
+    ]
+[parameters: {'tenant_id': '65168de7-ac28-4063-b866-337afca05e29', 'company_0': 2, 'company_1': 3, 'company_2': 4, 'company_3': 5, 'company_4': 11, 'limit': 10}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO 2026-05-13 10:47:48,986 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:47:48,992 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.006s
+INFO 2026-05-13 10:47:52,765 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Client: 178.135.15.252
+INFO 2026-05-13 10:47:52,769 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/ebe16ad0-5fd5-413b-94a2-cf5d25fa8cfa - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:48:17,515 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:48:18,361 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:48:23,283 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:48:23,302 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 5.787s
+INFO 2026-05-13 10:48:23,449 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:48:23,450 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:48:23,585 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:48:23,588 middleware 16708 3912 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 10:49:39,720 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:49:40,696 _client 16708 3912 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+ERROR 2026-05-13 10:49:41,230 middleware 16708 3912 Error processing request: name 'Anthropic' is not defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2323, in financial_advisor_chat
+    return await run_frontend_chat(body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2274, in run_frontend_chat
+    result = await run_agent_chat(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2027, in run_agent_chat
+    sql_result = run_sql_agent(
+        user_question=message,
+        chat_history=memory_summary or "",
+        tenant_id=tenant_id,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\sql_agent.py", line 183, in run_sql_agent
+    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+             ^^^^^^^^^
+NameError: name 'Anthropic' is not defined. Did you mean: 'anthropic'?
+INFO 2026-05-13 10:50:10,710 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 10:50:10,712 middleware 16708 3912 OPTIONS /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.003s
+INFO 2026-05-13 10:50:10,896 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 10:50:10,922 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.027s
+INFO 2026-05-13 10:50:12,130 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:50:12,145 middleware 16708 3912 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.015s
+INFO 2026-05-13 10:50:28,556 middleware 16708 3912 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+ERROR 2026-05-13 10:50:28,589 middleware 16708 3912 Error processing request: (psycopg2.errors.UndefinedColumn) column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+[SQL: 
+    SELECT
+        l.product_id,
+        l.product_name,
+        COALESCE(SUM(l.product_uom_qty), 0) AS quantity,
+        COALESCE(SUM(l.price_total), 0) AS revenue
+    FROM fact_sales_order_lines l
+    JOIN fact_sales_orders o
+      ON o.id = l.order_local_id
+     AND o.tenant_id = l.tenant_id
+    WHERE l.tenant_id = %(tenant_id)s
+      AND l.state IN ('sale', 'done')
+      AND o.state IN ('sale', 'done')
+      AND l.product_id IS NOT NULL
+     AND l.company_id IN (%(company_0)s, %(company_1)s, %(company_2)s, %(company_3)s, %(company_4)s)
+    GROUP BY l.product_id, l.product_name
+    ORDER BY revenue DESC
+    LIMIT %(limit)s
+    ]
+[parameters: {'tenant_id': '65168de7-ac28-4063-b866-337afca05e29', 'company_0': 2, 'company_1': 3, 'company_2': 4, 'company_3': 5, 'company_4': 11, 'limit': 10}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2323, in financial_advisor_chat
+    return await run_frontend_chat(body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 2274, in run_frontend_chat
+    result = await run_agent_chat(
+             ^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\routes.py", line 1731, in run_agent_chat
+    answer = reasoning_node.execute_plan(
+        message=message,
+    ...<3 lines>...
+        memory_summary=memory_summary,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\reasoning.py", line 159, in execute_plan
+    tool_results = run_reasoning_tools(
+        message=message, tenant_id=tenant_id, company_id=company_id, plan=plan
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\tools.py", line 2609, in run_reasoning_tools
+    results["tool_results"][tool_name] = get_top_products_tool(
+                                         ~~~~~~~~~~~~~~~~~~~~~^
+        tenant_id=tenant_id,
+        ^^^^^^^^^^^^^^^^^^^^
+        company_id=company_id,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\tools.py", line 418, in get_top_products_tool
+    rows = run_query(query, params)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\agent\db.py", line 41, in run_query
+    result = conn.execute(text(query), params or {})
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column l.order_local_id does not exist
+LINE 9:       ON o.id = l.order_local_id
+                        ^
+
+[SQL: 
+    SELECT
+        l.product_id,
+        l.product_name,
+        COALESCE(SUM(l.product_uom_qty), 0) AS quantity,
+        COALESCE(SUM(l.price_total), 0) AS revenue
+    FROM fact_sales_order_lines l
+    JOIN fact_sales_orders o
+      ON o.id = l.order_local_id
+     AND o.tenant_id = l.tenant_id
+    WHERE l.tenant_id = %(tenant_id)s
+      AND l.state IN ('sale', 'done')
+      AND o.state IN ('sale', 'done')
+      AND l.product_id IS NOT NULL
+     AND l.company_id IN (%(company_0)s, %(company_1)s, %(company_2)s, %(company_3)s, %(company_4)s)
+    GROUP BY l.product_id, l.product_name
+    ORDER BY revenue DESC
+    LIMIT %(limit)s
+    ]
+[parameters: {'tenant_id': '65168de7-ac28-4063-b866-337afca05e29', 'company_0': 2, 'company_1': 3, 'company_2': 4, 'company_3': 5, 'company_4': 11, 'limit': 10}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+INFO 2026-05-13 10:50:44,750 sync_job 16708 3912 Background Sync Job stopped
+INFO 2026-05-13 10:50:50,039 sync_job 8568 12972 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:50:50,040 sync_job 8568 12972 Starting scheduled sync run at 2026-05-13 10:50:50.040169
+INFO 2026-05-13 10:50:50,220 sync_job 8568 12972 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:50:50,453 utils 8568 20528 decrypt_api_key called
+INFO 2026-05-13 10:50:50,453 utils 8568 20528 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:50:50,453 utils 8568 20528 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:50:50,454 utils 8568 20528 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:50:50,454 utils 8568 20528 Data length after normalization: 40
+INFO 2026-05-13 10:50:50,454 utils 8568 20528 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:50:50,454 utils 8568 20528 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:50:50,455 utils 8568 20528 Falling back to plain decode
+INFO 2026-05-13 10:50:50,455 utils 8568 20528 Plain decode successful, result length: 40
+INFO 2026-05-13 10:50:50,455 odoo_client 8568 20528 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:50:50,495 database_manager 8568 20528 Connected to PostgreSQL
+INFO 2026-05-13 10:50:50,501 database_manager 8568 20528 Closed PostgreSQL connection
+INFO 2026-05-13 10:50:50,501 orchestrator 8568 20528 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:50:50,501 orchestrator 8568 20528 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:50:50,544 database_manager 8568 20528 Connected to PostgreSQL
+INFO 2026-05-13 10:50:50,547 database_manager 8568 20528 Closed PostgreSQL connection
+INFO 2026-05-13 10:50:50,548 sync_job 8568 12972 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:51:08,257 sync_job 8568 12972 Background Sync Job stopped
+INFO 2026-05-13 10:51:52,973 sync_job 2856 12204 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:51:52,974 sync_job 2856 12204 Starting scheduled sync run at 2026-05-13 10:51:52.974379
+INFO 2026-05-13 10:51:53,137 sync_job 2856 12204 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:51:53,392 utils 2856 10672 decrypt_api_key called
+INFO 2026-05-13 10:51:53,392 utils 2856 10672 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:51:53,392 utils 2856 10672 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:51:53,393 utils 2856 10672 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:51:53,393 utils 2856 10672 Data length after normalization: 40
+INFO 2026-05-13 10:51:53,393 utils 2856 10672 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:51:53,393 utils 2856 10672 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:51:53,393 utils 2856 10672 Falling back to plain decode
+INFO 2026-05-13 10:51:53,393 utils 2856 10672 Plain decode successful, result length: 40
+INFO 2026-05-13 10:51:53,393 odoo_client 2856 10672 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:51:53,427 database_manager 2856 10672 Connected to PostgreSQL
+INFO 2026-05-13 10:51:53,431 database_manager 2856 10672 Closed PostgreSQL connection
+INFO 2026-05-13 10:51:53,431 orchestrator 2856 10672 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:51:53,432 orchestrator 2856 10672 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:51:53,464 database_manager 2856 10672 Connected to PostgreSQL
+INFO 2026-05-13 10:51:53,468 database_manager 2856 10672 Closed PostgreSQL connection
+INFO 2026-05-13 10:51:53,470 sync_job 2856 12204 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:52:02,054 middleware 2856 12204 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:52:02,136 middleware 2856 12204 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.082s
+INFO 2026-05-13 10:52:02,281 middleware 2856 12204 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:52:02,301 middleware 2856 12204 GET /api/v1/financial-advisor/sessions/aeb32dd7-2447-4a11-b191-c3b203e4bdc9 - Status: 200 - Time: 0.020s
+INFO 2026-05-13 10:52:06,099 middleware 2856 12204 OPTIONS /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:52:06,100 middleware 2856 12204 OPTIONS /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:52:06,232 middleware 2856 12204 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 10:52:06,237 middleware 2856 12204 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.006s
+INFO 2026-05-13 10:52:14,637 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:52:15,608 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:52:21,396 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:52:21,467 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 6.830s
+INFO 2026-05-13 10:52:41,697 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:52:42,461 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:52:45,250 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:52:45,259 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 3.562s
+INFO 2026-05-13 10:53:05,120 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:53:07,123 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:53:07,132 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 2.013s
+INFO 2026-05-13 10:53:18,928 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:53:19,757 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:53:25,914 _client 2856 12204 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:53:25,943 middleware 2856 12204 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 7.015s
+INFO 2026-05-13 10:55:34,549 sync_job 2856 12204 Background Sync Job stopped
+INFO 2026-05-13 10:55:39,615 sync_job 8308 1220 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:55:39,616 sync_job 8308 1220 Starting scheduled sync run at 2026-05-13 10:55:39.616177
+INFO 2026-05-13 10:55:39,773 sync_job 8308 1220 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:55:39,990 utils 8308 11324 decrypt_api_key called
+INFO 2026-05-13 10:55:39,990 utils 8308 11324 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:55:39,990 utils 8308 11324 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:55:39,990 utils 8308 11324 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:55:39,991 utils 8308 11324 Data length after normalization: 40
+INFO 2026-05-13 10:55:39,991 utils 8308 11324 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:55:39,991 utils 8308 11324 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:55:39,991 utils 8308 11324 Falling back to plain decode
+INFO 2026-05-13 10:55:39,991 utils 8308 11324 Plain decode successful, result length: 40
+INFO 2026-05-13 10:55:39,992 odoo_client 8308 11324 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:55:40,131 database_manager 8308 11324 Connected to PostgreSQL
+INFO 2026-05-13 10:55:40,157 database_manager 8308 11324 Closed PostgreSQL connection
+INFO 2026-05-13 10:55:40,157 orchestrator 8308 11324 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:55:40,157 orchestrator 8308 11324 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:55:40,211 database_manager 8308 11324 Connected to PostgreSQL
+INFO 2026-05-13 10:55:40,214 database_manager 8308 11324 Closed PostgreSQL connection
+INFO 2026-05-13 10:55:40,215 sync_job 8308 1220 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:55:43,883 sync_job 8308 1220 Background Sync Job stopped
+INFO 2026-05-13 10:55:47,975 sync_job 10196 15724 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:55:47,975 sync_job 10196 15724 Starting scheduled sync run at 2026-05-13 10:55:47.975545
+INFO 2026-05-13 10:55:48,023 sync_job 10196 15724 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:55:48,195 utils 10196 19656 decrypt_api_key called
+INFO 2026-05-13 10:55:48,196 utils 10196 19656 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:55:48,196 utils 10196 19656 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:55:48,196 utils 10196 19656 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:55:48,196 utils 10196 19656 Data length after normalization: 40
+INFO 2026-05-13 10:55:48,196 utils 10196 19656 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:55:48,197 utils 10196 19656 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:55:48,197 utils 10196 19656 Falling back to plain decode
+INFO 2026-05-13 10:55:48,197 utils 10196 19656 Plain decode successful, result length: 40
+INFO 2026-05-13 10:55:48,197 odoo_client 10196 19656 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:55:48,257 database_manager 10196 19656 Connected to PostgreSQL
+INFO 2026-05-13 10:55:48,290 database_manager 10196 19656 Closed PostgreSQL connection
+INFO 2026-05-13 10:55:48,319 orchestrator 10196 19656 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:55:48,322 orchestrator 10196 19656 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:55:48,379 database_manager 10196 19656 Connected to PostgreSQL
+INFO 2026-05-13 10:55:48,384 database_manager 10196 19656 Closed PostgreSQL connection
+INFO 2026-05-13 10:55:48,385 sync_job 10196 15724 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:55:54,102 sync_job 10196 15724 Background Sync Job stopped
+INFO 2026-05-13 10:55:58,509 sync_job 20804 12572 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:55:58,509 sync_job 20804 12572 Starting scheduled sync run at 2026-05-13 10:55:58.509616
+INFO 2026-05-13 10:55:58,563 sync_job 20804 12572 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:55:58,793 utils 20804 8140 decrypt_api_key called
+INFO 2026-05-13 10:55:58,793 utils 20804 8140 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:55:58,793 utils 20804 8140 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:55:58,794 utils 20804 8140 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:55:58,794 utils 20804 8140 Data length after normalization: 40
+INFO 2026-05-13 10:55:58,794 utils 20804 8140 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:55:58,795 utils 20804 8140 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:55:58,795 utils 20804 8140 Falling back to plain decode
+INFO 2026-05-13 10:55:58,795 utils 20804 8140 Plain decode successful, result length: 40
+INFO 2026-05-13 10:55:58,796 odoo_client 20804 8140 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:55:58,952 database_manager 20804 8140 Connected to PostgreSQL
+INFO 2026-05-13 10:55:58,960 database_manager 20804 8140 Closed PostgreSQL connection
+INFO 2026-05-13 10:55:58,962 orchestrator 20804 8140 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:55:58,963 orchestrator 20804 8140 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:55:59,013 database_manager 20804 8140 Connected to PostgreSQL
+INFO 2026-05-13 10:55:59,017 database_manager 20804 8140 Closed PostgreSQL connection
+INFO 2026-05-13 10:55:59,018 sync_job 20804 12572 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:56:04,618 sync_job 20804 12572 Background Sync Job stopped
+INFO 2026-05-13 10:56:09,543 sync_job 13028 16768 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:56:09,543 sync_job 13028 16768 Starting scheduled sync run at 2026-05-13 10:56:09.543506
+INFO 2026-05-13 10:56:09,630 sync_job 13028 16768 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:56:09,830 utils 13028 12368 decrypt_api_key called
+INFO 2026-05-13 10:56:09,831 utils 13028 12368 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:56:09,831 utils 13028 12368 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:56:09,831 utils 13028 12368 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:56:09,831 utils 13028 12368 Data length after normalization: 40
+INFO 2026-05-13 10:56:09,831 utils 13028 12368 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:56:09,832 utils 13028 12368 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:56:09,832 utils 13028 12368 Falling back to plain decode
+INFO 2026-05-13 10:56:09,832 utils 13028 12368 Plain decode successful, result length: 40
+INFO 2026-05-13 10:56:09,832 odoo_client 13028 12368 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:56:09,867 database_manager 13028 12368 Connected to PostgreSQL
+INFO 2026-05-13 10:56:09,870 database_manager 13028 12368 Closed PostgreSQL connection
+INFO 2026-05-13 10:56:09,871 orchestrator 13028 12368 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:56:09,871 orchestrator 13028 12368 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:56:09,935 database_manager 13028 12368 Connected to PostgreSQL
+INFO 2026-05-13 10:56:09,939 database_manager 13028 12368 Closed PostgreSQL connection
+INFO 2026-05-13 10:56:09,940 sync_job 13028 16768 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:56:15,983 sync_job 13028 16768 Background Sync Job stopped
+INFO 2026-05-13 10:56:20,577 sync_job 4752 13732 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:56:20,578 sync_job 4752 13732 Starting scheduled sync run at 2026-05-13 10:56:20.578068
+INFO 2026-05-13 10:56:20,636 sync_job 4752 13732 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:56:20,885 utils 4752 14692 decrypt_api_key called
+INFO 2026-05-13 10:56:20,886 utils 4752 14692 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:56:20,886 utils 4752 14692 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:56:20,886 utils 4752 14692 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:56:20,886 utils 4752 14692 Data length after normalization: 40
+INFO 2026-05-13 10:56:20,887 utils 4752 14692 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:56:20,887 utils 4752 14692 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:56:20,887 utils 4752 14692 Falling back to plain decode
+INFO 2026-05-13 10:56:20,887 utils 4752 14692 Plain decode successful, result length: 40
+INFO 2026-05-13 10:56:20,888 odoo_client 4752 14692 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:56:20,927 database_manager 4752 14692 Connected to PostgreSQL
+INFO 2026-05-13 10:56:20,932 database_manager 4752 14692 Closed PostgreSQL connection
+INFO 2026-05-13 10:56:20,932 orchestrator 4752 14692 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:56:20,932 orchestrator 4752 14692 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:56:20,989 database_manager 4752 14692 Connected to PostgreSQL
+INFO 2026-05-13 10:56:20,993 database_manager 4752 14692 Closed PostgreSQL connection
+INFO 2026-05-13 10:56:20,994 sync_job 4752 13732 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:56:41,926 middleware 4752 13732 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 10:56:48,713 _client 4752 13732 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 10:56:48,864 middleware 4752 13732 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 6.938s
+INFO 2026-05-13 10:56:49,004 middleware 4752 13732 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:56:49,015 middleware 4752 13732 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.010s
+INFO 2026-05-13 10:58:50,789 sync_job 4752 13732 Background Sync Job stopped
+INFO 2026-05-13 10:58:55,384 sync_job 13340 10136 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:58:55,385 sync_job 13340 10136 Starting scheduled sync run at 2026-05-13 10:58:55.385041
+INFO 2026-05-13 10:58:55,540 sync_job 13340 10136 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:58:55,728 utils 13340 2464 decrypt_api_key called
+INFO 2026-05-13 10:58:55,729 utils 13340 2464 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:58:55,729 utils 13340 2464 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:58:55,729 utils 13340 2464 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:58:55,729 utils 13340 2464 Data length after normalization: 40
+INFO 2026-05-13 10:58:55,729 utils 13340 2464 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:58:55,730 utils 13340 2464 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:58:55,730 utils 13340 2464 Falling back to plain decode
+INFO 2026-05-13 10:58:55,730 utils 13340 2464 Plain decode successful, result length: 40
+INFO 2026-05-13 10:58:55,730 odoo_client 13340 2464 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:58:55,765 database_manager 13340 2464 Connected to PostgreSQL
+INFO 2026-05-13 10:58:55,769 database_manager 13340 2464 Closed PostgreSQL connection
+INFO 2026-05-13 10:58:55,770 orchestrator 13340 2464 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:58:55,770 orchestrator 13340 2464 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:58:55,810 database_manager 13340 2464 Connected to PostgreSQL
+INFO 2026-05-13 10:58:55,813 database_manager 13340 2464 Closed PostgreSQL connection
+INFO 2026-05-13 10:58:55,814 sync_job 13340 10136 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:58:58,657 sync_job 13340 10136 Background Sync Job stopped
+INFO 2026-05-13 10:59:03,354 sync_job 13644 14144 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:59:03,354 sync_job 13644 14144 Starting scheduled sync run at 2026-05-13 10:59:03.354789
+INFO 2026-05-13 10:59:03,504 sync_job 13644 14144 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:59:03,695 utils 13644 11076 decrypt_api_key called
+INFO 2026-05-13 10:59:03,696 utils 13644 11076 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:59:03,696 utils 13644 11076 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:59:03,696 utils 13644 11076 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:59:03,696 utils 13644 11076 Data length after normalization: 40
+INFO 2026-05-13 10:59:03,696 utils 13644 11076 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:59:03,697 utils 13644 11076 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:59:03,697 utils 13644 11076 Falling back to plain decode
+INFO 2026-05-13 10:59:03,697 utils 13644 11076 Plain decode successful, result length: 40
+INFO 2026-05-13 10:59:03,698 odoo_client 13644 11076 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:59:03,837 database_manager 13644 11076 Connected to PostgreSQL
+INFO 2026-05-13 10:59:03,841 database_manager 13644 11076 Closed PostgreSQL connection
+INFO 2026-05-13 10:59:03,842 orchestrator 13644 11076 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:59:03,842 orchestrator 13644 11076 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:59:03,892 database_manager 13644 11076 Connected to PostgreSQL
+INFO 2026-05-13 10:59:03,896 database_manager 13644 11076 Closed PostgreSQL connection
+INFO 2026-05-13 10:59:03,898 sync_job 13644 14144 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:59:27,239 sync_job 13644 14144 Background Sync Job stopped
+INFO 2026-05-13 10:59:31,949 sync_job 12724 9616 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 10:59:31,950 sync_job 12724 9616 Starting scheduled sync run at 2026-05-13 10:59:31.950171
+INFO 2026-05-13 10:59:32,031 sync_job 12724 9616 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 10:59:32,210 utils 12724 15824 decrypt_api_key called
+INFO 2026-05-13 10:59:32,210 utils 12724 15824 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 10:59:32,211 utils 12724 15824 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 10:59:32,211 utils 12724 15824 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 10:59:32,211 utils 12724 15824 Data length after normalization: 40
+INFO 2026-05-13 10:59:32,211 utils 12724 15824 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 10:59:32,212 utils 12724 15824 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 10:59:32,212 utils 12724 15824 Falling back to plain decode
+INFO 2026-05-13 10:59:32,212 utils 12724 15824 Plain decode successful, result length: 40
+INFO 2026-05-13 10:59:32,212 odoo_client 12724 15824 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 10:59:32,244 database_manager 12724 15824 Connected to PostgreSQL
+INFO 2026-05-13 10:59:32,248 database_manager 12724 15824 Closed PostgreSQL connection
+INFO 2026-05-13 10:59:32,249 orchestrator 12724 15824 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 10:59:32,249 orchestrator 12724 15824 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 10:59:32,385 database_manager 12724 15824 Connected to PostgreSQL
+INFO 2026-05-13 10:59:32,387 database_manager 12724 15824 Closed PostgreSQL connection
+INFO 2026-05-13 10:59:32,388 sync_job 12724 9616 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 10:59:53,398 middleware 12724 9616 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:59:53,403 middleware 12724 9616 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.004s
+INFO 2026-05-13 10:59:53,644 middleware 12724 9616 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 10:59:53,745 middleware 12724 9616 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.101s
+INFO 2026-05-13 10:59:54,010 middleware 12724 9616 OPTIONS /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 10:59:54,010 middleware 12724 9616 OPTIONS /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 10:59:54,140 middleware 12724 9616 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 10:59:54,152 middleware 12724 9616 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.012s
+INFO 2026-05-13 10:59:55,242 middleware 12724 9616 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 10:59:55,250 middleware 12724 9616 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:00:06,114 middleware 12724 9616 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:00:06,116 middleware 12724 9616 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:00:06,252 middleware 12724 9616 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:00:12,016 _client 12724 9616 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 11:00:12,051 middleware 12724 9616 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 5.799s
+INFO 2026-05-13 11:00:12,191 middleware 12724 9616 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:00:12,194 middleware 12724 9616 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:00:34,291 middleware 12724 9616 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:00:40,816 _client 12724 9616 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO 2026-05-13 11:00:40,822 middleware 12724 9616 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 6.531s
+INFO 2026-05-13 11:10:56,187 sync_job 12724 9616 Background Sync Job stopped
+INFO 2026-05-13 11:11:01,736 sync_job 10120 15116 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:11:01,736 sync_job 10120 15116 Starting scheduled sync run at 2026-05-13 11:11:01.736781
+INFO 2026-05-13 11:11:01,907 sync_job 10120 15116 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:11:02,208 utils 10120 1912 decrypt_api_key called
+INFO 2026-05-13 11:11:02,208 utils 10120 1912 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:11:02,209 utils 10120 1912 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:11:02,209 utils 10120 1912 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:11:02,209 utils 10120 1912 Data length after normalization: 40
+INFO 2026-05-13 11:11:02,209 utils 10120 1912 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:11:02,209 utils 10120 1912 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:11:02,209 utils 10120 1912 Falling back to plain decode
+INFO 2026-05-13 11:11:02,209 utils 10120 1912 Plain decode successful, result length: 40
+INFO 2026-05-13 11:11:02,210 odoo_client 10120 1912 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:11:02,507 database_manager 10120 1912 Connected to PostgreSQL
+INFO 2026-05-13 11:11:02,523 database_manager 10120 1912 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:02,523 orchestrator 10120 1912 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:11:02,524 orchestrator 10120 1912 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:11:02,604 database_manager 10120 1912 Connected to PostgreSQL
+INFO 2026-05-13 11:11:02,608 database_manager 10120 1912 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:02,609 sync_job 10120 15116 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:11:12,344 sync_job 10120 15116 Background Sync Job stopped
+INFO 2026-05-13 11:11:16,960 sync_job 7796 1704 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:11:16,961 sync_job 7796 1704 Starting scheduled sync run at 2026-05-13 11:11:16.961341
+INFO 2026-05-13 11:11:17,016 sync_job 7796 1704 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:11:17,201 utils 7796 10392 decrypt_api_key called
+INFO 2026-05-13 11:11:17,202 utils 7796 10392 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:11:17,202 utils 7796 10392 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:11:17,202 utils 7796 10392 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:11:17,202 utils 7796 10392 Data length after normalization: 40
+INFO 2026-05-13 11:11:17,203 utils 7796 10392 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:11:17,203 utils 7796 10392 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:11:17,204 utils 7796 10392 Falling back to plain decode
+INFO 2026-05-13 11:11:17,204 utils 7796 10392 Plain decode successful, result length: 40
+INFO 2026-05-13 11:11:17,204 odoo_client 7796 10392 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:11:17,242 database_manager 7796 10392 Connected to PostgreSQL
+INFO 2026-05-13 11:11:17,248 database_manager 7796 10392 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:17,248 orchestrator 7796 10392 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:11:17,248 orchestrator 7796 10392 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:11:17,282 database_manager 7796 10392 Connected to PostgreSQL
+INFO 2026-05-13 11:11:17,285 database_manager 7796 10392 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:17,286 sync_job 7796 1704 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:11:19,043 sync_job 7796 1704 Background Sync Job stopped
+INFO 2026-05-13 11:11:24,129 sync_job 16056 7008 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:11:24,130 sync_job 16056 7008 Starting scheduled sync run at 2026-05-13 11:11:24.130096
+INFO 2026-05-13 11:11:24,408 sync_job 16056 7008 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:11:24,595 utils 16056 12772 decrypt_api_key called
+INFO 2026-05-13 11:11:24,596 utils 16056 12772 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:11:24,596 utils 16056 12772 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:11:24,596 utils 16056 12772 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:11:24,596 utils 16056 12772 Data length after normalization: 40
+INFO 2026-05-13 11:11:24,596 utils 16056 12772 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:11:24,597 utils 16056 12772 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:11:24,597 utils 16056 12772 Falling back to plain decode
+INFO 2026-05-13 11:11:24,597 utils 16056 12772 Plain decode successful, result length: 40
+INFO 2026-05-13 11:11:24,598 odoo_client 16056 12772 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:11:24,734 database_manager 16056 12772 Connected to PostgreSQL
+INFO 2026-05-13 11:11:24,739 database_manager 16056 12772 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:24,739 orchestrator 16056 12772 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:11:24,739 orchestrator 16056 12772 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:11:24,777 database_manager 16056 12772 Connected to PostgreSQL
+INFO 2026-05-13 11:11:24,782 database_manager 16056 12772 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:24,783 sync_job 16056 7008 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:11:33,633 sync_job 16056 7008 Background Sync Job stopped
+INFO 2026-05-13 11:11:38,271 sync_job 18248 21256 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:11:38,272 sync_job 18248 21256 Starting scheduled sync run at 2026-05-13 11:11:38.272416
+INFO 2026-05-13 11:11:38,331 sync_job 18248 21256 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:11:38,515 utils 18248 16456 decrypt_api_key called
+INFO 2026-05-13 11:11:38,516 utils 18248 16456 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:11:38,516 utils 18248 16456 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:11:38,516 utils 18248 16456 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:11:38,516 utils 18248 16456 Data length after normalization: 40
+INFO 2026-05-13 11:11:38,516 utils 18248 16456 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:11:38,517 utils 18248 16456 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:11:38,517 utils 18248 16456 Falling back to plain decode
+INFO 2026-05-13 11:11:38,517 utils 18248 16456 Plain decode successful, result length: 40
+INFO 2026-05-13 11:11:38,517 odoo_client 18248 16456 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:11:38,603 database_manager 18248 16456 Connected to PostgreSQL
+INFO 2026-05-13 11:11:38,609 database_manager 18248 16456 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:38,609 orchestrator 18248 16456 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:11:38,609 orchestrator 18248 16456 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:11:38,644 database_manager 18248 16456 Connected to PostgreSQL
+INFO 2026-05-13 11:11:38,648 database_manager 18248 16456 Closed PostgreSQL connection
+INFO 2026-05-13 11:11:38,649 sync_job 18248 21256 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:12:46,724 middleware 18248 21256 POST /api/v1/financial-advisor/chat - Client: 127.0.0.1
+INFO 2026-05-13 11:12:47,030 middleware 18248 21256 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.306s
+INFO 2026-05-13 11:13:25,501 middleware 18248 21256 POST /api/v1/financial-advisor/chat - Client: 127.0.0.1
+INFO 2026-05-13 11:13:25,637 middleware 18248 21256 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.136s
+INFO 2026-05-13 11:14:35,930 sync_job 18248 21256 Background Sync Job stopped
+INFO 2026-05-13 11:14:41,022 sync_job 11424 17648 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:14:41,022 sync_job 11424 17648 Starting scheduled sync run at 2026-05-13 11:14:41.022975
+INFO 2026-05-13 11:14:41,106 sync_job 11424 17648 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:14:41,299 utils 11424 15308 decrypt_api_key called
+INFO 2026-05-13 11:14:41,300 utils 11424 15308 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:14:41,300 utils 11424 15308 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:14:41,300 utils 11424 15308 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:14:41,300 utils 11424 15308 Data length after normalization: 40
+INFO 2026-05-13 11:14:41,300 utils 11424 15308 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:14:41,300 utils 11424 15308 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:14:41,300 utils 11424 15308 Falling back to plain decode
+INFO 2026-05-13 11:14:41,301 utils 11424 15308 Plain decode successful, result length: 40
+INFO 2026-05-13 11:14:41,301 odoo_client 11424 15308 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:14:41,329 database_manager 11424 15308 Connected to PostgreSQL
+INFO 2026-05-13 11:14:41,335 database_manager 11424 15308 Closed PostgreSQL connection
+INFO 2026-05-13 11:14:41,335 orchestrator 11424 15308 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:14:41,335 orchestrator 11424 15308 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:14:41,366 database_manager 11424 15308 Connected to PostgreSQL
+INFO 2026-05-13 11:14:41,370 database_manager 11424 15308 Closed PostgreSQL connection
+INFO 2026-05-13 11:14:41,371 sync_job 11424 17648 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:15:09,497 middleware 11424 17648 POST /api/v1/financial-advisor/chat - Client: 127.0.0.1
+INFO 2026-05-13 11:15:10,669 middleware 11424 17648 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 1.172s
+INFO 2026-05-13 11:15:30,758 middleware 11424 17648 POST /api/v1/financial-advisor/chat - Client: 127.0.0.1
+INFO 2026-05-13 11:15:30,786 middleware 11424 17648 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.028s
+INFO 2026-05-13 11:16:20,435 sync_job 11424 17648 Background Sync Job stopped
+INFO 2026-05-13 11:16:24,871 sync_job 4660 15148 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:16:24,871 sync_job 4660 15148 Starting scheduled sync run at 2026-05-13 11:16:24.871701
+INFO 2026-05-13 11:16:24,928 sync_job 4660 15148 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:16:25,154 utils 4660 17208 decrypt_api_key called
+INFO 2026-05-13 11:16:25,154 utils 4660 17208 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:16:25,155 utils 4660 17208 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:16:25,155 utils 4660 17208 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:16:25,155 utils 4660 17208 Data length after normalization: 40
+INFO 2026-05-13 11:16:25,155 utils 4660 17208 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:16:25,156 utils 4660 17208 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:16:25,156 utils 4660 17208 Falling back to plain decode
+INFO 2026-05-13 11:16:25,156 utils 4660 17208 Plain decode successful, result length: 40
+INFO 2026-05-13 11:16:25,156 odoo_client 4660 17208 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:16:25,328 database_manager 4660 17208 Connected to PostgreSQL
+INFO 2026-05-13 11:16:25,334 database_manager 4660 17208 Closed PostgreSQL connection
+INFO 2026-05-13 11:16:25,335 orchestrator 4660 17208 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:16:25,335 orchestrator 4660 17208 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:16:25,488 database_manager 4660 17208 Connected to PostgreSQL
+INFO 2026-05-13 11:16:25,493 database_manager 4660 17208 Closed PostgreSQL connection
+INFO 2026-05-13 11:16:25,496 sync_job 4660 15148 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:16:33,160 middleware 4660 15148 POST /api/v1/financial-advisor/chat - Client: 127.0.0.1
+INFO 2026-05-13 11:16:33,396 middleware 4660 15148 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.236s
+INFO 2026-05-13 11:17:35,167 sync_job 4660 15148 Background Sync Job stopped
+INFO 2026-05-13 11:17:39,726 sync_job 11860 12368 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:17:39,727 sync_job 11860 12368 Starting scheduled sync run at 2026-05-13 11:17:39.727193
+INFO 2026-05-13 11:17:39,778 sync_job 11860 12368 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:17:39,935 utils 11860 10688 decrypt_api_key called
+INFO 2026-05-13 11:17:39,936 utils 11860 10688 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:17:39,936 utils 11860 10688 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:17:39,936 utils 11860 10688 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:17:39,936 utils 11860 10688 Data length after normalization: 40
+INFO 2026-05-13 11:17:39,937 utils 11860 10688 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:17:39,937 utils 11860 10688 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:17:39,937 utils 11860 10688 Falling back to plain decode
+INFO 2026-05-13 11:17:39,937 utils 11860 10688 Plain decode successful, result length: 40
+INFO 2026-05-13 11:17:39,937 odoo_client 11860 10688 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:17:39,973 database_manager 11860 10688 Connected to PostgreSQL
+INFO 2026-05-13 11:17:39,978 database_manager 11860 10688 Closed PostgreSQL connection
+INFO 2026-05-13 11:17:39,979 orchestrator 11860 10688 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:17:39,979 orchestrator 11860 10688 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:17:40,019 database_manager 11860 10688 Connected to PostgreSQL
+INFO 2026-05-13 11:17:40,022 database_manager 11860 10688 Closed PostgreSQL connection
+INFO 2026-05-13 11:17:40,023 sync_job 11860 12368 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:17:52,056 sync_job 11860 12368 Background Sync Job stopped

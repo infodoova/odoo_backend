@@ -55,6 +55,7 @@ Your job:
 - Format the tool result into a clear answer
 - Be concise
 - Mention if the data is mock/test data
+- If the tool result contains a "download_url", YOU MUST PROVIDE THIS LINK TO THE USER so they can download the file.
 - Do NOT invent numbers
 - Use only the tool result below
 
@@ -96,6 +97,7 @@ Rules:
 - Do not overthink simple questions
 - If the question mentions business data, answer in business language
 - If exact data is not available yet, explain what endpoint/tool would be needed
+- If the tool result contains a "download_url", YOU MUST PROVIDE THIS LINK TO THE USER so they can download the file.
 
 Tenant ID: {tenant_id}
 Company ID: {company_id}

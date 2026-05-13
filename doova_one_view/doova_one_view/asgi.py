@@ -14,6 +14,10 @@
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file if it exists
+load_dotenv()
 from django.core.asgi import get_asgi_application
 from django.conf import settings
 from starlette.applications import Starlette
@@ -22,6 +26,7 @@ from starlette.staticfiles import StaticFiles
 
 # Initialize Django first (required for models, ORM, etc.)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'doova_one_view.settings')
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django_asgi = get_asgi_application()
 
 # Import FastAPI app after Django setup

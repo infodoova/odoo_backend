@@ -19,10 +19,10 @@ class AgentConfig:
     )
 
     # Odoo Connection
-    ODOO_URL = os.getenv("ODOO_URL")
-    ODOO_DB = os.getenv("ODOO_DB")
-    ODOO_USERNAME = os.getenv("ODOO_USERNAME")
-    ODOO_API_KEY = os.getenv("ODOO_API_KEY")
+    ODOO_URL = os.getenv("ODOO_URL") or getattr(django_settings, "ODOO_URL", "")
+    ODOO_DB = os.getenv("ODOO_DB") or getattr(django_settings, "ODOO_DB", "")
+    ODOO_USERNAME = os.getenv("ODOO_USERNAME") or getattr(django_settings, "ODOO_USERNAME", "")
+    ODOO_API_KEY = os.getenv("ODOO_API_KEY") or getattr(django_settings, "ODOO_API_KEY", "")
 
     # ── Claude models ─────────────────────────────────────────────────
     ROUTER_MODEL = "claude-haiku-4-5-20251001"
@@ -45,3 +45,7 @@ class AgentConfig:
     HIGH_RECEIVABLES_DAYS = 60
     LOW_STOCK_THRESHOLD = 10
     EXPIRY_WARNING_DAYS = 30
+    
+    # ── URL Configuration ─────────────────────────────────────────────
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+    API_BASE_URL = os.getenv("API_BASE_URL", f"{PUBLIC_BASE_URL}/api/v1")

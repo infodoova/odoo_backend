@@ -46,6 +46,7 @@ class AgentChatResponse(BaseModel):
     graph_data: Optional[Dict[str, Any]] = None
     report_ready: bool = False
     report_path: Optional[str] = None
+    download_url: Optional[str] = None
 
 
 # ─────────────────────────────
@@ -73,6 +74,7 @@ class FrontendChatResponse(BaseModel):
     graph_data: Optional[Dict[str, Any]] = None
     report_ready: bool = False
     report_path: Optional[str] = None
+    download_url: Optional[str] = None
 
 
 # ─────────────────────────────

@@ -12,9 +12,24 @@ from sqlalchemy import create_engine, text
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
+    # Attempt to fall back to Django settings
+    try:
+        from django.conf import settings as django_settings
+        db_config = django_settings.DATABASES.get("default", {})
+        if db_config.get("ENGINE") == "django.db.backends.postgresql":
+            user = db_config.get("USER")
+            password = db_config.get("PASSWORD")
+            host = db_config.get("HOST", "localhost")
+            port = db_config.get("PORT", "5432")
+            name = db_config.get("NAME")
+            DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{name}"
+    except Exception:
+        pass
+
+if not DATABASE_URL:
     raise RuntimeError(
-        "DATABASE_URL is not set.  "
-        "The AI agent requires a PostgreSQL connection string in the environment."
+        "DATABASE_URL is not set and could not be inferred from Django settings. "
+        "The AI agent requires a PostgreSQL connection string."
     )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)

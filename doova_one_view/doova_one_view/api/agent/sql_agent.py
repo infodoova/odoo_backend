@@ -33,19 +33,21 @@ Rules:
 - Avoid SELECT * unless explicitly necessary.
 - For aggregations, explain the meaning of the result.
 - Only generate read-only queries.
-- If the user asks for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, refuse politely.
+- If the user asks for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, or any destructive operation, refuse politely.
 - Never execute destructive queries.
 - Do not expose secrets, API keys, passwords, or environment variables.
 - Prefer CTEs for complex analysis.
 - If multiple interpretations exist, explain your assumption.
 - If SQL execution fails, analyze the error and retry once with a corrected query.
+- Keep the final answer concise unless the user asks for details.
 
 Return exactly:
 1. SQL query
 2. Short explanation
 3. Final answer
 
-Database dialect: PostgreSQL
+Database dialect:
+PostgreSQL
 
 Available schema:
 {schema}
@@ -59,20 +61,36 @@ User question:
 
 
 BLOCKED_SQL_WORDS = [
-    "insert", "update", "delete", "drop", "alter", "truncate", "create",
-    "grant", "revoke", "merge", "copy", "replace", "vacuum", "analyze",
+    "insert",
+    "update",
+    "delete",
+    "drop",
+    "alter",
+    "truncate",
+    "create",
+    "grant",
+    "revoke",
+    "merge",
+    "copy",
+    "replace",
+    "vacuum",
+    "analyze",
 ]
 
 
 def get_database_schema() -> str:
     rows = run_query("""
-        SELECT table_name, column_name, data_type
+        SELECT
+            table_name,
+            column_name,
+            data_type
         FROM information_schema.columns
         WHERE table_schema = 'public'
         ORDER BY table_name, ordinal_position
     """)
 
     grouped: dict[str, list[str]] = {}
+
     for row in rows:
         table = row["table_name"]
         column = row["column_name"]
@@ -80,6 +98,7 @@ def get_database_schema() -> str:
         grouped.setdefault(table, []).append(f"{column} {dtype}")
 
     lines = []
+
     for table, columns in grouped.items():
         lines.append(f"Table: {table}")
         for column in columns:
@@ -91,6 +110,7 @@ def get_database_schema() -> str:
 
 def is_safe_read_only_sql(sql: str) -> bool:
     lowered = sql.lower().strip()
+
     if not lowered.startswith(("select", "with")):
         return False
 
@@ -104,10 +124,14 @@ def is_safe_read_only_sql(sql: str) -> bool:
 def extract_sql_from_text(text: str) -> str | None:
     def looks_like_sql(candidate: str) -> bool:
         lowered = candidate.lower().strip()
+
         if lowered.startswith("select"):
             return " from " in lowered or "\nfrom " in lowered
+
         if lowered.startswith("with"):
+            # Real CTE should normally contain AS (...) and then SELECT.
             return " as " in lowered and "select" in lowered and " from " in lowered
+
         return False
 
     code_block = re.search(r"```sql\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
@@ -120,6 +144,7 @@ def extract_sql_from_text(text: str) -> str | None:
         candidate = generic_block.group(1).strip()
         return candidate if looks_like_sql(candidate) else None
 
+    # Prefer SQL-looking lines only. Do not extract normal English beginning with "with".
     match = re.search(r"((?:with\s+.+?select\s+.+?)|(?:select\s+.+?))(?:;|$)", text, re.DOTALL | re.IGNORECASE)
     if match:
         candidate = match.group(1).strip()
@@ -131,7 +156,9 @@ def extract_sql_from_text(text: str) -> str | None:
 def format_rows_for_prompt(rows: list[dict[str, Any]], limit: int = 30) -> str:
     if not rows:
         return "No rows returned."
-    return str(rows[:limit])
+
+    preview = rows[:limit]
+    return str(preview)
 
 
 def run_sql_agent(
@@ -141,21 +168,27 @@ def run_sql_agent(
 ) -> dict[str, Any]:
     question_lower = (user_question or "").lower()
 
+    # Refuse destructive requests before asking Claude to generate SQL.
     for word in BLOCKED_SQL_WORDS:
         if re.search(rf"\b{word}\b", question_lower):
             return {
                 "success": False,
-                "message": "I can only run safe read-only SELECT queries.",
+                "message": "I can only run safe read-only SELECT queries. I cannot modify, delete, drop, or alter database data.",
                 "sql": None,
                 "rows": [],
             }
 
     schema = get_database_schema()
-    client = anthropic.Anthropic(api_key=AgentConfig.ANTHROPIC_API_KEY)
+
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     tenant_note = ""
     if tenant_id:
-        tenant_note = f"\nImportant tenant rule:\n- Current tenant_id is `{tenant_id}`.\n- If a table has a tenant_id column, always filter with tenant_id = '{tenant_id}'.\n"
+        tenant_note = (
+            f"\nImportant tenant rule:\n"
+            f"- The current tenant_id is `{tenant_id}`.\n"
+            f"- If a table has a tenant_id column, always filter with tenant_id = '{tenant_id}'.\n"
+        )
 
     prompt = SQL_AGENT_SYSTEM_PROMPT.format(
         schema=schema + tenant_note,
@@ -164,49 +197,83 @@ def run_sql_agent(
     )
 
     first_response = client.messages.create(
-        model=AgentConfig.SQL_AGENT_MODEL,
+        model=getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001"),
         max_tokens=1200,
         temperature=0,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
     )
 
     first_text = first_response.content[0].text
     sql = extract_sql_from_text(first_text)
 
     if not sql:
-        return {"success": False, "message": first_text, "sql": None, "rows": []}
+        return {
+            "success": False,
+            "message": first_text,
+            "sql": None,
+            "rows": [],
+        }
 
     if not is_safe_read_only_sql(sql):
-        return {"success": False, "message": "Unsafe query detected.", "sql": sql, "rows": []}
+        return {
+            "success": False,
+            "message": "I can only run safe read-only SELECT queries.",
+            "sql": sql,
+            "rows": [],
+        }
 
     try:
         rows = run_query(sql)
     except Exception as exc:
-        return {"success": False, "message": f"SQL execution failed: {exc}", "sql": sql, "rows": []}
+        return {
+            "success": False,
+            "message": f"SQL execution failed: {exc}",
+            "sql": sql,
+            "rows": [],
+        }
 
     result_preview = format_rows_for_prompt(rows)
+
     final_prompt = f"""
-The user asked: {user_question}
-The SQL query executed was: {sql}
-The query returned: {result_preview}
+The user asked:
+{user_question}
+
+The SQL query executed was:
+{sql}
+
+The query returned:
+{result_preview}
 
 Now provide:
 1. SQL query
 2. Short explanation
 3. Final answer
-Concise and business-friendly.
+
+Keep it concise and business-friendly.
 """
 
     final_response = client.messages.create(
-        model=AgentConfig.SQL_AGENT_MODEL,
+        model=getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001"),
         max_tokens=1200,
         temperature=0,
-        messages=[{"role": "user", "content": final_prompt}],
+        messages=[
+            {
+                "role": "user",
+                "content": final_prompt,
+            }
+        ],
     )
+
+    final_text = final_response.content[0].text
 
     return {
         "success": True,
-        "message": final_response.content[0].text,
+        "message": final_text,
         "sql": sql,
         "rows": rows[:50],
     }

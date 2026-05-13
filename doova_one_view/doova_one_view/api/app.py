@@ -11,6 +11,7 @@ import django
 
 # Setup Django before importing any models
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "doova_one_view.settings")
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 from doova_one_view.api.config import settings
