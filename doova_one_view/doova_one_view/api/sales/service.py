@@ -63,7 +63,7 @@ class SalesService:
             if partner_id:
                 qs = qs.filter(partner_id=partner_id)
             if company_ids:
-                qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+                qs = qs.filter(company_id__in=company_ids)
             total = qs.count()
             qs = qs.select_related('partner', 'user', 'company').order_by('-date_order')
             items = list(qs[offset:offset+limit])
@@ -93,7 +93,7 @@ class SalesService:
                     Prefetch('lines', queryset=SalesOrderLine.objects.select_related('product'))
                 )
                 if company_ids:
-                    qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+                    qs = qs.filter(company__odoo_id__in=company_ids)
                 return qs.get(
                     tenant_id=tenant_id, id=order_id
                 )
@@ -117,7 +117,7 @@ class SalesService:
         def _search():
             qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+                qs = qs.filter(company__odoo_id__in=company_ids)
 
             for f in request.filters:
                 field = f.field
@@ -203,7 +203,7 @@ class SalesService:
         def _get_orders():
             qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+                qs = qs.filter(company__odoo_id__in=company_ids)
             return list(qs.select_related('partner', 'user', 'company').order_by('-date_order'))
 
         orders = await asyncio.to_thread(_get_orders)
@@ -334,7 +334,7 @@ class SalesService:
             
             base_qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                base_qs = base_qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+                base_qs = base_qs.filter(company__odoo_id__in=company_ids)
             
             # 1. Summary Metrics
             def get_stats(qs):

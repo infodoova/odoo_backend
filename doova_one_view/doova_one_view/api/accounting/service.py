@@ -192,7 +192,7 @@ class AccountingService:
     def _base_qs(tenant_id: str, company_ids: Optional[list[int]] = None):
         qs = AccountMove.objects.filter(tenant_id=tenant_id)
         if company_ids:
-            qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+            qs = qs.filter(company_id__in=company_ids)
         return qs
 
     @staticmethod

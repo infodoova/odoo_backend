@@ -219,7 +219,7 @@ class InventoryService:
     @staticmethod
     def _company_filter(qs, company_ids: Optional[list[int]]):
         if company_ids:
-            qs = qs.filter(Q(company_id__in=company_ids) | Q(company__odoo_id__in=company_ids))
+            qs = qs.filter(company_id__in=company_ids)
         return qs
 
     @staticmethod

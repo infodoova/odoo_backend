@@ -162946,3 +162946,435 @@ INFO 2026-05-13 11:21:57,756 middleware 10716 9484 GET /api/v1/sales/65168de7-ac
 INFO 2026-05-13 11:21:57,831 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
 INFO 2026-05-13 11:21:57,849 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
 INFO 2026-05-13 11:26:30,564 sync_job 10716 9484 Background Sync Job stopped
+INFO 2026-05-13 11:38:42,208 sync_job 21588 16376 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:38:42,208 sync_job 21588 16376 Starting scheduled sync run at 2026-05-13 11:38:42.208754
+INFO 2026-05-13 11:38:42,324 sync_job 21588 16376 Background Sync Job stopped
+INFO 2026-05-13 11:38:47,204 sync_job 20304 13664 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:38:47,204 sync_job 20304 13664 Starting scheduled sync run at 2026-05-13 11:38:47.204577
+INFO 2026-05-13 11:38:47,294 sync_job 20304 13664 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:38:47,322 sync_job 20304 13664 Background Sync Job stopped
+INFO 2026-05-13 11:38:47,789 utils 20304 7740 decrypt_api_key called
+INFO 2026-05-13 11:38:47,789 utils 20304 7740 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:38:47,790 utils 20304 7740 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:38:47,790 utils 20304 7740 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:38:47,790 utils 20304 7740 Data length after normalization: 40
+INFO 2026-05-13 11:38:47,790 utils 20304 7740 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:38:47,791 utils 20304 7740 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:38:47,791 utils 20304 7740 Falling back to plain decode
+INFO 2026-05-13 11:38:47,791 utils 20304 7740 Plain decode successful, result length: 40
+INFO 2026-05-13 11:38:47,792 odoo_client 20304 7740 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:38:48,013 database_manager 20304 7740 Connected to PostgreSQL
+INFO 2026-05-13 11:38:48,154 database_manager 20304 7740 Closed PostgreSQL connection
+INFO 2026-05-13 11:38:48,154 orchestrator 20304 7740 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:38:48,155 orchestrator 20304 7740 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:38:48,184 database_manager 20304 7740 Connected to PostgreSQL
+INFO 2026-05-13 11:38:48,195 database_manager 20304 7740 Closed PostgreSQL connection
+INFO 2026-05-13 11:38:52,355 sync_job 13988 15208 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:38:52,356 sync_job 13988 15208 Starting scheduled sync run at 2026-05-13 11:38:52.356023
+INFO 2026-05-13 11:38:52,407 sync_job 13988 15208 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:38:52,571 utils 13988 20172 decrypt_api_key called
+INFO 2026-05-13 11:38:52,571 utils 13988 20172 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:38:52,571 utils 13988 20172 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:38:52,572 utils 13988 20172 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:38:52,572 utils 13988 20172 Data length after normalization: 40
+INFO 2026-05-13 11:38:52,572 utils 13988 20172 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:38:52,572 utils 13988 20172 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:38:52,572 utils 13988 20172 Falling back to plain decode
+INFO 2026-05-13 11:38:52,573 utils 13988 20172 Plain decode successful, result length: 40
+INFO 2026-05-13 11:38:52,573 odoo_client 13988 20172 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:38:52,608 database_manager 13988 20172 Connected to PostgreSQL
+INFO 2026-05-13 11:38:52,612 database_manager 13988 20172 Closed PostgreSQL connection
+INFO 2026-05-13 11:38:52,612 orchestrator 13988 20172 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:38:52,613 orchestrator 13988 20172 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:38:52,650 database_manager 13988 20172 Connected to PostgreSQL
+INFO 2026-05-13 11:38:52,653 database_manager 13988 20172 Closed PostgreSQL connection
+INFO 2026-05-13 11:38:52,657 sync_job 13988 15208 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:38:58,698 middleware 13988 15208 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:38:58,699 middleware 13988 15208 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:38:58,827 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:38:58,828 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:38:58,861 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:38:58,862 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:38:58,871 middleware 13988 15208 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,043 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,126 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,162 middleware 13988 15208 GET /api/v1/tenants/ - Status: 200 - Time: 0.291s
+INFO 2026-05-13 11:38:59,317 middleware 13988 15208 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,318 middleware 13988 15208 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:38:59,442 middleware 13988 15208 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,443 middleware 13988 15208 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:38:59,450 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,472 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.022s
+INFO 2026-05-13 11:38:59,601 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:38:59,611 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-13 11:39:01,483 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 2.358s
+INFO 2026-05-13 11:39:02,848 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 3.805s
+INFO 2026-05-13 11:39:09,367 middleware 13988 15208 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:39:09,377 middleware 13988 15208 GET /api/v1/tenants/ - Status: 200 - Time: 0.010s
+INFO 2026-05-13 11:39:09,544 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:09,560 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:39:09,678 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:09,684 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:39:09,755 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:09,756 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:39:09,769 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.014s
+INFO 2026-05-13 11:39:09,819 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:10,014 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.259s
+INFO 2026-05-13 11:39:10,140 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.321s
+INFO 2026-05-13 11:39:22,629 middleware 13988 15208 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:39:22,641 middleware 13988 15208 GET /api/v1/tenants/ - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:39:22,795 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:22,806 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:39:22,858 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:39:22,859 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:22,884 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.024s
+INFO 2026-05-13 11:39:22,938 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:22,950 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:39:22,977 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.119s
+INFO 2026-05-13 11:39:27,654 middleware 13988 15208 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:39:27,664 middleware 13988 15208 GET /api/v1/tenants/ - Status: 200 - Time: 0.009s
+INFO 2026-05-13 11:39:27,833 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:27,847 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:39:27,958 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:27,960 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:39:27,970 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:39:28,052 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:28,066 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.014s
+INFO 2026-05-13 11:39:28,086 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.116s
+INFO 2026-05-13 11:39:28,100 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:28,408 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.308s
+INFO 2026-05-13 11:39:35,268 middleware 13988 15208 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:39:35,280 middleware 13988 15208 GET /api/v1/tenants/ - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:39:35,447 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:35,458 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:39:35,565 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:35,566 middleware 13988 15208 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:39:35,590 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:35,592 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:39:35,607 middleware 13988 15208 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:39:35,700 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:35,706 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.114s
+INFO 2026-05-13 11:39:36,064 middleware 13988 15208 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.364s
+INFO 2026-05-13 11:39:37,360 sync_job 13988 15208 Background Sync Job stopped
+INFO 2026-05-13 11:39:43,853 sync_job 924 5188 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:39:43,853 sync_job 924 5188 Starting scheduled sync run at 2026-05-13 11:39:43.853681
+INFO 2026-05-13 11:39:43,870 middleware 924 5188 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:39:43,871 middleware 924 5188 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:43,872 middleware 924 5188 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:39:43,882 middleware 924 5188 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:39:44,038 middleware 924 5188 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:39:44,496 sync_job 924 5188 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:39:44,509 middleware 924 5188 GET /api/v1/tenants/ - Status: 200 - Time: 0.638s
+INFO 2026-05-13 11:39:44,717 middleware 924 5188 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:44,763 middleware 924 5188 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.894s
+INFO 2026-05-13 11:39:44,888 utils 924 20680 decrypt_api_key called
+INFO 2026-05-13 11:39:44,888 utils 924 20680 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:39:44,888 utils 924 20680 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:39:44,889 utils 924 20680 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:39:44,889 utils 924 20680 Data length after normalization: 40
+INFO 2026-05-13 11:39:44,889 utils 924 20680 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:39:44,890 utils 924 20680 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:39:44,890 utils 924 20680 Falling back to plain decode
+INFO 2026-05-13 11:39:44,891 utils 924 20680 Plain decode successful, result length: 40
+INFO 2026-05-13 11:39:44,891 odoo_client 924 20680 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:39:45,266 database_manager 924 20680 Connected to PostgreSQL
+INFO 2026-05-13 11:39:45,281 middleware 924 5188 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.564s
+INFO 2026-05-13 11:39:45,333 database_manager 924 20680 Closed PostgreSQL connection
+INFO 2026-05-13 11:39:45,333 orchestrator 924 20680 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:39:45,333 orchestrator 924 20680 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:39:45,418 middleware 924 5188 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:39:45,434 middleware 924 5188 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:39:45,495 database_manager 924 20680 Connected to PostgreSQL
+INFO 2026-05-13 11:39:45,502 database_manager 924 20680 Closed PostgreSQL connection
+INFO 2026-05-13 11:39:45,503 sync_job 924 5188 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:39:45,789 middleware 924 5188 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 1.751s
+INFO 2026-05-13 11:40:43,553 sync_job 924 5188 Background Sync Job stopped
+INFO 2026-05-13 11:40:48,309 sync_job 13060 13040 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:40:48,310 sync_job 13060 13040 Starting scheduled sync run at 2026-05-13 11:40:48.310291
+INFO 2026-05-13 11:40:48,476 sync_job 13060 13040 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:40:48,709 utils 13060 3692 decrypt_api_key called
+INFO 2026-05-13 11:40:48,710 utils 13060 3692 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:40:48,710 utils 13060 3692 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:40:48,710 utils 13060 3692 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:40:48,710 utils 13060 3692 Data length after normalization: 40
+INFO 2026-05-13 11:40:48,710 utils 13060 3692 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:40:48,711 utils 13060 3692 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:40:48,711 utils 13060 3692 Falling back to plain decode
+INFO 2026-05-13 11:40:48,711 utils 13060 3692 Plain decode successful, result length: 40
+INFO 2026-05-13 11:40:48,712 odoo_client 13060 3692 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:40:48,872 database_manager 13060 3692 Connected to PostgreSQL
+INFO 2026-05-13 11:40:48,876 database_manager 13060 3692 Closed PostgreSQL connection
+INFO 2026-05-13 11:40:48,876 orchestrator 13060 3692 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:40:48,876 orchestrator 13060 3692 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:40:49,012 database_manager 13060 3692 Connected to PostgreSQL
+INFO 2026-05-13 11:40:49,015 database_manager 13060 3692 Closed PostgreSQL connection
+INFO 2026-05-13 11:40:49,015 sync_job 13060 13040 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:40:53,333 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:40:53,512 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.180s
+INFO 2026-05-13 11:40:53,631 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:40:53,653 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:40:53,730 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:40:53,747 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.094s
+INFO 2026-05-13 11:40:53,763 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.034s
+INFO 2026-05-13 11:40:53,813 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.182s
+INFO 2026-05-13 11:40:53,996 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:40:54,011 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:40:57,548 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:40:57,564 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:40:57,730 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:40:57,749 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:40:57,875 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:40:57,878 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:40:57,915 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.037s
+INFO 2026-05-13 11:40:57,931 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:40:57,947 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:40:58,001 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.126s
+INFO 2026-05-13 11:41:03,651 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:41:03,662 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:41:03,920 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:03,941 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.022s
+INFO 2026-05-13 11:41:04,055 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:41:04,056 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:41:04,075 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:04,088 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.033s
+INFO 2026-05-13 11:41:04,190 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.134s
+INFO 2026-05-13 11:41:04,206 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.131s
+INFO 2026-05-13 11:41:07,144 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:41:07,160 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:41:07,348 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:07,361 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:41:07,451 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:41:07,453 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:41:07,501 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.048s
+INFO 2026-05-13 11:41:07,504 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:07,522 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.018s
+INFO 2026-05-13 11:41:07,615 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.164s
+INFO 2026-05-13 11:41:22,020 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:41:22,035 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:41:22,223 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:22,239 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:41:22,308 middleware 13060 13040 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:41:22,310 middleware 13060 13040 OPTIONS /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:41:22,314 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:41:22,405 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:22,414 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-13 11:41:22,440 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:41:22,460 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.146s
+INFO 2026-05-13 11:41:22,688 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.248s
+INFO 2026-05-13 11:41:29,263 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:41:29,275 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:41:29,430 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:29,447 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.018s
+INFO 2026-05-13 11:41:29,570 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:41:29,578 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:41:29,580 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:29,637 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.060s
+INFO 2026-05-13 11:41:29,688 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.108s
+INFO 2026-05-13 11:41:29,750 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.180s
+INFO 2026-05-13 11:41:32,764 middleware 13060 13040 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:41:32,777 middleware 13060 13040 GET /api/v1/tenants/ - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:41:32,957 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:32,974 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:41:33,076 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:41:33,087 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:41:33,130 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:41:33,155 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.067s
+INFO 2026-05-13 11:41:33,157 middleware 13060 13040 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.027s
+INFO 2026-05-13 11:41:33,224 middleware 13060 13040 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.148s
+INFO 2026-05-13 11:41:56,639 sync_job 13060 13040 Background Sync Job stopped
+INFO 2026-05-13 11:42:00,960 sync_job 13436 9632 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:42:00,960 sync_job 13436 9632 Starting scheduled sync run at 2026-05-13 11:42:00.960606
+INFO 2026-05-13 11:42:01,044 sync_job 13436 9632 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:42:01,221 utils 13436 17448 decrypt_api_key called
+INFO 2026-05-13 11:42:01,221 utils 13436 17448 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:42:01,221 utils 13436 17448 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:42:01,221 utils 13436 17448 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:42:01,221 utils 13436 17448 Data length after normalization: 40
+INFO 2026-05-13 11:42:01,221 utils 13436 17448 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:42:01,222 utils 13436 17448 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:42:01,222 utils 13436 17448 Falling back to plain decode
+INFO 2026-05-13 11:42:01,222 utils 13436 17448 Plain decode successful, result length: 40
+INFO 2026-05-13 11:42:01,222 odoo_client 13436 17448 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:42:01,274 database_manager 13436 17448 Connected to PostgreSQL
+INFO 2026-05-13 11:42:01,292 database_manager 13436 17448 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:01,293 orchestrator 13436 17448 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:42:01,293 orchestrator 13436 17448 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:42:01,348 database_manager 13436 17448 Connected to PostgreSQL
+INFO 2026-05-13 11:42:01,351 database_manager 13436 17448 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:01,353 sync_job 13436 9632 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:42:32,912 sync_job 13436 9632 Background Sync Job stopped
+INFO 2026-05-13 11:42:37,052 sync_job 5676 13736 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:42:37,052 sync_job 5676 13736 Starting scheduled sync run at 2026-05-13 11:42:37.052732
+INFO 2026-05-13 11:42:37,164 sync_job 5676 13736 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:42:37,336 utils 5676 16368 decrypt_api_key called
+INFO 2026-05-13 11:42:37,336 utils 5676 16368 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:42:37,336 utils 5676 16368 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:42:37,337 utils 5676 16368 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:42:37,337 utils 5676 16368 Data length after normalization: 40
+INFO 2026-05-13 11:42:37,337 utils 5676 16368 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:42:37,337 utils 5676 16368 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:42:37,338 utils 5676 16368 Falling back to plain decode
+INFO 2026-05-13 11:42:37,338 utils 5676 16368 Plain decode successful, result length: 40
+INFO 2026-05-13 11:42:37,338 odoo_client 5676 16368 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:42:37,390 database_manager 5676 16368 Connected to PostgreSQL
+INFO 2026-05-13 11:42:37,395 database_manager 5676 16368 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:37,396 orchestrator 5676 16368 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:42:37,397 orchestrator 5676 16368 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:42:37,494 database_manager 5676 16368 Connected to PostgreSQL
+INFO 2026-05-13 11:42:37,499 database_manager 5676 16368 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:37,500 sync_job 5676 13736 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:42:41,635 sync_job 5676 13736 Background Sync Job stopped
+INFO 2026-05-13 11:42:47,274 sync_job 9856 16820 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:42:47,274 sync_job 9856 16820 Starting scheduled sync run at 2026-05-13 11:42:47.274844
+INFO 2026-05-13 11:42:47,360 sync_job 9856 16820 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:42:47,393 sync_job 9856 16820 Background Sync Job stopped
+INFO 2026-05-13 11:42:47,557 utils 9856 14192 decrypt_api_key called
+INFO 2026-05-13 11:42:47,557 utils 9856 14192 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:42:47,557 utils 9856 14192 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:42:47,557 utils 9856 14192 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:42:47,557 utils 9856 14192 Data length after normalization: 40
+INFO 2026-05-13 11:42:47,558 utils 9856 14192 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:42:47,558 utils 9856 14192 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:42:47,558 utils 9856 14192 Falling back to plain decode
+INFO 2026-05-13 11:42:47,559 utils 9856 14192 Plain decode successful, result length: 40
+INFO 2026-05-13 11:42:47,559 odoo_client 9856 14192 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:42:47,637 database_manager 9856 14192 Connected to PostgreSQL
+INFO 2026-05-13 11:42:47,641 database_manager 9856 14192 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:47,642 orchestrator 9856 14192 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:42:47,642 orchestrator 9856 14192 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:42:47,790 database_manager 9856 14192 Connected to PostgreSQL
+INFO 2026-05-13 11:42:47,794 database_manager 9856 14192 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:52,670 sync_job 17144 10480 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:42:52,670 sync_job 17144 10480 Starting scheduled sync run at 2026-05-13 11:42:52.670875
+INFO 2026-05-13 11:42:52,732 sync_job 17144 10480 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:42:52,920 utils 17144 6296 decrypt_api_key called
+INFO 2026-05-13 11:42:52,920 utils 17144 6296 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:42:52,921 utils 17144 6296 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:42:52,921 utils 17144 6296 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:42:52,921 utils 17144 6296 Data length after normalization: 40
+INFO 2026-05-13 11:42:52,921 utils 17144 6296 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:42:52,921 utils 17144 6296 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:42:52,922 utils 17144 6296 Falling back to plain decode
+INFO 2026-05-13 11:42:52,922 utils 17144 6296 Plain decode successful, result length: 40
+INFO 2026-05-13 11:42:52,922 odoo_client 17144 6296 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:42:53,111 database_manager 17144 6296 Connected to PostgreSQL
+INFO 2026-05-13 11:42:53,117 database_manager 17144 6296 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:53,117 orchestrator 17144 6296 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:42:53,117 orchestrator 17144 6296 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:42:53,178 database_manager 17144 6296 Connected to PostgreSQL
+INFO 2026-05-13 11:42:53,184 database_manager 17144 6296 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:53,185 sync_job 17144 10480 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:42:54,952 sync_job 17144 10480 Background Sync Job stopped
+INFO 2026-05-13 11:42:59,148 sync_job 9204 17844 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:42:59,149 sync_job 9204 17844 Starting scheduled sync run at 2026-05-13 11:42:59.149059
+INFO 2026-05-13 11:42:59,209 sync_job 9204 17844 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:42:59,266 sync_job 9204 17844 Background Sync Job stopped
+INFO 2026-05-13 11:42:59,406 utils 9204 13536 decrypt_api_key called
+INFO 2026-05-13 11:42:59,406 utils 9204 13536 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:42:59,406 utils 9204 13536 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:42:59,406 utils 9204 13536 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:42:59,406 utils 9204 13536 Data length after normalization: 40
+INFO 2026-05-13 11:42:59,407 utils 9204 13536 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:42:59,407 utils 9204 13536 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:42:59,407 utils 9204 13536 Falling back to plain decode
+INFO 2026-05-13 11:42:59,407 utils 9204 13536 Plain decode successful, result length: 40
+INFO 2026-05-13 11:42:59,407 odoo_client 9204 13536 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:42:59,442 database_manager 9204 13536 Connected to PostgreSQL
+INFO 2026-05-13 11:42:59,447 database_manager 9204 13536 Closed PostgreSQL connection
+INFO 2026-05-13 11:42:59,447 orchestrator 9204 13536 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:42:59,447 orchestrator 9204 13536 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:42:59,481 database_manager 9204 13536 Connected to PostgreSQL
+INFO 2026-05-13 11:42:59,485 database_manager 9204 13536 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:04,144 sync_job 3868 21372 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:43:04,144 sync_job 3868 21372 Starting scheduled sync run at 2026-05-13 11:43:04.144430
+INFO 2026-05-13 11:43:04,225 sync_job 3868 21372 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:43:04,479 utils 3868 10500 decrypt_api_key called
+INFO 2026-05-13 11:43:04,480 utils 3868 10500 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:43:04,480 utils 3868 10500 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:43:04,480 utils 3868 10500 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:43:04,480 utils 3868 10500 Data length after normalization: 40
+INFO 2026-05-13 11:43:04,481 utils 3868 10500 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:43:04,481 utils 3868 10500 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:43:04,482 utils 3868 10500 Falling back to plain decode
+INFO 2026-05-13 11:43:04,482 utils 3868 10500 Plain decode successful, result length: 40
+INFO 2026-05-13 11:43:04,482 odoo_client 3868 10500 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:43:04,581 database_manager 3868 10500 Connected to PostgreSQL
+INFO 2026-05-13 11:43:04,587 database_manager 3868 10500 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:04,587 orchestrator 3868 10500 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:43:04,587 orchestrator 3868 10500 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:43:04,658 database_manager 3868 10500 Connected to PostgreSQL
+INFO 2026-05-13 11:43:04,663 database_manager 3868 10500 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:04,664 sync_job 3868 21372 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:43:18,591 middleware 3868 21372 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:43:18,704 middleware 3868 21372 GET /api/v1/tenants/ - Status: 200 - Time: 0.113s
+INFO 2026-05-13 11:43:18,871 middleware 3868 21372 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:43:18,888 middleware 3868 21372 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:43:18,910 middleware 3868 21372 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.039s
+INFO 2026-05-13 11:43:18,979 middleware 3868 21372 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:43:19,041 middleware 3868 21372 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:43:19,119 middleware 3868 21372 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.078s
+INFO 2026-05-13 11:43:19,135 middleware 3868 21372 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.155s
+INFO 2026-05-13 11:43:19,203 middleware 3868 21372 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.315s
+INFO 2026-05-13 11:43:21,162 sync_job 3868 21372 Background Sync Job stopped
+INFO 2026-05-13 11:43:27,142 sync_job 17748 15076 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:43:27,142 sync_job 17748 15076 Starting scheduled sync run at 2026-05-13 11:43:27.142895
+INFO 2026-05-13 11:43:27,167 middleware 17748 15076 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:43:27,267 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:43:27,295 middleware 17748 15076 GET /api/v1/tenants/ - Status: 200 - Time: 0.128s
+INFO 2026-05-13 11:43:27,382 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.114s
+INFO 2026-05-13 11:43:27,451 sync_job 17748 15076 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:43:27,489 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:43:27,516 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.028s
+INFO 2026-05-13 11:43:27,590 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:43:27,761 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:43:27,788 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.199s
+INFO 2026-05-13 11:43:27,873 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.113s
+INFO 2026-05-13 11:43:27,971 utils 17748 6748 decrypt_api_key called
+INFO 2026-05-13 11:43:27,971 utils 17748 6748 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:43:27,972 utils 17748 6748 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:43:27,972 utils 17748 6748 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:43:27,972 utils 17748 6748 Data length after normalization: 40
+INFO 2026-05-13 11:43:27,972 utils 17748 6748 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:43:27,973 utils 17748 6748 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:43:27,973 utils 17748 6748 Falling back to plain decode
+INFO 2026-05-13 11:43:27,974 utils 17748 6748 Plain decode successful, result length: 40
+INFO 2026-05-13 11:43:27,974 odoo_client 17748 6748 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:43:28,188 database_manager 17748 6748 Connected to PostgreSQL
+INFO 2026-05-13 11:43:28,192 database_manager 17748 6748 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:28,193 orchestrator 17748 6748 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:43:28,193 orchestrator 17748 6748 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:43:28,340 database_manager 17748 6748 Connected to PostgreSQL
+INFO 2026-05-13 11:43:28,342 database_manager 17748 6748 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:28,343 sync_job 17748 15076 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:43:30,177 middleware 17748 15076 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:43:30,193 middleware 17748 15076 GET /api/v1/tenants/ - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:43:30,353 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:43:30,382 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.029s
+INFO 2026-05-13 11:43:30,487 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:43:30,490 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Client: 178.135.15.252
+INFO 2026-05-13 11:43:30,520 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:43:30,537 middleware 17748 15076 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:43:30,601 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/moves - Status: 200 - Time: 0.111s
+INFO 2026-05-13 11:43:30,645 middleware 17748 15076 GET /api/v1/accounting/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.158s
+INFO 2026-05-13 11:43:42,445 sync_job 17748 15076 Background Sync Job stopped
+INFO 2026-05-13 11:43:46,838 sync_job 14732 20172 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:43:46,839 sync_job 14732 20172 Starting scheduled sync run at 2026-05-13 11:43:46.839073
+INFO 2026-05-13 11:43:47,022 sync_job 14732 20172 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:43:47,208 utils 14732 3368 decrypt_api_key called
+INFO 2026-05-13 11:43:47,208 utils 14732 3368 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:43:47,208 utils 14732 3368 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:43:47,209 utils 14732 3368 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:43:47,209 utils 14732 3368 Data length after normalization: 40
+INFO 2026-05-13 11:43:47,209 utils 14732 3368 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:43:47,210 utils 14732 3368 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:43:47,210 utils 14732 3368 Falling back to plain decode
+INFO 2026-05-13 11:43:47,210 utils 14732 3368 Plain decode successful, result length: 40
+INFO 2026-05-13 11:43:47,210 odoo_client 14732 3368 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:43:47,264 database_manager 14732 3368 Connected to PostgreSQL
+INFO 2026-05-13 11:43:47,270 database_manager 14732 3368 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:47,270 orchestrator 14732 3368 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:43:47,271 orchestrator 14732 3368 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:43:47,321 database_manager 14732 3368 Connected to PostgreSQL
+INFO 2026-05-13 11:43:47,325 database_manager 14732 3368 Closed PostgreSQL connection
+INFO 2026-05-13 11:43:47,325 sync_job 14732 20172 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:44:00,211 sync_job 14732 20172 Background Sync Job stopped

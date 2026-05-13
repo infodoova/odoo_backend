@@ -18,7 +18,7 @@ def normalize_company_ids(
     company_id: int | None = None,
     companies: list[int] | list[str] | None = None,
 ) -> list[int]:
-    """Ensure we have a unique list of integer company IDs."""
+    """Ensure we have a unique list of integer company IDs (Odoo IDs)."""
     ids: list[int] = []
 
     if companies:
@@ -40,18 +40,33 @@ def normalize_company_ids(
     return list(dict.fromkeys(ids))
 
 
+def resolve_company_ids_to_local(tenant_id: str, odoo_ids: list[int]) -> list[int]:
+    """
+    Resolve a list of Odoo company IDs to their local primary keys for the given tenant.
+    This is necessary because fact tables use local PKs as FKs.
+    """
+    from odoo_app.models.company import Company
+    return list(Company.objects.filter(tenant_id=tenant_id, odoo_id__in=odoo_ids).values_list('id', flat=True))
+
+
 def build_company_filter_sql(
+    tenant_id: str,
     company_ids: list[int] | None,
     column_name: str = "company_id",
     prefix: str = "company",
 ) -> tuple[str, dict[str, Any]]:
-    """Generate SQL IN clause and parameters for company filtering."""
-    ids = normalize_company_ids(companies=company_ids)
+    """Generate SQL IN clause and parameters for company filtering, resolving Odoo IDs to local PKs."""
+    odoo_ids = normalize_company_ids(companies=company_ids)
+    local_ids = resolve_company_ids_to_local(tenant_id, odoo_ids)
+
+    if not local_ids:
+        # Return a filter that matches nothing to ensure isolation
+        return f" AND {column_name} = -1", {}
 
     placeholders = []
     params: dict[str, Any] = {}
 
-    for index, cid in enumerate(ids):
+    for index, cid in enumerate(local_ids):
         key = f"{prefix}_{index}"
         placeholders.append(f":{key}")
         params[key] = cid

@@ -313,13 +313,9 @@ def get_sales_summary_tool(
         "tenant_id": tenant_id,
     }
 
-    if selected_company_ids:
-        placeholders = []
-        for index, cid in enumerate(selected_company_ids):
-            key = f"company_{index}"
-            placeholders.append(f":{key}")
-            params[key] = cid
-        query += f" AND company_id IN ({', '.join(placeholders)})"
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    query += filter_sql
+    params.update(filter_params)
 
     if start_date:
         query += " AND date_order >= :start_date"
@@ -393,13 +389,9 @@ def get_top_products_tool(
         "limit": limit,
     }
 
-    if selected_company_ids:
-        placeholders = []
-        for index, cid in enumerate(selected_company_ids):
-            key = f"company_{index}"
-            placeholders.append(f":{key}")
-            params[key] = cid
-        query += f" AND l.company_id IN ({', '.join(placeholders)})"
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="l.company_id")
+    query += filter_sql
+    params.update(filter_params)
 
     if start_date:
         query += " AND o.date_order >= :start_date"
@@ -467,14 +459,9 @@ def get_inventory_alerts_tool(
         "expiring_days": expiring_days,
     }
 
-    company_filter = ""
-    if selected_company_ids:
-        placeholders = []
-        for index, cid in enumerate(selected_company_ids):
-            key = f"company_{index}"
-            placeholders.append(f":{key}")
-            params[key] = cid
-        company_filter = f" AND company_id IN ({', '.join(placeholders)})"
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    company_filter = filter_sql
+    params.update(filter_params)
 
     low_stock_query = f"""
     SELECT
@@ -606,23 +593,14 @@ def get_inventory_efficiency_tool(
 
     params = {"tenant_id": tenant_id}
 
-    quant_company_filter = ""
-    move_company_filter = ""
-
-    if selected_company_ids:
-        quant_placeholders = []
-        move_placeholders = []
-
-        for index, cid in enumerate(selected_company_ids):
-            q_key = f"q_company_{index}"
-            m_key = f"m_company_{index}"
-            quant_placeholders.append(f":{q_key}")
-            move_placeholders.append(f":{m_key}")
-            params[q_key] = cid
-            params[m_key] = cid
-
-        quant_company_filter = f" AND q.company_id IN ({', '.join(quant_placeholders)})"
-        move_company_filter = f" AND m.company_id IN ({', '.join(move_placeholders)})"
+    q_sql, q_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="q.company_id", prefix="q_company")
+    m_sql, m_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="m.company_id", prefix="m_company")
+    
+    quant_company_filter = q_sql
+    move_company_filter = m_sql
+    
+    params.update(q_params)
+    params.update(m_params)
 
     inventory_value_query = f"""
     SELECT
@@ -913,10 +891,10 @@ def get_cash_flow_health_tool(
 
     params = {"tenant_id": tenant_id}
 
-    if company_id is not None:
-        ar_query += " AND company_id = :company_id"
-        ap_query += " AND company_id = :company_id"
-        params["company_id"] = company_id
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, company_id)
+    ar_query += filter_sql
+    ap_query += filter_sql
+    params.update(filter_params)
 
     ar_rows = run_query(ar_query, params)
     ap_rows = run_query(ap_query, params)
@@ -980,9 +958,9 @@ def get_receivables_analysis_tool(
         "limit": limit,
     }
 
-    if company_id is not None:
-        base_where += " AND company_id = :company_id"
-        params["company_id"] = company_id
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, company_id)
+    base_where += filter_sql
+    params.update(filter_params)
 
     summary_query = f"""
     SELECT
@@ -1116,9 +1094,9 @@ def get_time_series_data_tool(
         "tenant_id": tenant_id,
     }
 
-    if company_id is not None:
-        query += " AND company_id = :company_id"
-        params["company_id"] = company_id
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, company_id)
+    query += filter_sql
+    params.update(filter_params)
 
     query += """
     GROUP BY period
@@ -1186,13 +1164,9 @@ def get_sales_chart_data_tool(
 
     params = {"tenant_id": tenant_id}
 
-    if selected_company_ids:
-        placeholders = []
-        for index, cid in enumerate(selected_company_ids):
-            key = f"company_{index}"
-            placeholders.append(f":{key}")
-            params[key] = cid
-        query += f" AND company_id IN ({', '.join(placeholders)})"
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    query += filter_sql
+    params.update(filter_params)
 
     query += f"""
     GROUP BY DATE_TRUNC('{granularity}', date_order)
@@ -1289,9 +1263,9 @@ def analyze_variance_tool(
 
     params = {"tenant_id": tenant_id}
 
-    if company_id is not None:
-        query += " AND company_id = :company_id"
-        params["company_id"] = company_id
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, company_id)
+    query += filter_sql
+    params.update(filter_params)
 
     query += """
         GROUP BY DATE_TRUNC('month', date_order)
@@ -1420,9 +1394,9 @@ def get_time_series_data_tool(
         "tenant_id": tenant_id,
     }
 
-    if company_id is not None:
-        query += " AND company_id = :company_id"
-        params["company_id"] = company_id
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, company_id)
+    query += filter_sql
+    params.update(filter_params)
 
     query += """
     GROUP BY period
@@ -1646,11 +1620,11 @@ def analyze_profitability_tool(
         "limit": limit,
     }
 
-    if company_id is not None:
-        summary_query += " AND l.company_id = :company_id"
-        product_query += " AND l.company_id = :company_id"
-        category_query += " AND l.company_id = :company_id"
-        params["company_id"] = company_id
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
+    summary_query += filter_sql
+    product_query += filter_sql
+    category_query += filter_sql
+    params.update(filter_params)
 
     product_query += """
     GROUP BY
@@ -1791,13 +1765,9 @@ def get_customer_metrics_tool(
         "limit": limit,
     }
 
-    if selected_company_ids:
-        placeholders = []
-        for index, cid in enumerate(selected_company_ids):
-            key = f"company_{index}"
-            placeholders.append(f":{key}")
-            params[key] = cid
-        sales_query += f" AND company_id IN ({', '.join(placeholders)})"
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    sales_query += filter_sql
+    params.update(filter_params)
 
     if start_date:
         sales_query += " AND date_order >= :start_date"
@@ -1831,13 +1801,9 @@ def get_customer_metrics_tool(
 
     overdue_params = {"tenant_id": tenant_id}
 
-    if selected_company_ids:
-        placeholders = []
-        for index, cid in enumerate(selected_company_ids):
-            key = f"overdue_company_{index}"
-            placeholders.append(f":{key}")
-            overdue_params[key] = cid
-        overdue_query += f" AND company_id IN ({', '.join(placeholders)})"
+    filter_sql, filter_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    overdue_query += filter_sql
+    overdue_params.update(filter_params)
 
     overdue_query += """
     GROUP BY partner_id
