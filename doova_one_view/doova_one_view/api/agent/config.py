@@ -27,7 +27,7 @@ class AgentConfig:
     # ── Claude models ─────────────────────────────────────────────────
     ROUTER_MODEL = "claude-haiku-4-5-20251001"
     FAST_MODEL = "claude-sonnet-4-6"
-    REASONING_MODEL = "claude-sonnet-4-6"
+    REASONING_MODEL = "claude-opus-4-6"
     SUMMARIZER_MODEL = "claude-haiku-4-5-20251001"
     SQL_AGENT_MODEL = "claude-haiku-4-5-20251001"
 
