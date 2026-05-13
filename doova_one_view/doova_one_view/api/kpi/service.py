@@ -37,14 +37,6 @@ def _metric(value: Any, previous_value: Any = 0) -> dict[str, float]:
     }
 
 
-def _company_filter(qs, company_ids: Optional[list[int]]):
-    if company_ids:
-        qs = qs.filter(company_id__in=company_ids)
-    return qs
-
-
-def _tenant_filter(qs, tenant_ids: list[str]):
-    return qs.filter(tenant_id__in=tenant_ids)
 
 
 def _date_filter(qs, field: str, date_from: Optional[str], date_to: Optional[str]):
@@ -80,19 +72,17 @@ def _empty_overview(tenant_ids: list[str], date_from, date_to, company_ids):
 class KPIService:
     @staticmethod
     async def get_overview(
-        tenant_ids: list[str],
         date_from: Optional[str],
         date_to: Optional[str],
-        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         def _get():
             today = date.today()
-            sales = _company_filter(_tenant_filter(SalesOrder.objects.filter(state__in=["sale", "done"]), tenant_ids), company_ids)
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             sales = _date_filter(sales, "date_order", date_from, date_to)
             if not sales.exists():
-                return _empty_overview(tenant_ids, date_from, date_to, company_ids)
+                return _empty_overview([], date_from, date_to, [])
 
-            purchases = _company_filter(_tenant_filter(PurchaseOrder.objects.filter(state__in=["purchase", "done"]), tenant_ids), company_ids)
+            purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
 
             sales_stats = sales.aggregate(
@@ -108,23 +98,21 @@ class KPIService:
             gross_margin_value = _to_float(sales_stats["gross_margin"]) or (total_revenue - total_expenses)
             gross_margin_pct = (gross_margin_value / total_revenue * 100) if total_revenue else 0.0
 
-            revenue_today = _sum(sales.filter(date_order__date=today), "amount_total")
-            revenue_month = _sum(sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
-            revenue_year = _sum(sales.filter(date_order__year=today.year), "amount_total")
-            expenses_today = _sum(purchases.filter(date_order__date=today), "amount_total")
-            expenses_month = _sum(purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
-            expenses_year = _sum(purchases.filter(date_order__year=today.year), "amount_total")
+            # Dashboard metrics should be relative to current time, ignoring the date range filter
+            dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"])
+            dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
 
-            receivables = _company_filter(
-                _tenant_filter(
-                    AccountMove.objects.filter(
-                    state="posted",
-                    move_type="out_invoice",
-                    payment_state__in=["not_paid", "partial", "in_payment"],
-                ),
-                    tenant_ids,
-                ),
-                company_ids,
+            revenue_today = _sum(dashboard_sales.filter(date_order__date=today), "amount_total")
+            revenue_month = _sum(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
+            revenue_year = _sum(dashboard_sales.filter(date_order__year=today.year), "amount_total")
+            expenses_today = _sum(dashboard_purchases.filter(date_order__date=today), "amount_total")
+            expenses_month = _sum(dashboard_purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
+            expenses_year = _sum(dashboard_purchases.filter(date_order__year=today.year), "amount_total")
+
+            receivables = AccountMove.objects.filter(
+                state="posted",
+                move_type="out_invoice",
+                payment_state__in=["not_paid", "partial", "in_payment"],
             )
             receivables_value = _sum(receivables, "amount_residual")
             overdue_value = _sum(receivables.filter(invoice_date_due__lt=today), "amount_residual")
@@ -133,7 +121,7 @@ class KPIService:
                 F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
                 output_field=DecimalField(max_digits=20, decimal_places=4),
             )
-            quants = _company_filter(_tenant_filter(StockQuant.objects.all(), tenant_ids), company_ids)
+            quants = StockQuant.objects.all()
             inventory_value = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
             tenant_rows = list(
                 sales.values("tenant_id", "tenant__name")
@@ -169,10 +157,10 @@ class KPIService:
                     for row in tenant_rows
                 ],
                 "applied_filters": {
-                    "tenant_ids": tenant_ids,
+                    "tenant_ids": [],
                     "date_from": date_from,
                     "date_to": date_to,
-                    "company_ids": company_ids,
+                    "company_ids": [],
                 },
             }
 
@@ -180,15 +168,13 @@ class KPIService:
 
     @staticmethod
     async def get_trends(
-        tenant_ids: list[str],
         date_from: Optional[str],
         date_to: Optional[str],
-        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         def _get():
-            sales = _company_filter(_tenant_filter(SalesOrder.objects.filter(state__in=["sale", "done"]), tenant_ids), company_ids)
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             sales = _date_filter(sales, "date_order", date_from, date_to)
-            purchases = _company_filter(_tenant_filter(PurchaseOrder.objects.filter(state__in=["purchase", "done"]), tenant_ids), company_ids)
+            purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
 
             sales_rows = list(
@@ -255,16 +241,15 @@ class KPIService:
                 "revenue_health": {"revenue": revenue_trend, "profit": profit_trend, "margin": margin_trend, "orders": orders_trend},
                 "items": revenue_trend,
                 "has_data": bool(revenue_trend or profit_trend or procurement_trend),
-                "applied_filters": {"tenant_ids": tenant_ids, "date_from": date_from, "date_to": date_to, "company_ids": company_ids},
+                "applied_filters": {"tenant_ids": [], "date_from": date_from, "date_to": date_to, "company_ids": []},
             }
 
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_top_products(tenant_ids: list[str], limit: int, company_ids: Optional[list[int]] = None, descending: bool = True) -> dict[str, Any]:
+    async def get_top_products(limit: int, descending: bool = True) -> dict[str, Any]:
         def _get():
-            lines = _tenant_filter(SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"]), tenant_ids)
-            lines = _company_filter(lines, company_ids)
+            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"])
             ordering = "-revenue" if descending else "revenue"
             rows = list(
                 lines.values("product_id", "product__name", "product__default_code")
@@ -293,9 +278,9 @@ class KPIService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_top_customers(tenant_ids: list[str], limit: int, company_ids: Optional[list[int]] = None) -> dict[str, Any]:
+    async def get_top_customers(limit: int) -> dict[str, Any]:
         def _get():
-            sales = _company_filter(_tenant_filter(SalesOrder.objects.filter(state__in=["sale", "done"]), tenant_ids), company_ids)
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             rows = list(
                 sales.values("partner_id", "partner__name")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")), orders=Count("id"))
@@ -310,19 +295,13 @@ class KPIService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_receivables_aging(tenant_ids: list[str], company_ids: Optional[list[int]] = None) -> dict[str, Any]:
+    async def get_receivables_aging() -> dict[str, Any]:
         def _get():
             today = date.today()
-            receivables = _company_filter(
-                _tenant_filter(
-                    AccountMove.objects.filter(
-                    state="posted",
-                    move_type="out_invoice",
-                    payment_state__in=["not_paid", "partial", "in_payment"],
-                ),
-                    tenant_ids,
-                ),
-                company_ids,
+            receivables = AccountMove.objects.filter(
+                state="posted",
+                move_type="out_invoice",
+                payment_state__in=["not_paid", "partial", "in_payment"],
             )
             buckets = [
                 {"bucket": "current", "amount": _sum(receivables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)), "amount_residual"), "count": receivables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)).count()},
@@ -342,8 +321,8 @@ class KPIService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_fast_moving_products(tenant_ids: list[str], limit: int, company_ids: Optional[list[int]] = None) -> dict[str, Any]:
-        top = await KPIService.get_top_products(tenant_ids, limit, company_ids, descending=True)
+    async def get_fast_moving_products(limit: int) -> dict[str, Any]:
+        top = await KPIService.get_top_products(limit, descending=True)
         items = [
             {
                 "id": item["id"],
@@ -356,10 +335,9 @@ class KPIService:
         return {"items": items, "products": items, "total": len(items)}
 
     @staticmethod
-    async def get_category_performance(tenant_ids: list[str], company_ids: Optional[list[int]] = None) -> dict[str, Any]:
+    async def get_category_performance() -> dict[str, Any]:
         def _get():
-            lines = _tenant_filter(SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"]), tenant_ids)
-            lines = _company_filter(lines, company_ids)
+            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"])
             rows = list(
                 lines.values("product__category_id", "product__category__complete_name", "product__category__name")
                 .annotate(revenue=Coalesce(Sum("price_subtotal"), Decimal("0")), margin=Coalesce(Sum("margin"), Decimal("0")))
@@ -380,9 +358,9 @@ class KPIService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_currency_impact(tenant_ids: list[str], company_ids: Optional[list[int]] = None) -> dict[str, Any]:
+    async def get_currency_impact() -> dict[str, Any]:
         def _get():
-            sales = _company_filter(_tenant_filter(SalesOrder.objects.filter(state__in=["sale", "done"]), tenant_ids), company_ids)
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             rows = list(
                 sales.values("currency_code")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))

@@ -163378,3 +163378,1678 @@ INFO 2026-05-13 11:43:47,321 database_manager 14732 3368 Connected to PostgreSQL
 INFO 2026-05-13 11:43:47,325 database_manager 14732 3368 Closed PostgreSQL connection
 INFO 2026-05-13 11:43:47,325 sync_job 14732 20172 Scheduled sync run completed. Sleeping for 30 minutes.
 INFO 2026-05-13 11:44:00,211 sync_job 14732 20172 Background Sync Job stopped
+INFO 2026-05-13 11:44:04,156 sync_job 19620 16056 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:44:04,156 sync_job 19620 16056 Starting scheduled sync run at 2026-05-13 11:44:04.156669
+INFO 2026-05-13 11:44:04,206 sync_job 19620 16056 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:44:04,367 utils 19620 18016 decrypt_api_key called
+INFO 2026-05-13 11:44:04,367 utils 19620 18016 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:44:04,367 utils 19620 18016 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:44:04,367 utils 19620 18016 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:44:04,367 utils 19620 18016 Data length after normalization: 40
+INFO 2026-05-13 11:44:04,368 utils 19620 18016 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:44:04,368 utils 19620 18016 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:44:04,368 utils 19620 18016 Falling back to plain decode
+INFO 2026-05-13 11:44:04,368 utils 19620 18016 Plain decode successful, result length: 40
+INFO 2026-05-13 11:44:04,369 odoo_client 19620 18016 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:44:04,402 database_manager 19620 18016 Connected to PostgreSQL
+INFO 2026-05-13 11:44:04,407 database_manager 19620 18016 Closed PostgreSQL connection
+INFO 2026-05-13 11:44:04,407 orchestrator 19620 18016 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:44:04,407 orchestrator 19620 18016 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:44:04,443 database_manager 19620 18016 Connected to PostgreSQL
+INFO 2026-05-13 11:44:04,447 database_manager 19620 18016 Closed PostgreSQL connection
+INFO 2026-05-13 11:44:04,447 sync_job 19620 16056 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:46:40,787 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:46:40,788 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:46:40,921 middleware 19620 16056 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:46:40,994 middleware 19620 16056 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.073s
+INFO 2026-05-13 11:46:41,135 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:41,135 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:46:41,274 middleware 19620 16056 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:41,328 middleware 19620 16056 GET /api/v1/financial-advisor/sessions/4891753b-f618-4419-b2e6-d0df957afd68 - Status: 200 - Time: 0.054s
+INFO 2026-05-13 11:46:41,797 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:46:41,797 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:46:41,930 middleware 19620 16056 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:46:41,946 middleware 19620 16056 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:46:44,970 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:44,971 middleware 19620 16056 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:46:45,102 middleware 19620 16056 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:45,107 middleware 19620 16056 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:46:50,126 sync_job 19620 16056 Background Sync Job stopped
+INFO 2026-05-13 11:46:53,936 sync_job 13652 17748 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:46:53,937 sync_job 13652 17748 Starting scheduled sync run at 2026-05-13 11:46:53.937455
+INFO 2026-05-13 11:46:53,989 sync_job 13652 17748 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:46:54,157 utils 13652 11356 decrypt_api_key called
+INFO 2026-05-13 11:46:54,157 utils 13652 11356 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:46:54,158 utils 13652 11356 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:46:54,158 utils 13652 11356 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:46:54,158 utils 13652 11356 Data length after normalization: 40
+INFO 2026-05-13 11:46:54,158 utils 13652 11356 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:46:54,159 utils 13652 11356 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:46:54,159 utils 13652 11356 Falling back to plain decode
+INFO 2026-05-13 11:46:54,159 utils 13652 11356 Plain decode successful, result length: 40
+INFO 2026-05-13 11:46:54,159 odoo_client 13652 11356 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:46:54,198 database_manager 13652 11356 Connected to PostgreSQL
+INFO 2026-05-13 11:46:54,202 database_manager 13652 11356 Closed PostgreSQL connection
+INFO 2026-05-13 11:46:54,203 orchestrator 13652 11356 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:46:54,203 orchestrator 13652 11356 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:46:54,243 database_manager 13652 11356 Connected to PostgreSQL
+INFO 2026-05-13 11:46:54,246 database_manager 13652 11356 Closed PostgreSQL connection
+INFO 2026-05-13 11:46:54,247 sync_job 13652 17748 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:46:54,830 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-004 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:54,831 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-004 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:46:54,960 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-004 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:55,003 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-004 - Status: 200 - Time: 0.044s
+INFO 2026-05-13 11:46:56,001 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-003 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:56,002 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-003 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:46:56,130 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-003 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:56,134 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-003 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:46:57,987 middleware 13652 17748 DELETE /api/v1/financial-advisor/sessions/test-pdf-004 - Client: 178.135.15.252
+INFO 2026-05-13 11:46:58,006 middleware 13652 17748 DELETE /api/v1/financial-advisor/sessions/test-pdf-004 - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:46:58,138 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:46:58,141 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:47:00,071 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:00,072 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:47:00,202 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:00,206 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:47:03,799 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:03,800 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:47:03,928 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:03,933 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:47:05,932 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:05,933 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:47:06,063 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:06,067 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:47:16,273 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:47:16,276 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:47:16,677 middleware 13652 17748 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:47:17,116 middleware 13652 17748 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.439s
+INFO 2026-05-13 11:47:33,866 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:47:33,867 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:47:34,021 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:47:34,025 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:47:34,156 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:47:34,157 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:47:34,293 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:47:34,296 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:47:36,804 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:36,806 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:47:36,938 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:47:36,953 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:48:04,185 middleware 13652 17748 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:48:04,375 middleware 13652 17748 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.190s
+INFO 2026-05-13 11:48:24,191 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:48:24,201 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.010s
+INFO 2026-05-13 11:48:24,343 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:48:24,358 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:48:27,460 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:48:27,463 middleware 13652 17748 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:48:27,607 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:48:27,624 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.018s
+INFO 2026-05-13 11:48:50,997 middleware 13652 17748 GET /api/v1/reports/business_report_65168de7-ac28-4063-b866-337afca05e29_20260513_114804.pdf - Client: 127.0.0.1
+INFO 2026-05-13 11:48:51,001 middleware 13652 17748 GET /api/v1/reports/business_report_65168de7-ac28-4063-b866-337afca05e29_20260513_114804.pdf - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:50:51,821 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:50:51,827 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:50:52,943 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:52,943 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:50:53,073 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:53,077 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:50:58,043 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,048 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:50:58,202 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,210 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:50:58,357 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-003 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,361 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-003 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:50:58,493 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-002 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,494 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-002 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:50:58,627 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-002 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,631 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-002 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:50:58,791 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-001 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,792 middleware 13652 17748 OPTIONS /api/v1/financial-advisor/sessions/test-pdf-001 - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:50:58,936 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-001 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:58,941 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-001 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:50:59,113 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:59,117 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:50:59,289 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:59,301 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:50:59,441 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:50:59,456 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:51:02,965 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:02,971 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:02,997 middleware 13652 17748 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:51:02,997 middleware 13652 17748 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:51:03,128 middleware 13652 17748 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,333 middleware 13652 17748 GET /api/v1/tenants/ - Status: 200 - Time: 0.205s
+INFO 2026-05-13 11:51:03,348 middleware 13652 17748 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,349 middleware 13652 17748 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,350 middleware 13652 17748 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,352 middleware 13652 17748 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,352 middleware 13652 17748 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,354 middleware 13652 17748 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:03,356 middleware 13652 17748 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:51:03,357 middleware 13652 17748 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:03,358 middleware 13652 17748 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:03,359 middleware 13652 17748 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:03,379 middleware 13652 17748 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,380 middleware 13652 17748 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,380 middleware 13652 17748 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,381 middleware 13652 17748 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:51:03,381 middleware 13652 17748 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:51:03,382 middleware 13652 17748 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:51:03,434 middleware 13652 17748 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,436 middleware 13652 17748 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:51:03,509 middleware 13652 17748 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,512 middleware 13652 17748 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,513 middleware 13652 17748 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,513 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,527 middleware 13652 17748 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,528 middleware 13652 17748 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,528 middleware 13652 17748 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,533 middleware 13652 17748 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:03,534 middleware 13652 17748 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:03,545 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,611 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,617 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,628 middleware 13652 17748 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,678 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:51:03,948 middleware 13652 17748 GET /api/v1/kpi/trends - Status: 200 - Time: 0.439s
+INFO 2026-05-13 11:51:04,056 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.440s
+INFO 2026-05-13 11:51:04,069 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.391s
+INFO 2026-05-13 11:51:04,205 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,227 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.021s
+INFO 2026-05-13 11:51:04,263 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,267 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/6fdd6b5b-c072-46ec-96db-f92f38da793e - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:51:04,273 middleware 13652 17748 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.760s
+INFO 2026-05-13 11:51:04,417 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,425 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-005 - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:51:04,560 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-003 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,565 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-003 - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:51:04,700 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-002 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,708 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-002 - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:51:04,775 middleware 13652 17748 GET /api/v1/kpi/category-performance - Status: 200 - Time: 1.147s
+INFO 2026-05-13 11:51:04,776 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 1.164s
+INFO 2026-05-13 11:51:04,776 middleware 13652 17748 GET /api/v1/kpi/top-products - Status: 200 - Time: 1.264s
+INFO 2026-05-13 11:51:04,777 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 1.233s
+INFO 2026-05-13 11:51:04,841 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-001 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,844 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/test-pdf-001 - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:51:04,975 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 1.461s
+INFO 2026-05-13 11:51:04,982 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:04,989 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/d9566ccd-bc8d-45f5-b4bd-0d4051334591 - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:51:05,124 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:05,128 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/1baba2ed-584f-4d9c-aaeb-743726a00968 - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:51:05,272 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Client: 178.135.15.252
+INFO 2026-05-13 11:51:05,282 middleware 13652 17748 GET /api/v1/financial-advisor/sessions/60983b50-feff-4102-b44f-b87a84675cc9 - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:51:05,833 middleware 13652 17748 GET /api/v1/kpi/overview - Status: 200 - Time: 2.305s
+INFO 2026-05-13 11:51:30,897 middleware 13652 17748 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,902 middleware 13652 17748 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,904 middleware 13652 17748 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:51:30,906 middleware 13652 17748 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:51:30,909 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,911 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,948 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,950 middleware 13652 17748 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,954 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,959 middleware 13652 17748 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:51:30,961 middleware 13652 17748 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:31,051 middleware 13652 17748 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:51:31,091 middleware 13652 17748 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:51:31,131 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.222s
+INFO 2026-05-13 11:51:31,159 middleware 13652 17748 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.200s
+INFO 2026-05-13 11:51:31,169 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.259s
+INFO 2026-05-13 11:51:31,181 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.227s
+INFO 2026-05-13 11:51:31,184 middleware 13652 17748 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.223s
+INFO 2026-05-13 11:51:31,186 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.238s
+INFO 2026-05-13 11:51:31,203 middleware 13652 17748 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.253s
+INFO 2026-05-13 11:51:31,215 middleware 13652 17748 GET /api/v1/kpi/trends - Status: 200 - Time: 0.164s
+INFO 2026-05-13 11:51:31,577 middleware 13652 17748 GET /api/v1/kpi/overview - Status: 200 - Time: 0.490s
+INFO 2026-05-13 11:51:39,603 middleware 13652 17748 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,616 middleware 13652 17748 GET /api/v1/tenants/ - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:51:39,773 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,793 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.020s
+INFO 2026-05-13 11:51:39,894 middleware 13652 17748 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,895 middleware 13652 17748 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:51:39,898 middleware 13652 17748 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,899 middleware 13652 17748 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,900 middleware 13652 17748 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:51:39,901 middleware 13652 17748 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:51:39,940 middleware 13652 17748 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,941 middleware 13652 17748 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:51:39,960 middleware 13652 17748 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,961 middleware 13652 17748 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,962 middleware 13652 17748 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:51:39,963 middleware 13652 17748 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:51:39,966 middleware 13652 17748 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,966 middleware 13652 17748 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,967 middleware 13652 17748 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:51:39,969 middleware 13652 17748 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:51:39,971 middleware 13652 17748 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:51:39,973 middleware 13652 17748 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:51:40,026 middleware 13652 17748 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,028 middleware 13652 17748 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,031 middleware 13652 17748 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,049 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,081 middleware 13652 17748 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,085 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.036s
+INFO 2026-05-13 11:51:40,097 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,099 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,117 middleware 13652 17748 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.089s
+INFO 2026-05-13 11:51:40,122 middleware 13652 17748 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,125 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,127 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:51:40,146 middleware 13652 17748 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.065s
+INFO 2026-05-13 11:51:40,148 middleware 13652 17748 GET /api/v1/kpi/trends - Status: 200 - Time: 0.117s
+INFO 2026-05-13 11:51:40,169 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.072s
+INFO 2026-05-13 11:51:40,182 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.057s
+INFO 2026-05-13 11:51:40,203 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.076s
+INFO 2026-05-13 11:51:40,208 middleware 13652 17748 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.087s
+INFO 2026-05-13 11:51:41,215 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 1.116s
+INFO 2026-05-13 11:51:42,049 middleware 13652 17748 GET /api/v1/kpi/overview - Status: 200 - Time: 2.023s
+INFO 2026-05-13 11:53:49,023 middleware 13652 17748 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,047 middleware 13652 17748 GET /api/v1/tenants/ - Status: 200 - Time: 0.024s
+INFO 2026-05-13 11:53:49,328 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,355 middleware 13652 17748 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,364 middleware 13652 17748 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,366 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.037s
+INFO 2026-05-13 11:53:49,383 middleware 13652 17748 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,393 middleware 13652 17748 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,398 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,400 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,403 middleware 13652 17748 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,427 middleware 13652 17748 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.072s
+INFO 2026-05-13 11:53:49,431 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,435 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,511 middleware 13652 17748 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.128s
+INFO 2026-05-13 11:53:49,534 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:53:49,548 middleware 13652 17748 GET /api/v1/kpi/trends - Status: 200 - Time: 0.145s
+INFO 2026-05-13 11:53:49,559 middleware 13652 17748 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.160s
+INFO 2026-05-13 11:53:49,568 middleware 13652 17748 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.170s
+INFO 2026-05-13 11:53:49,569 middleware 13652 17748 GET /api/v1/kpi/overview - Status: 200 - Time: 0.205s
+INFO 2026-05-13 11:53:49,571 middleware 13652 17748 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.178s
+INFO 2026-05-13 11:53:49,588 middleware 13652 17748 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.157s
+INFO 2026-05-13 11:53:49,627 middleware 13652 17748 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.192s
+INFO 2026-05-13 11:53:49,634 middleware 13652 17748 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.100s
+INFO 2026-05-13 11:53:56,127 sync_job 13652 17748 Background Sync Job stopped
+INFO 2026-05-13 11:54:22,222 sync_job 8520 17492 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:54:22,223 sync_job 8520 17492 Starting scheduled sync run at 2026-05-13 11:54:22.223442
+INFO 2026-05-13 11:54:22,380 sync_job 8520 17492 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:54:22,667 utils 8520 14360 decrypt_api_key called
+INFO 2026-05-13 11:54:22,668 utils 8520 14360 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:54:22,668 utils 8520 14360 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:54:22,668 utils 8520 14360 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:54:22,669 utils 8520 14360 Data length after normalization: 40
+INFO 2026-05-13 11:54:22,669 utils 8520 14360 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:54:22,669 utils 8520 14360 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:54:22,670 utils 8520 14360 Falling back to plain decode
+INFO 2026-05-13 11:54:22,670 utils 8520 14360 Plain decode successful, result length: 40
+INFO 2026-05-13 11:54:22,670 odoo_client 8520 14360 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:54:22,712 database_manager 8520 14360 Connected to PostgreSQL
+INFO 2026-05-13 11:54:22,718 database_manager 8520 14360 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:22,718 orchestrator 8520 14360 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:54:22,718 orchestrator 8520 14360 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:54:22,854 database_manager 8520 14360 Connected to PostgreSQL
+INFO 2026-05-13 11:54:22,862 database_manager 8520 14360 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:22,863 sync_job 8520 17492 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:54:23,425 sync_job 8520 17492 Background Sync Job stopped
+INFO 2026-05-13 11:54:28,132 sync_job 11244 15720 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:54:28,133 sync_job 11244 15720 Starting scheduled sync run at 2026-05-13 11:54:28.133239
+INFO 2026-05-13 11:54:28,182 sync_job 11244 15720 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:54:28,347 utils 11244 19236 decrypt_api_key called
+INFO 2026-05-13 11:54:28,348 utils 11244 19236 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:54:28,348 utils 11244 19236 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:54:28,348 utils 11244 19236 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:54:28,348 utils 11244 19236 Data length after normalization: 40
+INFO 2026-05-13 11:54:28,348 utils 11244 19236 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:54:28,349 utils 11244 19236 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:54:28,349 utils 11244 19236 Falling back to plain decode
+INFO 2026-05-13 11:54:28,349 utils 11244 19236 Plain decode successful, result length: 40
+INFO 2026-05-13 11:54:28,349 odoo_client 11244 19236 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:54:28,388 database_manager 11244 19236 Connected to PostgreSQL
+INFO 2026-05-13 11:54:28,393 database_manager 11244 19236 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:28,394 orchestrator 11244 19236 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:54:28,394 orchestrator 11244 19236 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:54:28,453 database_manager 11244 19236 Connected to PostgreSQL
+INFO 2026-05-13 11:54:28,456 database_manager 11244 19236 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:28,456 sync_job 11244 15720 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:54:36,642 sync_job 11244 15720 Background Sync Job stopped
+INFO 2026-05-13 11:54:41,104 sync_job 13972 18712 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:54:41,105 sync_job 13972 18712 Starting scheduled sync run at 2026-05-13 11:54:41.105138
+INFO 2026-05-13 11:54:41,117 middleware 13972 18712 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,118 middleware 13972 18712 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,119 middleware 13972 18712 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,119 middleware 13972 18712 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,120 middleware 13972 18712 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,120 middleware 13972 18712 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,121 middleware 13972 18712 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,121 middleware 13972 18712 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,121 middleware 13972 18712 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,122 middleware 13972 18712 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,123 middleware 13972 18712 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:54:41,123 middleware 13972 18712 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:54:41,124 middleware 13972 18712 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:54:41,125 middleware 13972 18712 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:54:41,125 middleware 13972 18712 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:54:41,126 middleware 13972 18712 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:54:41,127 middleware 13972 18712 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:54:41,128 middleware 13972 18712 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:54:41,128 middleware 13972 18712 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:54:41,129 middleware 13972 18712 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:54:41,160 sync_job 13972 18712 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:54:41,254 middleware 13972 18712 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,267 middleware 13972 18712 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,273 middleware 13972 18712 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,318 middleware 13972 18712 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,322 middleware 13972 18712 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,323 middleware 13972 18712 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,337 middleware 13972 18712 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,341 middleware 13972 18712 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,342 middleware 13972 18712 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,382 middleware 13972 18712 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,416 middleware 13972 18712 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.162s
+INFO 2026-05-13 11:54:41,438 middleware 13972 18712 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.172s
+INFO 2026-05-13 11:54:41,440 middleware 13972 18712 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.117s
+INFO 2026-05-13 11:54:41,451 middleware 13972 18712 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.128s
+INFO 2026-05-13 11:54:41,459 middleware 13972 18712 GET /api/v1/kpi/trends - Status: 200 - Time: 0.141s
+INFO 2026-05-13 11:54:41,508 middleware 13972 18712 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.235s
+INFO 2026-05-13 11:54:41,510 middleware 13972 18712 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.169s
+INFO 2026-05-13 11:54:41,511 middleware 13972 18712 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.169s
+INFO 2026-05-13 11:54:41,518 middleware 13972 18712 GET /api/v1/kpi/overview - Status: 200 - Time: 0.136s
+INFO 2026-05-13 11:54:41,529 middleware 13972 18712 GET /api/v1/tenants/ - Status: 200 - Time: 0.192s
+INFO 2026-05-13 11:54:41,556 utils 13972 21804 decrypt_api_key called
+INFO 2026-05-13 11:54:41,557 utils 13972 21804 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:54:41,557 utils 13972 21804 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:54:41,557 utils 13972 21804 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:54:41,557 utils 13972 21804 Data length after normalization: 40
+INFO 2026-05-13 11:54:41,557 utils 13972 21804 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:54:41,558 utils 13972 21804 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:54:41,558 utils 13972 21804 Falling back to plain decode
+INFO 2026-05-13 11:54:41,558 utils 13972 21804 Plain decode successful, result length: 40
+INFO 2026-05-13 11:54:41,558 odoo_client 13972 21804 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:54:41,600 database_manager 13972 21804 Connected to PostgreSQL
+INFO 2026-05-13 11:54:41,605 database_manager 13972 21804 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:41,605 orchestrator 13972 21804 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:54:41,605 orchestrator 13972 21804 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:54:41,648 database_manager 13972 21804 Connected to PostgreSQL
+INFO 2026-05-13 11:54:41,652 database_manager 13972 21804 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:41,654 sync_job 13972 18712 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:54:41,959 middleware 13972 18712 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,960 middleware 13972 18712 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:54:41,967 middleware 13972 18712 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:41,968 middleware 13972 18712 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:54:42,090 middleware 13972 18712 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:42,112 middleware 13972 18712 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.022s
+INFO 2026-05-13 11:54:42,246 middleware 13972 18712 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:42,260 middleware 13972 18712 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:54:43,621 sync_job 13972 18712 Background Sync Job stopped
+INFO 2026-05-13 11:54:48,805 sync_job 15716 1772 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:54:48,805 sync_job 15716 1772 Starting scheduled sync run at 2026-05-13 11:54:48.805638
+INFO 2026-05-13 11:54:48,814 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,815 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,816 middleware 15716 1772 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,816 middleware 15716 1772 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,816 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,817 middleware 15716 1772 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,817 middleware 15716 1772 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,817 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,818 middleware 15716 1772 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:54:48,818 middleware 15716 1772 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+ERROR 2026-05-13 11:54:48,839 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+ERROR 2026-05-13 11:54:49,836 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:54:49,863 sync_job 15716 1772 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:54:49,865 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 1.050s
+INFO 2026-05-13 11:54:49,866 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 1.052s
+INFO 2026-05-13 11:54:49,867 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 1.051s
+INFO 2026-05-13 11:54:49,868 middleware 15716 1772 GET /api/v1/kpi/category-performance - Status: 200 - Time: 1.052s
+INFO 2026-05-13 11:54:49,870 middleware 15716 1772 GET /api/v1/kpi/top-customers - Status: 200 - Time: 1.054s
+INFO 2026-05-13 11:54:49,887 middleware 15716 1772 GET /api/v1/tenants/ - Status: 200 - Time: 1.072s
+INFO 2026-05-13 11:54:49,907 middleware 15716 1772 GET /api/v1/kpi/top-products - Status: 200 - Time: 1.089s
+INFO 2026-05-13 11:54:49,924 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 1.106s
+INFO 2026-05-13 11:54:50,098 utils 15716 8276 decrypt_api_key called
+INFO 2026-05-13 11:54:50,098 utils 15716 8276 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:54:50,098 utils 15716 8276 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:54:50,099 utils 15716 8276 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:54:50,099 utils 15716 8276 Data length after normalization: 40
+INFO 2026-05-13 11:54:50,099 utils 15716 8276 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:54:50,099 utils 15716 8276 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:54:50,099 utils 15716 8276 Falling back to plain decode
+INFO 2026-05-13 11:54:50,100 utils 15716 8276 Plain decode successful, result length: 40
+INFO 2026-05-13 11:54:50,100 odoo_client 15716 8276 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:54:50,133 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:50,147 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.014s
+INFO 2026-05-13 11:54:50,244 database_manager 15716 8276 Connected to PostgreSQL
+INFO 2026-05-13 11:54:50,248 database_manager 15716 8276 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:50,249 orchestrator 15716 8276 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:54:50,249 orchestrator 15716 8276 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:54:50,278 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:50,289 database_manager 15716 8276 Connected to PostgreSQL
+INFO 2026-05-13 11:54:50,296 database_manager 15716 8276 Closed PostgreSQL connection
+INFO 2026-05-13 11:54:50,296 sync_job 15716 1772 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:54:50,300 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.022s
+INFO 2026-05-13 11:54:58,377 middleware 15716 1772 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,390 middleware 15716 1772 GET /api/v1/tenants/ - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:54:58,533 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,552 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.020s
+INFO 2026-05-13 11:54:58,657 middleware 15716 1772 GET /api/v1/kpi/overview - Client: 178.135.15.252
+ERROR 2026-05-13 11:54:58,659 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:54:58,666 middleware 15716 1772 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,666 middleware 15716 1772 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,667 middleware 15716 1772 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+ERROR 2026-05-13 11:54:58,668 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:54:58,678 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,687 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,688 middleware 15716 1772 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,694 middleware 15716 1772 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.028s
+INFO 2026-05-13 11:54:58,702 middleware 15716 1772 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.037s
+INFO 2026-05-13 11:54:58,706 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.028s
+INFO 2026-05-13 11:54:58,712 middleware 15716 1772 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.024s
+INFO 2026-05-13 11:54:58,721 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,721 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,725 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.038s
+INFO 2026-05-13 11:54:58,729 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:54:58,740 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.018s
+INFO 2026-05-13 11:54:58,775 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:54:58,787 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:55:02,653 middleware 15716 1772 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,675 middleware 15716 1772 GET /api/v1/tenants/ - Status: 200 - Time: 0.022s
+INFO 2026-05-13 11:55:02,700 middleware 15716 1772 GET /api/v1/kpi/overview - Client: 178.135.15.252
+ERROR 2026-05-13 11:55:02,720 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:55:02,734 middleware 15716 1772 GET /api/v1/kpi/trends - Client: 178.135.15.252
+ERROR 2026-05-13 11:55:02,735 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:55:02,749 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,750 middleware 15716 1772 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,750 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,771 middleware 15716 1772 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,817 middleware 15716 1772 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,821 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,838 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.089s
+INFO 2026-05-13 11:55:02,869 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.118s
+INFO 2026-05-13 11:55:02,870 middleware 15716 1772 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.120s
+INFO 2026-05-13 11:55:02,884 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,890 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:02,907 middleware 15716 1772 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.136s
+INFO 2026-05-13 11:55:02,908 middleware 15716 1772 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.092s
+INFO 2026-05-13 11:55:02,923 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.102s
+INFO 2026-05-13 11:55:02,932 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.048s
+INFO 2026-05-13 11:55:02,967 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.077s
+INFO 2026-05-13 11:55:03,120 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:03,165 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.045s
+INFO 2026-05-13 11:55:07,576 middleware 15716 1772 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,584 middleware 15716 1772 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:55:07,738 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,750 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:55:07,860 middleware 15716 1772 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,876 middleware 15716 1772 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:55:07,879 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,917 middleware 15716 1772 GET /api/v1/kpi/overview - Client: 178.135.15.252
+ERROR 2026-05-13 11:55:07,919 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:55:07,930 middleware 15716 1772 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,935 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.053s
+ERROR 2026-05-13 11:55:07,938 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:55:07,951 middleware 15716 1772 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,954 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,954 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,965 middleware 15716 1772 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,983 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:07,997 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:08,001 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.047s
+INFO 2026-05-13 11:55:08,004 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.050s
+INFO 2026-05-13 11:55:08,010 middleware 15716 1772 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.059s
+INFO 2026-05-13 11:55:08,020 middleware 15716 1772 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.055s
+INFO 2026-05-13 11:55:08,032 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.049s
+INFO 2026-05-13 11:55:08,039 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.042s
+INFO 2026-05-13 11:55:14,208 middleware 15716 1772 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,215 middleware 15716 1772 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:55:14,454 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,465 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:55:14,506 middleware 15716 1772 GET /api/v1/kpi/overview - Client: 178.135.15.252
+ERROR 2026-05-13 11:55:14,507 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_overview at 0x00000201CE7BF5E0>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:55:14,513 middleware 15716 1772 GET /api/v1/kpi/trends - Client: 178.135.15.252
+ERROR 2026-05-13 11:55:14,514 middleware 15716 1772 Error processing request: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+Traceback (most recent call last):
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\doova_one_view\api\middleware.py", line 24, in logging_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 688, in solve_dependencies
+    query_values, query_errors = request_params_to_args(
+                                 ~~~~~~~~~~~~~~~~~~~~~~^
+        dependant.query_params, request.query_params
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 859, in request_params_to_args
+    v_, errors_ = _validate_value_with_model_field(
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        field=field, value=value, values=values, loc=loc
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\dependencies\utils.py", line 746, in _validate_value_with_model_field
+    return field.validate(value, values, loc=loc)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\fastapi\_compat\v2.py", line 182, in validate
+    self._type_adapter.validate_python(value, from_attributes=True),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\type_adapter.py", line 441, in validate_python
+    return self.validator.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Grandiose\Desktop\odoo_backend\doova_one_view\.venv\Lib\site-packages\pydantic\_internal\_mock_val_ser.py", line 100, in __getattr__
+    raise PydanticUserError(self._error_message, code=self._code)
+pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]]` is not fully defined; you should define `typing.Annotated[ForwardRef('Optional[__annotationlib_name_1__]', owner=<function get_trends at 0x00000201CE8E3A00>), FieldInfo(annotation=NoneType, required=False, default=None, alias='date_from', alias_priority=2, json_schema_extra={})]` and all referenced types, then call `.rebuild()` on the instance.
+
+For further information visit https://errors.pydantic.dev/2.13/u/class-not-fully-defined
+INFO 2026-05-13 11:55:14,522 middleware 15716 1772 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,523 middleware 15716 1772 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,529 middleware 15716 1772 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:55:14,536 middleware 15716 1772 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:55:14,565 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,565 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,566 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,567 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,575 middleware 15716 1772 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.009s
+INFO 2026-05-13 11:55:14,584 middleware 15716 1772 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:55:14,587 middleware 15716 1772 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.021s
+INFO 2026-05-13 11:55:14,596 middleware 15716 1772 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.030s
+INFO 2026-05-13 11:55:14,598 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,612 middleware 15716 1772 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:55:14,615 middleware 15716 1772 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:55:14,627 middleware 15716 1772 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.014s
+INFO 2026-05-13 11:55:34,169 sync_job 15716 1772 Background Sync Job stopped
+INFO 2026-05-13 11:55:41,625 sync_job 13520 13308 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:55:41,625 sync_job 13520 13308 Starting scheduled sync run at 2026-05-13 11:55:41.625700
+INFO 2026-05-13 11:55:41,689 sync_job 13520 13308 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:55:41,887 utils 13520 4680 decrypt_api_key called
+INFO 2026-05-13 11:55:41,888 utils 13520 4680 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:55:41,888 utils 13520 4680 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:55:41,888 utils 13520 4680 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:55:41,888 utils 13520 4680 Data length after normalization: 40
+INFO 2026-05-13 11:55:41,888 utils 13520 4680 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:55:41,889 utils 13520 4680 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:55:41,889 utils 13520 4680 Falling back to plain decode
+INFO 2026-05-13 11:55:41,889 utils 13520 4680 Plain decode successful, result length: 40
+INFO 2026-05-13 11:55:41,890 odoo_client 13520 4680 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:55:41,923 database_manager 13520 4680 Connected to PostgreSQL
+INFO 2026-05-13 11:55:41,928 database_manager 13520 4680 Closed PostgreSQL connection
+INFO 2026-05-13 11:55:41,929 orchestrator 13520 4680 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:55:41,929 orchestrator 13520 4680 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:55:41,972 database_manager 13520 4680 Connected to PostgreSQL
+INFO 2026-05-13 11:55:41,976 database_manager 13520 4680 Closed PostgreSQL connection
+INFO 2026-05-13 11:55:41,977 sync_job 13520 13308 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:55:56,521 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,573 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.051s
+INFO 2026-05-13 11:55:56,745 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,785 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.040s
+INFO 2026-05-13 11:55:56,791 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,807 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,822 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,895 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,916 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.125s
+INFO 2026-05-13 11:55:56,933 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,962 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,967 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,968 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:55:56,969 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:55:57,018 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:55:57,032 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.224s
+INFO 2026-05-13 11:55:57,070 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.248s
+INFO 2026-05-13 11:55:57,096 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.134s
+INFO 2026-05-13 11:55:57,107 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.137s
+INFO 2026-05-13 11:55:57,110 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.177s
+INFO 2026-05-13 11:55:57,116 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.221s
+INFO 2026-05-13 11:55:57,132 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.114s
+INFO 2026-05-13 11:55:57,142 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.174s
+INFO 2026-05-13 11:55:57,179 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.210s
+INFO 2026-05-13 11:56:14,315 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,338 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.022s
+INFO 2026-05-13 11:56:14,508 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,538 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.030s
+INFO 2026-05-13 11:56:14,608 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,658 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,689 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,691 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,692 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,695 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,696 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,702 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,703 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,708 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:14,783 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.126s
+INFO 2026-05-13 11:56:14,804 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.113s
+INFO 2026-05-13 11:56:14,810 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.118s
+INFO 2026-05-13 11:56:14,820 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.125s
+INFO 2026-05-13 11:56:14,823 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.133s
+INFO 2026-05-13 11:56:14,831 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.129s
+INFO 2026-05-13 11:56:14,834 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.226s
+INFO 2026-05-13 11:56:14,855 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.159s
+INFO 2026-05-13 11:56:14,897 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.194s
+INFO 2026-05-13 11:56:14,910 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.203s
+INFO 2026-05-13 11:56:47,815 middleware 13520 13308 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,817 middleware 13520 13308 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:56:47,903 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,907 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,909 middleware 13520 13308 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,910 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,911 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,913 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,944 middleware 13520 13308 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.035s
+INFO 2026-05-13 11:56:47,991 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.081s
+INFO 2026-05-13 11:56:47,994 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:56:47,997 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.086s
+INFO 2026-05-13 11:56:48,000 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.086s
+INFO 2026-05-13 11:56:48,005 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.102s
+INFO 2026-05-13 11:56:48,019 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:56:48,020 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.113s
+INFO 2026-05-13 11:56:48,037 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.043s
+INFO 2026-05-13 11:56:48,060 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:48,093 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.033s
+INFO 2026-05-13 11:56:48,220 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.201s
+INFO 2026-05-13 11:56:48,310 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:56:48,329 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:56:54,358 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,389 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,403 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,408 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,410 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,414 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,458 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,475 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,519 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:56:54,522 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.113s
+INFO 2026-05-13 11:56:54,527 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.114s
+INFO 2026-05-13 11:56:54,530 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.140s
+INFO 2026-05-13 11:56:54,546 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.143s
+INFO 2026-05-13 11:56:54,561 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.151s
+INFO 2026-05-13 11:56:54,566 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.092s
+INFO 2026-05-13 11:56:54,569 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.110s
+INFO 2026-05-13 11:56:54,570 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.051s
+INFO 2026-05-13 11:56:54,575 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.217s
+INFO 2026-05-13 11:58:41,137 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,163 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.026s
+INFO 2026-05-13 11:58:41,412 middleware 13520 13308 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,423 middleware 13520 13308 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:58:41,431 middleware 13520 13308 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,433 middleware 13520 13308 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,435 middleware 13520 13308 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,435 middleware 13520 13308 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,436 middleware 13520 13308 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,436 middleware 13520 13308 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,437 middleware 13520 13308 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,437 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,438 middleware 13520 13308 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,446 middleware 13520 13308 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:58:41,449 middleware 13520 13308 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:58:41,450 middleware 13520 13308 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.015s
+INFO 2026-05-13 11:58:41,451 middleware 13520 13308 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:58:41,452 middleware 13520 13308 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:58:41,453 middleware 13520 13308 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:58:41,454 middleware 13520 13308 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:58:41,455 middleware 13520 13308 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:58:41,492 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.055s
+INFO 2026-05-13 11:58:41,579 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,658 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.079s
+INFO 2026-05-13 11:58:41,698 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,704 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,706 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,712 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,713 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,713 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,727 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.014s
+INFO 2026-05-13 11:58:41,736 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.038s
+INFO 2026-05-13 11:58:41,737 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.032s
+INFO 2026-05-13 11:58:41,746 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.042s
+INFO 2026-05-13 11:58:41,761 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.049s
+INFO 2026-05-13 11:58:41,764 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.051s
+INFO 2026-05-13 11:58:41,799 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,799 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,800 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:41,818 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:58:41,833 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.033s
+INFO 2026-05-13 11:58:41,837 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.038s
+INFO 2026-05-13 11:58:46,064 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,083 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:58:46,362 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,377 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,395 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.032s
+INFO 2026-05-13 11:58:46,421 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,447 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,453 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,454 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,454 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,455 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,461 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,478 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,509 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.088s
+INFO 2026-05-13 11:58:46,511 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.057s
+INFO 2026-05-13 11:58:46,519 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.072s
+INFO 2026-05-13 11:58:46,521 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.066s
+INFO 2026-05-13 11:58:46,523 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.045s
+INFO 2026-05-13 11:58:46,524 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.069s
+INFO 2026-05-13 11:58:46,524 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.072s
+INFO 2026-05-13 11:58:46,526 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.149s
+INFO 2026-05-13 11:58:46,528 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.067s
+INFO 2026-05-13 11:58:46,533 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:58:46,552 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.019s
+INFO 2026-05-13 12:00:37,527 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,544 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.017s
+INFO 2026-05-13 12:00:37,794 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,818 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,825 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.031s
+INFO 2026-05-13 12:00:37,862 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,863 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,888 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,899 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,910 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,960 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.098s
+INFO 2026-05-13 12:00:37,973 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,974 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,974 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:00:37,993 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.130s
+INFO 2026-05-13 12:00:37,994 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.107s
+INFO 2026-05-13 12:00:38,005 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.106s
+INFO 2026-05-13 12:00:38,023 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.206s
+INFO 2026-05-13 12:00:38,027 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:00:38,028 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.118s
+INFO 2026-05-13 12:00:38,029 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.056s
+INFO 2026-05-13 12:00:38,033 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.061s
+INFO 2026-05-13 12:00:38,038 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.063s
+INFO 2026-05-13 12:00:38,062 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.035s
+INFO 2026-05-13 12:00:42,203 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,221 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.018s
+INFO 2026-05-13 12:00:42,412 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,435 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.023s
+INFO 2026-05-13 12:00:42,502 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,505 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,507 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,511 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,535 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.033s
+INFO 2026-05-13 12:00:42,549 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.041s
+INFO 2026-05-13 12:00:42,554 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.044s
+INFO 2026-05-13 12:00:42,572 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,597 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.025s
+INFO 2026-05-13 12:00:42,619 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,620 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,621 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,645 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,657 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:00:42,687 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.181s
+INFO 2026-05-13 12:00:42,690 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.071s
+INFO 2026-05-13 12:00:42,701 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.081s
+INFO 2026-05-13 12:00:42,721 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.100s
+INFO 2026-05-13 12:00:42,722 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.077s
+INFO 2026-05-13 12:00:42,726 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.069s
+INFO 2026-05-13 12:01:26,555 middleware 13520 13308 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,561 middleware 13520 13308 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-13 12:01:26,734 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,744 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-13 12:01:26,847 middleware 13520 13308 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,854 middleware 13520 13308 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,855 middleware 13520 13308 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,857 middleware 13520 13308 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,857 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,880 middleware 13520 13308 GET /api/v1/kpi/trends - Status: 200 - Time: 0.026s
+INFO 2026-05-13 12:01:26,897 middleware 13520 13308 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.040s
+INFO 2026-05-13 12:01:26,898 middleware 13520 13308 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.041s
+INFO 2026-05-13 12:01:26,899 middleware 13520 13308 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.044s
+INFO 2026-05-13 12:01:26,907 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,911 middleware 13520 13308 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,913 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,920 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,923 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:01:26,930 middleware 13520 13308 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.007s
+INFO 2026-05-13 12:01:26,939 middleware 13520 13308 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.032s
+INFO 2026-05-13 12:01:26,940 middleware 13520 13308 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.029s
+INFO 2026-05-13 12:01:26,942 middleware 13520 13308 GET /api/v1/kpi/overview - Status: 200 - Time: 0.095s
+INFO 2026-05-13 12:01:26,944 middleware 13520 13308 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.031s
+INFO 2026-05-13 12:01:26,947 middleware 13520 13308 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.027s
+INFO 2026-05-13 12:02:40,446 sync_job 13520 13308 Background Sync Job stopped
+INFO 2026-05-13 12:02:44,631 sync_job 19824 4484 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 12:02:44,631 sync_job 19824 4484 Starting scheduled sync run at 2026-05-13 12:02:44.631638
+INFO 2026-05-13 12:02:44,782 sync_job 19824 4484 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 12:02:44,985 utils 19824 8584 decrypt_api_key called
+INFO 2026-05-13 12:02:44,986 utils 19824 8584 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 12:02:44,986 utils 19824 8584 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 12:02:44,986 utils 19824 8584 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 12:02:44,986 utils 19824 8584 Data length after normalization: 40
+INFO 2026-05-13 12:02:44,986 utils 19824 8584 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 12:02:44,987 utils 19824 8584 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 12:02:44,987 utils 19824 8584 Falling back to plain decode
+INFO 2026-05-13 12:02:44,987 utils 19824 8584 Plain decode successful, result length: 40
+INFO 2026-05-13 12:02:44,988 odoo_client 19824 8584 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 12:02:45,026 database_manager 19824 8584 Connected to PostgreSQL
+INFO 2026-05-13 12:02:45,030 database_manager 19824 8584 Closed PostgreSQL connection
+INFO 2026-05-13 12:02:45,030 orchestrator 19824 8584 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 12:02:45,031 orchestrator 19824 8584 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 12:02:45,070 database_manager 19824 8584 Connected to PostgreSQL
+INFO 2026-05-13 12:02:45,074 database_manager 19824 8584 Closed PostgreSQL connection
+INFO 2026-05-13 12:02:45,075 sync_job 19824 4484 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 12:03:12,898 middleware 19824 4484 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:03:12,899 middleware 19824 4484 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 12:03:13,026 middleware 19824 4484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,078 middleware 19824 4484 GET /api/v1/tenants/ - Status: 200 - Time: 0.052s
+INFO 2026-05-13 12:03:13,178 middleware 19824 4484 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,179 middleware 19824 4484 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.001s
+INFO 2026-05-13 12:03:13,208 middleware 19824 4484 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,210 middleware 19824 4484 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.002s
+INFO 2026-05-13 12:03:13,212 middleware 19824 4484 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,213 middleware 19824 4484 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.001s
+INFO 2026-05-13 12:03:13,235 middleware 19824 4484 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,236 middleware 19824 4484 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.001s
+INFO 2026-05-13 12:03:13,258 middleware 19824 4484 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,260 middleware 19824 4484 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,260 middleware 19824 4484 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,261 middleware 19824 4484 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,261 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,261 middleware 19824 4484 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,262 middleware 19824 4484 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.003s
+INFO 2026-05-13 12:03:13,278 middleware 19824 4484 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.018s
+INFO 2026-05-13 12:03:13,328 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.067s
+INFO 2026-05-13 12:03:13,336 middleware 19824 4484 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.074s
+INFO 2026-05-13 12:03:13,343 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,347 middleware 19824 4484 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,360 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.015s
+INFO 2026-05-13 12:03:13,379 middleware 19824 4484 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,380 middleware 19824 4484 GET /api/v1/kpi/trends - Status: 200 - Time: 0.120s
+INFO 2026-05-13 12:03:13,396 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,399 middleware 19824 4484 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,427 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,458 middleware 19824 4484 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.111s
+INFO 2026-05-13 12:03:13,477 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,490 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.062s
+INFO 2026-05-13 12:03:13,494 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,496 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,543 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.066s
+INFO 2026-05-13 12:03:13,555 middleware 19824 4484 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.176s
+INFO 2026-05-13 12:03:13,557 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.160s
+INFO 2026-05-13 12:03:13,560 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.063s
+INFO 2026-05-13 12:03:13,569 middleware 19824 4484 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.170s
+INFO 2026-05-13 12:03:13,582 middleware 19824 4484 GET /api/v1/kpi/overview - Status: 200 - Time: 0.322s
+INFO 2026-05-13 12:03:13,648 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.154s
+INFO 2026-05-13 12:03:13,789 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:03:13,818 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.029s
+INFO 2026-05-13 12:04:08,394 middleware 19824 4484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,425 middleware 19824 4484 GET /api/v1/tenants/ - Status: 200 - Time: 0.031s
+INFO 2026-05-13 12:04:08,629 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,665 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.036s
+INFO 2026-05-13 12:04:08,689 middleware 19824 4484 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,691 middleware 19824 4484 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,729 middleware 19824 4484 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,777 middleware 19824 4484 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.085s
+INFO 2026-05-13 12:04:08,802 middleware 19824 4484 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,809 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,809 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,824 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,830 middleware 19824 4484 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,897 middleware 19824 4484 GET /api/v1/kpi/trends - Status: 200 - Time: 0.168s
+INFO 2026-05-13 12:04:08,907 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,922 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:08,925 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.117s
+INFO 2026-05-13 12:04:08,927 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.118s
+INFO 2026-05-13 12:04:08,939 middleware 19824 4484 GET /api/v1/kpi/overview - Status: 200 - Time: 0.250s
+INFO 2026-05-13 12:04:08,942 middleware 19824 4484 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.111s
+INFO 2026-05-13 12:04:08,944 middleware 19824 4484 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.143s
+INFO 2026-05-13 12:04:08,946 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.123s
+INFO 2026-05-13 12:04:08,977 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.054s
+INFO 2026-05-13 12:04:08,980 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.073s
+INFO 2026-05-13 12:04:17,739 middleware 19824 4484 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,758 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,770 middleware 19824 4484 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,776 middleware 19824 4484 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,798 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,816 middleware 19824 4484 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,818 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,839 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:17,849 middleware 19824 4484 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.033s
+INFO 2026-05-13 12:04:17,913 middleware 19824 4484 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.175s
+INFO 2026-05-13 12:04:17,980 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.223s
+INFO 2026-05-13 12:04:18,137 middleware 19824 4484 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:04:18,212 middleware 19824 4484 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.436s
+INFO 2026-05-13 12:04:18,243 middleware 19824 4484 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.472s
+INFO 2026-05-13 12:04:18,256 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.457s
+INFO 2026-05-13 12:04:18,277 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.458s
+INFO 2026-05-13 12:04:18,302 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.463s
+INFO 2026-05-13 12:04:18,305 middleware 19824 4484 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.168s
+INFO 2026-05-13 12:04:18,316 middleware 19824 4484 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:04:18,341 middleware 19824 4484 GET /api/v1/kpi/overview - Status: 200 - Time: 0.025s
+INFO 2026-05-13 12:04:18,518 middleware 19824 4484 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:04:18,529 middleware 19824 4484 GET /api/v1/kpi/trends - Status: 200 - Time: 0.012s
+INFO 2026-05-13 12:04:27,403 middleware 19824 4484 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,412 middleware 19824 4484 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,432 middleware 19824 4484 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,438 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,441 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,444 middleware 19824 4484 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,448 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,451 middleware 19824 4484 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,528 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:04:27,534 middleware 19824 4484 GET /api/v1/kpi/trends - Status: 200 - Time: 0.122s
+INFO 2026-05-13 12:04:27,541 middleware 19824 4484 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.109s
+INFO 2026-05-13 12:04:27,576 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.128s
+INFO 2026-05-13 12:04:27,580 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.142s
+INFO 2026-05-13 12:04:27,584 middleware 19824 4484 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.140s
+INFO 2026-05-13 12:04:27,588 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.147s
+INFO 2026-05-13 12:04:27,592 middleware 19824 4484 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.142s
+INFO 2026-05-13 12:04:27,594 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.066s
+INFO 2026-05-13 12:04:27,596 middleware 19824 4484 GET /api/v1/kpi/overview - Status: 200 - Time: 0.193s
+INFO 2026-05-13 12:06:20,906 middleware 19824 4484 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:06:20,907 middleware 19824 4484 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-13 12:06:21,039 middleware 19824 4484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,088 middleware 19824 4484 GET /api/v1/tenants/ - Status: 200 - Time: 0.049s
+INFO 2026-05-13 12:06:21,223 middleware 19824 4484 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,227 middleware 19824 4484 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.004s
+INFO 2026-05-13 12:06:21,234 middleware 19824 4484 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,252 middleware 19824 4484 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,253 middleware 19824 4484 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,254 middleware 19824 4484 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.020s
+INFO 2026-05-13 12:06:21,255 middleware 19824 4484 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.003s
+INFO 2026-05-13 12:06:21,256 middleware 19824 4484 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.003s
+INFO 2026-05-13 12:06:21,267 middleware 19824 4484 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,267 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,268 middleware 19824 4484 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,268 middleware 19824 4484 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,268 middleware 19824 4484 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,269 middleware 19824 4484 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,270 middleware 19824 4484 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.003s
+INFO 2026-05-13 12:06:21,271 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.004s
+INFO 2026-05-13 12:06:21,271 middleware 19824 4484 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.004s
+INFO 2026-05-13 12:06:21,272 middleware 19824 4484 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.004s
+INFO 2026-05-13 12:06:21,273 middleware 19824 4484 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.005s
+INFO 2026-05-13 12:06:21,274 middleware 19824 4484 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.005s
+INFO 2026-05-13 12:06:21,314 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,316 middleware 19824 4484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.002s
+INFO 2026-05-13 12:06:21,391 middleware 19824 4484 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,395 middleware 19824 4484 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,401 middleware 19824 4484 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,402 middleware 19824 4484 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,407 middleware 19824 4484 GET /api/v1/kpi/trends - Status: 200 - Time: 0.015s
+INFO 2026-05-13 12:06:21,416 middleware 19824 4484 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.021s
+INFO 2026-05-13 12:06:21,423 middleware 19824 4484 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.022s
+INFO 2026-05-13 12:06:21,450 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,453 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,454 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,454 middleware 19824 4484 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,455 middleware 19824 4484 GET /api/v1/kpi/overview - Status: 200 - Time: 0.053s
+INFO 2026-05-13 12:06:21,461 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,463 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,469 middleware 19824 4484 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.019s
+INFO 2026-05-13 12:06:21,476 middleware 19824 4484 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.022s
+INFO 2026-05-13 12:06:21,478 middleware 19824 4484 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.024s
+INFO 2026-05-13 12:06:21,485 middleware 19824 4484 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.022s
+INFO 2026-05-13 12:06:21,486 middleware 19824 4484 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.025s
+INFO 2026-05-13 12:06:21,488 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.034s
+INFO 2026-05-13 12:06:21,623 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 12:06:21,636 middleware 19824 4484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.013s
