@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -77,10 +77,103 @@ class KPIService:
     ) -> dict[str, Any]:
         def _get():
             today = date.today()
+            # Dashboard metrics (Today/Month/Year) - Independent of filters
+            dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"])
+            dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
+
+            revenue_today = _sum(dashboard_sales.filter(date_order__date=today), "amount_total")
+            revenue_month = _sum(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
+            revenue_year = _sum(dashboard_sales.filter(date_order__year=today.year), "amount_total")
+            
+            expenses_today = _sum(dashboard_purchases.filter(date_order__date=today), "amount_total")
+            expenses_month = _sum(dashboard_purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
+            expenses_year = _sum(dashboard_purchases.filter(date_order__year=today.year), "amount_total")
+
+            # Receivables and Inventory - Independent of filters
+            receivables = AccountMove.objects.filter(
+                state="posted",
+                move_type="out_invoice",
+                payment_state__in=["not_paid", "partial", "in_payment"],
+            )
+            receivables_value = _sum(receivables, "amount_residual")
+            overdue_value = _sum(receivables.filter(invoice_date_due__lt=today), "amount_residual")
+
+            inventory_expr = ExpressionWrapper(
+                F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
+                output_field=DecimalField(max_digits=20, decimal_places=4),
+            )
+            # Only count positive inventory for the dashboard value
+            quants = StockQuant.objects.filter(quantity__gt=0)
+            inventory_value = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
+
+            # Historical Metrics - Dependent on filters
             sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             sales = _date_filter(sales, "date_order", date_from, date_to)
+            
+            # ── Inventory Risk Metrics ─────────────────────────────
+            quant_stats = StockQuant.objects.aggregate(
+                total_qty=Coalesce(Sum("quantity"), Decimal("0")),
+                total_reserved=Coalesce(Sum("reserved_quantity"), Decimal("0")),
+            )
+            total_qty = _to_float(quant_stats["total_qty"])
+            total_reserved = _to_float(quant_stats["total_reserved"])
+            reservation_pressure = (total_reserved / total_qty * 100) if total_qty > 0 else 0.0
+
+            # Low Stock: Products with quantity < 5 (Threshold)
+            low_stock_count = StockQuant.objects.filter(quantity__lt=5, quantity__gt=0).count()
+
+            # Expiring Soon: Lots expiring in the next 30 days with positive quantity
+            thirty_days_later = today + timedelta(days=30)
+            expiring_soon_count = StockQuant.objects.filter(
+                lot__expiration_date__range=(today, thirty_days_later),
+                quantity__gt=0
+            ).count()
+
+            # Dead Stock: Products with stock but no sales in the last 90 days
+            ninety_days_ago = today - timedelta(days=90)
+            sold_product_ids = SalesOrderLine.objects.filter(
+                sales_order__date_order__gte=ninety_days_ago,
+                sales_order__state__in=["sale", "done"]
+            ).values_list("product_id", flat=True).distinct()
+            
+            dead_stock_quants = StockQuant.objects.filter(quantity__gt=0).exclude(product_id__in=sold_product_ids)
+            dead_stock_product_count = dead_stock_quants.values("product_id").distinct().count()
+            total_sku_count = StockQuant.objects.filter(quantity__gt=0).values("product_id").distinct().count()
+            dead_stock_rate = (dead_stock_product_count / total_sku_count * 100) if total_sku_count > 0 else 0.0
+
+            # ── Return Values ─────────────────────────────────────
             if not sales.exists():
-                return _empty_overview([], date_from, date_to, [])
+                return {
+                    "kpis": {
+                        "dashboard_revenue": {"today": revenue_today, "month": revenue_month, "year": revenue_year},
+                        "dashboard_expenses": {"today": expenses_today, "month": expenses_month, "year": expenses_year},
+                        "dashboard_profit": {
+                            "today": revenue_today - expenses_today,
+                            "month": revenue_month - expenses_month,
+                            "year": revenue_year - expenses_year,
+                        },
+                        "revenue": _metric(0),
+                        "gross_margin": _metric(0),
+                        "orders": _metric(0),
+                        "average_order_value": _metric(0),
+                        "receivables": {"value": receivables_value, "overdue": overdue_value},
+                        "inventory_value": {"value": inventory_value},
+                        "inventory_risk": {
+                            "inventory_reservation_pressure_pct": reservation_pressure,
+                            "dead_stock_rate_pct": dead_stock_rate,
+                            "dead_stock_product_count": dead_stock_product_count,
+                            "low_stock_count": low_stock_count,
+                            "expiring_soon_count": expiring_soon_count
+                        },
+                    },
+                    "tenant_benchmarks": [],
+                    "applied_filters": {
+                        "tenant_ids": [],
+                        "date_from": date_from,
+                        "date_to": date_to,
+                        "company_ids": [],
+                    },
+                }
 
             purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
@@ -98,31 +191,6 @@ class KPIService:
             gross_margin_value = _to_float(sales_stats["gross_margin"]) or (total_revenue - total_expenses)
             gross_margin_pct = (gross_margin_value / total_revenue * 100) if total_revenue else 0.0
 
-            # Dashboard metrics should be relative to current time, ignoring the date range filter
-            dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"])
-            dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
-
-            revenue_today = _sum(dashboard_sales.filter(date_order__date=today), "amount_total")
-            revenue_month = _sum(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
-            revenue_year = _sum(dashboard_sales.filter(date_order__year=today.year), "amount_total")
-            expenses_today = _sum(dashboard_purchases.filter(date_order__date=today), "amount_total")
-            expenses_month = _sum(dashboard_purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
-            expenses_year = _sum(dashboard_purchases.filter(date_order__year=today.year), "amount_total")
-
-            receivables = AccountMove.objects.filter(
-                state="posted",
-                move_type="out_invoice",
-                payment_state__in=["not_paid", "partial", "in_payment"],
-            )
-            receivables_value = _sum(receivables, "amount_residual")
-            overdue_value = _sum(receivables.filter(invoice_date_due__lt=today), "amount_residual")
-
-            inventory_expr = ExpressionWrapper(
-                F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
-                output_field=DecimalField(max_digits=20, decimal_places=4),
-            )
-            quants = StockQuant.objects.all()
-            inventory_value = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
             tenant_rows = list(
                 sales.values("tenant_id", "tenant__name")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")), order_count=Count("id"), margin=Coalesce(Sum("margin"), Decimal("0")))
@@ -144,6 +212,13 @@ class KPIService:
                     "average_order_value": _metric(avg_order_value),
                     "receivables": {"value": receivables_value, "overdue": overdue_value},
                     "inventory_value": {"value": inventory_value},
+                    "inventory_risk": {
+                        "inventory_reservation_pressure_pct": reservation_pressure,
+                        "dead_stock_rate_pct": dead_stock_rate,
+                        "dead_stock_product_count": dead_stock_product_count,
+                        "low_stock_count": low_stock_count,
+                        "expiring_soon_count": expiring_soon_count
+                    },
                 },
                 "tenant_benchmarks": [
                     {
