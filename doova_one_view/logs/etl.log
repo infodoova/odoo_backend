@@ -162805,3 +162805,144 @@ INFO 2026-05-13 11:17:40,019 database_manager 11860 10688 Connected to PostgreSQ
 INFO 2026-05-13 11:17:40,022 database_manager 11860 10688 Closed PostgreSQL connection
 INFO 2026-05-13 11:17:40,023 sync_job 11860 12368 Scheduled sync run completed. Sleeping for 30 minutes.
 INFO 2026-05-13 11:17:52,056 sync_job 11860 12368 Background Sync Job stopped
+INFO 2026-05-13 11:17:56,693 sync_job 10716 9484 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-13 11:17:56,694 sync_job 10716 9484 Starting scheduled sync run at 2026-05-13 11:17:56.694134
+INFO 2026-05-13 11:17:56,740 sync_job 10716 9484 Auto-syncing tenant: ali.chamas@odoo.com (65168de7-ac28-4063-b866-337afca05e29)
+INFO 2026-05-13 11:17:56,917 utils 10716 6748 decrypt_api_key called
+INFO 2026-05-13 11:17:56,917 utils 10716 6748 Incoming type: <class 'memoryview'>
+INFO 2026-05-13 11:17:56,917 utils 10716 6748 Detected memoryview, converting using tobytes()
+INFO 2026-05-13 11:17:56,918 utils 10716 6748 Raw data: b'ebf393eef7d9ae7a265b19a9435d19a8dca36c29'
+INFO 2026-05-13 11:17:56,918 utils 10716 6748 Data length after normalization: 40
+INFO 2026-05-13 11:17:56,918 utils 10716 6748 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-13 11:17:56,918 utils 10716 6748 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-13 11:17:56,919 utils 10716 6748 Falling back to plain decode
+INFO 2026-05-13 11:17:56,919 utils 10716 6748 Plain decode successful, result length: 40
+INFO 2026-05-13 11:17:56,919 odoo_client 10716 6748 Initialized Odoo JSON-RPC client for ali.chamas@odoo.com
+INFO 2026-05-13 11:17:56,952 database_manager 10716 6748 Connected to PostgreSQL
+INFO 2026-05-13 11:17:56,957 database_manager 10716 6748 Closed PostgreSQL connection
+INFO 2026-05-13 11:17:56,957 orchestrator 10716 6748 History exists. Triggering smart incremental sync...
+INFO 2026-05-13 11:17:56,958 orchestrator 10716 6748 Starting professional delta sync for tenant: ali.chamas@odoo.com
+INFO 2026-05-13 11:17:56,993 database_manager 10716 6748 Connected to PostgreSQL
+INFO 2026-05-13 11:17:56,996 database_manager 10716 6748 Closed PostgreSQL connection
+INFO 2026-05-13 11:17:56,997 sync_job 10716 9484 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-13 11:18:41,099 middleware 10716 9484 OPTIONS /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:18:41,101 middleware 10716 9484 OPTIONS /api/v1/financial-advisor/chat - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:18:41,231 middleware 10716 9484 POST /api/v1/financial-advisor/chat - Client: 178.135.15.252
+INFO 2026-05-13 11:18:41,571 middleware 10716 9484 POST /api/v1/financial-advisor/chat - Status: 200 - Time: 0.340s
+INFO 2026-05-13 11:18:41,723 middleware 10716 9484 OPTIONS /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:18:41,727 middleware 10716 9484 OPTIONS /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.004s
+INFO 2026-05-13 11:18:41,870 middleware 10716 9484 GET /api/v1/financial-advisor/sessions - Client: 178.135.15.252
+INFO 2026-05-13 11:18:41,884 middleware 10716 9484 GET /api/v1/financial-advisor/sessions - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:18:58,977 middleware 10716 9484 GET /api/v1/reports/business_report_65168de7-ac28-4063-b866-337afca05e29_20260513_111841.pdf - Client: 127.0.0.1
+INFO 2026-05-13 11:18:58,985 middleware 10716 9484 GET /api/v1/reports/business_report_65168de7-ac28-4063-b866-337afca05e29_20260513_111841.pdf - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:21:00,874 middleware 10716 9484 OPTIONS /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:21:00,876 middleware 10716 9484 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:21:01,053 middleware 10716 9484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,205 middleware 10716 9484 GET /api/v1/tenants/ - Status: 200 - Time: 0.152s
+INFO 2026-05-13 11:21:01,255 middleware 10716 9484 OPTIONS /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,255 middleware 10716 9484 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:01,281 middleware 10716 9484 OPTIONS /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,282 middleware 10716 9484 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:01,284 middleware 10716 9484 OPTIONS /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,284 middleware 10716 9484 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:01,319 middleware 10716 9484 OPTIONS /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,320 middleware 10716 9484 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:01,401 middleware 10716 9484 OPTIONS /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,402 middleware 10716 9484 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:01,425 middleware 10716 9484 GET /api/v1/kpi/trends - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,428 middleware 10716 9484 GET /api/v1/kpi/top-customers - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,454 middleware 10716 9484 OPTIONS /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,459 middleware 10716 9484 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:21:01,499 middleware 10716 9484 OPTIONS /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,500 middleware 10716 9484 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:01,535 middleware 10716 9484 GET /api/v1/kpi/fast-moving-products - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,593 middleware 10716 9484 GET /api/v1/kpi/currency-impact - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,611 middleware 10716 9484 OPTIONS /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,611 middleware 10716 9484 GET /api/v1/kpi/overview - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,612 middleware 10716 9484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,612 middleware 10716 9484 GET /api/v1/kpi/top-products - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,617 middleware 10716 9484 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.006s
+INFO 2026-05-13 11:21:01,617 middleware 10716 9484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.005s
+INFO 2026-05-13 11:21:01,632 middleware 10716 9484 OPTIONS /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,633 middleware 10716 9484 GET /api/v1/kpi/receivables-aging - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,635 middleware 10716 9484 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:21:01,654 middleware 10716 9484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,661 middleware 10716 9484 OPTIONS /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:21:01,753 middleware 10716 9484 GET /api/v1/kpi/bottom-products - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,755 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,777 middleware 10716 9484 GET /api/v1/kpi/category-performance - Client: 178.135.15.252
+INFO 2026-05-13 11:21:01,880 middleware 10716 9484 GET /api/v1/kpi/trends - Status: 200 - Time: 0.455s
+INFO 2026-05-13 11:21:01,902 middleware 10716 9484 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.309s
+INFO 2026-05-13 11:21:01,932 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.177s
+INFO 2026-05-13 11:21:02,053 middleware 10716 9484 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.625s
+INFO 2026-05-13 11:21:02,073 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:02,092 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.019s
+INFO 2026-05-13 11:21:02,808 middleware 10716 9484 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 1.175s
+INFO 2026-05-13 11:21:02,878 middleware 10716 9484 GET /api/v1/kpi/category-performance - Status: 200 - Time: 1.101s
+INFO 2026-05-13 11:21:02,880 middleware 10716 9484 GET /api/v1/kpi/top-products - Status: 200 - Time: 1.267s
+INFO 2026-05-13 11:21:02,881 middleware 10716 9484 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 1.129s
+INFO 2026-05-13 11:21:02,883 middleware 10716 9484 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 1.348s
+INFO 2026-05-13 11:21:03,559 middleware 10716 9484 GET /api/v1/kpi/overview - Status: 200 - Time: 1.948s
+INFO 2026-05-13 11:21:09,252 middleware 10716 9484 OPTIONS /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:09,254 middleware 10716 9484 OPTIONS /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:21:09,305 middleware 10716 9484 OPTIONS /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:09,306 middleware 10716 9484 OPTIONS /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:09,443 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:09,476 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:09,727 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.284s
+INFO 2026-05-13 11:21:09,728 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.252s
+INFO 2026-05-13 11:21:15,046 middleware 10716 9484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:21:15,058 middleware 10716 9484 GET /api/v1/tenants/ - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:21:15,228 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:15,239 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:21:15,336 middleware 10716 9484 OPTIONS /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:15,339 middleware 10716 9484 OPTIONS /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.003s
+INFO 2026-05-13 11:21:15,343 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:15,361 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.018s
+INFO 2026-05-13 11:21:15,375 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:15,392 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:21:15,485 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:15,500 middleware 10716 9484 GET /api/v1/purchase/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.016s
+INFO 2026-05-13 11:21:24,671 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:24,672 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:24,711 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:24,712 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:24,804 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:24,845 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:24,893 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.089s
+INFO 2026-05-13 11:21:24,954 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.109s
+INFO 2026-05-13 11:21:35,821 middleware 10716 9484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:21:35,835 middleware 10716 9484 GET /api/v1/tenants/ - Status: 200 - Time: 0.013s
+INFO 2026-05-13 11:21:35,986 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:35,997 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:21:36,108 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:36,109 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.002s
+INFO 2026-05-13 11:21:36,111 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:36,123 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:21:36,181 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:36,190 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-13 11:21:36,250 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:36,285 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.036s
+INFO 2026-05-13 11:21:42,525 middleware 10716 9484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:21:42,532 middleware 10716 9484 GET /api/v1/tenants/ - Status: 200 - Time: 0.007s
+INFO 2026-05-13 11:21:42,674 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:42,686 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-13 11:21:42,816 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:42,828 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:42,829 middleware 10716 9484 OPTIONS /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.001s
+INFO 2026-05-13 11:21:42,834 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.018s
+INFO 2026-05-13 11:21:42,877 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:42,885 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.008s
+INFO 2026-05-13 11:21:42,962 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:42,982 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.020s
+INFO 2026-05-13 11:21:57,443 middleware 10716 9484 GET /api/v1/tenants/ - Client: 178.135.15.252
+INFO 2026-05-13 11:21:57,455 middleware 10716 9484 GET /api/v1/tenants/ - Status: 200 - Time: 0.011s
+INFO 2026-05-13 11:21:57,657 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:57,695 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.038s
+INFO 2026-05-13 11:21:57,715 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Client: 178.135.15.252
+INFO 2026-05-13 11:21:57,718 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Client: 178.135.15.252
+INFO 2026-05-13 11:21:57,746 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/filters - Status: 200 - Time: 0.031s
+INFO 2026-05-13 11:21:57,756 middleware 10716 9484 GET /api/v1/sales/65168de7-ac28-4063-b866-337afca05e29/orders - Status: 200 - Time: 0.038s
+INFO 2026-05-13 11:21:57,831 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Client: 178.135.15.252
+INFO 2026-05-13 11:21:57,849 middleware 10716 9484 GET /api/v1/master-data/65168de7-ac28-4063-b866-337afca05e29/companies - Status: 200 - Time: 0.017s
+INFO 2026-05-13 11:26:30,564 sync_job 10716 9484 Background Sync Job stopped
