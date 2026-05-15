@@ -20,10 +20,12 @@ class SessionManager:
         response = chain.invoke({"message": first_message})
         return response.content.strip().strip('"')
 
-    def get_or_create_session(self, session_id: str, first_message: str = None) -> ChatSession:
+    def get_or_create_session(self, session_id: str, tenant_id: str, first_message: str = None) -> ChatSession:
         session, created = ChatSession.objects.get_or_create(session_id=session_id)
-        if created and first_message:
-            session.title = self.generate_title(first_message)
+        if created:
+            session.tenant_id = tenant_id
+            if first_message:
+                session.title = self.generate_title(first_message)
             session.save()
         return session
 
@@ -41,6 +43,8 @@ class SessionManager:
         session.save()
 
     def get_sessions(self, tenant_id: str = None):
+        if tenant_id:
+            return ChatSession.objects.filter(tenant_id=tenant_id)
         return ChatSession.objects.all()
 
     def get_messages(self, session_id: str):

@@ -3,8 +3,8 @@
 import time
 from langchain_anthropic import ChatAnthropic
 from .config import AgentConfig
-from .prompts import ROUTER_PROMPT
-from .logger import log_router_decision, log_error
+from .prompts import ROUTER_PROMPT, RoutingProtocol
+from .logger import log_router_decision, log_error, logger
 
 class RouterNode:
     """
@@ -27,19 +27,24 @@ class RouterNode:
         try:
             chain = self.prompt | self.llm
             response = chain.invoke({"message": message})
-            decision = response.content.strip().upper()
+            raw_content = response.content.strip()
+            logger.debug(f"ROUTER RAW RESPONSE: {raw_content}")
+            decision = raw_content.upper()
             
-            # Robust validation of LLM decision
-            valid_protocols = {"REJECT", "EXECUTE", "PLAN"}
-            result = "EXECUTE"
-            for protocol in valid_protocols:
-                if protocol in decision:
-                    result = protocol
-                    break
+            # Priority-based validation (EXECUTE > PLAN > REJECT)
+            result = RoutingProtocol.EXECUTE # Default fallback
+            if RoutingProtocol.PLAN in decision:
+                result = RoutingProtocol.PLAN
+            elif RoutingProtocol.EXECUTE in decision:
+                result = RoutingProtocol.EXECUTE
+            elif RoutingProtocol.REJECT in decision:
+                result = RoutingProtocol.REJECT
+            else:
+                result = RoutingProtocol.EXECUTE
 
             duration = (time.time() - start) * 1000
-            log_router_decision(message, result, duration)
-            return result
+            log_router_decision(message, result.value, duration)
+            return result.value
         except Exception as e:
             duration = (time.time() - start) * 1000
             log_error("RouterNode.classify", e)

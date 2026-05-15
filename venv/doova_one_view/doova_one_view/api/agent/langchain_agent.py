@@ -2,7 +2,7 @@
 
 import time
 from langchain_anthropic import ChatAnthropic
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from .config import AgentConfig
 from .langchain_tools import agent_tools
 from .summarizer import SummarizerNode

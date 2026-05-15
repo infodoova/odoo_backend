@@ -1,0 +1,393 @@
+[2026-05-15 14:47:31] INFO [doova.agent] RAW REQUEST BODY: {"query": "hi", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99"}
+[2026-05-15 14:47:31] INFO [doova.agent] Generated new session ID: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+[2026-05-15 14:47:33] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 14:53:30] INFO [doova.agent] RAW REQUEST BODY: {"query": "give me sales revenu for last year", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 14:53:30] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 14:53:30] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "give me sales revenu for last year"
+[2026-05-15 14:53:32] INFO [doova.agent] ROUTER DECISION
+   Input: "give me sales revenu for last year"
+   Decision: REJECT
+   Duration: 2078ms
+[2026-05-15 14:53:32] INFO [doova.agent] REQUEST REJECTED in 2098ms
+[2026-05-15 14:53:59] INFO [doova.agent] RAW REQUEST BODY: {"query": "its for odoo sales", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 14:53:59] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 14:53:59] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "its for odoo sales"
+[2026-05-15 14:54:01] INFO [doova.agent] ROUTER DECISION
+   Input: "its for odoo sales"
+   Decision: REJECT
+   Duration: 1689ms
+[2026-05-15 14:54:01] INFO [doova.agent] REQUEST REJECTED in 1703ms
+[2026-05-15 14:58:10] INFO [doova.agent] RAW REQUEST BODY: {"query": "give me sales revenu for last year\n\n\n\n\n\n", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99"}
+[2026-05-15 14:58:10] INFO [doova.agent] Generated new session ID: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+[2026-05-15 14:58:12] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Details: user message
+[2026-05-15 14:58:12] INFO [doova.agent] INCOMING REQUEST
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "give me sales revenu for last year
+
+
+
+
+
+"
+[2026-05-15 14:58:12] DEBUG [doova.agent] ROUTER RAW RESPONSE: EXECUTE
+[2026-05-15 14:58:12] INFO [doova.agent] ROUTER DECISION
+   Input: "give me sales revenu for last year
+
+
+
+
+
+"
+   Decision: EXECUTE
+   Duration: 673ms
+[2026-05-15 14:58:12] INFO [doova.agent] AGENT START
+   Message: "give me sales revenu for last year
+
+
+
+
+
+"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 14:58:15] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_summary
+[2026-05-15 14:58:23] INFO [doova.agent] AGENT COMPLETE
+   Response: "[{'text': "---\n\n## 📊 Sales Revenue Summary — Full Year 2024\n\n| Metric | Value |\n|---|---|\n| 💰 **Total Revenue** | **2,573,325,290.00** |\n| 📦 **Total Orders** | **1,734** |\n| 🧾 **Average Order Value** | **1,484,039.96** |\n\n---\n\n### 🧠 CFO Internal Thought Process\n\n**Reconnaissance:** The request is straightforward — retrieve annual sales revenue for the prior fiscal year (January 1, 2024 – December 31, 2024).\n\n**Key Observations:**\n- **Total Revenue of ~2.57 Billion** reflects a high-volume, high-value business operation.\n- **1,734 orders** at an **average order value of ~1.48 Million** per transaction suggests this is likely a **B2B or wholesale-oriented business** with large-ticket transactions rather than a high-frequency retail model.\n- The average order value is notably elevated, which may indicate bulk procurement, project-based sales, or enterprise-level contracts.\n\n---\n\n### 📌 Strategic Recommendation\n\n> Would you like me to **drill deeper** into this data? I can provide:\n> - 📈 **Monthly Sales Trend** — to identify peak and low-performing months\n> - 🔍 **Variance Analysis** — month-over-month fluctuations\n> - 🏆 **Top Products by Revenue** — to identify key revenue drivers\n> - 📅 **Year-over-Year Comparison** — 2024 vs. 2023 performance\n\nJust let me know how you'd like to proceed!", 'type': 'text', 'index': 0}]"
+   Tools Used: 0
+   Total Duration: 10459ms
+[2026-05-15 14:58:23] INFO [doova.agent] EXECUTE COMPLETE in 12362ms | Response: "[{'text': "---\n\n## 📊 Sales Revenue Summary — Full Year 2024\n\n| Metric | Value |\n|---|---|\n| 💰 **Total Revenue** | **2,573,325,290.00** |\n| 📦 **Total Orders** | **1,734** |\n| 🧾 **Average Order Value** | **1,484,039.96** |\n\n---\n\n### 🧠 CFO Internal Thought Process\n\n**Reconnaissance:** The request is straightforward — retrieve annual sales revenue for the prior fiscal year (January 1, 2024 – December 31, 2024).\n\n**Key Observations:**\n- **Total Revenue of ~2.57 Billion** reflects a high-volume, high-value business operation.\n- **1,734 orders** at an **average order value of ~1.48 Million** per transaction suggests this is likely a **B2B or wholesale-oriented business** with large-ticket transactions rather than a high-frequency retail model.\n- The average order value is notably elevated, which may indicate bulk procurement, project-based sales, or enterprise-level contracts.\n\n---\n\n### 📌 Strategic Recommendation\n\n> Would you like me to **drill deeper** into this data? I can provide:\n> - 📈 **Monthly Sales Trend** — to identify peak and low-performing months\n> - 🔍 **Variance Analysis** — month-over-month fluctuations\n> - 🏆 **Top Products by Revenue** — to identify key revenue drivers\n> - 📅 **Year-over-Year Comparison** — 2024 vs. 2023 performance\n\nJust let me know how you'd like to proceed!", 'type': 'text', 'index': 0}]..."
+[2026-05-15 15:00:00] INFO [doova.agent] RAW REQUEST BODY: {"query": "give me a graph for the above result", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "e2746dd6-74ac-4baf-a63f-796c7ac2820a"}
+[2026-05-15 15:00:00] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Details: user message
+[2026-05-15 15:00:00] INFO [doova.agent] INCOMING REQUEST
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "give me a graph for the above result"
+[2026-05-15 15:00:00] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KGB8iPqjGo8yjJYBfA'}
+[2026-05-15 15:00:00] INFO [doova.agent] ROUTER DECISION
+   Input: "give me a graph for the above result"
+   Decision: EXECUTE (fallback)
+   Duration: 408ms
+[2026-05-15 15:00:00] INFO [doova.agent] AGENT START
+   Message: "give me a graph for the above result"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:00:01] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KGCZ3VSe3XdMECk3Q3'}
+[2026-05-15 15:00:01] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KGCZ3VSe3XdMECk3Q3'}
+[2026-05-15 15:08:37] INFO [doova.agent] RAW REQUEST BODY: {"query": "multisales trend", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "e2746dd6-74ac-4baf-a63f-796c7ac2820a"}
+[2026-05-15 15:08:37] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Details: user message
+[2026-05-15 15:08:37] INFO [doova.agent] INCOMING REQUEST
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "multisales trend"
+[2026-05-15 15:08:38] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KvJtMTaLVqA92LP2FF'}
+[2026-05-15 15:08:38] INFO [doova.agent] ROUTER DECISION
+   Input: "multisales trend"
+   Decision: EXECUTE (fallback)
+   Duration: 352ms
+[2026-05-15 15:08:38] INFO [doova.agent] AGENT START
+   Message: "multisales trend"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:08:38] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KvKxbXR2MkC4wjrvWK'}
+[2026-05-15 15:08:38] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KvKxbXR2MkC4wjrvWK'}
+[2026-05-15 15:08:47] INFO [doova.agent] RAW REQUEST BODY: {"query": "monthly sales trend", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "e2746dd6-74ac-4baf-a63f-796c7ac2820a"}
+[2026-05-15 15:08:47] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Details: user message
+[2026-05-15 15:08:47] INFO [doova.agent] INCOMING REQUEST
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "monthly sales trend"
+[2026-05-15 15:08:48] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4Kw4Bqzj5VMpQR8hVWk'}
+[2026-05-15 15:08:48] INFO [doova.agent] ROUTER DECISION
+   Input: "monthly sales trend"
+   Decision: EXECUTE (fallback)
+   Duration: 319ms
+[2026-05-15 15:08:48] INFO [doova.agent] AGENT START
+   Message: "monthly sales trend"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:08:48] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4Kw5EbSF64QnRsJ2Sy9'}
+[2026-05-15 15:08:48] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4Kw5EbSF64QnRsJ2Sy9'}
+[2026-05-15 15:08:59] INFO [doova.agent] RAW REQUEST BODY: {"query": "monthly sales trend\n\n\n\n\n\n", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "e2746dd6-74ac-4baf-a63f-796c7ac2820a"}
+[2026-05-15 15:08:59] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Details: user message
+[2026-05-15 15:08:59] INFO [doova.agent] INCOMING REQUEST
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "monthly sales trend
+
+
+
+
+
+"
+[2026-05-15 15:09:00] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KwxVKkQ2pPBVig3LFw'}
+[2026-05-15 15:09:00] INFO [doova.agent] ROUTER DECISION
+   Input: "monthly sales trend
+
+
+
+
+
+"
+   Decision: EXECUTE (fallback)
+   Duration: 499ms
+[2026-05-15 15:09:00] INFO [doova.agent] AGENT START
+   Message: "monthly sales trend
+
+
+
+
+
+"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:09:00] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KwygG3pqbc3eHvDECB'}
+[2026-05-15 15:09:00] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KwygG3pqbc3eHvDECB'}
+[2026-05-15 15:09:22] INFO [doova.agent] RAW REQUEST BODY: {"query": "monthly sales trend", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "e2746dd6-74ac-4baf-a63f-796c7ac2820a"}
+[2026-05-15 15:09:22] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Details: user message
+[2026-05-15 15:09:22] INFO [doova.agent] INCOMING REQUEST
+   Session: e2746dd6-74ac-4baf-a63f-796c7ac2820a
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "monthly sales trend"
+[2026-05-15 15:09:22] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4KybwMhzdFBL3S5y6Lw'}
+[2026-05-15 15:09:22] INFO [doova.agent] ROUTER DECISION
+   Input: "monthly sales trend"
+   Decision: EXECUTE (fallback)
+   Duration: 318ms
+[2026-05-15 15:09:22] INFO [doova.agent] AGENT START
+   Message: "monthly sales trend"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:09:22] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4Kycve38zoaXvmeLMNS'}
+[2026-05-15 15:09:22] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4Kycve38zoaXvmeLMNS'}
+[2026-05-15 15:17:58] INFO [doova.agent] RAW REQUEST BODY: {"query": "Give me a summary of my sales for the last 6 months", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 15:17:58] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 15:17:58] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "Give me a summary of my sales for the last 6 months"
+[2026-05-15 15:17:59] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4LdfQ2fNFBQhPCLe5CV'}
+[2026-05-15 15:17:59] INFO [doova.agent] ROUTER DECISION
+   Input: "Give me a summary of my sales for the last 6 months"
+   Decision: EXECUTE (fallback)
+   Duration: 334ms
+[2026-05-15 15:17:59] INFO [doova.agent] AGENT START
+   Message: "Give me a summary of my sales for the last 6 months"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:17:59] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4LdgSXswDj2kS57nm3g'}
+[2026-05-15 15:17:59] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4LdgSXswDj2kS57nm3g'}
+[2026-05-15 15:18:52] INFO [doova.agent] RAW REQUEST BODY: {"query": "Give me a summary of my sales for the last 6 months", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 15:18:52] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 15:18:52] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "Give me a summary of my sales for the last 6 months"
+[2026-05-15 15:18:52] ERROR [doova.agent] ERROR in RouterNode.classify
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4Lhcs6VJ9Gaz4rVgyhX'}
+[2026-05-15 15:18:52] INFO [doova.agent] ROUTER DECISION
+   Input: "Give me a summary of my sales for the last 6 months"
+   Decision: EXECUTE (fallback)
+   Duration: 708ms
+[2026-05-15 15:18:52] INFO [doova.agent] AGENT START
+   Message: "Give me a summary of my sales for the last 6 months"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:18:53] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4LheW4xsw6HafpJomrZ'}
+[2026-05-15 15:18:53] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: BadRequestError
+   Message: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'You have reached your specified API usage limits. You will regain access on 2026-06-01 at 00:00 UTC.'}, 'request_id': 'req_011Cb4LheW4xsw6HafpJomrZ'}
+[2026-05-15 15:21:09] INFO [doova.agent] RAW REQUEST BODY: {"query": "Give me a summary of my sales for the last 6 months", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 15:21:09] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 15:21:09] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "Give me a summary of my sales for the last 6 months"
+[2026-05-15 15:21:10] DEBUG [doova.agent] ROUTER RAW RESPONSE: EXECUTE
+[2026-05-15 15:21:10] INFO [doova.agent] ROUTER DECISION
+   Input: "Give me a summary of my sales for the last 6 months"
+   Decision: EXECUTE
+   Duration: 1103ms
+[2026-05-15 15:21:10] INFO [doova.agent] AGENT START
+   Message: "Give me a summary of my sales for the last 6 months"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:21:14] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_summary
+[2026-05-15 15:21:14] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_trend
+[2026-05-15 15:21:14] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: KeyError
+   Message: 'count'
+[2026-05-15 15:21:14] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: KeyError
+   Message: 'count'
+[2026-05-15 15:22:16] INFO [doova.agent] RAW REQUEST BODY: {"query": "Give me a summary of my sales for the last 6 months for company conatus", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 15:22:16] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 15:22:16] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "Give me a summary of my sales for the last 6 months for company conatus"
+[2026-05-15 15:22:18] DEBUG [doova.agent] ROUTER RAW RESPONSE: EXECUTE
+[2026-05-15 15:22:18] INFO [doova.agent] ROUTER DECISION
+   Input: "Give me a summary of my sales for the last 6 months for company conatus"
+   Decision: EXECUTE
+   Duration: 2705ms
+[2026-05-15 15:22:18] INFO [doova.agent] AGENT START
+   Message: "Give me a summary of my sales for the last 6 months for company conatus"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:22:21] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: list_companies
+[2026-05-15 15:22:24] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_summary
+[2026-05-15 15:22:24] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_trend
+[2026-05-15 15:22:24] ERROR [doova.agent] ERROR in DoovaLangChainAgent.run
+   Type: KeyError
+   Message: 'count'
+[2026-05-15 15:22:24] ERROR [doova.agent] ERROR in chat_endpoint.EXECUTE
+   Type: KeyError
+   Message: 'count'
+[2026-05-15 15:23:45] INFO [doova.agent] RAW REQUEST BODY: {"query": "Give me a summary of my sales for the last 6 months for company conatus", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 15:23:46] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 15:23:46] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "Give me a summary of my sales for the last 6 months for company conatus"
+[2026-05-15 15:23:47] DEBUG [doova.agent] ROUTER RAW RESPONSE: EXECUTE
+[2026-05-15 15:23:47] INFO [doova.agent] ROUTER DECISION
+   Input: "Give me a summary of my sales for the last 6 months for company conatus"
+   Decision: EXECUTE
+   Duration: 980ms
+[2026-05-15 15:23:47] INFO [doova.agent] AGENT START
+   Message: "Give me a summary of my sales for the last 6 months for company conatus"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:23:48] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: list_companies
+[2026-05-15 15:23:52] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_summary
+[2026-05-15 15:23:52] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_trend
+[2026-05-15 15:23:56] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_summary
+[2026-05-15 15:24:08] INFO [doova.agent] AGENT COMPLETE
+   Response: "[{'text': 'Here is the comprehensive **Sales Summary for CONATUS** covering the last 6 months of recorded activity:\n\n---\n\n## 📊 CONATUS — Sales Summary (Last 6 Active Months)\n> *Period: June 2025 – November 2025*\n\n---\n\n### 🔢 Key Headline Metrics\n\n| Metric | Value |\n|---|---|\n| **Total Revenue** | 1,017,387,750.00 |\n| **Total Orders** | 44 |\n| **Average Order Value** | 23,122,448.86 |\n\n---\n\n### 📅 Monthly Revenue Breakdown\n\n| Month | Revenue | Orders |\n|---|---|---|\n| **September 2025** | 811,283,500.00 | 27 |\n| **October 2025** | 169,914,000.00 | 13 |\n| **November 2025** | 36,190,250.00 | 4 |\n\n> *(No recorded sales activity was detected for June, July, or August 2025)*\n\n---\n\n### 📉 CFO Analytical Observations\n\n1. **Revenue Concentration Risk:** September 2025 alone accounts for **~79.7%** of total revenue (811.3M out of 1.017B), indicating a highly concentrated revenue spike in that single month.\n\n2. **Declining Trend:** There is a sharp and consistent month-over-month decline:\n   - Sep → Oct: **↓ 79.1%** (−641.4M)\n   - Oct → Nov: **↓ 78.7%** (−133.7M)\n   This steep deceleration warrants further investigation — it may reflect seasonal patterns, project-based billing cycles, or a slowdown in new orders.\n\n3. **Low Order Volume:** With only **44 orders** over the active period and an average order value of **~23.1M**, CONATUS appears to operate in a **high-value, low-volume** business model — likely B2B, project-based, or enterprise-level engagements.\n\n---\n\n### ⚠️ Strategic Recommendations\n\n- **Investigate the September spike** — Determine whether this was driven by a one-time large contract, bulk order, or seasonal demand.\n- **Pipeline Review** — The sharp drop in November (only 4 orders) suggests a potential pipeline gap. A forward-looking sales forecast is advisable.\n- **Diversify Revenue Timing** — Consider structuring contracts with milestone-based billing to smooth revenue recognition across months.\n\nWould you like me to run a **Sales Forecast**, **Variance Analysis**, or a full **P&L Report** for CONATUS? 📈', 'type': 'text', 'index': 0}]"
+   Tools Used: 0
+   Total Duration: 21087ms
+[2026-05-15 15:24:08] INFO [doova.agent] EXECUTE COMPLETE in 22259ms | Response: "[{'text': 'Here is the comprehensive **Sales Summary for CONATUS** covering the last 6 months of recorded activity:\n\n---\n\n## 📊 CONATUS — Sales Summary (Last 6 Active Months)\n> *Period: June 2025 – November 2025*\n\n---\n\n### 🔢 Key Headline Metrics\n\n| Metric | Value |\n|---|---|\n| **Total Revenue** | 1,017,387,750.00 |\n| **Total Orders** | 44 |\n| **Average Order Value** | 23,122,448.86 |\n\n---\n\n### 📅 Monthly Revenue Breakdown\n\n| Month | Revenue | Orders |\n|---|---|---|\n| **September 2025** | 811,283,500.00 | 27 |\n| **October 2025** | 169,914,000.00 | 13 |\n| **November 2025** | 36,190,250.00 | 4 |\n\n> *(No recorded sales activity was detected for June, July, or August 2025)*\n\n---\n\n### 📉 CFO Analytical Observations\n\n1. **Revenue Concentration Risk:** September 2025 alone accounts for **~79.7%** of total revenue (811.3M out of 1.017B), indicating a highly concentrated revenue spike in that single month.\n\n2. **Declining Trend:** There is a sharp and consistent month-over-month decline:\n   - Sep → Oct: **↓ 79.1%** (−641.4M)\n   - Oct → Nov: **↓ 78.7%** (−133.7M)\n   This steep deceleration warrants further investigation — it may reflect seasonal patterns, project-based billing cycles, or a slowdown in new orders.\n\n3. **Low Order Volume:** With only **44 orders** over the active period and an average order value of **~23.1M**, CONATUS appears to operate in a **high-value, low-volume** business model — likely B2B, project-based, or enterprise-level engagements.\n\n---\n\n### ⚠️ Strategic Recommendations\n\n- **Investigate the September spike** — Determine whether this was driven by a one-time large contract, bulk order, or seasonal demand.\n- **Pipeline Review** — The sharp drop in November (only 4 orders) suggests a potential pipeline gap. A forward-looking sales forecast is advisable.\n- **Diversify Revenue Timing** — Consider structuring contracts with milestone-based billing to smooth revenue recognition across months.\n\nWould you like me to run a **Sales Forecast**, **Variance Analysis**, or a full **P&L Report** for CONATUS? 📈', 'type': 'text', 'index': 0}]..."
+[2026-05-15 15:26:43] INFO [doova.agent] RAW REQUEST BODY: {"query": "give me the pnl of conatus", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 15:26:43] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 15:26:43] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "give me the pnl of conatus"
+[2026-05-15 15:26:44] DEBUG [doova.agent] ROUTER RAW RESPONSE: EXECUTE
+[2026-05-15 15:26:44] INFO [doova.agent] ROUTER DECISION
+   Input: "give me the pnl of conatus"
+   Decision: EXECUTE
+   Duration: 936ms
+[2026-05-15 15:26:44] INFO [doova.agent] AGENT START
+   Message: "give me the pnl of conatus"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 0 messages
+[2026-05-15 15:26:47] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: list_companies
+[2026-05-15 15:26:50] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: calculate_pnl
+[2026-05-15 15:26:59] INFO [doova.agent] AGENT COMPLETE
+   Response: "[{'text': "---\n\n## 📊 Profit & Loss Statement — CONATUS\n\n> **Tenant:** 4fa1b33d-870f-4681-a54e-52e9b12f6b99 | **Company ID:** 5\n\n---\n\n| Line Item | Amount |\n|---|---|\n| 💰 **Total Income** | 0.00 |\n| 🏭 **Cost of Goods Sold (COGS)** | 0.00 |\n| **Gross Profit** | 0.00 |\n| 📋 **Total Operating Expenses** | 0.00 |\n| **Net Profit** | 0.00 |\n\n| Margin | % |\n|---|---|\n| Gross Margin | 0.00% |\n| Net Margin | 0.00% |\n\n---\n\n### 🔍 CFO Internal Assessment\n\n> ⚠️ **No financial data is currently recorded for CONATUS.** The P&L returns **zero values across all line items**, which indicates one or more of the following:\n\n1. **No transactions have been posted** to this company's books yet.\n2. **Chart of Accounts** may not be fully configured or mapped.\n3. The company may be a **newly onboarded entity** with no historical data.\n4. There could be a **data integration issue** preventing records from being surfaced.\n\n---\n\n### ✅ Recommended Next Steps\n\n- 🔎 Verify that journal entries and invoices have been correctly assigned to **CONATUS (Company ID: 5)**.\n- 📂 Check if transactions exist under a different company entity.\n- 🛠️ Confirm that the accounting module is fully set up for this company.\n\nWould you like me to run a **Trial Balance**, **custom database query**, or investigate further to diagnose the data gap?", 'type': 'text', 'index': 0}]"
+   Tools Used: 0
+   Total Duration: 14987ms
+[2026-05-15 15:26:59] INFO [doova.agent] EXECUTE COMPLETE in 15978ms | Response: "[{'text': "---\n\n## 📊 Profit & Loss Statement — CONATUS\n\n> **Tenant:** 4fa1b33d-870f-4681-a54e-52e9b12f6b99 | **Company ID:** 5\n\n---\n\n| Line Item | Amount |\n|---|---|\n| 💰 **Total Income** | 0.00 |\n| 🏭 **Cost of Goods Sold (COGS)** | 0.00 |\n| **Gross Profit** | 0.00 |\n| 📋 **Total Operating Expenses** | 0.00 |\n| **Net Profit** | 0.00 |\n\n| Margin | % |\n|---|---|\n| Gross Margin | 0.00% |\n| Net Margin | 0.00% |\n\n---\n\n### 🔍 CFO Internal Assessment\n\n> ⚠️ **No financial data is currently recorded for CONATUS.** The P&L returns **zero values across all line items**, which indicates one or more of the following:\n\n1. **No transactions have been posted** to this company's books yet.\n2. **Chart of Accounts** may not be fully configured or mapped.\n3. The company may be a **newly onboarded entity** with no historical data.\n4. There could be a **data integration issue** preventing records from being surfaced.\n\n---\n\n### ✅ Recommended Next Steps\n\n- 🔎 Verify that journal entries and invoices have been correctly assigned to **CONATUS (Company ID: 5)**.\n- 📂 Check if transactions exist under a different company entity.\n- 🛠️ Confirm that the accounting module is fully set up for this company.\n\nWould you like me to run a **Trial Balance**, **custom database query**, or investigate further to diagnose the data gap?", 'type': 'text', 'index': 0}]..."

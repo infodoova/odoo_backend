@@ -20,28 +20,80 @@ def generate_report_tool(tenant_id: str, company_id: int | None = None, custom_c
     health = get_business_health_score_tool(tenant_id, company_id)
     
     c = canvas.Canvas(str(path), pagesize=letter)
-    y = 750
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(40, y, f"DOOVA ONEVIEW — STRATEGIC BUSINESS REPORT")
-    y -= 30
+    width, height = letter
+    
+    # Header
+    c.setStrokeColorRGB(0.1, 0.4, 0.7)
+    c.setLineWidth(2)
+    c.line(40, height - 60, width - 40, height - 60)
+    
+    c.setFont("Helvetica-Bold", 18)
+    c.setFillColorRGB(0.1, 0.3, 0.5)
+    c.drawString(40, height - 50, "DOOVA ONEVIEW")
+    
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColorRGB(0, 0, 0)
+    c.drawRightString(width - 40, height - 50, "Strategic Business Report")
+    
+    # Metadata
+    y = height - 100
     c.setFont("Helvetica", 10)
-    c.drawString(40, y, f"Tenant: {tenant_id} | Date: {datetime.now().strftime('%B %d, %Y')}")
+    c.drawString(40, y, f"Generated: {datetime.now().strftime('%B %d, %Y %H:%M')}")
+    c.drawRightString(width - 40, y, f"Tenant ID: {tenant_id}")
+    
+    # Business Vital Signs
     y -= 40
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y, "BUSINESS VITAL SIGNS")
+    y -= 10
+    c.setLineWidth(1)
+    c.line(40, y, width - 40, y)
+    y -= 25
+    
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(40, y, "Overall Health Score:")
+    c.setFont("Helvetica", 11)
+    c.drawString(180, y, f"{health['business_health_score']} / 100")
+    
+    y -= 20
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(40, y, "Total Annual Revenue:")
+    c.setFont("Helvetica", 11)
+    c.drawString(180, y, f"{sales['total_revenue']:,}")
+    
+    # AI Executive Analysis
+    y -= 40
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y, "EXECUTIVE ANALYSIS & RECOMMENDATIONS")
+    y -= 10
+    c.line(40, y, width - 40, y)
+    y -= 25
     
     if custom_content:
-        # Simple text wrapping for AI content
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(40, y, "EXECUTIVE ANALYSIS & RECOMMENDATIONS")
-        y -= 20
-        c.setFont("Helvetica", 11)
+        c.setFont("Helvetica", 10)
         text_object = c.beginText(40, y)
-        for line in custom_content.split('\n'):
-            text_object.textLine(line)
+        text_object.setLeading(14)
+        
+        # Simple character-based wrapping for robustness
+        words = custom_content.split()
+        current_line = []
+        for word in words:
+            current_line.append(word)
+            if len(" ".join(current_line)) > 90:
+                text_object.textLine(" ".join(current_line[:-1]))
+                current_line = [word]
+        if current_line:
+            text_object.textLine(" ".join(current_line))
+            
         c.drawText(text_object)
     else:
-        c.drawString(40, y, f"Health Score: {health['business_health_score']}")
-        y -= 20
-        c.drawString(40, y, f"Total Revenue: {sales['total_revenue']}")
+        c.setFont("Helvetica-Oblique", 10)
+        c.drawString(40, y, "No custom AI analysis provided for this report.")
+    
+    # Footer
+    c.setFont("Helvetica", 8)
+    c.setFillColorRGB(0.5, 0.5, 0.5)
+    c.drawCentredString(width / 2, 30, "Confidential - Powered by Doova Finance Brain")
     
     c.save()
 

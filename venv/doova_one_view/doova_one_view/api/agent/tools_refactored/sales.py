@@ -35,7 +35,7 @@ def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, gra
     query += f_sql + f" GROUP BY period ORDER BY period ASC"
     params.update(f_params)
     rows = run_query(query, params)
-    return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r["period"]), "revenue": float(r["revenue"]), "order_count": int(r["count"])} for r in rows]}
+    return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r["period"]), "revenue": float(r["revenue"]), "order_count": int(r["order_count"])} for r in rows]}
 
 def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month") -> dict:
     data = get_time_series_data_tool(tenant_id, company_id, granularity)
