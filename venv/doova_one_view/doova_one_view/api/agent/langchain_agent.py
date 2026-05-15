@@ -7,7 +7,23 @@ from .config import AgentConfig
 from .langchain_tools import agent_tools
 from .summarizer import SummarizerNode
 from .prompts import AGENT_SYSTEM_PROMPT
-from .logger import log_agent_start, log_agent_complete, log_summarization, log_error
+from .logger import log_agent_start, log_agent_complete, log_summarization, log_error, log_tool_call, log_chain_event
+
+from langchain_core.callbacks import BaseCallbackHandler
+
+class AgentCallbackHandler(BaseCallbackHandler):
+    """Custom handler to bridge LangChain events with our specialized logger."""
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        self.tool_start_time = time.time()
+        self.current_tool = serialized.get("name")
+        self.current_params = input_str
+
+    def on_tool_end(self, output, **kwargs):
+        duration = (time.time() - self.tool_start_time) * 1000
+        log_tool_call(self.current_tool, {"input": self.current_params}, output, duration)
+
+    def on_agent_action(self, action, **kwargs):
+        log_chain_event("ACTION", f"Agent selecting tool: {action.tool}")
 
 class DoovaLangChainAgent:
     def __init__(self, model_name=None):
@@ -20,7 +36,12 @@ class DoovaLangChainAgent:
         
         self.prompt = AGENT_SYSTEM_PROMPT
         self.agent = create_tool_calling_agent(self.llm, agent_tools, self.prompt)
-        self.executor = AgentExecutor(agent=self.agent, tools=agent_tools, verbose=True)
+        self.executor = AgentExecutor(
+            agent=self.agent, 
+            tools=agent_tools, 
+            verbose=True,
+            callbacks=[AgentCallbackHandler()]
+        )
 
     def _format_history(self, history: list) -> list:
         from langchain_core.messages import HumanMessage, AIMessage

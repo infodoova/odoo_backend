@@ -10,15 +10,25 @@ logger = logging.getLogger("doova.agent")
 logger.setLevel(logging.DEBUG)
 
 # Console handler with structured formatting
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_formatter = logging.Formatter(
     "\n🔹 [%(asctime)s] %(levelname)s | %(name)s\n"
     "   %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)
+
+# File handler for persistent execution logs
+file_handler = logging.FileHandler("agent_execution.log", encoding="utf-8")
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
 
 
 def log_router_decision(message: str, decision: str, duration_ms: float):
@@ -90,6 +100,11 @@ def log_error(context: str, error: Exception):
         f"   Type: {type(error).__name__}\n"
         f"   Message: {str(error)}"
     )
+
+
+def log_chain_event(event_type: str, details: str):
+    """Log generic LangChain internal events (Chain start, end, error)."""
+    logger.debug(f"⛓️ CHAIN {event_type.upper()}: {details}")
 
 
 def timed(func):

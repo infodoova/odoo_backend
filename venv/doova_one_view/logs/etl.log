@@ -97,3 +97,1665 @@ INFO 2026-05-15 12:30:34,243 middleware 14976 3776 PATCH /api/v1/tenants/4fa1b33
 INFO 2026-05-15 12:30:34,257 service 14976 15824 Tenant updated: softquesarl-supernova-stage (ID: 4fa1b33d-870f-4681-a54e-52e9b12f6b99)
 INFO 2026-05-15 12:30:34,259 middleware 14976 3776 PATCH /api/v1/tenants/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.015s
 INFO 2026-05-15 12:30:48,643 sync_job 14976 3776 Background Sync Job stopped
+INFO 2026-05-15 12:30:52,193 sync_job 8180 10868 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-15 12:30:52,193 sync_job 8180 10868 Starting scheduled sync run at 2026-05-15 12:30:52.193149
+INFO 2026-05-15 12:30:52,231 sync_job 8180 10868 Auto-syncing tenant: softquesarl-supernova-stage (4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 12:30:52,296 utils 8180 10812 decrypt_api_key called
+INFO 2026-05-15 12:30:52,297 utils 8180 10812 Incoming type: <class 'memoryview'>
+INFO 2026-05-15 12:30:52,297 utils 8180 10812 Detected memoryview, converting using tobytes()
+INFO 2026-05-15 12:30:52,297 utils 8180 10812 Raw data: b'c363f37317257749632661d8c13fcdd306ef07a8'
+INFO 2026-05-15 12:30:52,297 utils 8180 10812 Data length after normalization: 40
+INFO 2026-05-15 12:30:52,298 utils 8180 10812 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-15 12:30:52,298 utils 8180 10812 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-15 12:30:52,299 utils 8180 10812 Falling back to plain decode
+INFO 2026-05-15 12:30:52,299 utils 8180 10812 Plain decode successful, result length: 40
+INFO 2026-05-15 12:30:52,299 odoo_client 8180 10812 Initialized Odoo JSON-RPC client for softquesarl-supernova-stage
+INFO 2026-05-15 12:30:52,330 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 12:30:52,332 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 12:30:52,333 orchestrator 8180 10812 No history found. Triggering full sync...
+INFO 2026-05-15 12:30:52,333 orchestrator 8180 10812 Starting professional full sync for tenant: softquesarl-supernova-stage
+INFO 2026-05-15 12:30:52,365 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 12:30:53,143 odoo_client 8180 10812 Authenticated successfully. UID: 28
+INFO 2026-05-15 12:30:53,144 orchestrator 8180 10812 === Phase 1: Core Dimensions ===
+INFO 2026-05-15 12:30:53,145 time_synchronizer 8180 10812 Populating time dimension...
+INFO 2026-05-15 12:30:55,240 time_synchronizer 8180 10812 Populated 9862 dates in dim_time
+INFO 2026-05-15 12:30:55,242 company_synchronizer 8180 10812 Syncing companies...
+INFO 2026-05-15 12:30:55,792 odoo_client 8180 10812 Fetched 5 records from res.company
+INFO 2026-05-15 12:30:55,844 company_synchronizer 8180 10812 Synced 5 companies, 0 failed
+INFO 2026-05-15 12:30:55,846 orchestrator 8180 10812 Companies: 5 synced, 0 failed
+INFO 2026-05-15 12:30:55,848 product_synchronizer 8180 10812 Syncing product categories...
+INFO 2026-05-15 12:30:56,005 odoo_client 8180 10812 Fetched 92 records from product.category
+INFO 2026-05-15 12:30:56,132 product_synchronizer 8180 10812 Synced 92 product categories, 0 failed
+INFO 2026-05-15 12:30:56,133 orchestrator 8180 10812 Categories: 92 synced, 0 failed
+INFO 2026-05-15 12:30:56,134 product_synchronizer 8180 10812 Syncing products with batch optimization...
+INFO 2026-05-15 12:30:56,134 base_synchronizer 8180 10812 Pre-fetching 92 IDs for dim_product_categories...
+INFO 2026-05-15 12:30:56,134 base_synchronizer 8180 10812 Cached 92 IDs for dim_product_categories
+INFO 2026-05-15 12:30:56,542 odoo_client 8180 10812 Fetched 1000 records from product.product
+INFO 2026-05-15 12:30:56,983 odoo_client 8180 10812 Fetched 1000 records from product.product
+INFO 2026-05-15 12:30:57,346 odoo_client 8180 10812 Fetched 1000 records from product.product
+INFO 2026-05-15 12:30:57,574 odoo_client 8180 10812 Fetched 229 records from product.product
+INFO 2026-05-15 12:30:57,641 base_synchronizer 8180 10812 [product.product] Sync complete: 3229 records in 1.51s (2142.22 rec/s)
+INFO 2026-05-15 12:30:57,642 orchestrator 8180 10812 Products: 3229 synced, 0 failed
+INFO 2026-05-15 12:30:57,643 partner_synchronizer 8180 10812 Syncing partners with batch optimization...
+INFO 2026-05-15 12:30:57,875 odoo_client 8180 10812 Fetched 1000 records from res.partner
+INFO 2026-05-15 12:30:58,126 odoo_client 8180 10812 Fetched 1000 records from res.partner
+INFO 2026-05-15 12:30:58,379 odoo_client 8180 10812 Fetched 1000 records from res.partner
+INFO 2026-05-15 12:30:58,606 odoo_client 8180 10812 Fetched 1000 records from res.partner
+INFO 2026-05-15 12:30:58,797 odoo_client 8180 10812 Fetched 275 records from res.partner
+INFO 2026-05-15 12:30:58,861 base_synchronizer 8180 10812 [res.partner] Sync complete: 4275 records in 1.22s (3509.45 rec/s)
+INFO 2026-05-15 12:30:58,863 orchestrator 8180 10812 Partners: 4275 synced, 0 failed
+INFO 2026-05-15 12:30:58,864 user_synchronizer 8180 10812 Syncing users...
+INFO 2026-05-15 12:30:59,040 odoo_client 8180 10812 Fetched 23 records from res.users
+INFO 2026-05-15 12:30:59,095 user_synchronizer 8180 10812 Synced 23 users, 0 failed
+INFO 2026-05-15 12:30:59,097 orchestrator 8180 10812 Users: 23 synced, 0 failed
+INFO 2026-05-15 12:30:59,098 stock_lot_synchronizer 8180 10812 Syncing inventory lots with batch optimization...
+INFO 2026-05-15 12:30:59,100 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 12:30:59,106 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 12:30:59,107 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:30:59,107 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:30:59,331 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:30:59,603 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:30:59,864 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:00,143 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:00,559 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:00,842 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:01,161 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:01,372 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:01,666 odoo_client 8180 10812 Fetched 1000 records from stock.lot
+INFO 2026-05-15 12:31:01,904 odoo_client 8180 10812 Fetched 859 records from stock.lot
+INFO 2026-05-15 12:31:02,006 base_synchronizer 8180 10812 [stock.lot] Sync complete: 9859 records in 2.91s (3390.01 rec/s)
+INFO 2026-05-15 12:31:02,010 orchestrator 8180 10812 Lots: 9859 synced, 0 failed
+INFO 2026-05-15 12:31:02,010 currency_synchronizer 8180 10812 [CurrencySynchronizer] Starting — tenant=4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 12:31:02,151 odoo_client 8180 10812 Fetched 4 records from res.currency
+INFO 2026-05-15 12:31:02,175 base_synchronizer 8180 10812 [res.currency] Sync complete: 4 records in 0.16s (24.37 rec/s)
+INFO 2026-05-15 12:31:02,176 currency_synchronizer 8180 10812 [CurrencySynchronizer] Done — 4 synced, 0 failed
+INFO 2026-05-15 12:31:02,177 orchestrator 8180 10812 Currencies: 4 synced, 0 failed
+INFO 2026-05-15 12:31:02,177 orchestrator 8180 10812 === Phase 2: Transactional Data ===
+INFO 2026-05-15 12:31:02,177 orchestrator 8180 10812 Syncing sales_orders...
+INFO 2026-05-15 12:31:02,178 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Starting — tenant=4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 12:31:02,180 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 12:31:02,183 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 12:31:02,184 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 12:31:02,184 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 12:31:02,185 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:31:02,185 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:31:02,186 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 12:31:02,188 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 12:31:02,189 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Loaded 4 currencies: ['EUR', 'USD', 'XAF', 'LBP']
+INFO 2026-05-15 12:31:02,434 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:02,675 odoo_client 8180 10812 Fetched 375 records from sale.order.line
+INFO 2026-05-15 12:31:02,979 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:03,161 odoo_client 8180 10812 Fetched 314 records from sale.order.line
+INFO 2026-05-15 12:31:03,369 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:03,524 odoo_client 8180 10812 Fetched 387 records from sale.order.line
+INFO 2026-05-15 12:31:03,697 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:03,916 odoo_client 8180 10812 Fetched 450 records from sale.order.line
+INFO 2026-05-15 12:31:04,246 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:04,464 odoo_client 8180 10812 Fetched 370 records from sale.order.line
+INFO 2026-05-15 12:31:04,734 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:05,002 odoo_client 8180 10812 Fetched 430 records from sale.order.line
+INFO 2026-05-15 12:31:05,229 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:05,434 odoo_client 8180 10812 Fetched 365 records from sale.order.line
+INFO 2026-05-15 12:31:05,767 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:05,989 odoo_client 8180 10812 Fetched 450 records from sale.order.line
+INFO 2026-05-15 12:31:06,272 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:06,491 odoo_client 8180 10812 Fetched 447 records from sale.order.line
+INFO 2026-05-15 12:31:06,787 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:06,987 odoo_client 8180 10812 Fetched 387 records from sale.order.line
+INFO 2026-05-15 12:31:07,239 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:07,434 odoo_client 8180 10812 Fetched 387 records from sale.order.line
+INFO 2026-05-15 12:31:07,721 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:07,925 odoo_client 8180 10812 Fetched 363 records from sale.order.line
+INFO 2026-05-15 12:31:08,266 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:08,492 odoo_client 8180 10812 Fetched 408 records from sale.order.line
+INFO 2026-05-15 12:31:08,743 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:09,014 odoo_client 8180 10812 Fetched 449 records from sale.order.line
+INFO 2026-05-15 12:31:09,284 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:09,517 odoo_client 8180 10812 Fetched 355 records from sale.order.line
+INFO 2026-05-15 12:31:09,762 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:09,953 odoo_client 8180 10812 Fetched 364 records from sale.order.line
+INFO 2026-05-15 12:31:10,177 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:10,366 odoo_client 8180 10812 Fetched 353 records from sale.order.line
+INFO 2026-05-15 12:31:10,590 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:10,800 odoo_client 8180 10812 Fetched 418 records from sale.order.line
+INFO 2026-05-15 12:31:10,995 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:11,165 odoo_client 8180 10812 Fetched 388 records from sale.order.line
+INFO 2026-05-15 12:31:11,345 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:11,536 odoo_client 8180 10812 Fetched 409 records from sale.order.line
+INFO 2026-05-15 12:31:11,892 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:12,114 odoo_client 8180 10812 Fetched 435 records from sale.order.line
+INFO 2026-05-15 12:31:12,433 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:12,676 odoo_client 8180 10812 Fetched 395 records from sale.order.line
+INFO 2026-05-15 12:31:12,966 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:13,178 odoo_client 8180 10812 Fetched 410 records from sale.order.line
+INFO 2026-05-15 12:31:13,371 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:13,558 odoo_client 8180 10812 Fetched 568 records from sale.order.line
+INFO 2026-05-15 12:31:13,751 odoo_client 8180 10812 Fetched 200 records from sale.order
+INFO 2026-05-15 12:31:13,976 odoo_client 8180 10812 Fetched 481 records from sale.order.line
+INFO 2026-05-15 12:31:14,201 odoo_client 8180 10812 Fetched 130 records from sale.order
+INFO 2026-05-15 12:31:14,396 odoo_client 8180 10812 Fetched 316 records from sale.order.line
+INFO 2026-05-15 12:31:14,549 base_synchronizer 8180 10812 [sale.order] Sync complete: 5130 records in 12.37s (414.70 rec/s)
+INFO 2026-05-15 12:31:14,549 orchestrator 8180 10812 Sales_orders: 5130 synced, 0 failed
+INFO 2026-05-15 12:31:14,550 orchestrator 8180 10812 Syncing purchase_orders...
+INFO 2026-05-15 12:31:14,551 purchase_synchronizer 8180 10812 Starting purchase batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 12:31:14,552 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 12:31:14,554 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 12:31:14,554 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 12:31:14,555 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 12:31:14,556 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:31:14,556 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:31:14,557 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 12:31:14,561 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 12:31:14,830 odoo_client 8180 10812 Fetched 200 records from purchase.order
+INFO 2026-05-15 12:31:15,196 odoo_client 8180 10812 Fetched 1000 records from purchase.order.line
+INFO 2026-05-15 12:31:15,604 odoo_client 8180 10812 Fetched 1000 records from purchase.order.line
+INFO 2026-05-15 12:31:15,876 odoo_client 8180 10812 Fetched 55 records from purchase.order.line
+INFO 2026-05-15 12:31:16,047 odoo_client 8180 10812 Fetched 200 records from purchase.order
+INFO 2026-05-15 12:31:16,481 odoo_client 8180 10812 Fetched 1000 records from purchase.order.line
+INFO 2026-05-15 12:31:16,932 odoo_client 8180 10812 Fetched 1000 records from purchase.order.line
+INFO 2026-05-15 12:31:17,206 odoo_client 8180 10812 Fetched 116 records from purchase.order.line
+INFO 2026-05-15 12:31:17,375 odoo_client 8180 10812 Fetched 6 records from purchase.order
+INFO 2026-05-15 12:31:17,484 odoo_client 8180 10812 Fetched 76 records from purchase.order.line
+INFO 2026-05-15 12:31:17,533 base_synchronizer 8180 10812 [purchase.order] Sync complete: 406 records in 2.98s (136.21 rec/s)
+INFO 2026-05-15 12:31:17,534 orchestrator 8180 10812 Purchase_orders: 406 synced, 0 failed
+INFO 2026-05-15 12:31:17,535 orchestrator 8180 10812 Syncing account_moves...
+INFO 2026-05-15 12:31:17,536 accounting_synchronizer 8180 10812 Starting accounting batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 12:31:17,538 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 12:31:17,543 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 12:31:17,544 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:31:17,545 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:31:17,546 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 12:31:17,550 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 12:31:17,839 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:18,290 odoo_client 8180 10812 Fetched 634 records from account.move.line
+INFO 2026-05-15 12:31:18,602 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:19,006 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:31:19,296 odoo_client 8180 10812 Fetched 33 records from account.move.line
+INFO 2026-05-15 12:31:19,428 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:19,625 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:31:19,879 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:20,098 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:31:20,370 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:20,584 odoo_client 8180 10812 Fetched 418 records from account.move.line
+INFO 2026-05-15 12:31:20,867 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:21,164 odoo_client 8180 10812 Fetched 557 records from account.move.line
+INFO 2026-05-15 12:31:21,472 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:21,778 odoo_client 8180 10812 Fetched 479 records from account.move.line
+INFO 2026-05-15 12:31:22,017 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:22,261 odoo_client 8180 10812 Fetched 514 records from account.move.line
+INFO 2026-05-15 12:31:22,557 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:22,805 odoo_client 8180 10812 Fetched 462 records from account.move.line
+INFO 2026-05-15 12:31:23,068 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:23,304 odoo_client 8180 10812 Fetched 446 records from account.move.line
+INFO 2026-05-15 12:31:23,582 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:23,805 odoo_client 8180 10812 Fetched 443 records from account.move.line
+INFO 2026-05-15 12:31:24,074 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:24,370 odoo_client 8180 10812 Fetched 549 records from account.move.line
+INFO 2026-05-15 12:31:24,604 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:24,875 odoo_client 8180 10812 Fetched 660 records from account.move.line
+INFO 2026-05-15 12:31:25,143 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:25,376 odoo_client 8180 10812 Fetched 496 records from account.move.line
+INFO 2026-05-15 12:31:25,649 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:25,903 odoo_client 8180 10812 Fetched 464 records from account.move.line
+INFO 2026-05-15 12:31:26,236 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:26,591 odoo_client 8180 10812 Fetched 548 records from account.move.line
+INFO 2026-05-15 12:31:26,962 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:27,290 odoo_client 8180 10812 Fetched 445 records from account.move.line
+INFO 2026-05-15 12:31:27,556 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:27,838 odoo_client 8180 10812 Fetched 456 records from account.move.line
+INFO 2026-05-15 12:31:28,108 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:28,411 odoo_client 8180 10812 Fetched 419 records from account.move.line
+INFO 2026-05-15 12:31:28,671 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:29,083 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:31:29,387 odoo_client 8180 10812 Fetched 149 records from account.move.line
+INFO 2026-05-15 12:31:29,573 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:29,797 odoo_client 8180 10812 Fetched 443 records from account.move.line
+INFO 2026-05-15 12:31:30,093 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:30,406 odoo_client 8180 10812 Fetched 469 records from account.move.line
+INFO 2026-05-15 12:31:30,639 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:30,893 odoo_client 8180 10812 Fetched 441 records from account.move.line
+INFO 2026-05-15 12:31:31,123 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:31,366 odoo_client 8180 10812 Fetched 448 records from account.move.line
+INFO 2026-05-15 12:31:31,660 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:31,880 odoo_client 8180 10812 Fetched 424 records from account.move.line
+INFO 2026-05-15 12:31:32,119 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:32,365 odoo_client 8180 10812 Fetched 450 records from account.move.line
+INFO 2026-05-15 12:31:32,673 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:32,903 odoo_client 8180 10812 Fetched 480 records from account.move.line
+INFO 2026-05-15 12:31:33,170 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:33,414 odoo_client 8180 10812 Fetched 459 records from account.move.line
+INFO 2026-05-15 12:31:33,644 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:33,874 odoo_client 8180 10812 Fetched 445 records from account.move.line
+INFO 2026-05-15 12:31:34,121 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:34,360 odoo_client 8180 10812 Fetched 436 records from account.move.line
+INFO 2026-05-15 12:31:34,685 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:35,004 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:31:35,271 odoo_client 8180 10812 Fetched 9 records from account.move.line
+INFO 2026-05-15 12:31:35,391 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:35,632 odoo_client 8180 10812 Fetched 570 records from account.move.line
+INFO 2026-05-15 12:31:35,956 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:36,181 odoo_client 8180 10812 Fetched 396 records from account.move.line
+INFO 2026-05-15 12:31:36,461 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:36,760 odoo_client 8180 10812 Fetched 504 records from account.move.line
+INFO 2026-05-15 12:31:37,014 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:37,259 odoo_client 8180 10812 Fetched 401 records from account.move.line
+INFO 2026-05-15 12:31:37,555 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:38,140 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:31:38,567 odoo_client 8180 10812 Fetched 806 records from account.move.line
+INFO 2026-05-15 12:31:38,824 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:39,051 odoo_client 8180 10812 Fetched 423 records from account.move.line
+INFO 2026-05-15 12:31:39,330 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:39,618 odoo_client 8180 10812 Fetched 456 records from account.move.line
+INFO 2026-05-15 12:31:39,849 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:40,100 odoo_client 8180 10812 Fetched 619 records from account.move.line
+INFO 2026-05-15 12:31:40,367 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:40,594 odoo_client 8180 10812 Fetched 463 records from account.move.line
+INFO 2026-05-15 12:31:40,866 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:41,089 odoo_client 8180 10812 Fetched 486 records from account.move.line
+INFO 2026-05-15 12:31:41,389 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:41,622 odoo_client 8180 10812 Fetched 406 records from account.move.line
+INFO 2026-05-15 12:31:41,891 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:42,203 odoo_client 8180 10812 Fetched 525 records from account.move.line
+INFO 2026-05-15 12:31:42,458 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:42,689 odoo_client 8180 10812 Fetched 423 records from account.move.line
+INFO 2026-05-15 12:31:43,014 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:43,248 odoo_client 8180 10812 Fetched 418 records from account.move.line
+INFO 2026-05-15 12:31:43,474 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:43,706 odoo_client 8180 10812 Fetched 437 records from account.move.line
+INFO 2026-05-15 12:31:44,027 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:44,241 odoo_client 8180 10812 Fetched 459 records from account.move.line
+INFO 2026-05-15 12:31:44,532 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:44,821 odoo_client 8180 10812 Fetched 550 records from account.move.line
+INFO 2026-05-15 12:31:45,096 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:45,346 odoo_client 8180 10812 Fetched 600 records from account.move.line
+INFO 2026-05-15 12:31:45,637 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:45,870 odoo_client 8180 10812 Fetched 430 records from account.move.line
+INFO 2026-05-15 12:31:46,148 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:46,457 odoo_client 8180 10812 Fetched 449 records from account.move.line
+INFO 2026-05-15 12:31:46,787 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:47,081 odoo_client 8180 10812 Fetched 449 records from account.move.line
+INFO 2026-05-15 12:31:47,364 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:47,703 odoo_client 8180 10812 Fetched 488 records from account.move.line
+INFO 2026-05-15 12:31:47,984 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:48,294 odoo_client 8180 10812 Fetched 484 records from account.move.line
+INFO 2026-05-15 12:31:48,535 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:48,857 odoo_client 8180 10812 Fetched 478 records from account.move.line
+INFO 2026-05-15 12:31:49,144 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:49,481 odoo_client 8180 10812 Fetched 582 records from account.move.line
+INFO 2026-05-15 12:31:49,808 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:50,075 odoo_client 8180 10812 Fetched 426 records from account.move.line
+INFO 2026-05-15 12:31:50,398 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:50,682 odoo_client 8180 10812 Fetched 456 records from account.move.line
+INFO 2026-05-15 12:31:50,966 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:51,281 odoo_client 8180 10812 Fetched 588 records from account.move.line
+INFO 2026-05-15 12:31:51,582 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:51,821 odoo_client 8180 10812 Fetched 472 records from account.move.line
+INFO 2026-05-15 12:31:52,142 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:52,354 odoo_client 8180 10812 Fetched 451 records from account.move.line
+INFO 2026-05-15 12:31:52,656 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:52,880 odoo_client 8180 10812 Fetched 452 records from account.move.line
+INFO 2026-05-15 12:31:53,166 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:53,390 odoo_client 8180 10812 Fetched 436 records from account.move.line
+INFO 2026-05-15 12:31:53,675 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:53,951 odoo_client 8180 10812 Fetched 462 records from account.move.line
+INFO 2026-05-15 12:31:54,244 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:54,526 odoo_client 8180 10812 Fetched 495 records from account.move.line
+INFO 2026-05-15 12:31:54,794 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:55,075 odoo_client 8180 10812 Fetched 502 records from account.move.line
+INFO 2026-05-15 12:31:55,332 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:55,566 odoo_client 8180 10812 Fetched 440 records from account.move.line
+INFO 2026-05-15 12:31:55,940 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:56,169 odoo_client 8180 10812 Fetched 457 records from account.move.line
+INFO 2026-05-15 12:31:56,357 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:56,566 odoo_client 8180 10812 Fetched 600 records from account.move.line
+INFO 2026-05-15 12:31:56,759 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:56,976 odoo_client 8180 10812 Fetched 450 records from account.move.line
+INFO 2026-05-15 12:31:57,192 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:57,405 odoo_client 8180 10812 Fetched 420 records from account.move.line
+INFO 2026-05-15 12:31:57,639 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:57,884 odoo_client 8180 10812 Fetched 529 records from account.move.line
+INFO 2026-05-15 12:31:58,165 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:58,406 odoo_client 8180 10812 Fetched 471 records from account.move.line
+INFO 2026-05-15 12:31:58,718 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:58,963 odoo_client 8180 10812 Fetched 472 records from account.move.line
+INFO 2026-05-15 12:31:59,257 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:31:59,497 odoo_client 8180 10812 Fetched 478 records from account.move.line
+INFO 2026-05-15 12:31:59,798 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:00,006 odoo_client 8180 10812 Fetched 440 records from account.move.line
+INFO 2026-05-15 12:32:00,188 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:00,408 odoo_client 8180 10812 Fetched 490 records from account.move.line
+INFO 2026-05-15 12:32:00,734 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:01,048 odoo_client 8180 10812 Fetched 545 records from account.move.line
+INFO 2026-05-15 12:32:01,306 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:01,719 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:32:02,089 odoo_client 8180 10812 Fetched 390 records from account.move.line
+INFO 2026-05-15 12:32:02,348 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:02,664 odoo_client 8180 10812 Fetched 553 records from account.move.line
+INFO 2026-05-15 12:32:02,963 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:03,221 odoo_client 8180 10812 Fetched 428 records from account.move.line
+INFO 2026-05-15 12:32:03,650 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:04,078 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:32:04,439 odoo_client 8180 10812 Fetched 626 records from account.move.line
+INFO 2026-05-15 12:32:04,716 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:04,961 odoo_client 8180 10812 Fetched 428 records from account.move.line
+INFO 2026-05-15 12:32:05,266 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:05,598 odoo_client 8180 10812 Fetched 688 records from account.move.line
+INFO 2026-05-15 12:32:05,904 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:06,134 odoo_client 8180 10812 Fetched 380 records from account.move.line
+INFO 2026-05-15 12:32:06,424 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:06,633 odoo_client 8180 10812 Fetched 330 records from account.move.line
+INFO 2026-05-15 12:32:06,801 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:07,033 odoo_client 8180 10812 Fetched 401 records from account.move.line
+INFO 2026-05-15 12:32:07,328 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:07,605 odoo_client 8180 10812 Fetched 431 records from account.move.line
+INFO 2026-05-15 12:32:07,926 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:08,202 odoo_client 8180 10812 Fetched 453 records from account.move.line
+INFO 2026-05-15 12:32:08,501 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:08,796 odoo_client 8180 10812 Fetched 629 records from account.move.line
+INFO 2026-05-15 12:32:09,134 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:09,412 odoo_client 8180 10812 Fetched 510 records from account.move.line
+INFO 2026-05-15 12:32:09,659 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:09,901 odoo_client 8180 10812 Fetched 503 records from account.move.line
+INFO 2026-05-15 12:32:10,134 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:10,379 odoo_client 8180 10812 Fetched 457 records from account.move.line
+INFO 2026-05-15 12:32:10,668 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:10,891 odoo_client 8180 10812 Fetched 457 records from account.move.line
+INFO 2026-05-15 12:32:11,177 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:11,450 odoo_client 8180 10812 Fetched 637 records from account.move.line
+INFO 2026-05-15 12:32:11,642 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:11,827 odoo_client 8180 10812 Fetched 476 records from account.move.line
+INFO 2026-05-15 12:32:12,014 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:12,285 odoo_client 8180 10812 Fetched 666 records from account.move.line
+INFO 2026-05-15 12:32:12,556 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:12,795 odoo_client 8180 10812 Fetched 457 records from account.move.line
+INFO 2026-05-15 12:32:13,126 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:13,341 odoo_client 8180 10812 Fetched 507 records from account.move.line
+INFO 2026-05-15 12:32:13,527 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:13,731 odoo_client 8180 10812 Fetched 455 records from account.move.line
+INFO 2026-05-15 12:32:13,996 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:14,228 odoo_client 8180 10812 Fetched 494 records from account.move.line
+INFO 2026-05-15 12:32:14,414 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:14,681 odoo_client 8180 10812 Fetched 759 records from account.move.line
+INFO 2026-05-15 12:32:15,002 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:15,239 odoo_client 8180 10812 Fetched 511 records from account.move.line
+INFO 2026-05-15 12:32:15,478 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:15,734 odoo_client 8180 10812 Fetched 463 records from account.move.line
+INFO 2026-05-15 12:32:16,036 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:16,270 odoo_client 8180 10812 Fetched 458 records from account.move.line
+INFO 2026-05-15 12:32:16,574 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:16,833 odoo_client 8180 10812 Fetched 542 records from account.move.line
+INFO 2026-05-15 12:32:17,093 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:17,333 odoo_client 8180 10812 Fetched 480 records from account.move.line
+INFO 2026-05-15 12:32:17,578 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:17,806 odoo_client 8180 10812 Fetched 468 records from account.move.line
+INFO 2026-05-15 12:32:18,146 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:18,433 odoo_client 8180 10812 Fetched 475 records from account.move.line
+INFO 2026-05-15 12:32:18,741 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:18,989 odoo_client 8180 10812 Fetched 584 records from account.move.line
+INFO 2026-05-15 12:32:19,250 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:19,503 odoo_client 8180 10812 Fetched 440 records from account.move.line
+INFO 2026-05-15 12:32:19,770 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:20,022 odoo_client 8180 10812 Fetched 437 records from account.move.line
+INFO 2026-05-15 12:32:20,348 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:20,581 odoo_client 8180 10812 Fetched 450 records from account.move.line
+INFO 2026-05-15 12:32:20,917 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:21,229 odoo_client 8180 10812 Fetched 491 records from account.move.line
+INFO 2026-05-15 12:32:21,486 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:21,766 odoo_client 8180 10812 Fetched 453 records from account.move.line
+INFO 2026-05-15 12:32:22,004 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:22,256 odoo_client 8180 10812 Fetched 436 records from account.move.line
+INFO 2026-05-15 12:32:22,540 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:22,776 odoo_client 8180 10812 Fetched 480 records from account.move.line
+INFO 2026-05-15 12:32:23,129 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:23,423 odoo_client 8180 10812 Fetched 551 records from account.move.line
+INFO 2026-05-15 12:32:23,705 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:24,110 odoo_client 8180 10812 Fetched 428 records from account.move.line
+INFO 2026-05-15 12:32:24,434 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:24,745 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:32:24,952 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:25,383 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:32:25,664 odoo_client 8180 10812 Fetched 220 records from account.move.line
+INFO 2026-05-15 12:32:25,877 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:26,104 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:32:26,386 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:26,788 odoo_client 8180 10812 Fetched 910 records from account.move.line
+INFO 2026-05-15 12:32:27,102 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:27,331 odoo_client 8180 10812 Fetched 438 records from account.move.line
+INFO 2026-05-15 12:32:27,633 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:27,853 odoo_client 8180 10812 Fetched 442 records from account.move.line
+INFO 2026-05-15 12:32:28,114 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:28,350 odoo_client 8180 10812 Fetched 423 records from account.move.line
+INFO 2026-05-15 12:32:28,629 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:28,783 odoo_client 8180 10812 Fetched 0 records from account.move.line
+INFO 2026-05-15 12:32:28,890 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:29,036 odoo_client 8180 10812 Fetched 0 records from account.move.line
+INFO 2026-05-15 12:32:29,141 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:29,288 odoo_client 8180 10812 Fetched 2 records from account.move.line
+INFO 2026-05-15 12:32:29,414 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:29,634 odoo_client 8180 10812 Fetched 471 records from account.move.line
+INFO 2026-05-15 12:32:29,906 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:30,196 odoo_client 8180 10812 Fetched 550 records from account.move.line
+INFO 2026-05-15 12:32:30,504 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:30,796 odoo_client 8180 10812 Fetched 596 records from account.move.line
+INFO 2026-05-15 12:32:31,021 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:31,289 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:32:31,523 odoo_client 8180 10812 Fetched 47 records from account.move.line
+INFO 2026-05-15 12:32:31,679 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:31,912 odoo_client 8180 10812 Fetched 439 records from account.move.line
+INFO 2026-05-15 12:32:32,169 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:32,388 odoo_client 8180 10812 Fetched 478 records from account.move.line
+INFO 2026-05-15 12:32:32,628 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:32,844 odoo_client 8180 10812 Fetched 455 records from account.move.line
+INFO 2026-05-15 12:32:33,106 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:33,337 odoo_client 8180 10812 Fetched 482 records from account.move.line
+INFO 2026-05-15 12:32:33,648 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:33,868 odoo_client 8180 10812 Fetched 451 records from account.move.line
+INFO 2026-05-15 12:32:34,178 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:34,399 odoo_client 8180 10812 Fetched 433 records from account.move.line
+INFO 2026-05-15 12:32:34,635 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:34,870 odoo_client 8180 10812 Fetched 438 records from account.move.line
+INFO 2026-05-15 12:32:35,179 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:35,470 odoo_client 8180 10812 Fetched 449 records from account.move.line
+INFO 2026-05-15 12:32:35,753 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:36,043 odoo_client 8180 10812 Fetched 470 records from account.move.line
+INFO 2026-05-15 12:32:36,352 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:36,557 odoo_client 8180 10812 Fetched 423 records from account.move.line
+INFO 2026-05-15 12:32:36,879 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:37,189 odoo_client 8180 10812 Fetched 442 records from account.move.line
+INFO 2026-05-15 12:32:37,598 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:37,897 odoo_client 8180 10812 Fetched 427 records from account.move.line
+INFO 2026-05-15 12:32:38,234 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:38,586 odoo_client 8180 10812 Fetched 688 records from account.move.line
+INFO 2026-05-15 12:32:38,919 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:39,181 odoo_client 8180 10812 Fetched 490 records from account.move.line
+INFO 2026-05-15 12:32:39,416 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:39,651 odoo_client 8180 10812 Fetched 439 records from account.move.line
+INFO 2026-05-15 12:32:39,970 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:40,217 odoo_client 8180 10812 Fetched 451 records from account.move.line
+INFO 2026-05-15 12:32:40,493 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:40,738 odoo_client 8180 10812 Fetched 415 records from account.move.line
+INFO 2026-05-15 12:32:40,983 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:41,246 odoo_client 8180 10812 Fetched 490 records from account.move.line
+INFO 2026-05-15 12:32:41,496 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:41,722 odoo_client 8180 10812 Fetched 454 records from account.move.line
+INFO 2026-05-15 12:32:41,997 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:42,249 odoo_client 8180 10812 Fetched 445 records from account.move.line
+INFO 2026-05-15 12:32:42,560 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:42,822 odoo_client 8180 10812 Fetched 465 records from account.move.line
+INFO 2026-05-15 12:32:43,125 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:43,397 odoo_client 8180 10812 Fetched 468 records from account.move.line
+INFO 2026-05-15 12:32:43,648 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:43,894 odoo_client 8180 10812 Fetched 444 records from account.move.line
+INFO 2026-05-15 12:32:44,155 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:44,473 odoo_client 8180 10812 Fetched 462 records from account.move.line
+INFO 2026-05-15 12:32:44,791 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:45,038 odoo_client 8180 10812 Fetched 456 records from account.move.line
+INFO 2026-05-15 12:32:45,264 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:45,508 odoo_client 8180 10812 Fetched 473 records from account.move.line
+INFO 2026-05-15 12:32:45,804 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:46,045 odoo_client 8180 10812 Fetched 435 records from account.move.line
+INFO 2026-05-15 12:32:46,367 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:46,584 odoo_client 8180 10812 Fetched 408 records from account.move.line
+INFO 2026-05-15 12:32:46,904 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:47,180 odoo_client 8180 10812 Fetched 505 records from account.move.line
+INFO 2026-05-15 12:32:47,489 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:47,765 odoo_client 8180 10812 Fetched 450 records from account.move.line
+INFO 2026-05-15 12:32:48,094 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:48,364 odoo_client 8180 10812 Fetched 463 records from account.move.line
+INFO 2026-05-15 12:32:48,620 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:48,850 odoo_client 8180 10812 Fetched 464 records from account.move.line
+INFO 2026-05-15 12:32:49,149 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:49,401 odoo_client 8180 10812 Fetched 505 records from account.move.line
+INFO 2026-05-15 12:32:49,640 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:49,871 odoo_client 8180 10812 Fetched 440 records from account.move.line
+INFO 2026-05-15 12:32:50,147 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:50,497 odoo_client 8180 10812 Fetched 456 records from account.move.line
+INFO 2026-05-15 12:32:50,878 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:51,105 odoo_client 8180 10812 Fetched 426 records from account.move.line
+INFO 2026-05-15 12:32:51,395 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:51,633 odoo_client 8180 10812 Fetched 472 records from account.move.line
+INFO 2026-05-15 12:32:51,928 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:52,246 odoo_client 8180 10812 Fetched 508 records from account.move.line
+INFO 2026-05-15 12:32:52,554 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:52,856 odoo_client 8180 10812 Fetched 491 records from account.move.line
+INFO 2026-05-15 12:32:53,038 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:53,264 odoo_client 8180 10812 Fetched 441 records from account.move.line
+INFO 2026-05-15 12:32:53,569 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:53,781 odoo_client 8180 10812 Fetched 424 records from account.move.line
+INFO 2026-05-15 12:32:54,105 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:54,349 odoo_client 8180 10812 Fetched 429 records from account.move.line
+INFO 2026-05-15 12:32:54,621 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:54,893 odoo_client 8180 10812 Fetched 434 records from account.move.line
+INFO 2026-05-15 12:32:55,089 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:55,327 odoo_client 8180 10812 Fetched 457 records from account.move.line
+INFO 2026-05-15 12:32:55,645 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:56,005 odoo_client 8180 10812 Fetched 931 records from account.move.line
+INFO 2026-05-15 12:32:56,335 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:56,594 odoo_client 8180 10812 Fetched 473 records from account.move.line
+INFO 2026-05-15 12:32:56,905 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:57,135 odoo_client 8180 10812 Fetched 421 records from account.move.line
+INFO 2026-05-15 12:32:57,398 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:57,670 odoo_client 8180 10812 Fetched 465 records from account.move.line
+INFO 2026-05-15 12:32:57,993 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:58,242 odoo_client 8180 10812 Fetched 453 records from account.move.line
+INFO 2026-05-15 12:32:58,545 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:58,759 odoo_client 8180 10812 Fetched 436 records from account.move.line
+INFO 2026-05-15 12:32:59,086 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:59,351 odoo_client 8180 10812 Fetched 479 records from account.move.line
+INFO 2026-05-15 12:32:59,637 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:32:59,942 odoo_client 8180 10812 Fetched 502 records from account.move.line
+INFO 2026-05-15 12:33:00,284 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:00,506 odoo_client 8180 10812 Fetched 466 records from account.move.line
+INFO 2026-05-15 12:33:00,773 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:00,996 odoo_client 8180 10812 Fetched 441 records from account.move.line
+INFO 2026-05-15 12:33:01,263 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:01,543 odoo_client 8180 10812 Fetched 486 records from account.move.line
+INFO 2026-05-15 12:33:01,905 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:02,182 odoo_client 8180 10812 Fetched 491 records from account.move.line
+INFO 2026-05-15 12:33:02,514 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:02,755 odoo_client 8180 10812 Fetched 506 records from account.move.line
+INFO 2026-05-15 12:33:03,026 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:03,346 odoo_client 8180 10812 Fetched 406 records from account.move.line
+INFO 2026-05-15 12:33:03,641 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:03,859 odoo_client 8180 10812 Fetched 444 records from account.move.line
+INFO 2026-05-15 12:33:04,145 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:04,372 odoo_client 8180 10812 Fetched 431 records from account.move.line
+INFO 2026-05-15 12:33:04,626 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:04,895 odoo_client 8180 10812 Fetched 466 records from account.move.line
+INFO 2026-05-15 12:33:05,149 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:05,355 odoo_client 8180 10812 Fetched 473 records from account.move.line
+INFO 2026-05-15 12:33:05,577 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:05,797 odoo_client 8180 10812 Fetched 430 records from account.move.line
+INFO 2026-05-15 12:33:06,114 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:06,431 odoo_client 8180 10812 Fetched 563 records from account.move.line
+INFO 2026-05-15 12:33:06,784 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:07,034 odoo_client 8180 10812 Fetched 453 records from account.move.line
+INFO 2026-05-15 12:33:07,361 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:07,621 odoo_client 8180 10812 Fetched 536 records from account.move.line
+INFO 2026-05-15 12:33:07,876 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:08,130 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:08,401 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:08,766 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:33:09,275 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:33:09,666 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:33:09,938 odoo_client 8180 10812 Fetched 337 records from account.move.line
+INFO 2026-05-15 12:33:10,214 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:10,496 odoo_client 8180 10812 Fetched 541 records from account.move.line
+INFO 2026-05-15 12:33:10,801 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:11,032 odoo_client 8180 10812 Fetched 457 records from account.move.line
+INFO 2026-05-15 12:33:11,332 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:11,633 odoo_client 8180 10812 Fetched 529 records from account.move.line
+INFO 2026-05-15 12:33:11,935 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:12,176 odoo_client 8180 10812 Fetched 523 records from account.move.line
+INFO 2026-05-15 12:33:12,438 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:12,683 odoo_client 8180 10812 Fetched 444 records from account.move.line
+INFO 2026-05-15 12:33:12,905 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:13,124 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:13,328 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:13,534 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:13,743 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:14,046 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:14,272 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:14,435 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:14,681 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:14,896 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:15,174 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:15,399 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:15,664 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:15,882 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:16,182 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:16,394 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:16,716 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:16,925 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:17,270 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:17,499 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:17,762 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:17,978 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:18,314 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:18,515 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:18,845 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:19,064 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:19,308 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:19,540 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:19,836 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:20,046 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:20,294 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:20,502 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:20,868 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:21,078 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:21,316 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:21,497 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:21,800 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:22,006 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:22,280 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:22,509 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:22,788 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:23,015 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:23,296 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:23,513 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:23,843 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:24,106 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:24,414 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:24,675 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:24,989 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:25,231 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:25,502 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:25,714 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:25,966 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:26,194 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:26,473 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:26,692 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:26,976 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:27,185 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:27,564 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:27,792 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:28,076 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:28,329 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:28,677 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:29,015 odoo_client 8180 10812 Fetched 400 records from account.move.line
+INFO 2026-05-15 12:33:29,330 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:29,685 odoo_client 8180 10812 Fetched 776 records from account.move.line
+INFO 2026-05-15 12:33:29,997 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:30,234 odoo_client 8180 10812 Fetched 456 records from account.move.line
+INFO 2026-05-15 12:33:30,495 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:30,744 odoo_client 8180 10812 Fetched 494 records from account.move.line
+INFO 2026-05-15 12:33:31,005 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:31,224 odoo_client 8180 10812 Fetched 443 records from account.move.line
+INFO 2026-05-15 12:33:31,494 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:31,804 odoo_client 8180 10812 Fetched 452 records from account.move.line
+INFO 2026-05-15 12:33:32,144 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:32,352 odoo_client 8180 10812 Fetched 404 records from account.move.line
+INFO 2026-05-15 12:33:32,721 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:33,033 odoo_client 8180 10812 Fetched 498 records from account.move.line
+INFO 2026-05-15 12:33:33,275 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:33,621 odoo_client 8180 10812 Fetched 1000 records from account.move.line
+INFO 2026-05-15 12:33:34,006 odoo_client 8180 10812 Fetched 293 records from account.move.line
+INFO 2026-05-15 12:33:34,190 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:34,436 odoo_client 8180 10812 Fetched 470 records from account.move.line
+INFO 2026-05-15 12:33:34,734 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:34,991 odoo_client 8180 10812 Fetched 458 records from account.move.line
+INFO 2026-05-15 12:33:35,315 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:35,592 odoo_client 8180 10812 Fetched 476 records from account.move.line
+INFO 2026-05-15 12:33:35,900 odoo_client 8180 10812 Fetched 200 records from account.move
+INFO 2026-05-15 12:33:36,150 odoo_client 8180 10812 Fetched 413 records from account.move.line
+INFO 2026-05-15 12:33:36,449 odoo_client 8180 10812 Fetched 12 records from account.move
+INFO 2026-05-15 12:33:36,553 odoo_client 8180 10812 Fetched 33 records from account.move.line
+INFO 2026-05-15 12:33:36,588 base_synchronizer 8180 10812 [account.move] Sync complete: 50012 records in 139.05s (359.66 rec/s)
+INFO 2026-05-15 12:33:36,591 orchestrator 8180 10812 Account_moves: 50012 synced, 0 failed
+INFO 2026-05-15 12:33:36,592 orchestrator 8180 10812 Syncing stock_pickings...
+INFO 2026-05-15 12:33:36,595 stock_picking_synchronizer 8180 10812 Syncing stock pickings for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 12:33:36,598 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 12:33:36,612 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 12:33:36,614 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:33:36,615 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:33:36,923 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:37,342 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:37,711 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:38,071 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:38,434 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:38,901 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:39,246 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:39,600 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:39,974 odoo_client 8180 10812 Fetched 1000 records from stock.picking
+INFO 2026-05-15 12:33:40,255 odoo_client 8180 10812 Fetched 579 records from stock.picking
+INFO 2026-05-15 12:33:40,352 base_synchronizer 8180 10812 [stock.picking] Sync complete: 9579 records in 3.76s (2549.92 rec/s)
+INFO 2026-05-15 12:33:40,352 orchestrator 8180 10812 Stock_pickings: 9579 synced, 0 failed
+INFO 2026-05-15 12:33:40,352 orchestrator 8180 10812 Syncing stock_moves...
+INFO 2026-05-15 12:33:40,353 stock_move_synchronizer 8180 10812 Syncing stock moves for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 12:33:40,354 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 12:33:40,356 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 12:33:40,357 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:33:40,357 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:33:40,359 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 12:33:40,365 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 12:33:40,367 base_synchronizer 8180 10812 Pre-fetching 9579 IDs for fact_stock_pickings...
+INFO 2026-05-15 12:33:40,373 base_synchronizer 8180 10812 Cached 9579 IDs for fact_stock_pickings
+INFO 2026-05-15 12:33:40,744 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:41,106 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:41,495 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:41,937 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:42,334 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:42,805 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:43,218 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:43,560 odoo_client 8180 10812 Fetched 602 records from stock.move.line
+INFO 2026-05-15 12:33:43,924 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:44,534 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:44,870 odoo_client 8180 10812 Fetched 3 records from stock.move.line
+INFO 2026-05-15 12:33:45,076 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:33:45,363 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:33:45,708 odoo_client 8180 10812 Fetched 331 records from stock.move.line
+INFO 2026-05-15 12:33:46,042 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:46,265 odoo_client 8180 10812 Fetched 371 records from stock.move.line
+INFO 2026-05-15 12:33:46,526 odoo_client 8180 10812 Fetched 252 records from stock.move.line
+INFO 2026-05-15 12:33:46,983 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:33:47,279 odoo_client 8180 10812 Fetched 23 records from stock.move.line
+INFO 2026-05-15 12:33:47,492 odoo_client 8180 10812 Fetched 193 records from stock.move.line
+INFO 2026-05-15 12:33:47,761 odoo_client 8180 10812 Fetched 207 records from stock.move.line
+INFO 2026-05-15 12:33:48,145 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:48,360 odoo_client 8180 10812 Fetched 165 records from stock.move.line
+INFO 2026-05-15 12:33:48,644 odoo_client 8180 10812 Fetched 255 records from stock.move.line
+INFO 2026-05-15 12:33:48,984 odoo_client 8180 10812 Fetched 218 records from stock.move.line
+INFO 2026-05-15 12:33:49,301 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:33:49,622 odoo_client 8180 10812 Fetched 259 records from stock.move.line
+INFO 2026-05-15 12:33:50,050 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:50,231 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:33:50,550 odoo_client 8180 10812 Fetched 180 records from stock.move.line
+INFO 2026-05-15 12:33:50,885 odoo_client 8180 10812 Fetched 298 records from stock.move.line
+INFO 2026-05-15 12:33:51,266 odoo_client 8180 10812 Fetched 188 records from stock.move.line
+INFO 2026-05-15 12:33:51,617 odoo_client 8180 10812 Fetched 330 records from stock.move.line
+INFO 2026-05-15 12:33:52,039 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:52,282 odoo_client 8180 10812 Fetched 358 records from stock.move.line
+INFO 2026-05-15 12:33:52,614 odoo_client 8180 10812 Fetched 253 records from stock.move.line
+INFO 2026-05-15 12:33:53,014 odoo_client 8180 10812 Fetched 296 records from stock.move.line
+INFO 2026-05-15 12:33:53,344 odoo_client 8180 10812 Fetched 328 records from stock.move.line
+INFO 2026-05-15 12:33:53,728 odoo_client 8180 10812 Fetched 221 records from stock.move.line
+INFO 2026-05-15 12:33:54,108 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:54,326 odoo_client 8180 10812 Fetched 244 records from stock.move.line
+INFO 2026-05-15 12:33:54,584 odoo_client 8180 10812 Fetched 194 records from stock.move.line
+INFO 2026-05-15 12:33:54,966 odoo_client 8180 10812 Fetched 208 records from stock.move.line
+INFO 2026-05-15 12:33:55,268 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:33:55,592 odoo_client 8180 10812 Fetched 188 records from stock.move.line
+INFO 2026-05-15 12:33:56,000 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:56,219 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:33:56,584 odoo_client 8180 10812 Fetched 197 records from stock.move.line
+INFO 2026-05-15 12:33:56,877 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:33:57,214 odoo_client 8180 10812 Fetched 541 records from stock.move.line
+INFO 2026-05-15 12:33:57,586 odoo_client 8180 10812 Fetched 234 records from stock.move.line
+INFO 2026-05-15 12:33:58,056 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:33:58,240 odoo_client 8180 10812 Fetched 215 records from stock.move.line
+INFO 2026-05-15 12:33:58,575 odoo_client 8180 10812 Fetched 212 records from stock.move.line
+INFO 2026-05-15 12:33:58,873 odoo_client 8180 10812 Fetched 205 records from stock.move.line
+INFO 2026-05-15 12:33:59,233 odoo_client 8180 10812 Fetched 213 records from stock.move.line
+INFO 2026-05-15 12:33:59,718 odoo_client 8180 10812 Fetched 1000 records from stock.move.line
+INFO 2026-05-15 12:34:00,047 odoo_client 8180 10812 Fetched 60 records from stock.move.line
+INFO 2026-05-15 12:34:00,478 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:00,717 odoo_client 8180 10812 Fetched 636 records from stock.move.line
+INFO 2026-05-15 12:34:01,050 odoo_client 8180 10812 Fetched 219 records from stock.move.line
+INFO 2026-05-15 12:34:01,414 odoo_client 8180 10812 Fetched 204 records from stock.move.line
+INFO 2026-05-15 12:34:01,853 odoo_client 8180 10812 Fetched 728 records from stock.move.line
+INFO 2026-05-15 12:34:02,223 odoo_client 8180 10812 Fetched 344 records from stock.move.line
+INFO 2026-05-15 12:34:02,635 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:02,853 odoo_client 8180 10812 Fetched 236 records from stock.move.line
+INFO 2026-05-15 12:34:03,106 odoo_client 8180 10812 Fetched 212 records from stock.move.line
+INFO 2026-05-15 12:34:03,490 odoo_client 8180 10812 Fetched 262 records from stock.move.line
+INFO 2026-05-15 12:34:03,793 odoo_client 8180 10812 Fetched 245 records from stock.move.line
+INFO 2026-05-15 12:34:04,167 odoo_client 8180 10812 Fetched 191 records from stock.move.line
+INFO 2026-05-15 12:34:04,541 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:04,704 odoo_client 8180 10812 Fetched 124 records from stock.move.line
+INFO 2026-05-15 12:34:04,915 odoo_client 8180 10812 Fetched 204 records from stock.move.line
+INFO 2026-05-15 12:34:05,164 odoo_client 8180 10812 Fetched 197 records from stock.move.line
+INFO 2026-05-15 12:34:05,428 odoo_client 8180 10812 Fetched 296 records from stock.move.line
+INFO 2026-05-15 12:34:05,678 odoo_client 8180 10812 Fetched 288 records from stock.move.line
+INFO 2026-05-15 12:34:05,995 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:06,161 odoo_client 8180 10812 Fetched 263 records from stock.move.line
+INFO 2026-05-15 12:34:06,452 odoo_client 8180 10812 Fetched 284 records from stock.move.line
+INFO 2026-05-15 12:34:06,677 odoo_client 8180 10812 Fetched 210 records from stock.move.line
+INFO 2026-05-15 12:34:06,948 odoo_client 8180 10812 Fetched 375 records from stock.move.line
+INFO 2026-05-15 12:34:07,204 odoo_client 8180 10812 Fetched 260 records from stock.move.line
+INFO 2026-05-15 12:34:07,684 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:07,888 odoo_client 8180 10812 Fetched 243 records from stock.move.line
+INFO 2026-05-15 12:34:08,246 odoo_client 8180 10812 Fetched 236 records from stock.move.line
+INFO 2026-05-15 12:34:08,564 odoo_client 8180 10812 Fetched 257 records from stock.move.line
+INFO 2026-05-15 12:34:08,901 odoo_client 8180 10812 Fetched 534 records from stock.move.line
+INFO 2026-05-15 12:34:09,269 odoo_client 8180 10812 Fetched 387 records from stock.move.line
+INFO 2026-05-15 12:34:09,748 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:09,970 odoo_client 8180 10812 Fetched 205 records from stock.move.line
+INFO 2026-05-15 12:34:10,343 odoo_client 8180 10812 Fetched 290 records from stock.move.line
+INFO 2026-05-15 12:34:10,685 odoo_client 8180 10812 Fetched 781 records from stock.move.line
+INFO 2026-05-15 12:34:11,032 odoo_client 8180 10812 Fetched 353 records from stock.move.line
+INFO 2026-05-15 12:34:11,330 odoo_client 8180 10812 Fetched 209 records from stock.move.line
+INFO 2026-05-15 12:34:11,830 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:11,982 odoo_client 8180 10812 Fetched 203 records from stock.move.line
+INFO 2026-05-15 12:34:12,189 odoo_client 8180 10812 Fetched 223 records from stock.move.line
+INFO 2026-05-15 12:34:12,493 odoo_client 8180 10812 Fetched 232 records from stock.move.line
+INFO 2026-05-15 12:34:12,859 odoo_client 8180 10812 Fetched 234 records from stock.move.line
+INFO 2026-05-15 12:34:13,371 odoo_client 8180 10812 Fetched 306 records from stock.move.line
+INFO 2026-05-15 12:34:13,683 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:13,850 odoo_client 8180 10812 Fetched 257 records from stock.move.line
+INFO 2026-05-15 12:34:14,098 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:14,329 odoo_client 8180 10812 Fetched 242 records from stock.move.line
+INFO 2026-05-15 12:34:14,591 odoo_client 8180 10812 Fetched 209 records from stock.move.line
+INFO 2026-05-15 12:34:14,894 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:15,340 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:15,527 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:15,802 odoo_client 8180 10812 Fetched 222 records from stock.move.line
+INFO 2026-05-15 12:34:16,079 odoo_client 8180 10812 Fetched 260 records from stock.move.line
+INFO 2026-05-15 12:34:16,320 odoo_client 8180 10812 Fetched 250 records from stock.move.line
+INFO 2026-05-15 12:34:16,677 odoo_client 8180 10812 Fetched 273 records from stock.move.line
+INFO 2026-05-15 12:34:17,218 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:17,442 odoo_client 8180 10812 Fetched 203 records from stock.move.line
+INFO 2026-05-15 12:34:17,688 odoo_client 8180 10812 Fetched 205 records from stock.move.line
+INFO 2026-05-15 12:34:17,961 odoo_client 8180 10812 Fetched 197 records from stock.move.line
+INFO 2026-05-15 12:34:18,295 odoo_client 8180 10812 Fetched 206 records from stock.move.line
+INFO 2026-05-15 12:34:18,653 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:34:19,058 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:19,250 odoo_client 8180 10812 Fetched 224 records from stock.move.line
+INFO 2026-05-15 12:34:19,558 odoo_client 8180 10812 Fetched 207 records from stock.move.line
+INFO 2026-05-15 12:34:19,868 odoo_client 8180 10812 Fetched 250 records from stock.move.line
+INFO 2026-05-15 12:34:20,095 odoo_client 8180 10812 Fetched 346 records from stock.move.line
+INFO 2026-05-15 12:34:20,468 odoo_client 8180 10812 Fetched 421 records from stock.move.line
+INFO 2026-05-15 12:34:20,934 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:21,134 odoo_client 8180 10812 Fetched 248 records from stock.move.line
+INFO 2026-05-15 12:34:21,523 odoo_client 8180 10812 Fetched 447 records from stock.move.line
+INFO 2026-05-15 12:34:21,878 odoo_client 8180 10812 Fetched 216 records from stock.move.line
+INFO 2026-05-15 12:34:22,818 odoo_client 8180 10812 Fetched 232 records from stock.move.line
+INFO 2026-05-15 12:34:23,788 odoo_client 8180 10812 Fetched 253 records from stock.move.line
+INFO 2026-05-15 12:34:24,178 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:24,348 odoo_client 8180 10812 Fetched 221 records from stock.move.line
+INFO 2026-05-15 12:34:24,618 odoo_client 8180 10812 Fetched 307 records from stock.move.line
+INFO 2026-05-15 12:34:24,948 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:25,310 odoo_client 8180 10812 Fetched 359 records from stock.move.line
+INFO 2026-05-15 12:34:25,769 odoo_client 8180 10812 Fetched 283 records from stock.move.line
+INFO 2026-05-15 12:34:26,228 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:26,458 odoo_client 8180 10812 Fetched 215 records from stock.move.line
+INFO 2026-05-15 12:34:26,845 odoo_client 8180 10812 Fetched 658 records from stock.move.line
+INFO 2026-05-15 12:34:27,158 odoo_client 8180 10812 Fetched 231 records from stock.move.line
+INFO 2026-05-15 12:34:27,379 odoo_client 8180 10812 Fetched 194 records from stock.move.line
+INFO 2026-05-15 12:34:27,699 odoo_client 8180 10812 Fetched 260 records from stock.move.line
+INFO 2026-05-15 12:34:28,123 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:28,323 odoo_client 8180 10812 Fetched 188 records from stock.move.line
+INFO 2026-05-15 12:34:28,638 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:28,949 odoo_client 8180 10812 Fetched 192 records from stock.move.line
+INFO 2026-05-15 12:34:29,245 odoo_client 8180 10812 Fetched 375 records from stock.move.line
+INFO 2026-05-15 12:34:29,578 odoo_client 8180 10812 Fetched 205 records from stock.move.line
+INFO 2026-05-15 12:34:30,088 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:30,268 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:30,661 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:30,978 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:34:31,318 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:31,650 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:34:32,223 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:32,418 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:32,738 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:33,108 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:33,478 odoo_client 8180 10812 Fetched 326 records from stock.move.line
+INFO 2026-05-15 12:34:33,840 odoo_client 8180 10812 Fetched 207 records from stock.move.line
+INFO 2026-05-15 12:34:34,373 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:34,645 odoo_client 8180 10812 Fetched 551 records from stock.move.line
+INFO 2026-05-15 12:34:34,963 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:35,248 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:35,518 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:35,853 odoo_client 8180 10812 Fetched 203 records from stock.move.line
+INFO 2026-05-15 12:34:36,384 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:36,618 odoo_client 8180 10812 Fetched 209 records from stock.move.line
+INFO 2026-05-15 12:34:36,958 odoo_client 8180 10812 Fetched 207 records from stock.move.line
+INFO 2026-05-15 12:34:37,308 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:34:37,642 odoo_client 8180 10812 Fetched 186 records from stock.move.line
+INFO 2026-05-15 12:34:37,945 odoo_client 8180 10812 Fetched 194 records from stock.move.line
+INFO 2026-05-15 12:34:38,468 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:38,758 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:39,019 odoo_client 8180 10812 Fetched 194 records from stock.move.line
+INFO 2026-05-15 12:34:39,392 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:34:39,692 odoo_client 8180 10812 Fetched 206 records from stock.move.line
+INFO 2026-05-15 12:34:40,034 odoo_client 8180 10812 Fetched 186 records from stock.move.line
+INFO 2026-05-15 12:34:40,542 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:40,760 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:41,068 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:41,392 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:41,710 odoo_client 8180 10812 Fetched 194 records from stock.move.line
+INFO 2026-05-15 12:34:42,029 odoo_client 8180 10812 Fetched 186 records from stock.move.line
+INFO 2026-05-15 12:34:42,758 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:42,947 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:34:43,288 odoo_client 8180 10812 Fetched 199 records from stock.move.line
+INFO 2026-05-15 12:34:43,578 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:34:43,878 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:44,179 odoo_client 8180 10812 Fetched 212 records from stock.move.line
+INFO 2026-05-15 12:34:44,823 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:45,023 odoo_client 8180 10812 Fetched 221 records from stock.move.line
+INFO 2026-05-15 12:34:45,318 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:34:45,623 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:34:45,992 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:46,268 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:34:46,778 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:46,958 odoo_client 8180 10812 Fetched 193 records from stock.move.line
+INFO 2026-05-15 12:34:47,251 odoo_client 8180 10812 Fetched 193 records from stock.move.line
+INFO 2026-05-15 12:34:47,658 odoo_client 8180 10812 Fetched 186 records from stock.move.line
+INFO 2026-05-15 12:34:47,984 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:34:48,328 odoo_client 8180 10812 Fetched 188 records from stock.move.line
+INFO 2026-05-15 12:34:48,851 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:49,061 odoo_client 8180 10812 Fetched 214 records from stock.move.line
+INFO 2026-05-15 12:34:49,399 odoo_client 8180 10812 Fetched 224 records from stock.move.line
+INFO 2026-05-15 12:34:49,710 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:34:50,018 odoo_client 8180 10812 Fetched 285 records from stock.move.line
+INFO 2026-05-15 12:34:50,338 odoo_client 8180 10812 Fetched 221 records from stock.move.line
+INFO 2026-05-15 12:34:50,868 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:51,054 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:51,384 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:34:51,718 odoo_client 8180 10812 Fetched 178 records from stock.move.line
+INFO 2026-05-15 12:34:52,045 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:34:52,418 odoo_client 8180 10812 Fetched 207 records from stock.move.line
+INFO 2026-05-15 12:34:52,918 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:53,134 odoo_client 8180 10812 Fetched 238 records from stock.move.line
+INFO 2026-05-15 12:34:53,458 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:53,668 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:53,998 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:34:54,292 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:54,784 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:54,984 odoo_client 8180 10812 Fetched 197 records from stock.move.line
+INFO 2026-05-15 12:34:55,194 odoo_client 8180 10812 Fetched 215 records from stock.move.line
+INFO 2026-05-15 12:34:55,548 odoo_client 8180 10812 Fetched 192 records from stock.move.line
+INFO 2026-05-15 12:34:55,872 odoo_client 8180 10812 Fetched 216 records from stock.move.line
+INFO 2026-05-15 12:34:56,145 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:56,658 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:56,798 odoo_client 8180 10812 Fetched 184 records from stock.move.line
+INFO 2026-05-15 12:34:57,128 odoo_client 8180 10812 Fetched 186 records from stock.move.line
+INFO 2026-05-15 12:34:57,460 odoo_client 8180 10812 Fetched 191 records from stock.move.line
+INFO 2026-05-15 12:34:57,773 odoo_client 8180 10812 Fetched 190 records from stock.move.line
+INFO 2026-05-15 12:34:57,995 odoo_client 8180 10812 Fetched 179 records from stock.move.line
+INFO 2026-05-15 12:34:58,370 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:58,534 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:34:58,758 odoo_client 8180 10812 Fetched 195 records from stock.move.line
+INFO 2026-05-15 12:34:58,995 odoo_client 8180 10812 Fetched 432 records from stock.move.line
+INFO 2026-05-15 12:34:59,238 odoo_client 8180 10812 Fetched 199 records from stock.move.line
+INFO 2026-05-15 12:34:59,440 odoo_client 8180 10812 Fetched 204 records from stock.move.line
+INFO 2026-05-15 12:34:59,758 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:34:59,928 odoo_client 8180 10812 Fetched 205 records from stock.move.line
+INFO 2026-05-15 12:35:00,128 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:35:00,334 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:35:00,558 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:00,799 odoo_client 8180 10812 Fetched 203 records from stock.move.line
+INFO 2026-05-15 12:35:01,138 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:35:01,318 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:35:01,579 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:01,788 odoo_client 8180 10812 Fetched 199 records from stock.move.line
+INFO 2026-05-15 12:35:02,034 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:35:02,234 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:02,538 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:35:02,692 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:02,878 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:03,098 odoo_client 8180 10812 Fetched 179 records from stock.move.line
+INFO 2026-05-15 12:35:03,308 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:03,538 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:03,888 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:35:04,045 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:04,253 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:35:04,448 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:04,645 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:35:04,860 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:05,218 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:35:05,399 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:05,609 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:35:05,830 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:35:06,039 odoo_client 8180 10812 Fetched 215 records from stock.move.line
+INFO 2026-05-15 12:35:06,248 odoo_client 8180 10812 Fetched 201 records from stock.move.line
+INFO 2026-05-15 12:35:06,584 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:35:06,761 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:06,968 odoo_client 8180 10812 Fetched 197 records from stock.move.line
+INFO 2026-05-15 12:35:07,158 odoo_client 8180 10812 Fetched 160 records from stock.move.line
+INFO 2026-05-15 12:35:07,355 odoo_client 8180 10812 Fetched 197 records from stock.move.line
+INFO 2026-05-15 12:35:07,593 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:35:08,084 odoo_client 8180 10812 Fetched 1000 records from stock.move
+INFO 2026-05-15 12:35:08,261 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:08,563 odoo_client 8180 10812 Fetched 432 records from stock.move.line
+INFO 2026-05-15 12:35:08,808 odoo_client 8180 10812 Fetched 200 records from stock.move.line
+INFO 2026-05-15 12:35:09,051 odoo_client 8180 10812 Fetched 202 records from stock.move.line
+INFO 2026-05-15 12:35:09,288 odoo_client 8180 10812 Fetched 198 records from stock.move.line
+INFO 2026-05-15 12:35:09,633 odoo_client 8180 10812 Fetched 408 records from stock.move
+INFO 2026-05-15 12:35:09,839 odoo_client 8180 10812 Fetched 196 records from stock.move.line
+INFO 2026-05-15 12:35:10,080 odoo_client 8180 10812 Fetched 210 records from stock.move.line
+INFO 2026-05-15 12:35:10,223 odoo_client 8180 10812 Fetched 8 records from stock.move.line
+INFO 2026-05-15 12:35:10,228 base_synchronizer 8180 10812 [stock.move] Sync complete: 45408 records in 89.87s (505.24 rec/s)
+INFO 2026-05-15 12:35:10,228 orchestrator 8180 10812 Stock_moves: 45408 synced, 0 failed
+INFO 2026-05-15 12:35:10,228 orchestrator 8180 10812 Syncing stock_quants...
+INFO 2026-05-15 12:35:10,230 stock_quant_synchronizer 8180 10812 Syncing stock quants for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 12:35:10,231 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 12:35:10,233 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 12:35:10,234 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 12:35:10,234 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 12:35:10,235 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 12:35:10,294 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 12:35:10,558 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:10,842 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:11,133 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:11,368 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:11,636 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:11,897 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:12,168 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:12,442 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:12,748 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:13,084 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:13,467 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:13,798 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:14,160 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:14,508 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:14,863 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:15,184 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:15,446 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:15,773 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:16,118 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:16,418 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:16,768 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:17,105 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:17,448 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:17,803 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:18,128 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:18,511 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:18,792 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:19,058 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 12:35:19,258 odoo_client 8180 10812 Fetched 163 records from stock.quant
+INFO 2026-05-15 12:35:19,277 base_synchronizer 8180 10812 [stock.quant] Sync complete: 28163 records in 9.05s (3113.00 rec/s)
+INFO 2026-05-15 12:35:19,278 orchestrator 8180 10812 Stock_quants: 28163 synced, 0 failed
+INFO 2026-05-15 12:35:19,278 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 12:35:19,284 sync_job 8180 10868 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-15 13:05:26,887 sync_job 8180 10868 Starting scheduled sync run at 2026-05-15 13:05:26.887082
+INFO 2026-05-15 13:05:26,892 sync_job 8180 10868 Auto-syncing tenant: softquesarl-supernova-stage (4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 13:05:26,898 utils 8180 10812 decrypt_api_key called
+INFO 2026-05-15 13:05:26,898 utils 8180 10812 Incoming type: <class 'memoryview'>
+INFO 2026-05-15 13:05:26,899 utils 8180 10812 Detected memoryview, converting using tobytes()
+INFO 2026-05-15 13:05:26,901 utils 8180 10812 Raw data: b'c363f37317257749632661d8c13fcdd306ef07a8'
+INFO 2026-05-15 13:05:26,901 utils 8180 10812 Data length after normalization: 40
+INFO 2026-05-15 13:05:26,902 utils 8180 10812 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-15 13:05:26,906 utils 8180 10812 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-15 13:05:26,907 utils 8180 10812 Falling back to plain decode
+INFO 2026-05-15 13:05:26,908 utils 8180 10812 Plain decode successful, result length: 40
+INFO 2026-05-15 13:05:26,909 odoo_client 8180 10812 Initialized Odoo JSON-RPC client for softquesarl-supernova-stage
+INFO 2026-05-15 13:05:26,984 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 13:05:26,984 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 13:05:26,984 orchestrator 8180 10812 History exists. Triggering smart incremental sync...
+INFO 2026-05-15 13:05:26,984 orchestrator 8180 10812 Starting professional delta sync for tenant: softquesarl-supernova-stage
+INFO 2026-05-15 13:05:27,013 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 13:05:35,333 odoo_client 8180 10812 Authenticated successfully. UID: 28
+INFO 2026-05-15 13:05:35,337 orchestrator 8180 10812 --- Phase 1: Dimension Delta ---
+INFO 2026-05-15 13:05:35,342 company_synchronizer 8180 10812 Syncing companies...
+INFO 2026-05-15 13:05:35,851 odoo_client 8180 10812 Fetched 0 records from res.company
+INFO 2026-05-15 13:05:35,855 company_synchronizer 8180 10812 Synced 0 companies, 0 failed
+INFO 2026-05-15 13:05:35,859 product_synchronizer 8180 10812 Syncing product categories...
+INFO 2026-05-15 13:05:35,995 odoo_client 8180 10812 Fetched 0 records from product.category
+INFO 2026-05-15 13:05:35,995 product_synchronizer 8180 10812 Synced 0 product categories, 0 failed
+INFO 2026-05-15 13:05:36,001 product_synchronizer 8180 10812 Syncing products with batch optimization...
+INFO 2026-05-15 13:05:36,006 base_synchronizer 8180 10812 Pre-fetching 92 IDs for dim_product_categories...
+INFO 2026-05-15 13:05:36,008 base_synchronizer 8180 10812 Cached 92 IDs for dim_product_categories
+INFO 2026-05-15 13:05:36,161 odoo_client 8180 10812 Fetched 0 records from product.product
+INFO 2026-05-15 13:05:36,161 base_synchronizer 8180 10812 [product.product] Sync complete: 0 records in 0.16s (0.00 rec/s)
+INFO 2026-05-15 13:05:36,176 partner_synchronizer 8180 10812 Syncing partners with batch optimization...
+INFO 2026-05-15 13:05:36,331 odoo_client 8180 10812 Fetched 0 records from res.partner
+INFO 2026-05-15 13:05:36,331 base_synchronizer 8180 10812 [res.partner] Sync complete: 0 records in 0.16s (0.00 rec/s)
+INFO 2026-05-15 13:05:36,338 user_synchronizer 8180 10812 Syncing users...
+INFO 2026-05-15 13:05:36,521 odoo_client 8180 10812 Fetched 0 records from res.users
+INFO 2026-05-15 13:05:36,521 user_synchronizer 8180 10812 Synced 0 users, 0 failed
+INFO 2026-05-15 13:05:36,528 stock_lot_synchronizer 8180 10812 Syncing inventory lots with batch optimization...
+INFO 2026-05-15 13:05:36,534 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:05:36,545 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:05:36,549 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:36,551 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:36,701 odoo_client 8180 10812 Fetched 0 records from stock.lot
+INFO 2026-05-15 13:05:36,701 base_synchronizer 8180 10812 [stock.lot] Sync complete: 0 records in 0.17s (0.00 rec/s)
+INFO 2026-05-15 13:05:36,701 orchestrator 8180 10812 --- Phase 2: Transactional Delta ---
+INFO 2026-05-15 13:05:36,701 orchestrator 8180 10812 Syncing sales_orders since: 2026-05-15 12:31:14.549789-07
+INFO 2026-05-15 13:05:36,709 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Starting — tenant=4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 13:05:36,714 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:05:36,723 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:05:36,731 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 13:05:36,731 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 13:05:36,734 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:36,734 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:36,739 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:05:36,749 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:05:36,753 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Loaded 4 currencies: ['EUR', 'USD', 'XAF', 'LBP']
+INFO 2026-05-15 13:05:36,978 odoo_client 8180 10812 Fetched 0 records from sale.order
+INFO 2026-05-15 13:05:36,978 base_synchronizer 8180 10812 [sale.order] Sync complete: 0 records in 0.28s (0.00 rec/s)
+INFO 2026-05-15 13:05:36,984 orchestrator 8180 10812 Syncing purchase_orders since: 2026-05-15 12:31:17.533897-07
+INFO 2026-05-15 13:05:36,987 purchase_synchronizer 8180 10812 Starting purchase batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 13:05:36,990 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:05:37,003 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:05:37,006 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 13:05:37,008 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 13:05:37,009 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:37,011 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:37,012 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:05:37,024 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:05:37,242 odoo_client 8180 10812 Fetched 0 records from purchase.order
+INFO 2026-05-15 13:05:37,242 base_synchronizer 8180 10812 [purchase.order] Sync complete: 0 records in 0.26s (0.00 rec/s)
+INFO 2026-05-15 13:05:37,248 orchestrator 8180 10812 Syncing account_moves since: 2026-05-15 12:33:36.590787-07
+INFO 2026-05-15 13:05:37,251 accounting_synchronizer 8180 10812 Starting accounting batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 13:05:37,253 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:05:37,265 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:05:37,265 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:37,265 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:37,272 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:05:37,284 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:05:37,529 odoo_client 8180 10812 Fetched 0 records from account.move
+INFO 2026-05-15 13:05:37,530 base_synchronizer 8180 10812 [account.move] Sync complete: 0 records in 0.28s (0.00 rec/s)
+INFO 2026-05-15 13:05:37,534 orchestrator 8180 10812 Syncing stock_pickings since: 2026-05-15 12:33:40.353038-07
+INFO 2026-05-15 13:05:37,536 stock_picking_synchronizer 8180 10812 Syncing stock pickings for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 13:05:37,538 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:05:37,543 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:05:37,545 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:37,545 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:37,694 odoo_client 8180 10812 Fetched 0 records from stock.picking
+INFO 2026-05-15 13:05:37,695 base_synchronizer 8180 10812 [stock.picking] Sync complete: 0 records in 0.16s (0.00 rec/s)
+INFO 2026-05-15 13:05:37,696 orchestrator 8180 10812 Syncing stock_moves since: 2026-05-15 12:35:10.228927-07
+INFO 2026-05-15 13:05:37,698 stock_move_synchronizer 8180 10812 Syncing stock moves for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 13:05:37,698 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:05:37,703 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:05:37,704 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:37,705 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:37,708 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 13:05:37,719 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 13:05:37,720 base_synchronizer 8180 10812 Pre-fetching 9579 IDs for fact_stock_pickings...
+INFO 2026-05-15 13:05:37,729 base_synchronizer 8180 10812 Cached 9579 IDs for fact_stock_pickings
+INFO 2026-05-15 13:05:37,951 odoo_client 8180 10812 Fetched 0 records from stock.move
+INFO 2026-05-15 13:05:37,951 base_synchronizer 8180 10812 [stock.move] Sync complete: 0 records in 0.25s (0.00 rec/s)
+INFO 2026-05-15 13:05:37,955 orchestrator 8180 10812 --- Phase 3: Inventory State ---
+INFO 2026-05-15 13:05:37,955 stock_quant_synchronizer 8180 10812 Syncing stock quants for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 13:05:37,956 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:05:37,958 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:05:37,959 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:05:37,959 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:05:37,960 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 13:05:37,967 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 13:05:38,187 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:38,438 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:38,678 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:38,918 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:39,151 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:39,391 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:39,632 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:39,861 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:40,102 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:40,434 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:40,771 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:41,121 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:41,501 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:41,892 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:42,280 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:42,621 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:42,944 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:43,261 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:43,621 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:43,900 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:44,434 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:44,850 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:45,206 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:45,595 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:45,973 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:46,331 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:46,648 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:46,951 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:05:47,195 odoo_client 8180 10812 Fetched 163 records from stock.quant
+INFO 2026-05-15 13:05:47,251 base_synchronizer 8180 10812 [stock.quant] Sync complete: 28163 records in 9.30s (3029.64 rec/s)
+INFO 2026-05-15 13:05:47,251 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 13:05:47,263 sync_job 8180 10868 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-15 13:35:56,211 sync_job 8180 10868 Starting scheduled sync run at 2026-05-15 13:35:56.211232
+INFO 2026-05-15 13:35:56,218 sync_job 8180 10868 Auto-syncing tenant: softquesarl-supernova-stage (4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 13:35:56,222 utils 8180 10812 decrypt_api_key called
+INFO 2026-05-15 13:35:56,223 utils 8180 10812 Incoming type: <class 'memoryview'>
+INFO 2026-05-15 13:35:56,224 utils 8180 10812 Detected memoryview, converting using tobytes()
+INFO 2026-05-15 13:35:56,225 utils 8180 10812 Raw data: b'c363f37317257749632661d8c13fcdd306ef07a8'
+INFO 2026-05-15 13:35:56,225 utils 8180 10812 Data length after normalization: 40
+INFO 2026-05-15 13:35:56,226 utils 8180 10812 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-15 13:35:56,230 utils 8180 10812 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-15 13:35:56,230 utils 8180 10812 Falling back to plain decode
+INFO 2026-05-15 13:35:56,231 utils 8180 10812 Plain decode successful, result length: 40
+INFO 2026-05-15 13:35:56,233 odoo_client 8180 10812 Initialized Odoo JSON-RPC client for softquesarl-supernova-stage
+INFO 2026-05-15 13:35:56,320 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 13:35:56,323 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 13:35:56,323 orchestrator 8180 10812 History exists. Triggering smart incremental sync...
+INFO 2026-05-15 13:35:56,324 orchestrator 8180 10812 Starting professional delta sync for tenant: softquesarl-supernova-stage
+INFO 2026-05-15 13:35:56,495 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 13:36:05,162 odoo_client 8180 10812 Authenticated successfully. UID: 28
+INFO 2026-05-15 13:36:05,163 orchestrator 8180 10812 --- Phase 1: Dimension Delta ---
+INFO 2026-05-15 13:36:05,165 company_synchronizer 8180 10812 Syncing companies...
+INFO 2026-05-15 13:36:05,767 odoo_client 8180 10812 Fetched 0 records from res.company
+INFO 2026-05-15 13:36:05,767 company_synchronizer 8180 10812 Synced 0 companies, 0 failed
+INFO 2026-05-15 13:36:05,774 product_synchronizer 8180 10812 Syncing product categories...
+INFO 2026-05-15 13:36:05,933 odoo_client 8180 10812 Fetched 0 records from product.category
+INFO 2026-05-15 13:36:05,934 product_synchronizer 8180 10812 Synced 0 product categories, 0 failed
+INFO 2026-05-15 13:36:05,937 product_synchronizer 8180 10812 Syncing products with batch optimization...
+INFO 2026-05-15 13:36:05,937 base_synchronizer 8180 10812 Pre-fetching 92 IDs for dim_product_categories...
+INFO 2026-05-15 13:36:05,938 base_synchronizer 8180 10812 Cached 92 IDs for dim_product_categories
+INFO 2026-05-15 13:36:06,112 odoo_client 8180 10812 Fetched 0 records from product.product
+INFO 2026-05-15 13:36:06,112 base_synchronizer 8180 10812 [product.product] Sync complete: 0 records in 0.17s (0.00 rec/s)
+INFO 2026-05-15 13:36:06,115 partner_synchronizer 8180 10812 Syncing partners with batch optimization...
+INFO 2026-05-15 13:36:06,271 odoo_client 8180 10812 Fetched 0 records from res.partner
+INFO 2026-05-15 13:36:06,272 base_synchronizer 8180 10812 [res.partner] Sync complete: 0 records in 0.16s (0.00 rec/s)
+INFO 2026-05-15 13:36:06,274 user_synchronizer 8180 10812 Syncing users...
+INFO 2026-05-15 13:36:06,451 odoo_client 8180 10812 Fetched 0 records from res.users
+INFO 2026-05-15 13:36:06,452 user_synchronizer 8180 10812 Synced 0 users, 0 failed
+INFO 2026-05-15 13:36:06,454 stock_lot_synchronizer 8180 10812 Syncing inventory lots with batch optimization...
+INFO 2026-05-15 13:36:06,455 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:36:06,458 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:36:06,461 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:06,462 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:06,611 odoo_client 8180 10812 Fetched 0 records from stock.lot
+INFO 2026-05-15 13:36:06,612 base_synchronizer 8180 10812 [stock.lot] Sync complete: 0 records in 0.16s (0.00 rec/s)
+INFO 2026-05-15 13:36:06,614 orchestrator 8180 10812 --- Phase 2: Transactional Delta ---
+INFO 2026-05-15 13:36:06,615 orchestrator 8180 10812 Syncing sales_orders since: 2026-05-15 13:05:36.711003-07
+INFO 2026-05-15 13:36:06,616 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Starting — tenant=4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 13:36:06,617 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:36:06,621 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:36:06,622 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 13:36:06,622 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 13:36:06,623 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:06,623 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:06,624 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:36:06,627 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:36:06,629 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Loaded 4 currencies: ['EUR', 'USD', 'XAF', 'LBP']
+INFO 2026-05-15 13:36:06,853 odoo_client 8180 10812 Fetched 0 records from sale.order
+INFO 2026-05-15 13:36:06,853 base_synchronizer 8180 10812 [sale.order] Sync complete: 0 records in 0.24s (0.00 rec/s)
+INFO 2026-05-15 13:36:06,854 orchestrator 8180 10812 Syncing purchase_orders since: 2026-05-15 13:05:36.988794-07
+INFO 2026-05-15 13:36:06,855 purchase_synchronizer 8180 10812 Starting purchase batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 13:36:06,855 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:36:06,858 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:36:06,860 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 13:36:06,860 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 13:36:06,861 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:06,861 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:06,861 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:36:06,863 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:36:07,094 odoo_client 8180 10812 Fetched 0 records from purchase.order
+INFO 2026-05-15 13:36:07,094 base_synchronizer 8180 10812 [purchase.order] Sync complete: 0 records in 0.24s (0.00 rec/s)
+INFO 2026-05-15 13:36:07,096 orchestrator 8180 10812 Syncing account_moves since: 2026-05-15 13:05:37.252302-07
+INFO 2026-05-15 13:36:07,097 accounting_synchronizer 8180 10812 Starting accounting batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 13:36:07,098 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:36:07,104 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:36:07,106 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:07,107 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:07,107 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:36:07,112 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:36:07,376 odoo_client 8180 10812 Fetched 0 records from account.move
+INFO 2026-05-15 13:36:07,377 base_synchronizer 8180 10812 [account.move] Sync complete: 0 records in 0.28s (0.00 rec/s)
+INFO 2026-05-15 13:36:07,379 orchestrator 8180 10812 Syncing stock_pickings since: 2026-05-15 13:05:37.537708-07
+INFO 2026-05-15 13:36:07,379 stock_picking_synchronizer 8180 10812 Syncing stock pickings for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 13:36:07,379 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 13:36:07,379 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 13:36:07,384 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:07,385 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:07,539 odoo_client 8180 10812 Fetched 0 records from stock.picking
+INFO 2026-05-15 13:36:07,539 base_synchronizer 8180 10812 [stock.picking] Sync complete: 0 records in 0.16s (0.00 rec/s)
+INFO 2026-05-15 13:36:07,544 orchestrator 8180 10812 Syncing stock_moves since: 2026-05-15 13:05:37.699075-07
+INFO 2026-05-15 13:36:07,545 stock_move_synchronizer 8180 10812 Syncing stock moves for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 13:36:07,545 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:36:07,551 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:36:07,552 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:07,553 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:07,556 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 13:36:07,568 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 13:36:07,572 base_synchronizer 8180 10812 Pre-fetching 9579 IDs for fact_stock_pickings...
+INFO 2026-05-15 13:36:07,584 base_synchronizer 8180 10812 Cached 9579 IDs for fact_stock_pickings
+INFO 2026-05-15 13:36:07,812 odoo_client 8180 10812 Fetched 0 records from stock.move
+INFO 2026-05-15 13:36:07,812 base_synchronizer 8180 10812 [stock.move] Sync complete: 0 records in 0.27s (0.00 rec/s)
+INFO 2026-05-15 13:36:07,812 orchestrator 8180 10812 --- Phase 3: Inventory State ---
+INFO 2026-05-15 13:36:07,812 stock_quant_synchronizer 8180 10812 Syncing stock quants for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 13:36:07,812 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 13:36:07,819 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 13:36:07,819 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 13:36:07,820 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 13:36:07,821 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 13:36:07,827 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 13:36:08,048 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:08,299 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:08,566 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:08,813 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:09,049 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:09,279 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:09,519 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:09,760 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:10,011 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:10,305 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:10,634 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:10,892 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:11,209 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:11,554 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:11,929 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:12,264 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:12,544 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:12,872 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:13,197 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:13,548 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:14,035 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:14,391 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:14,761 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:15,160 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:15,539 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:15,904 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:16,195 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:16,478 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 13:36:16,669 odoo_client 8180 10812 Fetched 163 records from stock.quant
+INFO 2026-05-15 13:36:16,687 base_synchronizer 8180 10812 [stock.quant] Sync complete: 28163 records in 8.87s (3173.34 rec/s)
+INFO 2026-05-15 13:36:16,689 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 13:36:16,692 sync_job 8180 10868 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-15 14:06:27,159 sync_job 8180 10868 Starting scheduled sync run at 2026-05-15 14:06:27.159222
+INFO 2026-05-15 14:06:27,162 sync_job 8180 10868 Auto-syncing tenant: softquesarl-supernova-stage (4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 14:06:27,164 utils 8180 10812 decrypt_api_key called
+INFO 2026-05-15 14:06:27,164 utils 8180 10812 Incoming type: <class 'memoryview'>
+INFO 2026-05-15 14:06:27,165 utils 8180 10812 Detected memoryview, converting using tobytes()
+INFO 2026-05-15 14:06:27,165 utils 8180 10812 Raw data: b'c363f37317257749632661d8c13fcdd306ef07a8'
+INFO 2026-05-15 14:06:27,165 utils 8180 10812 Data length after normalization: 40
+INFO 2026-05-15 14:06:27,165 utils 8180 10812 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-15 14:06:27,166 utils 8180 10812 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-15 14:06:27,166 utils 8180 10812 Falling back to plain decode
+INFO 2026-05-15 14:06:27,166 utils 8180 10812 Plain decode successful, result length: 40
+INFO 2026-05-15 14:06:27,167 odoo_client 8180 10812 Initialized Odoo JSON-RPC client for softquesarl-supernova-stage
+INFO 2026-05-15 14:06:27,217 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 14:06:27,220 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 14:06:27,220 orchestrator 8180 10812 History exists. Triggering smart incremental sync...
+INFO 2026-05-15 14:06:27,220 orchestrator 8180 10812 Starting professional delta sync for tenant: softquesarl-supernova-stage
+INFO 2026-05-15 14:06:27,266 database_manager 8180 10812 Connected to PostgreSQL
+INFO 2026-05-15 14:06:34,514 odoo_client 8180 10812 Authenticated successfully. UID: 28
+INFO 2026-05-15 14:06:34,514 orchestrator 8180 10812 --- Phase 1: Dimension Delta ---
+INFO 2026-05-15 14:06:34,520 company_synchronizer 8180 10812 Syncing companies...
+INFO 2026-05-15 14:06:35,022 odoo_client 8180 10812 Fetched 0 records from res.company
+INFO 2026-05-15 14:06:35,022 company_synchronizer 8180 10812 Synced 0 companies, 0 failed
+INFO 2026-05-15 14:06:35,030 product_synchronizer 8180 10812 Syncing product categories...
+INFO 2026-05-15 14:06:35,172 odoo_client 8180 10812 Fetched 0 records from product.category
+INFO 2026-05-15 14:06:35,173 product_synchronizer 8180 10812 Synced 0 product categories, 0 failed
+INFO 2026-05-15 14:06:35,179 product_synchronizer 8180 10812 Syncing products with batch optimization...
+INFO 2026-05-15 14:06:35,182 base_synchronizer 8180 10812 Pre-fetching 92 IDs for dim_product_categories...
+INFO 2026-05-15 14:06:35,184 base_synchronizer 8180 10812 Cached 92 IDs for dim_product_categories
+INFO 2026-05-15 14:06:35,348 odoo_client 8180 10812 Fetched 0 records from product.product
+INFO 2026-05-15 14:06:35,348 base_synchronizer 8180 10812 [product.product] Sync complete: 0 records in 0.17s (0.00 rec/s)
+INFO 2026-05-15 14:06:35,353 partner_synchronizer 8180 10812 Syncing partners with batch optimization...
+INFO 2026-05-15 14:06:35,507 odoo_client 8180 10812 Fetched 0 records from res.partner
+INFO 2026-05-15 14:06:35,508 base_synchronizer 8180 10812 [res.partner] Sync complete: 0 records in 0.15s (0.00 rec/s)
+INFO 2026-05-15 14:06:35,514 user_synchronizer 8180 10812 Syncing users...
+INFO 2026-05-15 14:06:35,708 odoo_client 8180 10812 Fetched 0 records from res.users
+INFO 2026-05-15 14:06:35,708 user_synchronizer 8180 10812 Synced 0 users, 0 failed
+INFO 2026-05-15 14:06:35,714 stock_lot_synchronizer 8180 10812 Syncing inventory lots with batch optimization...
+INFO 2026-05-15 14:06:35,719 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 14:06:35,728 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 14:06:35,732 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:35,733 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:35,879 odoo_client 8180 10812 Fetched 0 records from stock.lot
+INFO 2026-05-15 14:06:35,880 base_synchronizer 8180 10812 [stock.lot] Sync complete: 0 records in 0.17s (0.00 rec/s)
+INFO 2026-05-15 14:06:35,881 orchestrator 8180 10812 --- Phase 2: Transactional Delta ---
+INFO 2026-05-15 14:06:35,882 orchestrator 8180 10812 Syncing sales_orders since: 2026-05-15 13:36:06.616598-07
+INFO 2026-05-15 14:06:35,883 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Starting — tenant=4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 14:06:35,884 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 14:06:35,886 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 14:06:35,889 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 14:06:35,890 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 14:06:35,890 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:35,892 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:35,892 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 14:06:35,894 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 14:06:35,895 sales_synchronizer 8180 10812 [SalesOrderSynchronizer] Loaded 4 currencies: ['EUR', 'USD', 'XAF', 'LBP']
+INFO 2026-05-15 14:06:36,112 odoo_client 8180 10812 Fetched 0 records from sale.order
+INFO 2026-05-15 14:06:36,113 base_synchronizer 8180 10812 [sale.order] Sync complete: 0 records in 0.23s (0.00 rec/s)
+INFO 2026-05-15 14:06:36,115 orchestrator 8180 10812 Syncing purchase_orders since: 2026-05-15 13:36:06.856212-07
+INFO 2026-05-15 14:06:36,117 purchase_synchronizer 8180 10812 Starting purchase batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 14:06:36,118 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 14:06:36,125 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 14:06:36,126 base_synchronizer 8180 10812 Pre-fetching 23 IDs for dim_users...
+INFO 2026-05-15 14:06:36,127 base_synchronizer 8180 10812 Cached 23 IDs for dim_users
+INFO 2026-05-15 14:06:36,128 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:36,129 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:36,131 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 14:06:36,135 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 14:06:36,349 odoo_client 8180 10812 Fetched 0 records from purchase.order
+INFO 2026-05-15 14:06:36,349 base_synchronizer 8180 10812 [purchase.order] Sync complete: 0 records in 0.23s (0.00 rec/s)
+INFO 2026-05-15 14:06:36,351 orchestrator 8180 10812 Syncing account_moves since: 2026-05-15 13:36:07.09869-07
+INFO 2026-05-15 14:06:36,351 accounting_synchronizer 8180 10812 Starting accounting batch sync for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+INFO 2026-05-15 14:06:36,352 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 14:06:36,356 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 14:06:36,358 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:36,358 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:36,359 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 14:06:36,361 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 14:06:36,600 odoo_client 8180 10812 Fetched 0 records from account.move
+INFO 2026-05-15 14:06:36,600 base_synchronizer 8180 10812 [account.move] Sync complete: 0 records in 0.25s (0.00 rec/s)
+INFO 2026-05-15 14:06:36,602 orchestrator 8180 10812 Syncing stock_pickings since: 2026-05-15 13:36:07.381289-07
+INFO 2026-05-15 14:06:36,603 stock_picking_synchronizer 8180 10812 Syncing stock pickings for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 14:06:36,604 base_synchronizer 8180 10812 Pre-fetching 4275 IDs for dim_partners...
+INFO 2026-05-15 14:06:36,609 base_synchronizer 8180 10812 Cached 4275 IDs for dim_partners
+INFO 2026-05-15 14:06:36,610 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:36,611 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:36,754 odoo_client 8180 10812 Fetched 0 records from stock.picking
+INFO 2026-05-15 14:06:36,754 base_synchronizer 8180 10812 [stock.picking] Sync complete: 0 records in 0.15s (0.00 rec/s)
+INFO 2026-05-15 14:06:36,756 orchestrator 8180 10812 Syncing stock_moves since: 2026-05-15 13:36:07.547035-07
+INFO 2026-05-15 14:06:36,756 stock_move_synchronizer 8180 10812 Syncing stock moves for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 14:06:36,757 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 14:06:36,759 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 14:06:36,759 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:36,759 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:36,761 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 14:06:36,768 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 14:06:36,770 base_synchronizer 8180 10812 Pre-fetching 9579 IDs for fact_stock_pickings...
+INFO 2026-05-15 14:06:36,778 base_synchronizer 8180 10812 Cached 9579 IDs for fact_stock_pickings
+INFO 2026-05-15 14:06:37,001 odoo_client 8180 10812 Fetched 0 records from stock.move
+INFO 2026-05-15 14:06:37,002 base_synchronizer 8180 10812 [stock.move] Sync complete: 0 records in 0.25s (0.00 rec/s)
+INFO 2026-05-15 14:06:37,003 orchestrator 8180 10812 --- Phase 3: Inventory State ---
+INFO 2026-05-15 14:06:37,003 stock_quant_synchronizer 8180 10812 Syncing stock quants for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99...
+INFO 2026-05-15 14:06:37,004 base_synchronizer 8180 10812 Pre-fetching 3229 IDs for dim_products...
+INFO 2026-05-15 14:06:37,006 base_synchronizer 8180 10812 Cached 3229 IDs for dim_products
+INFO 2026-05-15 14:06:37,007 base_synchronizer 8180 10812 Pre-fetching 5 IDs for dim_companies...
+INFO 2026-05-15 14:06:37,007 base_synchronizer 8180 10812 Cached 5 IDs for dim_companies
+INFO 2026-05-15 14:06:37,008 base_synchronizer 8180 10812 Pre-fetching 9859 IDs for dim_lots...
+INFO 2026-05-15 14:06:37,015 base_synchronizer 8180 10812 Cached 9859 IDs for dim_lots
+INFO 2026-05-15 14:06:37,236 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:37,478 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:37,706 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:37,939 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:38,220 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:38,452 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:38,691 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:38,942 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:39,183 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:39,435 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:39,778 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:40,073 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:40,393 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:40,639 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:40,886 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:41,129 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:41,372 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:41,635 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:41,888 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:42,153 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:42,582 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:42,902 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:43,251 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:43,579 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:43,836 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:44,123 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:44,431 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:44,684 odoo_client 8180 10812 Fetched 1000 records from stock.quant
+INFO 2026-05-15 14:06:44,873 odoo_client 8180 10812 Fetched 163 records from stock.quant
+INFO 2026-05-15 14:06:44,906 base_synchronizer 8180 10812 [stock.quant] Sync complete: 28163 records in 7.90s (3563.51 rec/s)
+INFO 2026-05-15 14:06:44,907 database_manager 8180 10812 Closed PostgreSQL connection
+INFO 2026-05-15 14:06:44,913 sync_job 8180 10868 Scheduled sync run completed. Sleeping for 30 minutes.
+ERROR 2026-05-15 14:10:41,495 log 8180 10812 Invalid HTTP_HOST header: 'f437-94-187-19-12.ngrok-free.app'. You may need to add 'f437-94-187-19-12.ngrok-free.app' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\asgiref\sync.py", line 557, in thread_handler
+    raise exc_info[1]
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\django\core\handlers\exception.py", line 42, in inner
+    response = await get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\django\utils\deprecation.py", line 132, in __acall__
+    response = await sync_to_async(
+               ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\asgiref\sync.py", line 506, in __call__
+    ret = await asyncio.shield(exec_coro)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\AppData\Local\Programs\Python\Python311\Lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\asgiref\sync.py", line 561, in thread_handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\django\middleware\common.py", line 48, in process_request
+    host = request.get_host()
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC\Desktop\doova_odoo\odoo_backend\venv\Lib\site-packages\django\http\request.py", line 203, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'f437-94-187-19-12.ngrok-free.app'. You may need to add 'f437-94-187-19-12.ngrok-free.app' to ALLOWED_HOSTS.
+INFO 2026-05-15 14:11:17,276 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:17,277 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:17,277 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:17,278 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:17,417 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:17,419 middleware 8180 10868 GET /api/v1/tenants/ - Status: 401 - Time: 0.002s
+INFO 2026-05-15 14:11:17,554 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:17,554 middleware 8180 10868 GET /api/v1/tenants/ - Status: 401 - Time: 0.001s
+INFO 2026-05-15 14:11:24,751 middleware 8180 10868 OPTIONS /api/v1/auth/login - Client: 185.206.200.228
+INFO 2026-05-15 14:11:24,752 middleware 8180 10868 OPTIONS /api/v1/auth/login - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:24,886 middleware 8180 10868 POST /api/v1/auth/login - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,388 middleware 8180 10868 POST /api/v1/auth/login - Status: 200 - Time: 0.501s
+INFO 2026-05-15 14:11:25,596 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,596 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:25,601 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,601 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.000s
+INFO 2026-05-15 14:11:25,732 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,740 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.009s
+INFO 2026-05-15 14:11:25,875 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,879 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.004s
+INFO 2026-05-15 14:11:25,941 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,943 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:25,971 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,972 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:25,975 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,976 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:25,976 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:25,977 middleware 8180 10868 OPTIONS /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:26,076 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,084 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.008s
+INFO 2026-05-15 14:11:26,230 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,256 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.026s
+INFO 2026-05-15 14:11:26,413 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,473 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.059s
+INFO 2026-05-15 14:11:26,580 middleware 8180 10868 OPTIONS /api/v1/kpi/overview - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,581 middleware 8180 10868 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:26,601 middleware 8180 10868 OPTIONS /api/v1/kpi/top-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,601 middleware 8180 10868 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:26,609 middleware 8180 10868 OPTIONS /api/v1/kpi/top-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,610 middleware 8180 10868 OPTIONS /api/v1/kpi/fast-moving-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,610 middleware 8180 10868 OPTIONS /api/v1/kpi/top-customers - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,611 middleware 8180 10868 OPTIONS /api/v1/kpi/top-products - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:26,612 middleware 8180 10868 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:26,613 middleware 8180 10868 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.003s
+INFO 2026-05-15 14:11:26,614 middleware 8180 10868 OPTIONS /api/v1/kpi/top-customers - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,616 middleware 8180 10868 OPTIONS /api/v1/kpi/top-customers - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:26,645 middleware 8180 10868 OPTIONS /api/v1/kpi/fast-moving-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,646 middleware 8180 10868 OPTIONS /api/v1/kpi/trends - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,647 middleware 8180 10868 OPTIONS /api/v1/kpi/currency-impact - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,649 middleware 8180 10868 OPTIONS /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.003s
+INFO 2026-05-15 14:11:26,649 middleware 8180 10868 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:26,650 middleware 8180 10868 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.003s
+INFO 2026-05-15 14:11:26,660 middleware 8180 10868 OPTIONS /api/v1/kpi/bottom-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,661 middleware 8180 10868 OPTIONS /api/v1/kpi/receivables-aging - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,661 middleware 8180 10868 OPTIONS /api/v1/kpi/category-performance - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,663 middleware 8180 10868 OPTIONS /api/v1/kpi/currency-impact - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,663 middleware 8180 10868 OPTIONS /api/v1/kpi/bottom-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,663 middleware 8180 10868 OPTIONS /api/v1/kpi/trends - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,663 middleware 8180 10868 OPTIONS /api/v1/kpi/overview - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,663 middleware 8180 10868 OPTIONS /api/v1/kpi/receivables-aging - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,664 middleware 8180 10868 OPTIONS /api/v1/kpi/category-performance - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,664 middleware 8180 10868 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.004s
+INFO 2026-05-15 14:11:26,666 middleware 8180 10868 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:11:26,667 middleware 8180 10868 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:11:26,668 middleware 8180 10868 OPTIONS /api/v1/kpi/currency-impact - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:11:26,669 middleware 8180 10868 OPTIONS /api/v1/kpi/bottom-products - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:11:26,670 middleware 8180 10868 OPTIONS /api/v1/kpi/trends - Status: 200 - Time: 0.007s
+INFO 2026-05-15 14:11:26,672 middleware 8180 10868 OPTIONS /api/v1/kpi/overview - Status: 200 - Time: 0.009s
+INFO 2026-05-15 14:11:26,673 middleware 8180 10868 OPTIONS /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.010s
+INFO 2026-05-15 14:11:26,674 middleware 8180 10868 OPTIONS /api/v1/kpi/category-performance - Status: 200 - Time: 0.010s
+INFO 2026-05-15 14:11:26,674 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,686 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-15 14:11:26,719 middleware 8180 10868 GET /api/v1/kpi/overview - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,741 middleware 8180 10868 GET /api/v1/kpi/top-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,753 middleware 8180 10868 GET /api/v1/kpi/top-customers - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,760 middleware 8180 10868 GET /api/v1/kpi/fast-moving-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,762 middleware 8180 10868 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.021s
+INFO 2026-05-15 14:11:26,776 middleware 8180 10868 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.017s
+INFO 2026-05-15 14:11:26,794 middleware 8180 10868 GET /api/v1/kpi/overview - Status: 200 - Time: 0.075s
+INFO 2026-05-15 14:11:26,807 middleware 8180 10868 GET /api/v1/kpi/trends - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,812 middleware 8180 10868 GET /api/v1/kpi/currency-impact - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,816 middleware 8180 10868 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.063s
+INFO 2026-05-15 14:11:26,820 middleware 8180 10868 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.008s
+INFO 2026-05-15 14:11:26,820 middleware 8180 10868 GET /api/v1/kpi/trends - Status: 200 - Time: 0.014s
+INFO 2026-05-15 14:11:26,822 middleware 8180 10868 GET /api/v1/kpi/bottom-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,826 middleware 8180 10868 GET /api/v1/kpi/receivables-aging - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,835 middleware 8180 10868 GET /api/v1/kpi/category-performance - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,844 middleware 8180 10868 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.019s
+INFO 2026-05-15 14:11:26,845 middleware 8180 10868 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.023s
+INFO 2026-05-15 14:11:26,851 middleware 8180 10868 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.016s
+INFO 2026-05-15 14:11:26,931 middleware 8180 10868 GET /api/v1/kpi/top-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:26,943 middleware 8180 10868 GET /api/v1/kpi/top-products - Status: 200 - Time: 0.012s
+INFO 2026-05-15 14:11:27,018 middleware 8180 10868 GET /api/v1/kpi/fast-moving-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,032 middleware 8180 10868 GET /api/v1/kpi/fast-moving-products - Status: 200 - Time: 0.014s
+INFO 2026-05-15 14:11:27,336 middleware 8180 10868 GET /api/v1/kpi/receivables-aging - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,336 middleware 8180 10868 GET /api/v1/kpi/overview - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,339 middleware 8180 10868 GET /api/v1/kpi/trends - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,341 middleware 8180 10868 GET /api/v1/kpi/top-customers - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,348 middleware 8180 10868 GET /api/v1/kpi/currency-impact - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,354 middleware 8180 10868 GET /api/v1/kpi/trends - Status: 200 - Time: 0.014s
+INFO 2026-05-15 14:11:27,361 middleware 8180 10868 GET /api/v1/kpi/bottom-products - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,363 middleware 8180 10868 GET /api/v1/kpi/currency-impact - Status: 200 - Time: 0.015s
+INFO 2026-05-15 14:11:27,365 middleware 8180 10868 GET /api/v1/kpi/receivables-aging - Status: 200 - Time: 0.029s
+INFO 2026-05-15 14:11:27,373 middleware 8180 10868 GET /api/v1/kpi/bottom-products - Status: 200 - Time: 0.013s
+INFO 2026-05-15 14:11:27,392 middleware 8180 10868 GET /api/v1/kpi/top-customers - Status: 200 - Time: 0.051s
+INFO 2026-05-15 14:11:27,408 middleware 8180 10868 GET /api/v1/kpi/overview - Status: 200 - Time: 0.072s
+INFO 2026-05-15 14:11:27,409 middleware 8180 10868 GET /api/v1/kpi/category-performance - Client: 185.206.200.228
+INFO 2026-05-15 14:11:27,420 middleware 8180 10868 GET /api/v1/kpi/category-performance - Status: 200 - Time: 0.011s
+INFO 2026-05-15 14:11:38,438 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:38,439 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:38,440 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:38,442 middleware 8180 10868 OPTIONS /api/v1/tenants/ - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:38,585 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:38,593 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.008s
+INFO 2026-05-15 14:11:38,909 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:38,914 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.005s
+INFO 2026-05-15 14:11:41,858 middleware 8180 10868 OPTIONS /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 185.206.200.228
+INFO 2026-05-15 14:11:41,859 middleware 8180 10868 OPTIONS /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 185.206.200.228
+INFO 2026-05-15 14:11:41,860 middleware 8180 10868 OPTIONS /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:11:41,860 middleware 8180 10868 OPTIONS /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:41,860 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:41,866 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:11:43,338 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 185.206.200.228
+INFO 2026-05-15 14:11:43,345 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.004s
+INFO 2026-05-15 14:11:43,368 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:11:43,385 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.017s
+INFO 2026-05-15 14:11:43,401 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:43,410 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-15 14:11:44,275 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 185.206.200.228
+INFO 2026-05-15 14:11:44,276 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:11:44,309 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:44,321 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.012s
+INFO 2026-05-15 14:11:45,033 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:45,038 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:11:45,260 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:11:45,266 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:12:31,590 middleware 8180 10868 GET /api/v1/docs - Client: 185.206.200.228
+INFO 2026-05-15 14:12:31,591 middleware 8180 10868 GET /api/v1/docs - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:12:33,917 middleware 8180 10868 GET /api/v1/openapi.json - Client: 185.206.200.228
+INFO 2026-05-15 14:12:34,084 middleware 8180 10868 GET /api/v1/openapi.json - Status: 200 - Time: 0.167s
+INFO 2026-05-15 14:13:50,081 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,095 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.013s
+INFO 2026-05-15 14:13:50,290 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,300 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.010s
+INFO 2026-05-15 14:13:50,341 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,354 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.013s
+INFO 2026-05-15 14:13:50,371 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,372 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.002s
+INFO 2026-05-15 14:13:50,495 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,506 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-15 14:13:50,518 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,520 middleware 8180 10868 GET /api/v1/files/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.001s
+INFO 2026-05-15 14:13:50,645 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,655 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.010s
+INFO 2026-05-15 14:13:50,798 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:13:50,809 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.011s
+INFO 2026-05-15 14:15:43,055 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:15:43,060 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.005s
+INFO 2026-05-15 14:15:43,194 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:15:43,198 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.004s
+INFO 2026-05-15 14:15:43,247 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:15:43,254 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-15 14:15:43,433 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:15:43,452 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.020s
+INFO 2026-05-15 14:15:43,594 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:15:43,618 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.024s
+INFO 2026-05-15 14:15:43,765 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:15:43,779 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.015s
+INFO 2026-05-15 14:16:32,239 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:16:32,244 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.005s
+INFO 2026-05-15 14:16:32,392 middleware 8180 10868 GET /api/v1/tenants/ - Client: 185.206.200.228
+INFO 2026-05-15 14:16:32,399 middleware 8180 10868 GET /api/v1/tenants/ - Status: 200 - Time: 0.006s
+INFO 2026-05-15 14:16:32,579 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:16:32,586 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.007s
+INFO 2026-05-15 14:16:32,743 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:16:32,752 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.009s
+INFO 2026-05-15 14:16:32,897 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:16:32,902 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.005s
+INFO 2026-05-15 14:16:33,051 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Client: 185.206.200.228
+INFO 2026-05-15 14:16:33,060 middleware 8180 10868 GET /api/v1/master-data/4fa1b33d-870f-4681-a54e-52e9b12f6b99/companies - Status: 200 - Time: 0.009s
