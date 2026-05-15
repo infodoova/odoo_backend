@@ -56,21 +56,33 @@ async def chat_endpoint(request: Request):
     # Extract message from multiple potential sources
     user_message = req_data.query_alt or req_data.message or req_data.content or req_data.prompt or ""
     
-    # 1. Immediate Session Handling (Ensures even greetings are saved)
+    # 1. Immediate Session Handling
     import uuid
+    from asgiref.sync import sync_to_async
+    
     current_session_id = req_data.session_id
     if not current_session_id or current_session_id == "new" or current_session_id == "default_session":
         current_session_id = str(uuid.uuid4())
         logger.info(f"Generated new session ID: {current_session_id}")
 
-    session = session_manager.get_or_create_session(current_session_id, req_data.tenant_id, user_message)
-    session_manager.save_message(current_session_id, "user", user_message or "[Empty Message]")
+    # Load session and history BEFORE saving new message
+    session = await sync_to_async(session_manager.get_or_create_session)(current_session_id, req_data.tenant_id, user_message)
+    db_messages = await sync_to_async(list)(session_manager.get_messages(current_session_id))
+    
+    chat_history_from_db = [
+        {"role": m.role, "content": m.content}
+        for m in db_messages
+        if m.role in ("user", "assistant")
+    ]
+    
+    # Now save the new user message to DB
+    await sync_to_async(session_manager.save_message)(current_session_id, "user", user_message or "[Empty Message]")
     log_session_event("MESSAGE_SAVED", current_session_id, "user message")
 
     # Handle empty messages / simple greetings
     if not user_message or not user_message.strip() or user_message.lower() in ["hi", "hello", "hey"]:
         answer = "Hello! I am your Doova Finance Brain. How can I assist you with your business data today?"
-        session_manager.save_message(current_session_id, "assistant", answer)
+        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
         return {
             "answer": answer,
             "mode": "EXECUTE",
@@ -83,29 +95,58 @@ async def chat_endpoint(request: Request):
         f"   Session: {current_session_id}\n"
         f"   Tenant: {req_data.tenant_id}\n"
         f"   Company: {req_data.company_id or 'ALL'}\n"
-        f"   Message: \"{user_message[:100]}\""
+        f"   Message: \"{user_message[:100]}\"\n"
+        f"   History Context: {len(chat_history_from_db)} messages"
     )
 
     # 2. Routing
     decision = router_node.classify(user_message)
     
+    # 2.1 Handle Plan Approval (CONFIRM path)
+    if decision == "CONFIRM" and session.plan_state:
+        try:
+            logger.info(f"PLAN APPROVED: Executing strategic architecture for session {current_session_id}")
+            answer = reasoning_node.execute_plan(
+                message=user_message,
+                plan=session.plan_state,
+                tenant_id=req_data.tenant_id,
+                company_id=req_data.company_id
+            )
+            
+            # Reset plan state after successful execution
+            session.plan_state = None
+            await sync_to_async(session.save)()
+            
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+            duration = (time.time() - request_start) * 1000
+            logger.info(f"PLAN EXECUTION COMPLETE in {duration:.0f}ms")
+            return {
+                "answer": answer,
+                "mode": "EXECUTE_PLAN",
+                "session_id": current_session_id,
+                "session_title": session.title
+            }
+        except Exception as e:
+            log_error("chat_endpoint.CONFIRM_EXECUTE", e)
+            raise HTTPException(status_code=500, detail=str(e))
+
     if decision == "REJECT":
         answer = "I'm sorry, I can only assist with business and financial questions related to your Odoo data."
-        session_manager.save_message(current_session_id, "assistant", answer)
+        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
         duration = (time.time() - request_start) * 1000
         logger.info(f"REQUEST REJECTED in {duration:.0f}ms")
         return {"answer": answer}
     
-    # 3. Execution
+    # 3. Execution Path
     if decision == "EXECUTE":
         try:
             answer = fast_path_node.run(
                 message=user_message,
                 tenant_id=req_data.tenant_id,
                 company_id=req_data.company_id,
-                chat_history=req_data.chat_history
+                chat_history=chat_history_from_db
             )
-            session_manager.save_message(current_session_id, "assistant", answer)
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             duration = (time.time() - request_start) * 1000
             logger.info(f"EXECUTE COMPLETE in {duration:.0f}ms | Response: \"{answer[:80]}...\"")
             return {
@@ -121,27 +162,43 @@ async def chat_endpoint(request: Request):
             error_msg = str(e).lower()
             if "usage limits" in error_msg or "quota" in error_msg or "429" in error_msg:
                 answer = "I'm currently experiencing high demand and have reached my processing limit for the moment. Please try again in a short while or contact support if the issue persists."
-                session_manager.save_message(current_session_id, "assistant", answer)
+                await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
                 return {"answer": answer, "mode": "ERROR", "session_id": current_session_id}
                 
             raise HTTPException(status_code=500, detail=str(e))
     
-    # 4. Planning (High-Stakes Architecture Phase)
+    # 4. Planning Path (High-Stakes Architecture)
     try:
+        # For planning, we also want to pass context if possible
+        # Since create_plan doesn't take full history yet, we'll pass it via reasoning_node if updated, 
+        # or just ensure the session title is used as context.
         plan = reasoning_node.create_plan(
             message=user_message,
             tenant_id=req_data.tenant_id,
             company_id=req_data.company_id
         )
-        duration = (time.time() - request_start) * 1000
-        logger.info(f"PLAN GENERATED in {duration:.0f}ms | Awaiting approval")
+        # Format the plan into a readable answer for the UI
+        plan_summary = f"### 🗺️ Strategic Architecture Plan\n\n"
+        plan_summary += f"**Objective:** {plan.get('objective', 'Strategic Audit')}\n\n"
         
-        answer = "This is a high-stakes request. I have prepared a strategic architecture plan. Shall I proceed?"
+        phases = plan.get('phases', [])
+        if phases:
+            plan_summary += "**Phases:**\n"
+            for i, p in enumerate(phases, 1):
+                title = p if isinstance(p, str) else p.get('title', 'Phase')
+                desc = "" if isinstance(p, str) else f": {p.get('description', '')}"
+                plan_summary += f"{i}. **{title}**{desc}\n"
+            plan_summary += "\n"
+        
+        plan_summary += f"**Expected Outcome:** {plan.get('expected_outcome', 'Complete Analysis')}\n\n"
+        plan_summary += "---\n*This is a high-stakes request. Shall I proceed with this plan?*"
+        
+        answer = plan_summary
         
         # Save assistant message and plan state
-        session_manager.save_message(current_session_id, "assistant", answer, message_type="plan", payload=plan)
+        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, message_type="plan", payload=plan)
         session.plan_state = plan
-        session.save()
+        await sync_to_async(session.save)()
         
         return {
             "answer": answer,
@@ -157,7 +214,7 @@ async def chat_endpoint(request: Request):
         error_msg = str(e).lower()
         if "usage limits" in error_msg or "quota" in error_msg or "429" in error_msg:
             answer = "I'm currently experiencing high demand and have reached my processing limit for the moment. Please try again in a short while."
-            session_manager.save_message(current_session_id, "assistant", answer)
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             return {"answer": answer, "mode": "ERROR", "session_id": current_session_id}
             
         raise HTTPException(status_code=500, detail=str(e))

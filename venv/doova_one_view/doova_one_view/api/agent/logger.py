@@ -9,8 +9,26 @@ from functools import wraps
 logger = logging.getLogger("doova.agent")
 logger.setLevel(logging.DEBUG)
 
-# Console handler with structured formatting
-console_handler = logging.StreamHandler()
+# Console handler with structured formatting and UTF-8 safety for Windows
+import sys
+
+class SafeStreamHandler(logging.StreamHandler):
+    """A StreamHandler that handles encoding errors gracefully on Windows consoles."""
+    def emit(self, record):
+        try:
+            super().emit(record)
+        except UnicodeEncodeError:
+            # Fallback for consoles that don't support the specific character (e.g. emojis on CP1252)
+            try:
+                msg = self.format(record)
+                # Replace non-encodable chars with '?' to prevent crash
+                safe_msg = msg.encode(sys.stderr.encoding or 'ascii', errors='replace').decode(sys.stderr.encoding or 'ascii')
+                self.stream.write(safe_msg + self.terminator)
+                self.flush()
+            except Exception:
+                pass # Last resort to prevent logging from crashing the app
+
+console_handler = SafeStreamHandler()
 console_handler.setLevel(logging.DEBUG)
 console_formatter = logging.Formatter(
     "\n>>> [%(asctime)s] %(levelname)s | %(name)s\n"

@@ -7,6 +7,7 @@ class RoutingProtocol(str, Enum):
     REJECT = "REJECT"
     EXECUTE = "EXECUTE"
     PLAN = "PLAN"
+    CONFIRM = "CONFIRM"
 
 # 1. ROUTER PROMPT
 ROUTER_PROMPT = PromptTemplate.from_template("""
@@ -39,6 +40,12 @@ EXECUTION PROTOCOLS
   - Treasury restructuring or organization-wide transformation
   - Any request explicitly asking for a "roadmap", "strategy", or "full review"
   Examples: "run a full audit across all subsidiaries", "design a treasury overhaul plan"
+
+[CONFIRM]
+  Trigger when the query is a confirmation or approval of a previously proposed plan:
+  - Affirmative responses like "yes", "proceed", "do it", "looks good", "continue"
+  - Agreement to a proposed strategy or roadmap
+  Examples: "yes", "proceed", "sounds good", "go ahead"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLASSIFICATION RULES

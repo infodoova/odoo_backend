@@ -8,8 +8,7 @@ class SummarizerNode:
     def __init__(self):
         self.llm = ChatAnthropic(
             model=AgentConfig.SUMMARIZER_MODEL,
-            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
-            temperature=0
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY
         )
         self.prompt = SUMMARIZER_PROMPT
 

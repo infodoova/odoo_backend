@@ -10,8 +10,10 @@ class ReasoningNode:
         self.agent = DoovaLangChainAgent(model_name=AgentConfig.REASONING_MODEL)
 
     def create_plan(self, message: str, tenant_id: str, company_id: int = None, memory_summary: str = "") -> dict:
-        # Use the centralized JSON planning prompt
-        prompt = PLAN_JSON_GENERATION_PROMPT.format(message=message)
+        # Use the centralized JSON planning prompt with memory context
+        context = f"PREVIOUS CONTEXT: {memory_summary}\n" if memory_summary else ""
+        full_message = f"{context}USER REQUEST: {message}"
+        prompt = PLAN_JSON_GENERATION_PROMPT.format(message=full_message)
         response = self.agent.llm.invoke(prompt)
         try:
             return json.loads(response.content)

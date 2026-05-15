@@ -14,8 +14,7 @@ class RouterNode:
     def __init__(self):
         self.llm = ChatAnthropic(
             model=AgentConfig.ROUTER_MODEL,
-            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
-            temperature=0
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY
         )
         self.prompt = ROUTER_PROMPT
 
@@ -31,9 +30,11 @@ class RouterNode:
             logger.debug(f"ROUTER RAW RESPONSE: {raw_content}")
             decision = raw_content.upper()
             
-            # Priority-based validation (EXECUTE > PLAN > REJECT)
+            # Priority-based validation (CONFIRM > EXECUTE > PLAN > REJECT)
             result = RoutingProtocol.EXECUTE # Default fallback
-            if RoutingProtocol.PLAN in decision:
+            if RoutingProtocol.CONFIRM in decision:
+                result = RoutingProtocol.CONFIRM
+            elif RoutingProtocol.PLAN in decision:
                 result = RoutingProtocol.PLAN
             elif RoutingProtocol.EXECUTE in decision:
                 result = RoutingProtocol.EXECUTE

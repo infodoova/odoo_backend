@@ -12,7 +12,9 @@ from .inventory import get_inventory_efficiency_tool
 def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql_m, f_params_m = build_company_filter_sql(tenant_id, company_id, column_name="m.company_id")
     params.update(f_params)
+    params.update(f_params_m)
 
     summary = run_query(
         f"""SELECT 
@@ -27,15 +29,16 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
         params,
     )[0]
 
-    overdue_rows = run_query(
-        f"""SELECT partner_name, COALESCE(SUM(amount_total), 0) AS overdue_amount
-            FROM fact_account_moves
-            WHERE tenant_id = :tenant_id
-              AND move_type = 'out_invoice'
-              AND state = 'posted'
-              AND invoice_date_due < CURRENT_DATE
-              {f_sql}
-            GROUP BY partner_name
+    customer_rows = run_query(
+        f"""SELECT p.name AS partner_name, COALESCE(SUM(m.amount_total), 0) AS overdue_amount
+            FROM fact_account_moves m
+            JOIN dim_partners p ON m.partner_id = p.odoo_id AND m.tenant_id = p.tenant_id
+            WHERE m.tenant_id = :tenant_id
+              AND m.move_type = 'out_invoice'
+              AND m.state = 'posted'
+              AND m.invoice_date_due < CURRENT_DATE
+              {f_sql_m}
+            GROUP BY p.name
             ORDER BY overdue_amount DESC
             LIMIT :limit""",
         params,
@@ -53,7 +56,7 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
         "risk_level": "High" if ratio >= 0.5 else "Medium" if ratio >= 0.2 else "Low",
         "top_overdue_customers": [
             {"customer": r["partner_name"], "overdue_amount": float(r["overdue_amount"])}
-            for r in overdue_rows
+            for r in customer_rows
         ],
     }
 
@@ -65,6 +68,7 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
 def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql_m, f_params = build_company_filter_sql(tenant_id, company_id, column_name="m.company_id")
     params.update(f_params)
 
     summary = run_query(
@@ -81,14 +85,15 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, li
     )[0]
 
     vendor_rows = run_query(
-        f"""SELECT partner_name, COALESCE(SUM(amount_total), 0) AS overdue_amount
-            FROM fact_account_moves
-            WHERE tenant_id = :tenant_id
-              AND move_type = 'in_invoice'
-              AND state = 'posted'
-              AND invoice_date_due < CURRENT_DATE
-              {f_sql}
-            GROUP BY partner_name
+        f"""SELECT p.name AS partner_name, COALESCE(SUM(m.amount_total), 0) AS overdue_amount
+            FROM fact_account_moves m
+            JOIN dim_partners p ON m.partner_id = p.odoo_id AND m.tenant_id = p.tenant_id
+            WHERE m.tenant_id = :tenant_id
+              AND m.move_type = 'in_invoice'
+              AND m.state = 'posted'
+              AND m.invoice_date_due < CURRENT_DATE
+              {f_sql_m}
+            GROUP BY p.name
             ORDER BY overdue_amount DESC
             LIMIT :limit""",
         params,
@@ -115,27 +120,28 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, li
 
 def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 20) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
 
     date_sql = ""
     if start_date:
-        date_sql += " AND date >= :start_date"
+        date_sql += " AND m.date >= :start_date"
         params["start_date"] = start_date
     if end_date:
-        date_sql += " AND date <= :end_date"
+        date_sql += " AND m.date <= :end_date"
         params["end_date"] = end_date
 
     rows = run_query(
         f"""SELECT
-                account_name AS category,
-                COALESCE(SUM(balance), 0) AS amount
-            FROM fact_account_move_lines
-            WHERE tenant_id = :tenant_id
-              AND account_type IN ('expenses', 'cost_of_goods_sold', 'depreciation')
-              AND parent_state = 'posted'
+                l.account_name AS category,
+                COALESCE(SUM(l.balance), 0) AS amount
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            WHERE l.tenant_id = :tenant_id
+              AND m.state = 'posted'
+              AND l.account_type IN ('expenses', 'cost_of_goods_sold', 'depreciation')
               {f_sql} {date_sql}
-            GROUP BY account_name
+            GROUP BY l.account_name
             ORDER BY amount DESC
             LIMIT :limit""",
         params,
@@ -192,17 +198,18 @@ def get_tax_summary_tool(tenant_id: str, company_id: int | None = None) -> dict:
 
 def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: int = 15) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
 
     # 1. Unbalanced journal entries (debit != credit)
     unbalanced = run_query(
-        f"""SELECT move_name, SUM(debit) AS total_debit, SUM(credit) AS total_credit,
-                ABS(SUM(debit) - SUM(credit)) AS variance
-            FROM fact_account_move_lines
-            WHERE tenant_id = :tenant_id AND parent_state = 'posted' {f_sql}
-            GROUP BY move_name
-            HAVING ABS(SUM(debit) - SUM(credit)) > 0.01
+        f"""SELECT m.move_name, SUM(l.debit) AS total_debit, SUM(l.credit) AS total_credit,
+                ABS(SUM(l.debit) - SUM(l.credit)) AS variance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql}
+            GROUP BY m.move_name
+            HAVING ABS(SUM(l.debit) - SUM(l.credit)) > 0.01
             ORDER BY variance DESC
             LIMIT :limit""",
         params,
@@ -211,14 +218,16 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
     # 2. Unusually large transactions (> 3x average)
     outliers = run_query(
         f"""WITH stats AS (
-                SELECT AVG(ABS(balance)) AS avg_balance, STDDEV(ABS(balance)) AS std_balance
-                FROM fact_account_move_lines
-                WHERE tenant_id = :tenant_id AND parent_state = 'posted' {f_sql}
+                SELECT AVG(ABS(l.balance)) AS avg_balance, STDDEV(ABS(l.balance)) AS std_balance
+                FROM fact_account_move_lines l
+                JOIN fact_account_moves m ON l.account_move_id = m.id
+                WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql}
             )
-            SELECT l.move_name, l.account_name, l.balance, l.date
-            FROM fact_account_move_lines l, stats s
+            SELECT m.move_name, l.account_name, l.balance, m.date
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id, stats s
             WHERE l.tenant_id = :tenant_id
-              AND l.parent_state = 'posted'
+              AND m.state = 'posted'
               AND ABS(l.balance) > (s.avg_balance + 3 * s.std_balance)
               {f_sql}
             ORDER BY ABS(l.balance) DESC
@@ -254,7 +263,7 @@ def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, gr
                 DATE_TRUNC('{granularity}', date_order) AS period,
                 COALESCE(SUM(amount_total), 0) AS revenue,
                 COUNT(*) AS orders
-            FROM fact_sale_orders
+            FROM fact_sales_orders
             WHERE tenant_id = :tenant_id
               AND state IN ('sale', 'done')
               {f_sql}
@@ -357,24 +366,25 @@ def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, direc
 
 def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date: str | None = None, end_date: str | None = None) -> dict:
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
 
     date_sql = ""
     if start_date:
-        date_sql += " AND date >= :start_date"
+        date_sql += " AND m.date >= :start_date"
         params["start_date"] = start_date
     if end_date:
-        date_sql += " AND date <= :end_date"
+        date_sql += " AND m.date <= :end_date"
         params["end_date"] = end_date
 
     rows = run_query(
         f"""SELECT 
-                SUM(CASE WHEN account_type IN ('income', 'other_income') THEN balance ELSE 0 END) * -1 AS total_income,
-                SUM(CASE WHEN account_type IN ('expenses', 'cost_of_goods_sold', 'depreciation') THEN balance ELSE 0 END) AS total_expenses,
-                SUM(CASE WHEN account_type = 'cost_of_goods_sold' THEN balance ELSE 0 END) AS cogs
-            FROM fact_account_move_lines
-            WHERE tenant_id = :tenant_id {f_sql} {date_sql}""",
+                SUM(CASE WHEN l.account_type IN ('income', 'other_income') THEN l.balance ELSE 0 END) * -1 AS total_income,
+                SUM(CASE WHEN l.account_type IN ('expenses', 'cost_of_goods_sold', 'depreciation') THEN l.balance ELSE 0 END) AS total_expenses,
+                SUM(CASE WHEN l.account_type = 'cost_of_goods_sold' THEN l.balance ELSE 0 END) AS cogs
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql} {date_sql}""",
         params,
     )
 
@@ -415,19 +425,20 @@ def analyze_profitability_tool(tenant_id: str, company_id: int | None = None) ->
 
 def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None) -> dict:
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
 
     rows = run_query(
         f"""SELECT
-                COALESCE(SUM(balance) FILTER (WHERE account_type IN ('asset_receivable', 'asset_current', 'bank_and_cash')), 0) AS current_assets,
-                COALESCE(SUM(balance) FILTER (WHERE account_type IN ('asset_non_current', 'asset_fixed')), 0) AS non_current_assets,
-                COALESCE(SUM(balance) FILTER (WHERE account_type IN ('liability_current', 'liability_payable')), 0) * -1 AS current_liabilities,
-                COALESCE(SUM(balance) FILTER (WHERE account_type IN ('liability_non_current')), 0) * -1 AS non_current_liabilities,
-                COALESCE(SUM(balance) FILTER (WHERE account_type IN ('equity', 'equity_unaffected')), 0) * -1 AS total_equity
-            FROM fact_account_move_lines
-            WHERE tenant_id = :tenant_id
-              AND parent_state = 'posted'
+                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('asset_receivable', 'asset_current', 'bank_and_cash')), 0) AS current_assets,
+                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('asset_non_current', 'asset_fixed')), 0) AS non_current_assets,
+                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('liability_current', 'liability_payable')), 0) * -1 AS current_liabilities,
+                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('liability_non_current')), 0) * -1 AS non_current_liabilities,
+                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('equity', 'equity_unaffected')), 0) * -1 AS total_equity
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            WHERE l.tenant_id = :tenant_id
+              AND m.state = 'posted'
               {f_sql}""",
         params,
     )
@@ -462,22 +473,23 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None) -> dic
 
 def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit: int = 50) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
 
     rows = run_query(
         f"""SELECT
-                account_code,
-                account_name,
-                COALESCE(SUM(debit), 0) AS total_debit,
-                COALESCE(SUM(credit), 0) AS total_credit,
-                COALESCE(SUM(balance), 0) AS balance
-            FROM fact_account_move_lines
-            WHERE tenant_id = :tenant_id
-              AND parent_state = 'posted'
+                l.account_code,
+                l.account_name,
+                COALESCE(SUM(l.debit), 0) AS total_debit,
+                COALESCE(SUM(l.credit), 0) AS total_credit,
+                COALESCE(SUM(l.balance), 0) AS balance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            WHERE l.tenant_id = :tenant_id
+              AND m.state = 'posted'
               {f_sql}
-            GROUP BY account_code, account_name
-            ORDER BY account_code
+            GROUP BY l.account_code, l.account_name
+            ORDER BY l.account_code
             LIMIT :limit""",
         params,
     )
@@ -599,7 +611,7 @@ def get_business_health_score_tool(tenant_id: str, company_id: int | None = None
 
 def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, limit: int = 10) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="s.company_id")
     params.update(f_params)
 
     # Total unique customers and repeat customers
@@ -609,7 +621,7 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, lim
                 COUNT(DISTINCT partner_id) FILTER (WHERE order_count > 1) AS repeat_customers
             FROM (
                 SELECT partner_id, COUNT(*) AS order_count
-                FROM fact_sale_orders
+                FROM fact_sales_orders
                 WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') {f_sql}
                 GROUP BY partner_id
             ) sub""",
@@ -623,10 +635,11 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, lim
 
     # Top customers by revenue
     top = run_query(
-        f"""SELECT partner_name, COUNT(*) AS orders, COALESCE(SUM(amount_total), 0) AS revenue
-            FROM fact_sale_orders
-            WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') {f_sql}
-            GROUP BY partner_name
+        f"""SELECT p.name AS partner_name, COUNT(*) AS orders, COALESCE(SUM(s.amount_total), 0) AS revenue
+            FROM fact_sales_orders s
+            JOIN dim_partners p ON s.partner_id = p.odoo_id AND s.tenant_id = p.tenant_id
+            WHERE s.tenant_id = :tenant_id AND s.state IN ('sale', 'done') {f_sql}
+            GROUP BY p.name
             ORDER BY revenue DESC
             LIMIT :limit""",
         params,
