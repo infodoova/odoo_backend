@@ -1,0 +1,99 @@
+INFO 2026-05-15 12:20:13,529 sync_job 16064 16108 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-15 12:20:13,529 sync_job 16064 16108 Starting scheduled sync run at 2026-05-15 12:20:13.529457
+INFO 2026-05-15 12:20:13,567 sync_job 16064 16108 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-15 12:21:02,898 sync_job 14512 5356 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-15 12:21:02,898 sync_job 14512 5356 Starting scheduled sync run at 2026-05-15 12:21:02.898546
+INFO 2026-05-15 12:21:02,939 sync_job 14512 5356 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-15 12:21:12,398 middleware 14512 5356 GET /api/v1/docs - Client: 127.0.0.1
+INFO 2026-05-15 12:21:12,398 middleware 14512 5356 GET /api/v1/docs - Status: 200 - Time: 0.000s
+INFO 2026-05-15 12:21:13,306 middleware 14512 5356 GET /api/v1/openapi.json - Client: 127.0.0.1
+INFO 2026-05-15 12:21:13,506 middleware 14512 5356 GET /api/v1/openapi.json - Status: 200 - Time: 0.200s
+INFO 2026-05-15 12:28:00,505 middleware 14512 5356 POST /api/v1/auth/register - Client: 127.0.0.1
+INFO 2026-05-15 12:28:00,958 service 14512 5356 New user registered: fneishussein@gmail.com
+INFO 2026-05-15 12:28:00,960 middleware 14512 5356 POST /api/v1/auth/register - Status: 201 - Time: 0.455s
+INFO 2026-05-15 12:28:18,306 middleware 14512 5356 POST /api/v1/auth/login - Client: 127.0.0.1
+INFO 2026-05-15 12:28:18,782 middleware 14512 5356 POST /api/v1/auth/login - Status: 200 - Time: 0.478s
+INFO 2026-05-15 12:29:21,235 middleware 14512 5356 POST /api/v1/tenants/ - Client: 127.0.0.1
+WARNING 2026-05-15 12:29:21,242 utils 14512 14348 cryptography not installed, storing API key as plain bytes
+INFO 2026-05-15 12:29:21,264 service 14512 14348 Tenant created: softquesarl-supernova-stage (ID: 4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 12:29:21,266 middleware 14512 5356 POST /api/v1/tenants/ - Status: 201 - Time: 0.030s
+INFO 2026-05-15 12:29:32,218 sync_job 14512 5356 Background Sync Job stopped
+INFO 2026-05-15 12:29:40,155 sync_job 14976 3776 Background Sync Job started. Interval: 30 minutes
+INFO 2026-05-15 12:29:40,155 sync_job 14976 3776 Starting scheduled sync run at 2026-05-15 12:29:40.155426
+INFO 2026-05-15 12:29:40,214 sync_job 14976 3776 Auto-syncing tenant: softquesarl-supernova-stage (4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 12:29:40,810 utils 14976 15824 decrypt_api_key called
+INFO 2026-05-15 12:29:40,810 utils 14976 15824 Incoming type: <class 'memoryview'>
+INFO 2026-05-15 12:29:40,810 utils 14976 15824 Detected memoryview, converting using tobytes()
+INFO 2026-05-15 12:29:40,810 utils 14976 15824 Raw data: b'c363f37317257749632661d8c13fcdd306ef07a8'
+INFO 2026-05-15 12:29:40,810 utils 14976 15824 Data length after normalization: 40
+INFO 2026-05-15 12:29:40,810 utils 14976 15824 ENCRYPTION_KEY found, attempting Fernet decryption
+ERROR 2026-05-15 12:29:40,810 utils 14976 15824 Fernet decryption failed: No module named 'cryptography'
+WARNING 2026-05-15 12:29:40,810 utils 14976 15824 Falling back to plain decode
+INFO 2026-05-15 12:29:40,814 utils 14976 15824 Plain decode successful, result length: 40
+INFO 2026-05-15 12:29:40,814 odoo_client 14976 15824 Initialized Odoo JSON-RPC client for softquesarl-supernova-stage
+INFO 2026-05-15 12:29:40,853 database_manager 14976 15824 Connected to PostgreSQL
+INFO 2026-05-15 12:29:40,884 database_manager 14976 15824 Closed PostgreSQL connection
+INFO 2026-05-15 12:29:40,884 orchestrator 14976 15824 No history found. Triggering full sync...
+INFO 2026-05-15 12:29:40,884 orchestrator 14976 15824 Starting professional full sync for tenant: softquesarl-supernova-stage
+INFO 2026-05-15 12:29:40,934 database_manager 14976 15824 Connected to PostgreSQL
+ERROR 2026-05-15 12:29:46,994 odoo_client 14976 15824 Odoo RPC Error in common.authenticate: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:46,994 odoo_client 14976 15824 Odoo RPC failure: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:46,994 odoo_client 14976 15824 Authentication failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+WARNING 2026-05-15 12:29:46,995 orchestrator 14976 15824 Orchestrator retry 1 due to: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:48,078 odoo_client 14976 15824 Odoo RPC Error in common.authenticate: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:48,078 odoo_client 14976 15824 Odoo RPC failure: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:48,078 odoo_client 14976 15824 Authentication failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+WARNING 2026-05-15 12:29:48,078 orchestrator 14976 15824 Orchestrator retry 2 due to: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:49,164 odoo_client 14976 15824 Odoo RPC Error in common.authenticate: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:49,164 odoo_client 14976 15824 Odoo RPC failure: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:49,164 odoo_client 14976 15824 Authentication failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:49,164 orchestrator 14976 15824 Full sync failed for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+INFO 2026-05-15 12:29:49,178 database_manager 14976 15824 Closed PostgreSQL connection
+ERROR 2026-05-15 12:29:49,178 orchestrator 14976 15824 Smart sync decision failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+INFO 2026-05-15 12:29:49,178 orchestrator 14976 15824 Starting professional delta sync for tenant: softquesarl-supernova-stage
+INFO 2026-05-15 12:29:49,248 database_manager 14976 15824 Connected to PostgreSQL
+ERROR 2026-05-15 12:29:49,330 odoo_client 14976 15824 Odoo RPC Error in common.authenticate: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:49,331 odoo_client 14976 15824 Odoo RPC failure: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:49,331 odoo_client 14976 15824 Authentication failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+WARNING 2026-05-15 12:29:49,331 orchestrator 14976 15824 Orchestrator retry 1 due to: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:50,404 odoo_client 14976 15824 Odoo RPC Error in common.authenticate: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:50,404 odoo_client 14976 15824 Odoo RPC failure: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:50,414 odoo_client 14976 15824 Authentication failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+WARNING 2026-05-15 12:29:50,414 orchestrator 14976 15824 Orchestrator retry 2 due to: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:51,498 odoo_client 14976 15824 Odoo RPC Error in common.authenticate: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:51,498 odoo_client 14976 15824 Odoo RPC failure: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:51,498 odoo_client 14976 15824 Authentication failed: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+ERROR 2026-05-15 12:29:51,502 orchestrator 14976 15824 Delta sync failed for tenant 4fa1b33d-870f-4681-a54e-52e9b12f6b99: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+INFO 2026-05-15 12:29:51,504 database_manager 14976 15824 Closed PostgreSQL connection
+ERROR 2026-05-15 12:29:51,518 sync_job 14976 3776 Failed to auto-sync tenant softquesarl-supernova-stage: Odoo RPC Error: connection to server at "192.168.1.1", port 5432 failed: FATAL:  database "softquesarl-supernova-stage" does not exist
+
+INFO 2026-05-15 12:29:51,518 sync_job 14976 3776 Scheduled sync run completed. Sleeping for 30 minutes.
+INFO 2026-05-15 12:30:34,243 middleware 14976 3776 PATCH /api/v1/tenants/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Client: 127.0.0.1
+INFO 2026-05-15 12:30:34,257 service 14976 15824 Tenant updated: softquesarl-supernova-stage (ID: 4fa1b33d-870f-4681-a54e-52e9b12f6b99)
+INFO 2026-05-15 12:30:34,259 middleware 14976 3776 PATCH /api/v1/tenants/4fa1b33d-870f-4681-a54e-52e9b12f6b99 - Status: 200 - Time: 0.015s
+INFO 2026-05-15 12:30:48,643 sync_job 14976 3776 Background Sync Job stopped
