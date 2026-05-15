@@ -1,0 +1,594 @@
+"""
+Tenant service - Business logic layer
+"""
+
+import asyncio
+from typing import List, Optional, Dict, Tuple
+from datetime import datetime
+import logging
+from django.utils import timezone
+
+from odoo_app.models.tenant import Tenant
+from odoo_app.models.user_tenant_access import UserTenantAccess
+from django.conf import settings
+
+from doova_one_view.api.common.exceptions import NotFoundError, PermissionError, ValidationError
+from doova_one_view.api.common.utils import encrypt_api_key, decrypt_api_key
+from doova_one_view.api.tenants.schemas import TenantCreate, TenantUpdate, TenantRead, SyncResponse, SyncStatusResponse
+
+logger = logging.getLogger(__name__)
+
+
+class TenantService:
+    """Service for tenant operations"""
+    
+    @staticmethod
+    async def create_tenant(data: TenantCreate, user_id: str) -> TenantRead:
+        """
+        Create a new tenant
+        
+        Args:
+            data: Tenant creation data
+            user_id: ID of user creating the tenant
+            
+        Returns:
+            TenantRead: Created tenant data
+            
+        Raises:
+            ValidationError: If validation fails
+        """
+        def _create():
+            # Encrypt API key
+            api_key_encrypted = encrypt_api_key(data.odoo_api_key) if data.odoo_api_key else b''
+            
+            # Create tenant
+            tenant = Tenant.objects.create(
+                name=data.name,
+                odoo_url=str(data.odoo_url).rstrip('/'),
+                odoo_database=data.odoo_database,
+                api_key_encrypted=api_key_encrypted,
+                is_active=data.is_active,
+                sync_status='pending'
+            )
+            
+            # Grant user access to tenant
+            UserTenantAccess.objects.create(
+                user_id=user_id,
+                tenant=tenant,
+                can_view_all_companies=True
+            )
+            
+            logger.info(f"Tenant created: {tenant.name} (ID: {tenant.id})")
+            return tenant
+        
+        try:
+            tenant = await asyncio.to_thread(_create)
+            user_count = await TenantService.get_tenant_user_count(str(tenant.id))
+            
+            return TenantRead(
+                id=str(tenant.id),
+                name=tenant.name,
+                odoo_url=tenant.odoo_url,
+                odoo_database=tenant.odoo_database,
+                is_active=tenant.is_active,
+                sync_status=tenant.sync_status,
+                last_sync_at=tenant.last_sync_at,
+                created_at=tenant.created_at,
+                updated_at=tenant.updated_at,
+                user_count=user_count
+            )
+        except Exception as e:
+            logger.error(f"Error creating tenant: {str(e)}")
+            raise ValidationError(f"Failed to create tenant: {str(e)}")
+    
+    @staticmethod
+    async def get_tenant(tenant_id: str, user_id: Optional[str] = None) -> TenantRead:
+        """
+        Get tenant by ID
+        
+        Args:
+            tenant_id: Tenant UUID
+            user_id: Optional user ID for access check
+            
+        Returns:
+            TenantRead: Tenant data
+            
+        Raises:
+            NotFoundError: If tenant not found
+            PermissionError: If user doesn't have access
+        """
+        def _get():
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Check user access if user_id provided
+            if user_id:
+                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
+                    raise PermissionError("User does not have access to this tenant")
+            
+            return tenant
+        
+        tenant = await asyncio.to_thread(_get)
+        user_count = await TenantService.get_tenant_user_count(str(tenant.id))
+        
+        return TenantRead(
+            id=str(tenant.id),
+            name=tenant.name,
+            odoo_url=tenant.odoo_url,
+            odoo_database=tenant.odoo_database,
+            is_active=tenant.is_active,
+            sync_status=tenant.sync_status,
+            last_sync_at=tenant.last_sync_at,
+            created_at=tenant.created_at,
+            updated_at=tenant.updated_at,
+            user_count=user_count
+        )
+    
+    @staticmethod
+    async def list_tenants(
+        user_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[TenantRead]:
+        """
+        List tenants
+        
+        Args:
+            user_id: Optional user ID to filter by access
+            limit: Maximum number of results
+            offset: Number of results to skip
+            
+        Returns:
+            List[TenantRead]: List of tenant data
+        """
+        def _list():
+            if user_id:
+                # Filter by user access
+                access_records = UserTenantAccess.objects.filter(
+                    user_id=user_id
+                ).values_list('tenant_id', flat=True)
+                qs = Tenant.objects.filter(id__in=access_records).order_by('-created_at')
+            else:
+                qs = Tenant.objects.all().order_by('-created_at')
+            
+            return list(qs[offset:offset+limit])
+        
+        tenants = await asyncio.to_thread(_list)
+        
+        result = []
+        for tenant in tenants:
+            user_count = await TenantService.get_tenant_user_count(str(tenant.id))
+            result.append(TenantRead(
+                id=str(tenant.id),
+                name=tenant.name,
+                odoo_url=tenant.odoo_url,
+                odoo_database=tenant.odoo_database,
+                is_active=tenant.is_active,
+                sync_status=tenant.sync_status,
+                last_sync_at=tenant.last_sync_at,
+                created_at=tenant.created_at,
+                updated_at=tenant.updated_at,
+                user_count=user_count
+            ))
+        
+        return result
+    
+    @staticmethod
+    async def update_tenant(
+        tenant_id: str,
+        data: TenantUpdate,
+        user_id: Optional[str] = None
+    ) -> TenantRead:
+        """
+        Update tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            data: Update data
+            user_id: Optional user ID for access check
+            
+        Returns:
+            TenantRead: Updated tenant data
+            
+        Raises:
+            NotFoundError: If tenant not found
+            PermissionError: If user doesn't have access
+        """
+        def _update():
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Check user access if user_id provided
+            if user_id:
+                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
+                    raise PermissionError("User does not have access to this tenant")
+            
+            # Update fields
+            update_data = data.model_dump(exclude_unset=True)
+            if 'name' in update_data:
+                tenant.name = update_data['name']
+            if 'odoo_url' in update_data:
+                tenant.odoo_url = str(update_data['odoo_url']).rstrip('/')
+            if 'odoo_database' in update_data:
+                tenant.odoo_database = update_data['odoo_database']
+            if 'odoo_api_key' in update_data:
+                tenant.api_key_encrypted = encrypt_api_key(update_data['odoo_api_key'])
+            if 'is_active' in update_data:
+                tenant.is_active = update_data['is_active']
+            
+            tenant.save()
+            logger.info(f"Tenant updated: {tenant.name} (ID: {tenant.id})")
+            return tenant
+        
+        tenant = await asyncio.to_thread(_update)
+        user_count = await TenantService.get_tenant_user_count(str(tenant.id))
+        
+        return TenantRead(
+            id=str(tenant.id),
+            name=tenant.name,
+            odoo_url=tenant.odoo_url,
+            odoo_database=tenant.odoo_database,
+            is_active=tenant.is_active,
+            sync_status=tenant.sync_status,
+            last_sync_at=tenant.last_sync_at,
+            created_at=tenant.created_at,
+            updated_at=tenant.updated_at,
+            user_count=user_count
+        )
+    
+    @staticmethod
+    async def delete_tenant(tenant_id: str, user_id: Optional[str] = None) -> bool:
+        """
+        Delete tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            user_id: Optional user ID for access check
+            
+        Returns:
+            bool: True if deleted
+            
+        Raises:
+            NotFoundError: If tenant not found
+            PermissionError: If user doesn't have access
+        """
+        def _delete():
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Check user access if user_id provided
+            if user_id:
+                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
+                    raise PermissionError("User does not have access to this tenant")
+            
+            logger.info(f"Tenant deleted: {tenant.name} (ID: {tenant.id})")
+            tenant.delete()
+            return True
+        
+        return await asyncio.to_thread(_delete)
+    
+    @staticmethod
+    async def get_tenant_user_count(tenant_id: str) -> int:
+        """
+        Get number of users with access to tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            int: Number of users
+        """
+        def _count():
+            return UserTenantAccess.objects.filter(tenant_id=tenant_id).count()
+        
+        return await asyncio.to_thread(_count)
+    
+    @staticmethod
+    async def run_full_sync(tenant_id: str) -> SyncResponse:
+        """
+        Run full Odoo sync for tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            SyncResponse: Sync results
+            
+        Raises:
+            NotFoundError: If tenant not found
+        """
+        def _run_sync():
+            from odoo_app.etl import TenantConfig, ETLOrchestrator
+            
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Decrypt API key
+            api_key = decrypt_api_key(tenant.api_key_encrypted) if tenant.api_key_encrypted else ""
+            
+            # Create tenant config
+            tenant_config = TenantConfig(
+                tenant_id=str(tenant.id),
+                name=tenant.name,
+                odoo_url=tenant.odoo_url,
+                odoo_database=tenant.odoo_database,
+                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_api_key=api_key
+            )
+            
+            # Build DB connection string
+            db_config = settings.DATABASES['default']
+            db_conn_string = (
+                f"host={db_config.get('HOST', 'localhost')} "
+                f"port={db_config.get('PORT', 5432)} "
+                f"dbname={db_config.get('NAME')} "
+                f"user={db_config.get('USER')} "
+                f"password={db_config.get('PASSWORD')}"
+            )
+            
+            try:
+                # Run sync
+                orchestrator = ETLOrchestrator(tenant_config, db_conn_string)
+                results = orchestrator.run_full_sync()
+                
+                # Check results - if ignored, just return them
+                if results.get('status') == 'ignored':
+                    return {
+                        'message': 'Sync ignored - already running',
+                        'tenant_id': str(tenant.id),
+                        'sync_type': 'full',
+                        'results': results,
+                        'status': 'success',
+                        'message_type': 'info'
+                    }
+
+                # Update sync status (The orchestrator already sets it to active, but we ensure Django model consistency)
+                tenant.refresh_from_db()
+                
+                # Format results
+                formatted_results = {}
+                for key, value in results.get('phases', {}).items():
+                    formatted_results[key] = value
+                
+                return {
+                    'message': 'Sync completed successfully',
+                    'tenant_id': str(tenant.id),
+                    'sync_type': 'full',
+                    'results': formatted_results,
+                    'status': 'success',
+                    'message_type': 'success'
+                }
+            except Exception as e:
+                tenant.sync_status = 'error'
+                tenant.save()
+                raise e
+        
+        result = await asyncio.to_thread(_run_sync)
+        return SyncResponse(**result)
+    
+    @staticmethod
+    async def run_delta_sync(tenant_id: str) -> SyncResponse:
+        """
+        Run incremental delta sync for tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            SyncResponse: Sync results
+            
+        Raises:
+            NotFoundError: If tenant not found
+        """
+        def _run_delta_sync():
+            from odoo_app.etl import TenantConfig, ETLOrchestrator
+            
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Decrypt API key
+            api_key = decrypt_api_key(tenant.api_key_encrypted) if tenant.api_key_encrypted else ""
+            
+            # Create tenant config
+            tenant_config = TenantConfig(
+                tenant_id=str(tenant.id),
+                name=tenant.name,
+                odoo_url=tenant.odoo_url,
+                odoo_database=tenant.odoo_database,
+                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_api_key=api_key
+            )
+            
+            # Build DB connection string
+            db_config = settings.DATABASES['default']
+            db_conn_string = (
+                f"host={db_config.get('HOST', 'localhost')} "
+                f"port={db_config.get('PORT', 5432)} "
+                f"dbname={db_config.get('NAME')} "
+                f"user={db_config.get('USER')} "
+                f"password={db_config.get('PASSWORD')}"
+            )
+            
+            try:
+                # Run delta sync
+                orchestrator = ETLOrchestrator(tenant_config, db_conn_string)
+                results = orchestrator.run_delta_sync()
+                
+                if results.get('status') == 'ignored':
+                     return {
+                        'message': 'Delta sync ignored - already running',
+                        'tenant_id': str(tenant.id),
+                        'sync_type': 'delta',
+                        'results': results,
+                        'status': 'success',
+                        'message_type': 'info'
+                    }
+
+                # Refresh and update
+                tenant.refresh_from_db()
+                
+                # Format results
+                formatted_results = {}
+                for key, value in results.get('phases', {}).items():
+                    formatted_results[key] = value
+                
+                return {
+                    'message': 'Delta sync completed successfully',
+                    'tenant_id': str(tenant.id),
+                    'sync_type': 'delta',
+                    'results': formatted_results,
+                    'status': 'success',
+                    'message_type': 'success'
+                }
+            except Exception as e:
+                tenant.sync_status = 'error'
+                tenant.save()
+                raise e
+        
+        result = await asyncio.to_thread(_run_delta_sync)
+        return SyncResponse(**result)
+
+    @staticmethod
+    async def run_smart_sync(tenant_id: str) -> SyncResponse:
+        """
+        Run intelligent sync for tenant.
+        Automatically decides between full and incremental based on history.
+        """
+        def _run_smart():
+            from odoo_app.etl import TenantConfig, ETLOrchestrator
+            
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Decrypt API key
+            api_key = decrypt_api_key(tenant.api_key_encrypted) if tenant.api_key_encrypted else ""
+            
+            # Create tenant config
+            tenant_config = TenantConfig(
+                tenant_id=str(tenant.id),
+                name=tenant.name,
+                odoo_url=tenant.odoo_url,
+                odoo_database=tenant.odoo_database,
+                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_api_key=api_key
+            )
+            
+            # Build DB connection string
+            db_config = settings.DATABASES['default']
+            db_conn_string = (
+                f"host={db_config.get('HOST', 'localhost')} "
+                f"port={db_config.get('PORT', 5432)} "
+                f"dbname={db_config.get('NAME')} "
+                f"user={db_config.get('USER')} "
+                f"password={db_config.get('PASSWORD')}"
+            )
+            
+            try:
+                # Run smart sync
+                orchestrator = ETLOrchestrator(tenant_config, db_conn_string)
+                results = orchestrator.run_smart_sync()
+                
+                if results.get('status') == 'ignored':
+                     return {
+                        'message': 'Smart sync ignored - already running',
+                        'tenant_id': str(tenant.id),
+                        'sync_type': 'smart',
+                        'results': results,
+                        'status': 'success',
+                        'message_type': 'info'
+                    }
+
+                # Refresh and update
+                tenant.refresh_from_db()
+                
+                # Format results
+                formatted_results = {}
+                for key, value in results.get('phases', {}).items():
+                    formatted_results[key] = value
+                
+                return {
+                    'message': 'Smart sync completed successfully',
+                    'tenant_id': str(tenant.id),
+                    'sync_type': 'smart',
+                    'results': formatted_results,
+                    'status': 'success',
+                    'message_type': 'success'
+                }
+            except Exception as e:
+                tenant.sync_status = 'error'
+                tenant.save()
+                raise e
+        
+        result = await asyncio.to_thread(_run_smart)
+        return SyncResponse(**result)
+    
+    @staticmethod
+    async def get_sync_status(tenant_id: str) -> SyncStatusResponse:
+        """
+        Get sync status for tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            SyncStatusResponse: Sync status data
+            
+        Raises:
+            NotFoundError: If tenant not found
+        """
+        def _get_status():
+            from odoo_app.etl import TenantConfig, ETLOrchestrator
+            
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            # Decrypt API key
+            api_key = decrypt_api_key(tenant.api_key_encrypted) if tenant.api_key_encrypted else ""
+            
+            # Create tenant config
+            tenant_config = TenantConfig(
+                tenant_id=str(tenant.id),
+                name=tenant.name,
+                odoo_url=tenant.odoo_url,
+                odoo_database=tenant.odoo_database,
+                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_api_key=api_key
+            )
+            
+            # Build DB connection string
+            db_config = settings.DATABASES['default']
+            db_conn_string = (
+                f"host={db_config.get('HOST', 'localhost')} "
+                f"port={db_config.get('PORT', 5432)} "
+                f"dbname={db_config.get('NAME')} "
+                f"user={db_config.get('USER')} "
+                f"password={db_config.get('PASSWORD')}"
+            )
+            
+            # Get status
+            orchestrator = ETLOrchestrator(tenant_config, db_conn_string)
+            sync_status = orchestrator.get_sync_status()
+            
+            return {
+                'tenant_id': str(tenant.id),
+                'sync_status': tenant.sync_status,
+                'last_sync_at': tenant.last_sync_at,
+                'last_sync_results': sync_status
+            }
+        
+        result = await asyncio.to_thread(_get_status)
+        return SyncStatusResponse(**result)
