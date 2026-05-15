@@ -14,7 +14,10 @@ class RouterNode:
     def __init__(self):
         self.llm = ChatAnthropic(
             model=AgentConfig.ROUTER_MODEL,
-            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            model_kwargs={
+                "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
+            }
         )
         self.prompt = ROUTER_PROMPT
 

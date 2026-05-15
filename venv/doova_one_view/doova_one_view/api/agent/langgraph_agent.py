@@ -19,7 +19,13 @@ class AgentState(TypedDict):
 class DoovaLangGraphAgent:
     def __init__(self):
         self.fast_agent = DoovaLangChainAgent()
-        self.llm = ChatAnthropic(model=AgentConfig.REASONING_MODEL, anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY)
+        self.llm = ChatAnthropic(
+            model=AgentConfig.REASONING_MODEL, 
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            model_kwargs={
+                "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
+            }
+        )
         
         workflow = StateGraph(AgentState)
         

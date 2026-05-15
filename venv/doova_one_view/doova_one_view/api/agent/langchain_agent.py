@@ -31,7 +31,10 @@ class DoovaLangChainAgent:
         self.summarizer = SummarizerNode()
         self.llm = ChatAnthropic(
             model=model_name or AgentConfig.FAST_MODEL,
-            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            model_kwargs={
+                "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
+            }
         )
         
         self.prompt = AGENT_SYSTEM_PROMPT

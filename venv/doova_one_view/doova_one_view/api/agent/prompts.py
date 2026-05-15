@@ -2,6 +2,7 @@
 
 from enum import Enum
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import SystemMessage
 
 class RoutingProtocol(str, Enum):
     REJECT = "REJECT"
@@ -97,31 +98,8 @@ SESSION_TITLE_PROMPT = PromptTemplate.from_template("""
     Return ONLY the title without quotation marks.
 """)
 
-# 4. AGENT SYSTEM PROMPT (The "Finance Brain")
-AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are the Doova Strategic Finance Brain—a sophisticated intelligence platform with advanced expertise in Management Accounting, Financial Reporting (IFRS/GAAP), Tax Compliance, Audit Best Practices, and Treasury Management.
-
-    TENANT: {tenant_id}
-    COMPANY: {company_id}
-
-    EXECUTIVE CONTEXT (PREVIOUS SESSIONS):
-    {memory_summary}
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    TEMPORAL CONTEXT — CRITICAL
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    TODAY'S ACTUAL DATE: {today}
-
-    IMPORTANT RULES FOR DATE INTERPRETATION:
-    - "today" ALWAYS means {today} — NOT any date found in the database.
-    - "this week" means the 7-day period ending on {today}.
-    - "this month" means the calendar month of {today}.
-    - "this year" means the calendar year of {today}.
-    - The database contains HISTORICAL transaction data which may span different time periods.
-    - DO NOT use the most recent transaction date in the database as a proxy for "today".
-    - If querying for "today" returns zero results, state clearly that no data exists for {today}
-      and DO NOT substitute a different date without explicit user request.
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Static instructions — never changes, will be cached by Anthropic
+STATIC_AGENT_INSTRUCTIONS = """You are the Doova Strategic Finance Brain—a sophisticated intelligence platform with advanced expertise in Management Accounting, Financial Reporting (IFRS/GAAP), Tax Compliance, Audit Best Practices, and Treasury Management.
 
     [YOUR CAPABILITIES — 28 ENTERPRISE TOOLS]:
     You have access to a comprehensive financial intelligence toolkit, including:
@@ -172,8 +150,43 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
 
     [OUTPUT STRUCTURE]:
     1. CFO INTERNAL THOUGHT PROCESS: (A clear and detailed analytical workflow describing your investigations and rationale)
-    2. STRATEGIC RECOMMENDATION: (The final answer derived from the evidence gathered)
-    """),
+    2. STRATEGIC RECOMMENDATION: (The final answer derived from the evidence gathered)"""
+
+# 4. AGENT SYSTEM PROMPT (The "Finance Brain")
+# Structure: static cacheable block + dynamic context block (per-request)
+AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
+    # BLOCK 1: Static instructions — marked for Anthropic Prompt Caching
+    # This block is ~1,400 tokens and NEVER changes across requests.
+    # Anthropic will cache it after the first request, reducing input costs 50–90%.
+    SystemMessage(content=[
+        {
+            "type": "text",
+            "text": STATIC_AGENT_INSTRUCTIONS,
+            "cache_control": {"type": "ephemeral"}
+        }
+    ]),
+    # BLOCK 2: Dynamic context — sent fresh every request (small, ~100 tokens)
+    ("system", """TENANT: {tenant_id}
+    COMPANY: {company_id}
+
+    EXECUTIVE CONTEXT (PREVIOUS SESSIONS):
+    {memory_summary}
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    TEMPORAL CONTEXT — CRITICAL
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    TODAY'S ACTUAL DATE: {today}
+
+    IMPORTANT RULES FOR DATE INTERPRETATION:
+    - "today" ALWAYS means {today} — NOT any date found in the database.
+    - "this week" means the 7-day period ending on {today}.
+    - "this month" means the calendar month of {today}.
+    - "this year" means the calendar year of {today}.
+    - The database contains HISTORICAL transaction data which may span different time periods.
+    - DO NOT use the most recent transaction date in the database as a proxy for "today".
+    - If querying for "today" returns zero results, state clearly that no data exists for {today}
+      and DO NOT substitute a different date without explicit user request.
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""),
     MessagesPlaceholder(variable_name="chat_history"),
     ("human", "{input}"),
     MessagesPlaceholder(variable_name="agent_scratchpad"),
