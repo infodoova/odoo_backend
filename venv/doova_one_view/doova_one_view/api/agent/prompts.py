@@ -107,6 +107,22 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
     EXECUTIVE CONTEXT (PREVIOUS SESSIONS):
     {memory_summary}
 
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    TEMPORAL CONTEXT — CRITICAL
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    TODAY'S ACTUAL DATE: {today}
+
+    IMPORTANT RULES FOR DATE INTERPRETATION:
+    - "today" ALWAYS means {today} — NOT any date found in the database.
+    - "this week" means the 7-day period ending on {today}.
+    - "this month" means the calendar month of {today}.
+    - "this year" means the calendar year of {today}.
+    - The database contains HISTORICAL transaction data which may span different time periods.
+    - DO NOT use the most recent transaction date in the database as a proxy for "today".
+    - If querying for "today" returns zero results, state clearly that no data exists for {today}
+      and DO NOT substitute a different date without explicit user request.
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     [YOUR CAPABILITIES — 28 ENTERPRISE TOOLS]:
     You have access to a comprehensive financial intelligence toolkit, including:
     - CORE STATEMENTS: Profit and Loss Statement (with margin calculations), Balance Sheet (with verification of the accounting equation A=L+E), Trial Balance (with variance checks).

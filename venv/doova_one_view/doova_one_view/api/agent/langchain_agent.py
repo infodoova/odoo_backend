@@ -1,6 +1,7 @@
 # api/agent/langchain_agent.py
 
 import time
+from datetime import datetime
 from langchain_anthropic import ChatAnthropic
 from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from .config import AgentConfig
@@ -52,21 +53,26 @@ class DoovaLangChainAgent:
                 formatted.append(AIMessage(content=msg.get("content", "")))
         return formatted
 
-    def run(self, message: str, tenant_id: str, company_id: int = None, chat_history: list = None) -> str:
+    def run(self, message: str, tenant_id: str, company_id: int = None, chat_history: list = None, memory_summary: str = "", on_summary=None) -> str:
         start = time.time()
         formatted_history = self._format_history(chat_history or [])
         
         log_agent_start(message, tenant_id, company_id, len(formatted_history))
         
-        memory_summary = ""
         active_history = formatted_history
+        new_summary_generated = None
         
-        # Check if we need to summarize
-        if len(formatted_history) >= AgentConfig.SUMMARIZE_EVERY_N:
+        # Use pre-loaded DB summary if available; otherwise generate if history is long
+        if memory_summary:
+            # DB has a persisted summary — use it with only the recent messages
+            active_history = formatted_history  # already limited to recent N in routes.py
+        elif len(formatted_history) >= AgentConfig.SUMMARIZE_EVERY_N:
+            # No persisted summary yet — generate and signal caller to save it
             sum_start = time.time()
             to_summarize = formatted_history[:-2]
             active_history = formatted_history[-2:]
             memory_summary = self.summarizer.summarize(to_summarize)
+            new_summary_generated = memory_summary
             sum_duration = (time.time() - sum_start) * 1000
             log_summarization(len(to_summarize), len(memory_summary), sum_duration)
 
@@ -76,11 +82,27 @@ class DoovaLangChainAgent:
                 "tenant_id": tenant_id,
                 "company_id": company_id,
                 "chat_history": active_history,
-                "memory_summary": memory_summary
+                "memory_summary": memory_summary,
+                "today": datetime.now().strftime("%Y-%m-%d")
             })
-            output = response["output"]
+            raw_output = response["output"]
+
+            # Normalize: handle cases where LLM returns a list of content blocks
+            if isinstance(raw_output, list):
+                output = " ".join(
+                    block.get("text", "") for block in raw_output
+                    if isinstance(block, dict) and block.get("type") == "text"
+                ).strip()
+            else:
+                output = str(raw_output)
+
             duration = (time.time() - start) * 1000
             log_agent_complete(output, duration)
+            
+            # Persist the newly generated summary via caller callback
+            if new_summary_generated and on_summary:
+                on_summary(new_summary_generated)
+            
             return output
         except Exception as e:
             duration = (time.time() - start) * 1000

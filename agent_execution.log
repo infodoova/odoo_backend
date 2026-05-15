@@ -403,3 +403,33 @@ LINE 3:         FROM fact_inventory_quants q
    Tools Used: 0
    Total Duration: 50816ms
 [2026-05-15 06:35:44] INFO [doova.agent] PLAN EXECUTION COMPLETE in 51634ms
+[2026-05-15 06:44:40] INFO [doova.agent] RAW REQUEST BODY: {"query": "sales today?", "tenant_id": "4fa1b33d-870f-4681-a54e-52e9b12f6b99", "session_id": "5130986c-96f7-4d77-ae72-bacc3ac6ee44"}
+[2026-05-15 06:44:40] INFO [doova.agent] SESSION MESSAGE_SAVED
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Details: user message
+[2026-05-15 06:44:40] INFO [doova.agent] INCOMING REQUEST
+   Session: 5130986c-96f7-4d77-ae72-bacc3ac6ee44
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   Message: "sales today?"
+   History Context: 53 messages
+[2026-05-15 06:44:41] DEBUG [doova.agent] ROUTER RAW RESPONSE: EXECUTE
+[2026-05-15 06:44:41] INFO [doova.agent] ROUTER DECISION
+   Input: "sales today?"
+   Decision: EXECUTE
+   Duration: 1204ms
+[2026-05-15 06:44:41] INFO [doova.agent] AGENT START
+   Message: "sales today?"
+   Tenant: 4fa1b33d-870f-4681-a54e-52e9b12f6b99
+   Company: ALL
+   History: 53 messages
+[2026-05-15 06:45:00] INFO [doova.agent] SUMMARIZATION
+   Input Messages: 51
+   Summary Length: 5541 chars
+   Duration: 19634ms
+[2026-05-15 06:45:04] DEBUG [doova.agent] CHAIN ACTION: Agent selecting tool: sales_summary
+[2026-05-15 06:45:13] INFO [doova.agent] AGENT COMPLETE
+   Response: "[{'text': "---\n\n## 📅 Today's Sales — CONATUS\n\n| Metric | Value |\n|---|---|\n| 💰 **Total Revenue** | XAF 0.00 |\n| 🧾 **Order Count** | 0 |\n| 📊 **Average Order Value** | XAF 0.00 |\n\n---\n\n### 🔍 CFO Internal Assessment\n\n> **No sales transactions have been recorded today.** This is consistent with the broader trend flagged in previous sessions — the severe revenue contraction observed from September → November 2025 (−79.1% then −78.7% MoM).\n\n### ⚠️ Strategic Context\n\n- **November aggregate** was already at a critical low of XAF 36.2M across only 4 orders.\n- A zero-sales day reinforces the **revenue pipeline emergency** identified earlier.\n- This pattern requires **immediate root-cause investigation** with Sales leadership.\n\n### ✅ Recommended Actions\n\n1. 🔎 **Validate Pipeline Health** — Are there pending quotes, deals in negotiation, or expected orders this week?\n2. 📞 **Sales Team Standup** — Daily check-in on deal velocity until trend reverses.\n3. 📊 **Compare to Same Day Last Month/Year** — Determine if this is anomalous or seasonal.\n\nWould you like me to pull a **week-to-date sales trend**, **sales forecast**, or **investigate today's data integrity** further?", 'type': 'text', 'index': 0}]"
+   Tools Used: 0
+   Total Duration: 32180ms
+[2026-05-15 06:45:13] INFO [doova.agent] EXECUTE COMPLETE in 33452ms | Response: "[{'text': "---\n\n## 📅 Today's Sales — CONATUS\n\n| Metric | Value |\n|---|---|\n| 💰 **Total Revenue** | XAF 0.00 |\n| 🧾 **Order Count** | 0 |\n| 📊 **Average Order Value** | XAF 0.00 |\n\n---\n\n### 🔍 CFO Internal Assessment\n\n> **No sales transactions have been recorded today.** This is consistent with the broader trend flagged in previous sessions — the severe revenue contraction observed from September → November 2025 (−79.1% then −78.7% MoM).\n\n### ⚠️ Strategic Context\n\n- **November aggregate** was already at a critical low of XAF 36.2M across only 4 orders.\n- A zero-sales day reinforces the **revenue pipeline emergency** identified earlier.\n- This pattern requires **immediate root-cause investigation** with Sales leadership.\n\n### ✅ Recommended Actions\n\n1. 🔎 **Validate Pipeline Health** — Are there pending quotes, deals in negotiation, or expected orders this week?\n2. 📞 **Sales Team Standup** — Daily check-in on deal velocity until trend reverses.\n3. 📊 **Compare to Same Day Last Month/Year** — Determine if this is anomalous or seasonal.\n\nWould you like me to pull a **week-to-date sales trend**, **sales forecast**, or **investigate today's data integrity** further?", 'type': 'text', 'index': 0}]..."

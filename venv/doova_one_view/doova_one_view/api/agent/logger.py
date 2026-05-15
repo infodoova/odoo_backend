@@ -8,6 +8,7 @@ from functools import wraps
 # Configure the agent logger
 logger = logging.getLogger("doova.agent")
 logger.setLevel(logging.DEBUG)
+logger.propagate = False # Prevent propagation to root logger to avoid encoding errors on standard handlers
 
 # Console handler with structured formatting and UTF-8 safety for Windows
 import sys
@@ -16,17 +17,17 @@ class SafeStreamHandler(logging.StreamHandler):
     """A StreamHandler that handles encoding errors gracefully on Windows consoles."""
     def emit(self, record):
         try:
-            super().emit(record)
-        except UnicodeEncodeError:
-            # Fallback for consoles that don't support the specific character (e.g. emojis on CP1252)
-            try:
-                msg = self.format(record)
-                # Replace non-encodable chars with '?' to prevent crash
-                safe_msg = msg.encode(sys.stderr.encoding or 'ascii', errors='replace').decode(sys.stderr.encoding or 'ascii')
-                self.stream.write(safe_msg + self.terminator)
-                self.flush()
-            except Exception:
-                pass # Last resort to prevent logging from crashing the app
+            msg = self.format(record)
+            stream = self.stream
+            # Determine stream encoding — default to ascii if unknown
+            enc = getattr(stream, 'encoding', None) or 'ascii'
+            # Proactively encode then decode with 'replace' to strip unencodable chars
+            if enc.lower().replace('-', '') not in ('utf8', 'utf16', 'utf32'):
+                msg = msg.encode(enc, errors='replace').decode(enc)
+            stream.write(msg + self.terminator)
+            self.flush()
+        except Exception:
+            self.handleError(record)
 
 console_handler = SafeStreamHandler()
 console_handler.setLevel(logging.DEBUG)

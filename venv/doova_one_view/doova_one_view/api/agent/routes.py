@@ -67,11 +67,23 @@ async def chat_endpoint(request: Request):
 
     # Load session and history BEFORE saving new message
     session = await sync_to_async(session_manager.get_or_create_session)(current_session_id, req_data.tenant_id, user_message)
-    db_messages = await sync_to_async(list)(session_manager.get_messages(current_session_id))
+    
+    # Retrieve persisted summary (from last summarization cycle)
+    db_summary = session.summary or ""
+    
+    # Only load the most recent N messages to keep context lean
+    RECENT_MSG_LIMIT = 10
+    def _get_recent_messages():
+        return list(
+            session_manager.get_messages(current_session_id)
+            .order_by('-created_at')[:RECENT_MSG_LIMIT]
+        )
+    all_db_messages = await sync_to_async(_get_recent_messages)()
+    all_db_messages.reverse()  # restore chronological order
     
     chat_history_from_db = [
         {"role": m.role, "content": m.content}
-        for m in db_messages
+        for m in all_db_messages
         if m.role in ("user", "assistant")
     ]
     
@@ -140,11 +152,21 @@ async def chat_endpoint(request: Request):
     # 3. Execution Path
     if decision == "EXECUTE":
         try:
+            from datetime import date
+            today_str = date.today().strftime("%Y-%m-%d")
+            
+            # Persist summary to DB when agent generates one
+            def save_summary_to_db(summary_text: str):
+                session_manager.save_summary(current_session_id, summary_text)
+                logger.info(f"SUMMARY SAVED | Session: {current_session_id} | Length: {len(summary_text)} chars")
+            
             answer = fast_path_node.run(
                 message=user_message,
                 tenant_id=req_data.tenant_id,
                 company_id=req_data.company_id,
-                chat_history=chat_history_from_db
+                chat_history=chat_history_from_db,
+                memory_summary=db_summary,
+                on_summary=save_summary_to_db
             )
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             duration = (time.time() - request_start) * 1000

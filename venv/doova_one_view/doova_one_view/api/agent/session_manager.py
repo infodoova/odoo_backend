@@ -10,8 +10,7 @@ class SessionManager:
     def __init__(self):
         self.llm = ChatAnthropic(
             model=AgentConfig.ROUTER_MODEL,
-            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
-            temperature=0
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY
         )
         self.title_prompt = SESSION_TITLE_PROMPT
 
@@ -41,6 +40,10 @@ class SessionManager:
         session.last_message = content
         session.turn_count += 1
         session.save()
+
+    def save_summary(self, session_id: str, summary_text: str):
+        """Persist a generated memory summary to the session record."""
+        ChatSession.objects.filter(session_id=session_id).update(summary=summary_text)
 
     def get_sessions(self, tenant_id: str = None):
         if tenant_id:
