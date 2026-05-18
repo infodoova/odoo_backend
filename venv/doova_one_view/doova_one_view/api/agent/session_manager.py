@@ -18,9 +18,19 @@ class SessionManager:
         self.title_prompt = SESSION_TITLE_PROMPT
 
     def generate_title(self, first_message: str) -> str:
-        chain = self.title_prompt | self.llm
-        response = chain.invoke({"message": first_message})
-        return response.content.strip().strip('"')
+        try:
+            chain = self.title_prompt | self.llm
+            response = chain.invoke({"message": first_message})
+            return response.content.strip().strip('"')
+        except Exception as e:
+            from .logger import log_error
+            log_error("SessionManager.generate_title", e)
+            clean_message = (first_message or "").strip()
+            if not clean_message:
+                return "New Chat"
+            if len(clean_message) > 40:
+                return clean_message[:37] + "..."
+            return clean_message
 
     def get_or_create_session(self, session_id: str, tenant_id: str, first_message: str = None) -> ChatSession:
         session, created = ChatSession.objects.get_or_create(session_id=session_id)

@@ -180,10 +180,10 @@ async def chat_endpoint(request: Request):
         except Exception as e:
             log_error("chat_endpoint.EXECUTE", e)
             
-            # Friendly message for API quota/limit issues
+            # Friendly message for API quota/limit/overloaded issues
             error_msg = str(e).lower()
-            if "usage limits" in error_msg or "quota" in error_msg or "429" in error_msg:
-                answer = "I'm currently experiencing high demand and have reached my processing limit for the moment. Please try again in a short while or contact support if the issue persists."
+            if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
+                answer = "I'm currently experiencing high demand and have reached my processing limit or the AI provider is temporarily overloaded. Please try again in a short while."
                 await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
                 return {"answer": answer, "mode": "ERROR", "session_id": current_session_id}
                 
@@ -232,10 +232,10 @@ async def chat_endpoint(request: Request):
         }
     except Exception as e:
         log_error("chat_endpoint.PLAN", e)
-        # Friendly message for API quota/limit issues
+        # Friendly message for API quota/limit/overloaded issues
         error_msg = str(e).lower()
-        if "usage limits" in error_msg or "quota" in error_msg or "429" in error_msg:
-            answer = "I'm currently experiencing high demand and have reached my processing limit for the moment. Please try again in a short while."
+        if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
+            answer = "I'm currently experiencing high demand and have reached my processing limit or the AI provider is temporarily overloaded. Please try again in a short while."
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             return {"answer": answer, "mode": "ERROR", "session_id": current_session_id}
             
