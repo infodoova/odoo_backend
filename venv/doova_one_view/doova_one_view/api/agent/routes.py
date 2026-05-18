@@ -40,6 +40,39 @@ class ChatRequest(BaseModel):
     def query(self) -> str:
         return self.message
 
+def make_chat_response(
+    answer: str,
+    mode: str,
+    session_id: str,
+    session_title: str,
+    user_message: str,
+    plan: Optional[dict] = None,
+    status: Optional[str] = None
+) -> dict:
+    from .utils import parse_graph_data_from_text, strip_visual_charts_from_text
+    
+    graph_data = parse_graph_data_from_text(answer)
+    has_parsed_graph = bool(graph_data)
+    
+    final_answer = answer
+    if has_parsed_graph:
+        final_answer = strip_visual_charts_from_text(answer)
+        
+    res = {
+        "answer": final_answer,
+        "mode": mode,
+        "session_id": session_id,
+        "session_title": session_title,
+        "type": "graph" if has_parsed_graph else "text",
+        "graph_data": graph_data
+    }
+    if plan is not None:
+        res["plan"] = plan
+    if status is not None:
+        res["status"] = status
+    return res
+
+
 async def background_retry_executor(
     session_id: str,
     tenant_id: str,
@@ -178,12 +211,13 @@ async def chat_endpoint(request: Request):
     if not user_message or not user_message.strip() or user_message.lower() in ["hi", "hello", "hey"]:
         answer = "Hello! I am your Doova Finance Brain. How can I assist you with your business data today?"
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
-        return {
-            "answer": answer,
-            "mode": "EXECUTE",
-            "session_id": current_session_id,
-            "session_title": session.title
-        }
+        return make_chat_response(
+            answer,
+            "EXECUTE",
+            current_session_id,
+            session.title,
+            user_message
+        )
 
     logger.info(
         f"INCOMING REQUEST\n"
@@ -215,12 +249,13 @@ async def chat_endpoint(request: Request):
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             duration = (time.time() - request_start) * 1000
             logger.info(f"PLAN EXECUTION COMPLETE in {duration:.0f}ms")
-            return {
-                "answer": answer,
-                "mode": "EXECUTE_PLAN",
-                "session_id": current_session_id,
-                "session_title": session.title
-            }
+            return make_chat_response(
+                answer,
+                "EXECUTE_PLAN",
+                current_session_id,
+                session.title,
+                user_message
+            )
         except Exception as e:
             log_error("chat_endpoint.CONFIRM_EXECUTE", e)
             error_msg = str(e).lower()
@@ -241,12 +276,13 @@ async def chat_endpoint(request: Request):
                 await sync_to_async(session.save)()
                 
                 answer = "⏳ The AI provider is temporarily overloaded, but I am executing the approved plan in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
-                return {
-                    "answer": answer,
-                    "mode": "BACKGROUND_PROCESSING",
-                    "session_id": current_session_id,
-                    "session_title": session.title
-                }
+                return make_chat_response(
+                    answer,
+                    "BACKGROUND_PROCESSING",
+                    current_session_id,
+                    session.title,
+                    user_message
+                )
             raise HTTPException(status_code=500, detail=str(e))
 
     if decision == "REJECT":
@@ -278,12 +314,13 @@ async def chat_endpoint(request: Request):
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             duration = (time.time() - request_start) * 1000
             logger.info(f"EXECUTE COMPLETE in {duration:.0f}ms | Response: \"{answer[:80]}...\"")
-            return {
-                "answer": answer,
-                "mode": "EXECUTE",
-                "session_id": current_session_id,
-                "session_title": session.title
-            }
+            return make_chat_response(
+                answer,
+                "EXECUTE",
+                current_session_id,
+                session.title,
+                user_message
+            )
         except Exception as e:
             log_error("chat_endpoint.EXECUTE", e)
             
@@ -302,12 +339,13 @@ async def chat_endpoint(request: Request):
                     )
                 )
                 answer = "⏳ The AI provider is temporarily overloaded, but I have queued your request and am executing it in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
-                return {
-                    "answer": answer,
-                    "mode": "BACKGROUND_PROCESSING",
-                    "session_id": current_session_id,
-                    "session_title": session.title
-                }
+                return make_chat_response(
+                    answer,
+                    "BACKGROUND_PROCESSING",
+                    current_session_id,
+                    session.title,
+                    user_message
+                )
                 
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -344,14 +382,15 @@ async def chat_endpoint(request: Request):
         session.plan_state = plan
         await sync_to_async(session.save)()
         
-        return {
-            "answer": answer,
-            "plan": plan,
-            "mode": "PLAN",
-            "session_id": current_session_id,
-            "status": "AWAITING_APPROVAL",
-            "session_title": session.title
-        }
+        return make_chat_response(
+            answer,
+            "PLAN",
+            current_session_id,
+            session.title,
+            user_message,
+            plan=plan,
+            status="AWAITING_APPROVAL"
+        )
     except Exception as e:
         log_error("chat_endpoint.PLAN", e)
         # Friendly message for API quota/limit/overloaded issues
@@ -369,12 +408,13 @@ async def chat_endpoint(request: Request):
                 )
             )
             answer = "⏳ The AI provider is temporarily overloaded, but I have queued your request to generate the strategic plan in the background. Please wait a moment—it will automatically appear as soon as it's ready."
-            return {
-                "answer": answer,
-                "mode": "BACKGROUND_PROCESSING",
-                "session_id": current_session_id,
-                "session_title": session.title
-            }
+            return make_chat_response(
+                answer,
+                "BACKGROUND_PROCESSING",
+                current_session_id,
+                session.title,
+                user_message
+            )
             
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -453,12 +493,14 @@ async def approve_plan(request: ChatRequest, plan: dict):
             company_id=request.company_id
         )
         session_manager.save_message(request.session_id, "assistant", answer)
-        return {
-            "answer": answer, 
-            "mode": "PLAN", 
-            "status": "DONE",
-            "session_id": request.session_id
-        }
+        return make_chat_response(
+            answer,
+            "PLAN",
+            request.session_id,
+            "Plan Approved",
+            user_message,
+            status="DONE"
+        )
     except Exception as e:
         log_error("approve_plan", e)
         error_msg = str(e).lower()
@@ -476,10 +518,34 @@ async def approve_plan(request: ChatRequest, plan: dict):
                 )
             )
             answer = "⏳ The AI provider is temporarily overloaded, but I am executing the approved plan in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
-            return {
-                "answer": answer,
-                "mode": "BACKGROUND_PROCESSING",
-                "session_id": request.session_id,
-                "status": "BACKGROUND_PROCESSING"
-            }
+            return make_chat_response(
+                answer,
+                "BACKGROUND_PROCESSING",
+                request.session_id,
+                "Plan Approved",
+                user_message,
+                status="BACKGROUND_PROCESSING"
+            )
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/reports/{filename}", tags=["Agent Reports"])
+async def download_ai_report(filename: str):
+    """Download an AI-generated PDF report."""
+    from fastapi.responses import FileResponse
+    import os
+
+    # Prevent path traversal attacks
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid report filename")
+
+    report_path = os.path.join("reports", filename)
+    if not os.path.exists(report_path):
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return FileResponse(
+        path=report_path,
+        filename=filename,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )

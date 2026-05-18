@@ -80,10 +80,14 @@ class DoovaLangChainAgent:
             log_summarization(len(to_summarize), len(memory_summary), sum_duration)
 
         try:
+            from .utils import get_tenant_currency, fix_currency_symbols
+            currency = get_tenant_currency(tenant_id, company_id)
+
             response = self.executor.invoke({
                 "input": message,
                 "tenant_id": tenant_id,
                 "company_id": company_id,
+                "currency": currency,
                 "chat_history": active_history,
                 "memory_summary": memory_summary,
                 "today": datetime.now().strftime("%Y-%m-%d")
@@ -98,6 +102,8 @@ class DoovaLangChainAgent:
                 ).strip()
             else:
                 output = str(raw_output)
+
+            output = fix_currency_symbols(output, currency)
 
             duration = (time.time() - start) * 1000
             log_agent_complete(output, duration)

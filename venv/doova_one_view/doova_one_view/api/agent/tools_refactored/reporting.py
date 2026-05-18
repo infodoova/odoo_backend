@@ -99,7 +99,7 @@ def generate_report_tool(tenant_id: str, company_id: int | None = None, custom_c
 
     return {
         "tool_name": "generate_report_tool",
-        "download_url": f"{AgentConfig.API_BASE_URL}/reports/{filename}",
+        "download_url": f"{AgentConfig.API_BASE_URL}/financial-advisor/reports/{filename}",
         "filename": filename
     }
 
@@ -112,5 +112,5 @@ def get_last_report_tool(tenant_id: str, company_id: int | None = None) -> dict:
     return {
         "tool_name": "get_last_report_tool",
         "filename": filename,
-        "download_url": f"{AgentConfig.API_BASE_URL}/reports/{filename}"
+        "download_url": f"{AgentConfig.API_BASE_URL}/financial-advisor/reports/{filename}"
     }
