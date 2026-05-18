@@ -69,6 +69,15 @@ async def get_filters(
 
 
 # Partners: static subpaths before /partners
+@router.get("/{tenant_id}/partners/filters")
+async def get_partners_filters(
+    tenant_id: str,
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await MasterDataService.get_partners_filters(tenant_id)
+
+
 @router.post("/{tenant_id}/partners/search")
 async def search_partners(
     tenant_id: str,
@@ -117,6 +126,17 @@ async def list_partners(
 
 
 # Products: static subpaths before /products
+@router.get("/{tenant_id}/products/filters")
+async def get_products_filters(
+    tenant_id: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await MasterDataService.get_products_filters(tenant_id, _company_ids(company_id, companies))
+
+
 @router.post("/{tenant_id}/products/search")
 async def search_products(
     tenant_id: str,

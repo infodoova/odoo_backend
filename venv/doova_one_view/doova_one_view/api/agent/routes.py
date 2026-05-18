@@ -2,6 +2,8 @@
 
 import json
 import time
+import asyncio
+from asgiref.sync import sync_to_async
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -37,6 +39,87 @@ class ChatRequest(BaseModel):
     @property
     def query(self) -> str:
         return self.message
+
+async def background_retry_executor(
+    session_id: str,
+    tenant_id: str,
+    company_id: int | None,
+    user_message: str,
+    chat_history: list,
+    db_summary: str,
+    mode: str = "EXECUTE",
+    plan: dict = None
+):
+    max_retries = 5
+    delay = 1.0  # initial delay in seconds
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"BACKGROUND RETRY | Session: {session_id} | Attempt {attempt}/{max_retries}")
+            
+            if mode == "EXECUTE":
+                def save_summary_to_db(summary_text: str):
+                    session_manager.save_summary(session_id, summary_text)
+                    logger.info(f"BACKGROUND SUMMARY SAVED | Session: {session_id}")
+                
+                answer = await sync_to_async(fast_path_node.run)(
+                    message=user_message,
+                    tenant_id=tenant_id,
+                    company_id=company_id,
+                    chat_history=chat_history,
+                    memory_summary=db_summary,
+                    on_summary=save_summary_to_db
+                )
+            elif mode == "PLAN":
+                plan_result = await sync_to_async(reasoning_node.create_plan)(
+                    message=user_message,
+                    tenant_id=tenant_id,
+                    company_id=company_id
+                )
+                
+                plan_summary = f"### 🗺️ Strategic Architecture Plan (Completed in Background)\n\n"
+                plan_summary += f"**Objective:** {plan_result.get('objective', 'Strategic Audit')}\n\n"
+                phases = plan_result.get('phases', [])
+                if phases:
+                    plan_summary += "**Phases:**\n"
+                    for idx, p in enumerate(phases, 1):
+                        title = p if isinstance(p, str) else p.get('title', 'Phase')
+                        desc = "" if isinstance(p, str) else f": {p.get('description', '')}"
+                        plan_summary += f"{idx}. **{title}**{desc}\n"
+                    plan_summary += "\n"
+                plan_summary += f"**Expected Outcome:** {plan_result.get('expected_outcome', 'Complete Analysis')}\n\n"
+                plan_summary += "---\n*Plan execution is ready. Shall I proceed with this plan?*"
+                answer = plan_summary
+                
+                def _update_session_plan():
+                    s = session_manager.get_or_create_session(session_id, tenant_id)
+                    s.plan_state = plan_result
+                    s.save()
+                await sync_to_async(_update_session_plan)()
+            elif mode == "EXECUTE_PLAN":
+                answer = await sync_to_async(reasoning_node.execute_plan)(
+                    message=user_message,
+                    plan=plan,
+                    tenant_id=tenant_id,
+                    company_id=company_id
+                )
+            
+            await sync_to_async(session_manager.save_message)(session_id, "assistant", answer)
+            logger.info(f"BACKGROUND RETRY SUCCESS | Session: {session_id} on attempt {attempt}")
+            return
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            is_temporary = any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"])
+            if is_temporary and attempt < max_retries:
+                logger.warning(f"BACKGROUND RETRY FAILED (temp error) | Session: {session_id} | Waiting {delay}s...")
+                await asyncio.sleep(delay)
+                delay *= 2.0  # exponential backoff
+            else:
+                logger.error(f"BACKGROUND RETRY FAILED PERMANENTLY | Session: {session_id} | Error: {e}")
+                err_text = "❌ I attempted to process your request in the background but ran into persistent issues with the AI provider. Please try sending your message again shortly."
+                await sync_to_async(session_manager.save_message)(session_id, "assistant", err_text)
+                return
 
 @router.post("/chat")
 async def chat_endpoint(request: Request):
@@ -140,6 +223,30 @@ async def chat_endpoint(request: Request):
             }
         except Exception as e:
             log_error("chat_endpoint.CONFIRM_EXECUTE", e)
+            error_msg = str(e).lower()
+            if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
+                asyncio.create_task(
+                    background_retry_executor(
+                        session_id=current_session_id,
+                        tenant_id=req_data.tenant_id,
+                        company_id=req_data.company_id,
+                        user_message=user_message,
+                        chat_history=chat_history_from_db,
+                        db_summary=db_summary,
+                        mode="EXECUTE_PLAN",
+                        plan=session.plan_state
+                    )
+                )
+                session.plan_state = None
+                await sync_to_async(session.save)()
+                
+                answer = "⏳ The AI provider is temporarily overloaded, but I am executing the approved plan in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
+                return {
+                    "answer": answer,
+                    "mode": "BACKGROUND_PROCESSING",
+                    "session_id": current_session_id,
+                    "session_title": session.title
+                }
             raise HTTPException(status_code=500, detail=str(e))
 
     if decision == "REJECT":
@@ -183,9 +290,24 @@ async def chat_endpoint(request: Request):
             # Friendly message for API quota/limit/overloaded issues
             error_msg = str(e).lower()
             if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
-                answer = "I'm currently experiencing high demand and have reached my processing limit or the AI provider is temporarily overloaded. Please try again in a short while."
-                await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
-                return {"answer": answer, "mode": "ERROR", "session_id": current_session_id}
+                asyncio.create_task(
+                    background_retry_executor(
+                        session_id=current_session_id,
+                        tenant_id=req_data.tenant_id,
+                        company_id=req_data.company_id,
+                        user_message=user_message,
+                        chat_history=chat_history_from_db,
+                        db_summary=db_summary,
+                        mode="EXECUTE"
+                    )
+                )
+                answer = "⏳ The AI provider is temporarily overloaded, but I have queued your request and am executing it in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
+                return {
+                    "answer": answer,
+                    "mode": "BACKGROUND_PROCESSING",
+                    "session_id": current_session_id,
+                    "session_title": session.title
+                }
                 
             raise HTTPException(status_code=500, detail=str(e))
     
@@ -235,9 +357,24 @@ async def chat_endpoint(request: Request):
         # Friendly message for API quota/limit/overloaded issues
         error_msg = str(e).lower()
         if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
-            answer = "I'm currently experiencing high demand and have reached my processing limit or the AI provider is temporarily overloaded. Please try again in a short while."
-            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
-            return {"answer": answer, "mode": "ERROR", "session_id": current_session_id}
+            asyncio.create_task(
+                background_retry_executor(
+                    session_id=current_session_id,
+                    tenant_id=req_data.tenant_id,
+                    company_id=req_data.company_id,
+                    user_message=user_message,
+                    chat_history=chat_history_from_db,
+                    db_summary=db_summary,
+                    mode="PLAN"
+                )
+            )
+            answer = "⏳ The AI provider is temporarily overloaded, but I have queued your request to generate the strategic plan in the background. Please wait a moment—it will automatically appear as soon as it's ready."
+            return {
+                "answer": answer,
+                "mode": "BACKGROUND_PROCESSING",
+                "session_id": current_session_id,
+                "session_title": session.title
+            }
             
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -324,4 +461,25 @@ async def approve_plan(request: ChatRequest, plan: dict):
         }
     except Exception as e:
         log_error("approve_plan", e)
+        error_msg = str(e).lower()
+        if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
+            asyncio.create_task(
+                background_retry_executor(
+                    session_id=request.session_id,
+                    tenant_id=request.tenant_id,
+                    company_id=request.company_id,
+                    user_message=user_message,
+                    chat_history=[],
+                    db_summary="",
+                    mode="EXECUTE_PLAN",
+                    plan=plan
+                )
+            )
+            answer = "⏳ The AI provider is temporarily overloaded, but I am executing the approved plan in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
+            return {
+                "answer": answer,
+                "mode": "BACKGROUND_PROCESSING",
+                "session_id": request.session_id,
+                "status": "BACKGROUND_PROCESSING"
+            }
         raise HTTPException(status_code=500, detail=str(e))

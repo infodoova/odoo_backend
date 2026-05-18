@@ -390,6 +390,48 @@ class MasterDataService:
         return await asyncio.to_thread(_filters)
 
     @staticmethod
+    async def get_products_filters(tenant_id: str, company_ids: Optional[list[int]] = None) -> dict[str, Any]:
+        def _filters():
+            products = Product.objects.filter(tenant_id=tenant_id)
+            companies = Company.objects.filter(tenant_id=tenant_id)
+            return {
+                "product_types": sorted({v for v in products.values_list("product_type", flat=True).distinct() if v}),
+                "categories": sorted({v for v in products.values_list("category__name", flat=True).distinct() if v}),
+                "uom_names": sorted({v for v in products.values_list("uom_name", flat=True).distinct() if v}),
+                "products": [
+                    {"id": row["id"], "name": row["name"], "value": str(row["id"]), "label": row["name"]}
+                    for row in products.values("id", "name").order_by("name")[:1000]
+                ],
+                "companies": [
+                    {"id": c.id, "name": c.name, "value": str(c.id), "label": c.name}
+                    for c in companies.order_by("name")
+                ],
+                "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids},
+            }
+        return await asyncio.to_thread(_filters)
+
+    @staticmethod
+    async def get_partners_filters(tenant_id: str) -> dict[str, Any]:
+        def _filters():
+            partners = Partner.objects.filter(tenant_id=tenant_id)
+            companies = Company.objects.filter(tenant_id=tenant_id)
+            return {
+                "partner_types": sorted({v for v in partners.values_list("partner_type", flat=True).distinct() if v}),
+                "cities": sorted({v for v in partners.values_list("city", flat=True).distinct() if v}),
+                "country_codes": sorted({v for v in partners.values_list("country_code", flat=True).distinct() if v}),
+                "partners": [
+                    {"id": row["id"], "name": row["name"], "value": str(row["id"]), "label": row["name"]}
+                    for row in partners.values("id", "name").order_by("name")[:1000]
+                ],
+                "companies": [
+                    {"id": c.id, "name": c.name, "value": str(c.id), "label": c.name}
+                    for c in companies.order_by("name")
+                ],
+                "applied_filters": {"tenant_id": tenant_id},
+            }
+        return await asyncio.to_thread(_filters)
+
+    @staticmethod
     async def get_enums(tenant_id: str) -> dict[str, Any]:
         def _enums():
             return {
