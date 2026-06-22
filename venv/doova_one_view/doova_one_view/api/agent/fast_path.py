@@ -1,10 +1,11 @@
 # api/agent/fast_path.py
 
 from .langchain_agent import DoovaLangChainAgent
+from .config import AgentConfig
 
 class FastPathNode:
     def __init__(self):
-        self.lc_agent = DoovaLangChainAgent()
+        self.lc_agent = DoovaLangChainAgent(max_tokens=AgentConfig.MAX_FAST_TOKENS)
 
     def run(
         self,

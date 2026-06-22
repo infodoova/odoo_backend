@@ -1,48 +1,26 @@
-"""
-Permission checks for authentication
-"""
-
 from fastapi import Depends, HTTPException, status
-from typing import Iterable
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permission_service import PermissionService
 from odoo_app.models import AppUser
 
 
-def _user_has_role(user: AppUser, roles: Iterable[str]) -> bool:
+def require_permissions(*codenames: str):
     """
-    Check if user has one of the specified roles
-    
-    Args:
-        user: User instance
-        roles: Iterable of role names
-        
-    Returns:
-        bool: True if user has one of the roles
-    """
-    # Superusers have all roles
-    if getattr(user, 'is_superuser', False):
-        return True
-    
-    # Check user role
-    return user.role in roles
-
-
-def require_roles(*roles: str):
-    """
-    Dependency to require user to have one of the specified roles
-    
-    Args:
-        *roles: Role names to check
-        
-    Returns:
-        Dependency function
+    FastAPI dependency that enforces all listed permission codenames.
+    Superusers bypass all checks.
+    Permissions are always fetched from the DB — never from the token.
     """
     async def _checker(user: AppUser = Depends(get_current_user)):
-        if not _user_has_role(user, roles):
+        if getattr(user, 'is_superuser', False):
+            return user
+
+        user_perms = await PermissionService.get_user_permissions(user.id)
+        missing = [c for c in codenames if c not in user_perms]
+        if missing:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient privileges"
+                detail=f"Missing permissions: {', '.join(missing)}"
             )
         return user
-    
+
     return _checker

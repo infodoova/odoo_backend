@@ -15,21 +15,25 @@ def normalize_company_ids(
     """
     Standardizes company identifiers into a unique list of Odoo IDs.
     Handles single inputs, lists, and string-to-int conversions gracefully.
+    Also silently discards the string "None" / "null" that an LLM may emit.
     """
     processed_ids: List[int] = []
 
     if companies:
         for val in companies:
+            if isinstance(val, str) and val.lower() in ("none", "null", ""):
+                continue
             try:
                 processed_ids.append(int(val))
             except (ValueError, TypeError):
                 continue
 
     if company_id is not None:
-        try:
-            processed_ids.append(int(company_id))
-        except (ValueError, TypeError):
-            pass
+        if not (isinstance(company_id, str) and company_id.lower() in ("none", "null", "")):
+            try:
+                processed_ids.append(int(company_id))
+            except (ValueError, TypeError):
+                pass
 
     # Deduplicate while preserving order (if any)
     unique_ids = list(dict.fromkeys(processed_ids))

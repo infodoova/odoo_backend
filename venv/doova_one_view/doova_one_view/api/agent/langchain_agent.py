@@ -27,11 +27,12 @@ class AgentCallbackHandler(BaseCallbackHandler):
         log_chain_event("ACTION", f"Agent selecting tool: {action.tool}")
 
 class DoovaLangChainAgent:
-    def __init__(self, model_name=None):
+    def __init__(self, model_name=None, max_tokens=None):
         self.summarizer = SummarizerNode()
         self.llm = ChatAnthropic(
             model=model_name or AgentConfig.FAST_MODEL,
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            max_tokens=max_tokens or AgentConfig.MAX_FAST_TOKENS,
             model_kwargs={
                 "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
             }
@@ -67,6 +68,12 @@ class DoovaLangChainAgent:
         
         # Use pre-loaded DB summary if available; otherwise generate if history is long
         if memory_summary:
+            # Wrap the raw summary in structured context so the model knows how to use it
+            memory_summary = (
+                "PRIOR SESSION FACTS (use this to avoid redundant tool calls and to contextualize "
+                "follow-up questions — do not re-fetch data that is already summarized here):\n"
+                + memory_summary
+            )
             # DB has a persisted summary — use it with only the recent messages
             active_history = formatted_history  # already limited to recent N in routes.py
         elif len(formatted_history) >= AgentConfig.SUMMARIZE_EVERY_N:
@@ -81,12 +88,28 @@ class DoovaLangChainAgent:
 
         try:
             from .utils import get_tenant_currency, fix_currency_symbols
-            currency = get_tenant_currency(tenant_id, company_id)
+
+            # Resolve company_id: if not provided, fall back to the first active company
+            # for this tenant so the prompt always renders an integer, never the string "None".
+            resolved_company_id = company_id
+            if resolved_company_id is None:
+                try:
+                    from odoo_app.models.company import Company
+                    resolved_company_id = (
+                        Company.objects
+                        .filter(tenant_id=tenant_id, is_active=True)
+                        .values_list("id", flat=True)
+                        .first()
+                    )
+                except Exception:
+                    resolved_company_id = None
+
+            currency = get_tenant_currency(tenant_id, resolved_company_id)
 
             response = self.executor.invoke({
                 "input": message,
                 "tenant_id": tenant_id,
-                "company_id": company_id,
+                "company_id": resolved_company_id,
                 "currency": currency,
                 "chat_history": active_history,
                 "memory_summary": memory_summary,

@@ -15,32 +15,32 @@ def get_companies_tool(tenant_id: str) -> dict:
 
 def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None) -> dict:
     """Fetches the company's industry, sector, and operational context from the database."""
-    params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
-    params.update(f_params)
+    # dim_companies PK is "id", not "company_id"
+    company_f_sql, company_f_params = build_company_filter_sql(tenant_id, company_id, column_name="id")
+    company_params = {"tenant_id": tenant_id, **company_f_params}
 
     # Try to get basic company info
     rows = run_query(
-        f"""SELECT 
+        f"""SELECT
                 name,
                 'Not Specified' AS industry,
                 'Not Specified' AS company_type,
                 COALESCE(currency_name, 'USD') AS currency
             FROM dim_companies
-            WHERE tenant_id = :tenant_id {f_sql}
+            WHERE tenant_id = :tenant_id {company_f_sql}
             LIMIT 5""",
-        params,
+        company_params,
     )
 
-    # Infer business type from product and transaction data
+    # Infer business type from product and transaction data (tenant-scoped only, no company filter)
     product_stats = run_query(
-        f"""SELECT 
+        """SELECT
                 COUNT(DISTINCT CASE WHEN product_type = 'product' THEN id END) AS physical_products,
                 COUNT(DISTINCT CASE WHEN product_type = 'service' THEN id END) AS services,
                 COUNT(DISTINCT CASE WHEN product_type = 'consu' THEN id END) AS consumables
             FROM dim_products
-            WHERE tenant_id = :tenant_id {f_sql}""",
-        params,
+            WHERE tenant_id = :tenant_id""",
+        {"tenant_id": tenant_id},
     )
 
     ps = product_stats[0] if product_stats else {}

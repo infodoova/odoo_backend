@@ -14,17 +14,22 @@ from doova_one_view.api.tenants.schemas import (
 )
 from doova_one_view.api.tenants.service import TenantService
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permissions import require_permissions
 from doova_one_view.api.common.exceptions import NotFoundError, PermissionError
 from odoo_app.models import AppUser
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
+
+_view    = Depends(require_permissions("view_tenants"))
+_manage  = Depends(require_permissions("manage_tenants"))
 
 
 @router.post(
     "/",
     response_model=TenantRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a new tenant"
+    summary="Create a new tenant",
+    dependencies=[_manage],
 )
 async def create_tenant(
     payload: TenantCreate,
@@ -51,7 +56,8 @@ async def create_tenant(
 @router.get(
     "/",
     response_model=List[TenantRead],
-    summary="List tenants"
+    summary="List tenants",
+    dependencies=[_view],
 )
 async def list_tenants(
     limit: int = Query(10, ge=1, le=100, description="Number of results per page"),
@@ -76,7 +82,8 @@ async def list_tenants(
 @router.get(
     "/{tenant_id}",
     response_model=TenantRead,
-    summary="Get tenant details"
+    summary="Get tenant details",
+    dependencies=[_view],
 )
 async def get_tenant(
     tenant_id: str,
@@ -102,12 +109,14 @@ async def get_tenant(
 @router.put(
     "/{tenant_id}",
     response_model=TenantRead,
-    summary="Update tenant (full update)"
+    summary="Update tenant (full update)",
+    dependencies=[_manage],
 )
 @router.patch(
     "/{tenant_id}",
     response_model=TenantRead,
-    summary="Update tenant (partial update)"
+    summary="Update tenant (partial update)",
+    dependencies=[_manage],
 )
 async def update_tenant(
     tenant_id: str,
@@ -140,7 +149,8 @@ async def update_tenant(
 @router.delete(
     "/{tenant_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete tenant"
+    summary="Delete tenant",
+    dependencies=[_manage],
 )
 async def delete_tenant(
     tenant_id: str,
@@ -167,7 +177,8 @@ async def delete_tenant(
 @router.post(
     "/{tenant_id}/sync",
     response_model=SyncResponse,
-    summary="Trigger Smart/Incremental sync"
+    summary="Trigger Smart/Incremental sync",
+    dependencies=[_manage],
 )
 async def sync_tenant(
     tenant_id: str,
@@ -210,7 +221,8 @@ async def sync_tenant(
 @router.post(
     "/{tenant_id}/delta-sync",
     response_model=SyncResponse,
-    summary="Trigger incremental delta sync"
+    summary="Trigger incremental delta sync",
+    dependencies=[_manage],
 )
 async def delta_sync_tenant(
     tenant_id: str,
@@ -245,7 +257,8 @@ async def delta_sync_tenant(
 @router.get(
     "/{tenant_id}/status",
     response_model=SyncStatusResponse,
-    summary="Get sync status"
+    summary="Get sync status",
+    dependencies=[_view],
 )
 async def get_sync_status(
     tenant_id: str,

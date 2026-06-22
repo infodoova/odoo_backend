@@ -1,5 +1,6 @@
 # api/agent/routes.py
 
+import re as _re
 import json
 import time
 import asyncio
@@ -15,6 +16,7 @@ from .utils import make_report_url
 from .logger import log_session_event, log_error, logger
 
 from .session_manager import SessionManager
+from doova_one_view.api.auth.permissions import require_permissions
 
 # Initialize Nodes
 router_node = RouterNode()
@@ -23,6 +25,8 @@ reasoning_node = ReasoningNode()
 router = APIRouter(prefix="/financial-advisor", tags=["Agent"])
 session_manager = SessionManager()
 
+_use_agent = Depends(require_permissions("use_agent"))
+
 class ChatRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -30,7 +34,7 @@ class ChatRequest(BaseModel):
     query_alt: Optional[str] = Field(alias="query", default=None)
     content: Optional[str] = Field(alias="userInput", default=None)
     prompt: Optional[str] = Field(default=None)
-    tenant_id: str = Field(alias="tenantId", default="default")
+    tenant_id: Optional[str] = Field(alias="tenantId", default="default")
     session_id: str = Field(alias="sessionId", default="default_session")
     company_id: Optional[int] = Field(alias="companyId", default=None)
     chat_history: Optional[List[dict]] = Field(default=[])
@@ -154,7 +158,7 @@ async def background_retry_executor(
                 await sync_to_async(session_manager.save_message)(session_id, "assistant", err_text)
                 return
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[_use_agent])
 async def chat_endpoint(request: Request):
     # Get raw body for debugging
     body = await request.json()
@@ -165,7 +169,10 @@ async def chat_endpoint(request: Request):
         req_data = ChatRequest(**body)
     except Exception as e:
         logger.error(f"Failed to parse ChatRequest: {e}")
-        req_data = ChatRequest(message=body.get("message", body.get("text", "")))
+        raw_msg = (body.get("query") or body.get("message") or
+                   body.get("text") or body.get("userInput") or
+                   body.get("content") or body.get("prompt") or "")
+        req_data = ChatRequest(message=raw_msg)
 
     request_start = time.time()
     
@@ -207,8 +214,13 @@ async def chat_endpoint(request: Request):
     await sync_to_async(session_manager.save_message)(current_session_id, "user", user_message or "[Empty Message]")
     log_session_event("MESSAGE_SAVED", current_session_id, "user message")
 
-    # Handle empty messages / simple greetings
-    if not user_message or not user_message.strip() or user_message.lower() in ["hi", "hello", "hey"]:
+    SOCIAL_PHRASES = {
+        "hi", "hello", "hey", "how are you", "how are you?",
+        "good morning", "good afternoon", "good evening",
+        "thanks", "thank you", "bye", "goodbye", "ok", "okay",
+    }
+    # Handle empty messages / simple social phrases before hitting the router
+    if not user_message or not user_message.strip() or user_message.lower().strip("!.?") in SOCIAL_PHRASES:
         answer = "Hello! I am your Doova Finance Brain. How can I assist you with your business data today?"
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
         return make_chat_response(
@@ -419,9 +431,281 @@ async def chat_endpoint(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Structured AI Feature Endpoints ─────────────
+
+def _extract_json_block(text: str) -> dict | None:
+    """Extract the first ```json ... ``` block from agent text output."""
+    match = _re.search(r'```json\s*([\s\S]*?)\s*```', text, _re.IGNORECASE)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except (json.JSONDecodeError, ValueError):
+            return None
+    return None
+
+
+@router.post("/report", dependencies=[_use_agent])
+async def generate_ai_report(request: Request):
+    body = await request.json()
+    tenant_id = body.get("tenant_id", "default")
+    company_id = body.get("company_id")
+    report_type = body.get("type", "analysis")
+    data = body.get("data", {})
+
+    lines = []
+
+    if report_type == "analysis":
+        lines += [
+            f"## {data.get('title', 'Financial Analysis')}",
+            f"**Primary Metric:** {data.get('value', 'N/A')}  |  **Trend:** {data.get('trend', 'N/A')}",
+            "",
+        ]
+        if data.get("summary"):
+            lines += ["### Executive Summary", data["summary"], ""]
+        if data.get("insights"):
+            lines.append("### Key Insights")
+            lines += [f"- {i}" for i in data["insights"]]
+            lines.append("")
+        if data.get("details"):
+            lines.append("### Key Findings")
+            for d in data["details"]:
+                lines += [f"**{d['title']}**", d["description"], ""]
+        if data.get("levers"):
+            lines.append("### Optimization Levers")
+            lines += [f"- {l}" for l in data["levers"]]
+
+    elif report_type == "forecast":
+        lines += [
+            f"## {data.get('title', 'Sales Forecast')}",
+            f"**Projected Value:** {data.get('value', 'N/A')}  |  "
+            f"**Period:** {data.get('period', 'N/A')}  |  "
+            f"**Confidence:** {data.get('confidence', 'N/A')}%",
+            "",
+        ]
+        if data.get("insights"):
+            lines.append("### Key Insights")
+            lines += [f"- {i}" for i in data["insights"]]
+            lines.append("")
+        if data.get("steps"):
+            lines.append("### Strategic Action Plan")
+            for idx, s in enumerate(data["steps"], 1):
+                lines += [f"**Phase {idx}: {s['title']}**", s["description"], ""]
+
+    elif report_type == "audit":
+        lines += [
+            f"## {data.get('title', 'Integrity Audit')}",
+            f"**Score:** {data.get('score', 'N/A')}/100  |  "
+            f"**Status:** {data.get('status', 'N/A')}  |  "
+            f"**Grade:** {data.get('grade', 'N/A')}",
+            "",
+        ]
+        if data.get("findings"):
+            lines.append("### Audit Findings")
+            for f in data["findings"]:
+                sev = f.get("severity", "info").upper()
+                lines += [f"**[{sev}] {f['title']}**", f["description"], ""]
+
+    custom_content = "\n".join(lines)
+
+    try:
+        from .tools_refactored.reporting import generate_report_tool
+        result = await sync_to_async(generate_report_tool)(
+            tenant_id=tenant_id,
+            company_id=company_id,
+            custom_content=custom_content
+        )
+        return {"download_url": result["download_url"], "filename": result["filename"]}
+    except Exception as e:
+        log_error("generate_ai_report", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analysis", dependencies=[_use_agent])
+async def run_analysis(request: Request):
+    body = await request.json()
+    tenant_id = body.get("tenant_id", "default")
+    company_id = body.get("company_id")
+    focus_area = body.get("focus_area", "Sales & Revenue")
+    dimension = body.get("dimension", "Overall Performance")
+
+    tool_map = {
+        "Sales & Revenue": "sales_summary, period_comparison, top_products",
+        "Inventory Velocity": "inventory_alerts, inventory_efficiency",
+        "Operational Costs": "calculate_pnl, expense_breakdown, profitability_analysis",
+    }
+    tool_hint = tool_map.get(focus_area, "sales_summary, period_comparison")
+
+    prompt = (
+        f"[STRUCTURED ANALYSIS REQUEST]\n\n"
+        f"Perform a deep financial analysis on: {focus_area} | Dimension: {dimension}\n"
+        f"Use these tools: {tool_hint}\n\n"
+        f"After completing the analysis, output ONLY this JSON block at the very end of your response:\n\n"
+        "```json\n"
+        "{\n"
+        '  "title": "<3-5 word analysis title>",\n'
+        '  "value": "<primary headline KPI with currency>",\n'
+        '  "trend": "<% change vs prior period, e.g. +12.4%>",\n'
+        '  "isPositive": <true or false>,\n'
+        '  "insights": ["<insight with real number>", "<insight with real number>", "<insight with real number>"],\n'
+        '  "summary": "<2-sentence executive summary with real figures>",\n'
+        '  "details": [\n'
+        '    {"title": "<finding title>", "description": "<detailed finding with data>"},\n'
+        '    {"title": "<finding title>", "description": "<detailed finding with data>"}\n'
+        '  ],\n'
+        '  "levers": ["<action recommendation 1>", "<action recommendation 2>"]\n'
+        "}\n"
+        "```"
+    )
+
+    try:
+        answer = fast_path_node.run(
+            message=prompt,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            chat_history=[],
+            memory_summary=""
+        )
+        structured = _extract_json_block(answer)
+        if not structured:
+            raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
+        return structured
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("run_analysis", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/forecast", dependencies=[_use_agent])
+async def run_forecast(request: Request):
+    body = await request.json()
+    tenant_id = body.get("tenant_id", "default")
+    company_id = body.get("company_id")
+    scope = body.get("scope", "Next 30 Days")
+    risk_profile = body.get("risk_profile", "Balanced (Standard)")
+
+    scope_hint = {
+        "Next 30 Days": "next 30 days",
+        "Quarterly Growth": "next quarter",
+        "Year-End Outlook": "remainder of the current year",
+    }.get(scope, "next 30 days")
+
+    risk_hint = {
+        "Conservative (Safe)": "apply a conservative 15% downward buffer to projections",
+        "Balanced (Standard)": "use base trend projections without adjustment",
+        "Aggressive (High Growth)": "apply an aggressive 20% upward growth multiplier",
+    }.get(risk_profile, "use base trend projections without adjustment")
+
+    prompt = (
+        f"[STRUCTURED FORECAST REQUEST]\n\n"
+        f"Generate a financial sales forecast for: {scope} using {risk_profile} risk parameters.\n"
+        f"Time horizon: {scope_hint}. Risk guidance: {risk_hint}.\n"
+        f"Use these tools: sales_forecast, sales_summary, sales_trend, period_comparison\n\n"
+        f"After completing the forecast, output ONLY this JSON block at the very end of your response:\n\n"
+        "```json\n"
+        "{\n"
+        '  "title": "<3-5 word forecast title>",\n'
+        '  "value": "<projected revenue/value with currency>",\n'
+        '  "period": "<forecast period description>",\n'
+        '  "confidence": <integer 0-100 confidence level>,\n'
+        '  "insights": ["<data-driven insight 1>", "<data-driven insight 2>", "<data-driven insight 3>"],\n'
+        '  "steps": [\n'
+        '    {"title": "<action phase title>", "description": "<what to do and expected outcome>"},\n'
+        '    {"title": "<action phase title>", "description": "<what to do and expected outcome>"},\n'
+        '    {"title": "<action phase title>", "description": "<what to do and expected outcome>"}\n'
+        '  ]\n'
+        "}\n"
+        "```"
+    )
+
+    try:
+        answer = fast_path_node.run(
+            message=prompt,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            chat_history=[],
+            memory_summary=""
+        )
+        structured = _extract_json_block(answer)
+        if not structured:
+            raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
+        return structured
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("run_forecast", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/audit", dependencies=[_use_agent])
+async def run_audit(request: Request):
+    body = await request.json()
+    tenant_id = body.get("tenant_id", "default")
+    company_id = body.get("company_id")
+    priority = body.get("priority", "Duplicate Detection")
+    depth = body.get("depth", "Full Depth (Last Quarter)")
+
+    depth_hint = {
+        "Quick Scan (Last 7 days)": "last 7 days",
+        "Full Depth (Last Quarter)": "last quarter",
+        "Comprehensive (Full Year)": "full year to date",
+    }.get(depth, "last quarter")
+
+    tool_map = {
+        "Duplicate Detection": "detect_anomalies, trial_balance",
+        "Tax Compliance": "tax_summary, detect_anomalies",
+        "Incomplete Records": "aging_analysis, receivables_analysis, detect_anomalies",
+    }
+    tool_hint = tool_map.get(priority, "detect_anomalies, trial_balance")
+
+    prompt = (
+        f"[STRUCTURED AUDIT REQUEST]\n\n"
+        f"Perform an integrity audit focused on: {priority} | Depth: {depth} ({depth_hint}).\n"
+        f"Use these tools: {tool_hint}\n\n"
+        f"Calculate an overall integrity score (0-100) based on findings:\n"
+        f"- 90-100: No critical issues → status: Verified, grade: AA\n"
+        f"- 70-89: Minor issues → status: Attention Needed, grade: A\n"
+        f"- 50-69: Notable issues → status: Issues Found, grade: B\n"
+        f"- Below 50: Critical issues → status: Critical, grade: C\n\n"
+        f"After completing the audit, output ONLY this JSON block at the very end of your response:\n\n"
+        "```json\n"
+        "{\n"
+        '  "title": "<audit result title>",\n'
+        '  "score": <integer 0-100>,\n'
+        '  "status": "<Verified | Attention Needed | Issues Found | Critical>",\n'
+        '  "grade": "<AA | A | B | C>",\n'
+        '  "alerts": [\n'
+        '    {"text": "<short finding title>", "sub": "<one-line detail with real data>"}\n'
+        '  ],\n'
+        '  "findings": [\n'
+        '    {"title": "<finding title>", "description": "<detailed finding with amounts or counts>", "severity": "<critical | urgent | review | info>"}\n'
+        '  ]\n'
+        "}\n"
+        "```"
+    )
+
+    try:
+        answer = fast_path_node.run(
+            message=prompt,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            chat_history=[],
+            memory_summary=""
+        )
+        structured = _extract_json_block(answer)
+        if not structured:
+            raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
+        return structured
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("run_audit", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── Session Management Endpoints ────────────────
 
-@router.get("/sessions")
+@router.get("/sessions", dependencies=[_use_agent])
 async def list_sessions(tenant_id: str = None):
     """List all chat sessions."""
     sessions = session_manager.get_sessions(tenant_id)
@@ -438,7 +722,7 @@ async def list_sessions(tenant_id: str = None):
         ]
     }
 
-@router.get("/sessions/{session_id}/messages")
+@router.get("/sessions/{session_id}/messages", dependencies=[_use_agent])
 async def get_session_messages(session_id: str):
     """Retrieve all messages for a specific session."""
     messages = session_manager.get_messages(session_id)
@@ -454,7 +738,7 @@ async def get_session_messages(session_id: str):
         ]
     }
 
-@router.get("/sessions/{session_id}")
+@router.get("/sessions/{session_id}", dependencies=[_use_agent])
 async def get_session_details(session_id: str):
     """Retrieve details and messages for a specific session."""
     session = session_manager.get_or_create_session(session_id, "default") # tenant_id is not strictly needed for retrieval here
@@ -474,14 +758,14 @@ async def get_session_details(session_id: str):
         ]
     }
 
-@router.delete("/sessions/{session_id}")
+@router.delete("/sessions/{session_id}", dependencies=[_use_agent])
 async def delete_session(session_id: str):
     """Delete a chat session."""
     session_manager.delete_session(session_id)
     log_session_event("DELETED", session_id, "User requested deletion")
     return {"status": "deleted"}
 
-@router.post("/approve_plan")
+@router.post("/approve_plan", dependencies=[_use_agent])
 async def approve_plan(request: ChatRequest, plan: dict):
     user_message = request.message or request.content or request.prompt or "Plan execution"
     logger.info(f"PLAN APPROVED | Session: {request.session_id}")

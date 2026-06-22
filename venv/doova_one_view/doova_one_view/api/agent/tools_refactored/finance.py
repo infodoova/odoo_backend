@@ -203,12 +203,12 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
 
     # 1. Unbalanced journal entries (debit != credit)
     unbalanced = run_query(
-        f"""SELECT m.move_name, SUM(l.debit) AS total_debit, SUM(l.credit) AS total_credit,
+        f"""SELECT m.id::text AS move_ref, SUM(l.debit) AS total_debit, SUM(l.credit) AS total_credit,
                 ABS(SUM(l.debit) - SUM(l.credit)) AS variance
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql}
-            GROUP BY m.move_name
+            GROUP BY m.id
             HAVING ABS(SUM(l.debit) - SUM(l.credit)) > 0.01
             ORDER BY variance DESC
             LIMIT :limit""",
@@ -223,7 +223,7 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
                 JOIN fact_account_moves m ON l.account_move_id = m.id
                 WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql}
             )
-            SELECT m.move_name, l.account_name, l.balance, m.date
+            SELECT m.id::text AS move_ref, l.account_name, l.balance, m.date
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id, stats s
             WHERE l.tenant_id = :tenant_id
@@ -238,11 +238,11 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
     return {
         "tool_name": "detect_anomalies_tool",
         "unbalanced_entries": [
-            {"entry": r["move_name"], "debit": float(r["total_debit"]), "credit": float(r["total_credit"]), "variance": float(r["variance"])}
+            {"entry": r["move_ref"], "debit": float(r["total_debit"]), "credit": float(r["total_credit"]), "variance": float(r["variance"])}
             for r in unbalanced
         ],
         "statistical_outliers": [
-            {"entry": r["move_name"], "account": r["account_name"], "amount": float(r["balance"]), "date": str(r["date"])}
+            {"entry": r["move_ref"], "account": r["account_name"], "amount": float(r["balance"]), "date": str(r["date"])}
             for r in outliers
         ],
         "risk_level": "High" if len(unbalanced) > 3 or len(outliers) > 5 else "Medium" if unbalanced or outliers else "Low",
@@ -621,8 +621,8 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, lim
                 COUNT(DISTINCT partner_id) FILTER (WHERE order_count > 1) AS repeat_customers
             FROM (
                 SELECT partner_id, COUNT(*) AS order_count
-                FROM fact_sales_orders
-                WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') {f_sql}
+                FROM fact_sales_orders s
+                WHERE s.tenant_id = :tenant_id AND s.state IN ('sale', 'done') {f_sql}
                 GROUP BY partner_id
             ) sub""",
         params,

@@ -175,6 +175,103 @@ class TenantService:
         
         return result
     
+    # ── Tenant access management ───────────────────────────────────────────────
+
+    @staticmethod
+    async def list_all_tenants_simple() -> list:
+        """List all tenants (id + name only) — for admin dropdowns."""
+        def _fetch():
+            return list(
+                Tenant.objects.all().order_by('name').values('id', 'name', 'is_active')
+            )
+        rows = await asyncio.to_thread(_fetch)
+        return [{"id": str(r["id"]), "name": r["name"], "is_active": r["is_active"]} for r in rows]
+
+    @staticmethod
+    async def get_user_tenant_accesses(user_id: str) -> list:
+        """Return all tenant accesses for a user."""
+        def _fetch():
+            from odoo_app.models.user_tenant_access import UserTenantAccess
+            records = (
+                UserTenantAccess.objects
+                .filter(user_id=user_id)
+                .select_related('tenant')
+                .order_by('tenant__name')
+            )
+            return [
+                {
+                    "tenant_id": str(r.tenant.id),
+                    "tenant_name": r.tenant.name,
+                    "tenant_is_active": r.tenant.is_active,
+                    "can_view_all_companies": r.can_view_all_companies,
+                    "granted_at": r.created_at.isoformat(),
+                }
+                for r in records
+            ]
+        return await asyncio.to_thread(_fetch)
+
+    @staticmethod
+    async def grant_tenant_access(user_id: str, tenant_id: str) -> dict:
+        """Grant a user access to a tenant."""
+        def _grant():
+            from odoo_app.models.app_user import AppUser
+            from odoo_app.models.user_tenant_access import UserTenantAccess
+
+            try:
+                user = AppUser.objects.get(id=user_id)
+            except AppUser.DoesNotExist:
+                raise NotFoundError("User", user_id)
+
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+
+            if UserTenantAccess.objects.filter(user=user, tenant=tenant).exists():
+                raise ValidationError("User already has access to this tenant")
+
+            access = UserTenantAccess.objects.create(
+                user=user,
+                tenant=tenant,
+                can_view_all_companies=True,
+            )
+            return {
+                "tenant_id": str(tenant.id),
+                "tenant_name": tenant.name,
+                "tenant_is_active": tenant.is_active,
+                "can_view_all_companies": access.can_view_all_companies,
+                "granted_at": access.created_at.isoformat(),
+            }
+
+        try:
+            return await asyncio.to_thread(_grant)
+        except (NotFoundError, ValidationError):
+            raise
+        except Exception as e:
+            logger.error(f"Grant tenant access error: {e}")
+            raise ValidationError("Failed to grant tenant access")
+
+    @staticmethod
+    async def revoke_tenant_access(user_id: str, tenant_id: str) -> None:
+        """Revoke a user's access to a tenant."""
+        def _revoke():
+            from odoo_app.models.user_tenant_access import UserTenantAccess
+            deleted, _ = UserTenantAccess.objects.filter(
+                user_id=user_id, tenant_id=tenant_id
+            ).delete()
+            if not deleted:
+                raise NotFoundError("Tenant access", f"{user_id}/{tenant_id}")
+
+        try:
+            await asyncio.to_thread(_revoke)
+        except NotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Revoke tenant access error: {e}")
+            raise ValidationError("Failed to revoke tenant access")
+
+    # ── End tenant access management ───────────────────────────────────────────
+
     @staticmethod
     async def update_tenant(
         tenant_id: str,

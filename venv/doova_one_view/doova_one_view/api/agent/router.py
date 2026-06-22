@@ -31,18 +31,20 @@ class RouterNode:
             response = chain.invoke({"message": message})
             raw_content = response.content.strip()
             logger.debug(f"ROUTER RAW RESPONSE: {raw_content}")
-            decision = raw_content.upper()
-            
-            # Priority-based validation (CONFIRM > EXECUTE > PLAN > REJECT)
-            result = RoutingProtocol.EXECUTE # Default fallback
-            if RoutingProtocol.CONFIRM in decision:
+            # Use only the first word to avoid substring false-positives
+            # (e.g. "PLANNING" matching "PLAN", or a verbose response matching wrong protocol)
+            first_token = raw_content.strip().split()[0].upper() if raw_content.strip() else ""
+
+            # Priority: CONFIRM > REJECT > EXECUTE > PLAN (REJECT before PLAN so casual
+            # messages aren't accidentally routed to the expensive planning path)
+            if first_token == RoutingProtocol.CONFIRM:
                 result = RoutingProtocol.CONFIRM
-            elif RoutingProtocol.PLAN in decision:
-                result = RoutingProtocol.PLAN
-            elif RoutingProtocol.EXECUTE in decision:
-                result = RoutingProtocol.EXECUTE
-            elif RoutingProtocol.REJECT in decision:
+            elif first_token == RoutingProtocol.REJECT:
                 result = RoutingProtocol.REJECT
+            elif first_token == RoutingProtocol.PLAN:
+                result = RoutingProtocol.PLAN
+            elif first_token == RoutingProtocol.EXECUTE:
+                result = RoutingProtocol.EXECUTE
             else:
                 result = RoutingProtocol.EXECUTE
 

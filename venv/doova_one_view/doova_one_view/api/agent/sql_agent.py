@@ -30,6 +30,81 @@ BLOCKED_SQL_WORDS = [
     "analyze",
 ]
 
+# Semantic annotations for known tables — injected alongside the raw schema so
+# the SQL agent knows which columns to use for dates, tenant isolation, and joins.
+_TABLE_SEMANTIC_NOTES: dict[str, str] = {
+    "fact_sales_orders": (
+        "Sales transaction records. "
+        "DATE column: date_order (YYYY-MM-DD). "
+        "Filter active orders with: state IN ('sale', 'done'). "
+        "Revenue column: amount_total. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_account_move_lines": (
+        "General Ledger journal entry line items. "
+        "DATE column: date. "
+        "Debit column: debit, Credit column: credit, Balance column: balance. "
+        "Links to chart of accounts via account_id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_invoices": (
+        "Customer invoices and vendor bills. "
+        "DATE column: invoice_date. Due date: invoice_date_due. "
+        "move_type: 'out_invoice' = customer invoice, 'in_invoice' = vendor bill, "
+        "'out_refund' = customer credit note, 'in_refund' = vendor credit note. "
+        "payment_state: 'not_paid', 'in_payment', 'partial', 'paid', 'reversed'. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_stock_moves": (
+        "Inventory movement records (in/out/transfer). "
+        "DATE column: date. Quantity column: product_qty. "
+        "state: 'done' for completed moves. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_stock_quants": (
+        "Current inventory on-hand quantities per product and location. "
+        "Quantity column: quantity. Reserved column: reserved_quantity. "
+        "Available = quantity - reserved_quantity. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_tax_lines": (
+        "Tax transaction lines. "
+        "tax_type: 'sale' for output tax (collected), 'purchase' for input tax (paid). "
+        "Amount column: tax_amount. DATE column: date. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "dim_companies": (
+        "Company master data dimension. "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "Use odoo_id to join against company_id columns in fact tables. "
+        "Currency column: currency_name. ALWAYS filter with tenant_id."
+    ),
+    "dim_products": (
+        "Product catalog dimension. "
+        "product_type: 'product' (physical/storable), 'service', 'consu' (consumable). "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "dim_partners": (
+        "Customer and vendor master data. "
+        "customer_rank > 0 identifies customers. supplier_rank > 0 identifies vendors. "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "dim_accounts": (
+        "Chart of accounts dimension. "
+        "account_type classifies the account: 'asset_current', 'asset_non_current', "
+        "'liability_current', 'liability_non_current', 'equity', 'income', 'expense', 'cogs'. "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "dim_lots": (
+        "Inventory lot and serial number master data. "
+        "expiration_date column tracks lot expiry. "
+        "ALWAYS filter with tenant_id."
+    ),
+}
+
 
 def get_database_schema() -> str:
     rows = run_query("""
@@ -48,12 +123,16 @@ def get_database_schema() -> str:
         table = row["table_name"]
         column = row["column_name"]
         dtype = row["data_type"]
-        grouped.setdefault(table, []).append(f"{column} {dtype}")
+        grouped.setdefault(table, []).append(f"{column} ({dtype})")
 
     lines = []
 
     for table, columns in grouped.items():
-        lines.append(f"Table: {table}")
+        note = _TABLE_SEMANTIC_NOTES.get(table)
+        if note:
+            lines.append(f"Table: {table}  ← {note}")
+        else:
+            lines.append(f"Table: {table}")
         for column in columns:
             lines.append(f"  - {column}")
         lines.append("")

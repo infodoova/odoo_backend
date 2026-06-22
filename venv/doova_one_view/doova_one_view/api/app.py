@@ -26,7 +26,10 @@ from doova_one_view.api.master_data.routes import router as master_data_router
 from doova_one_view.api.files.routes import router as files_router
 from doova_one_view.api.kpi.routes import router as kpi_router
 from doova_one_view.api.agent.routes import router as agent_router
+from doova_one_view.api.rbac.routes import router as rbac_router
+from doova_one_view.api.reports.routes import router as reports_router
 from doova_one_view.api.jobs.sync_job import SyncJobManager
+from doova_one_view.api.jobs.report_job import ReportJobManager
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +39,13 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI app"""
     logger.info("FastAPI application starting")
     
-    # Start background sync job
     await SyncJobManager.start()
-    
+    await ReportJobManager.start()
+
     yield
-    
-    # Stop background sync job
+
     await SyncJobManager.stop()
+    await ReportJobManager.stop()
     logger.info("FastAPI application shutting down")
 
 
@@ -95,6 +98,8 @@ def create_app() -> FastAPI:
     app.include_router(files_router)
     app.include_router(kpi_router)
     app.include_router(agent_router)
+    app.include_router(rbac_router)
+    app.include_router(reports_router)
     
     # Health check endpoint
     @app.get("/health", tags=["Health"])

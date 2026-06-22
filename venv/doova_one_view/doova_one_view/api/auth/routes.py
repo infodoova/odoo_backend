@@ -11,9 +11,12 @@ from doova_one_view.api.auth.schemas import (
     TokenResponse,
     UserResponse,
     ProfileUpdateRequest,
-    ChangePasswordRequest
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from doova_one_view.api.auth.service import AuthService
+from doova_one_view.api.auth.permissions import require_permissions
 from doova_one_view.api.dependencies import get_current_user
 from odoo_app.models import AppUser
 
@@ -26,15 +29,17 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user"
 )
-async def register(payload: RegisterRequest):
+async def register(
+    payload: RegisterRequest,
+    _: AppUser = Depends(require_permissions("manage_users")),
+):
     """
     Register a new user account
-    
+
     - **email**: User email address (must be unique)
     - **password**: Password (minimum 8 characters)
     - **password_confirm**: Password confirmation
     - **full_name**: Optional full name
-    - **role**: User role (owner, manager, or accountant)
     """
     try:
         return await AuthService.register_user(payload)
@@ -117,9 +122,8 @@ async def update_profile(
 ):
     """
     Update the authenticated user's profile
-    
+
     - **full_name**: Optional new full name
-    - **role**: Optional new role (owner, manager, or accountant)
     """
     try:
         return await AuthService.update_user_profile(user, payload)
@@ -141,13 +145,59 @@ async def change_password(
 ):
     """
     Change the authenticated user's password
-    
+
     - **old_password**: Current password
     - **new_password**: New password (minimum 8 characters)
     - **new_password_confirm**: New password confirmation
     """
     try:
         return await AuthService.change_user_password(user, payload)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/forgot-password",
+    response_model=Dict[str, str],
+    summary="Request a password reset OTP"
+)
+async def forgot_password(payload: ForgotPasswordRequest):
+    """
+    Send a 6-digit OTP to the user's email address.
+
+    Always returns a success message regardless of whether the email exists,
+    to prevent account enumeration.
+
+    - **email**: The account email address
+    """
+    try:
+        return await AuthService.request_password_reset(payload)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/reset-password",
+    response_model=Dict[str, str],
+    summary="Reset password using OTP"
+)
+async def reset_password(payload: ResetPasswordRequest):
+    """
+    Reset the user's password after verifying the OTP.
+
+    - **email**: Account email address
+    - **otp**: 6-digit code received by email
+    - **new_password**: New password (minimum 8 characters)
+    - **new_password_confirm**: New password confirmation
+    """
+    try:
+        return await AuthService.reset_password_with_otp(payload)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

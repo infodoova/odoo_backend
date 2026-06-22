@@ -27,6 +27,9 @@ from odoo_app.models.forecast import *
 from odoo_app.models.anomaly import *
 from odoo_app.models.app_user import *
 from odoo_app.models.user_tenant_access import *
+from odoo_app.models.rbac import *
 from odoo_app.models.stored_file import *
 from odoo_app.models.agent import *
+from odoo_app.models.password_reset_otp import *
+from odoo_app.models.report_schedule import *
 

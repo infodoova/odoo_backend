@@ -28,6 +28,10 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8rsyz^fj+df@co42p500@rvx5ujuu!m52wi6=%sliid8!kx5e7')
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'EuNTvs5NWKnh2r_nV-WpFWHvJihTUpKjhf60EDeck6U=')
 
+# SMTP Gateway settings
+SMTP_GATEWAY_URL = os.environ.get('SMTP_GATEWAY_URL', '')
+SMTP_GATEWAY_TOKEN = os.environ.get('SMTP_GATEWAY_TOKEN', '')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

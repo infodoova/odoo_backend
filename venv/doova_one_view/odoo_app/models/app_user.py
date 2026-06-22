@@ -10,14 +10,8 @@ class AppUser(models.Model):
     password_hash = models.CharField(max_length=255)
     full_name = models.CharField(max_length=255, null=True, blank=True)
 
-    ROLE_CHOICES = [
-        ('owner', 'Owner'),
-        ('manager', 'Manager'),
-        ('accountant', 'Accountant'),
-    ]
-    role = models.CharField(max_length=50, choices=ROLE_CHOICES)
-
     is_active = models.BooleanField(default=True)
+    is_superuser = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     last_login_at = models.DateTimeField(null=True, blank=True)
 
