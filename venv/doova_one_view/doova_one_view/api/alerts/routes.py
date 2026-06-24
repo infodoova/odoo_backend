@@ -267,12 +267,15 @@ async def run_alert_now(
         raise HTTPException(status_code=404, detail="Alert schedule not found")
 
     from doova_one_view.api.jobs.alert_job import AlertJobManager
-    result = await AlertJobManager.run_check(
-        schedule=schedule,
-        tenant_id=tenant_id,
-        send_email=payload.send_email,
-        is_instant=True,
-    )
+    try:
+        result = await AlertJobManager.run_check(
+            schedule=schedule,
+            tenant_id=tenant_id,
+            send_email=payload.send_email,
+            is_instant=True,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
     return result
 
 
