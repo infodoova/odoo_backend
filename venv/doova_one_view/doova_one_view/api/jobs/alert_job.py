@@ -10,6 +10,7 @@ System-default schedules (is_system_default=True) run for every tenant.
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone as tz, timedelta
 
 logger = logging.getLogger(__name__)
@@ -283,11 +284,17 @@ class AlertJobManager:
         result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_id)
         result = result.strip()
 
-        if result.upper().startswith("ALERT:"):
-            return result[len("ALERT:"):].strip(), True
-        if result.upper().startswith("OK:"):
-            return result[len("OK:"):].strip(), False
-        # No recognised prefix — treat as all-clear
+        # Search the first 600 chars for ALERT:/OK: at the start of any line.
+        # The AI sometimes emits a short preamble before the required prefix,
+        # so startswith() alone is too strict.
+        chunk = result[:600]
+        alert_match = re.search(r'^ALERT:\s*', chunk, re.IGNORECASE | re.MULTILINE)
+        ok_match    = re.search(r'^OK:\s*',    chunk, re.IGNORECASE | re.MULTILINE)
+
+        if alert_match:
+            return result[alert_match.end():].strip(), True
+        if ok_match:
+            return result[ok_match.end():].strip(), False
         return result, False
 
     # ------------------------------------------------------------------
@@ -296,6 +303,7 @@ class AlertJobManager:
 
     @staticmethod
     async def _send_alert_email(schedule, tenant_id: str, summary: str):
+        import markdown as _md
         from doova_one_view.api.email.service import EmailService
 
         tenant_name = schedule.tenant.name if schedule.tenant else "Your Business"
@@ -306,36 +314,63 @@ class AlertJobManager:
             else f"{len(schedule.companies)} selected company/ies"
         )
 
-        lines = summary.split('\n', 1)
-        headline = lines[0].strip()
-        details_html = (
-            lines[1].replace('\n', '<br>')
-            if len(lines) > 1
-            else ''
+        # Render markdown → HTML so tables, bold, headings display properly in email
+        summary_html = _md.markdown(
+            summary,
+            extensions=["tables", "nl2br"],
         )
 
         html_body = f"""
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
-          <div style="background:#dc2626;padding:12px 20px;border-radius:6px 6px 0 0;">
-            <h2 style="color:#fff;margin:0;font-size:18px;">&#9888; Unusual Activity Detected</h2>
+        <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#374151;">
+          <!-- Header banner -->
+          <div style="background:#dc2626;padding:18px 24px;border-radius:8px 8px 0 0;">
+            <h1 style="color:#fff;margin:0;font-size:18px;font-weight:700;">
+              &#9888;&#65039; Unusual Activity Detected
+            </h1>
+            <p style="color:#fecaca;margin:4px 0 0;font-size:13px;">
+              {tenant_name} &nbsp;·&nbsp; {company_note}
+            </p>
           </div>
-          <div style="border:1px solid #fca5a5;border-top:none;padding:20px;border-radius:0 0 6px 6px;">
-            <p style="color:#374151;">Hi,</p>
-            <p style="color:#374151;">
-              The daily alert check for <strong>{tenant_name}</strong> ({company_note})
-              has detected unusual activity that requires your attention:
+
+          <!-- Body -->
+          <div style="border:1px solid #fca5a5;border-top:none;padding:24px;border-radius:0 0 8px 8px;background:#fff;">
+
+            <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">
+              The daily alert check has detected unusual activity that requires your attention.
             </p>
-            <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px 16px;margin:16px 0;">
-              <strong style="color:#991b1b;">{headline}</strong>
-              {"<br><br>" + details_html if details_html else ""}
+
+            <!-- AI findings box -->
+            <div style="
+              background:#fef2f2;
+              border:1px solid #fca5a5;
+              border-left:4px solid #dc2626;
+              border-radius:6px;
+              padding:16px 20px;
+              margin-bottom:20px;
+              font-size:13px;
+              line-height:1.6;
+            ">
+              <style scoped>
+                table {{border-collapse:collapse;width:100%;font-size:12px;margin:8px 0}}
+                th {{text-align:left;padding:6px 8px;border-bottom:2px solid #fca5a5;font-weight:600;color:#7f1d1d}}
+                td {{padding:5px 8px;border-bottom:1px solid #fee2e2;color:#374151}}
+                tr:nth-child(even) td {{background:#fff5f5}}
+                h2,h3,h4 {{color:#991b1b;margin:12px 0 4px}}
+                hr {{border:none;border-top:1px solid #fca5a5;margin:10px 0}}
+                blockquote {{border-left:3px solid #f87171;padding:4px 10px;margin:4px 0;color:#7f1d1d;background:#fff1f2}}
+                strong {{color:#991b1b}}
+              </style>
+              {summary_html}
             </div>
-            <p style="color:#374151;">
-              Please log in to <strong>Doova OneView</strong> to review the details.
+
+            <p style="font-size:13px;margin:0 0 20px;">
+              Please log in to <strong>Doova OneView</strong> to review the details and take action.
             </p>
-            <hr style="border-color:#fee2e2;margin:20px 0;" />
-            <p style="color:#9ca3af;font-size:12px;">
+
+            <hr style="border:none;border-top:1px solid #fee2e2;margin:0 0 16px;" />
+            <p style="color:#9ca3af;font-size:11px;margin:0;line-height:1.5;">
               This alert was automatically generated by Doova OneView.
-              To manage your alert schedules, visit the Alerts section.
+              To manage alert schedules, visit the <strong>Alerts</strong> section.
             </p>
           </div>
         </div>
