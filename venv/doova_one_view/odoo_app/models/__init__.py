@@ -32,4 +32,5 @@ from odoo_app.models.stored_file import *
 from odoo_app.models.agent import *
 from odoo_app.models.password_reset_otp import *
 from odoo_app.models.report_schedule import *
+from odoo_app.models.alert_schedule import *
 
