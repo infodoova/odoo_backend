@@ -97,20 +97,31 @@ class AlertJobManager:
             if schedule.is_system_default:
                 tenant_ids = await AlertJobManager._get_all_tenant_ids()
                 for tid in tenant_ids:
-                    await AlertJobManager.run_check(
-                        schedule=schedule,
-                        tenant_id=tid,
-                        send_email=True,
-                        is_instant=False,
-                    )
+                    try:
+                        await AlertJobManager.run_check(
+                            schedule=schedule,
+                            tenant_id=tid,
+                            send_email=True,
+                            is_instant=False,
+                        )
+                    except Exception:
+                        # already logged + AlertLog written inside run_check
+                        logger.error(
+                            f"AlertJobManager: cron check failed schedule={schedule.id} tenant={tid}"
+                        )
             else:
                 if schedule.tenant_id:
-                    await AlertJobManager.run_check(
-                        schedule=schedule,
-                        tenant_id=str(schedule.tenant_id),
-                        send_email=True,
-                        is_instant=False,
-                    )
+                    try:
+                        await AlertJobManager.run_check(
+                            schedule=schedule,
+                            tenant_id=str(schedule.tenant_id),
+                            send_email=True,
+                            is_instant=False,
+                        )
+                    except Exception:
+                        logger.error(
+                            f"AlertJobManager: cron check failed schedule={schedule.id} tenant={schedule.tenant_id}"
+                        )
 
     @staticmethod
     async def _get_all_tenant_ids() -> list:
@@ -313,7 +324,6 @@ class AlertJobManager:
 
     @staticmethod
     async def _send_alert_email(schedule, tenant_id: str, summary: str):
-        import markdown as _md
         from doova_one_view.api.email.service import EmailService
 
         tenant_name = schedule.tenant.name if schedule.tenant else "Your Business"
@@ -324,11 +334,13 @@ class AlertJobManager:
             else f"{len(schedule.companies)} selected company/ies"
         )
 
-        # Render markdown → HTML so tables, bold, headings display properly in email
-        summary_html = _md.markdown(
-            summary,
-            extensions=["tables", "nl2br"],
-        )
+        # Render markdown → HTML so tables, bold, headings display properly in email.
+        # Fall back to plain <br>-separated text if the markdown package is missing.
+        try:
+            import markdown as _md
+            summary_html = _md.markdown(summary, extensions=["tables", "nl2br"])
+        except ImportError:
+            summary_html = summary.replace('\n', '<br>')
 
         html_body = f"""
         <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#374151;">
