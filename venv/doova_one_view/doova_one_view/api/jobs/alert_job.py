@@ -270,13 +270,15 @@ class AlertJobManager:
         full_prompt = (
             f"You are a vigilance AI monitoring a business {company_ctx} "
             f"for unusual or suspicious activity.\n\n"
-            f"IMPORTANT: After gathering data with your tools, begin your response "
-            f"with exactly one of:\n"
-            f"  'ALERT: <one-line summary>' — if you detect unusual/concerning activity\n"
-            f"  'OK: <one-line summary>'    — if everything looks normal\n\n"
-            f"Then provide detailed findings below that prefix line.\n"
-            f"Use all relevant tools (sales, finance, inventory, receivables) "
-            f"before making your assessment. Only flag real data anomalies.\n\n"
+            f"Use all relevant tools (sales, finance, inventory, receivables, trial balance, "
+            f"detect_anomalies) before making your assessment.\n\n"
+            f"CRITICAL FORMAT RULE: The very first line of your STRATEGIC RECOMMENDATION "
+            f"section MUST be exactly one of:\n"
+            f"  ALERT: <one-line headline>   — if you found unusual or concerning activity\n"
+            f"  OK: <one-line headline>       — if everything looks normal\n"
+            f"Do not add any words before ALERT: or OK: on that line. "
+            f"Follow it with your full detailed findings.\n\n"
+            f"Only flag genuine data anomalies — not missing data or date range issues.\n\n"
             f"What to check:\n{effective_prompt}"
         )
 
@@ -284,17 +286,25 @@ class AlertJobManager:
         result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_id)
         result = result.strip()
 
-        # Search the first 600 chars for ALERT:/OK: at the start of any line.
-        # The AI sometimes emits a short preamble before the required prefix,
-        # so startswith() alone is too strict.
-        chunk = result[:600]
-        alert_match = re.search(r'^ALERT:\s*', chunk, re.IGNORECASE | re.MULTILINE)
-        ok_match    = re.search(r'^OK:\s*',    chunk, re.IGNORECASE | re.MULTILINE)
+        # The agent system prompt forces every response to start with
+        # "## CFO INTERNAL THOUGHT PROCESS" before "## STRATEGIC RECOMMENDATION",
+        # so ALERT:/OK: can appear well past the first N characters.
+        # Search the ENTIRE response for ALERT:/OK: at the start of any line.
+        alert_match = re.search(r'^ALERT:\s*', result, re.IGNORECASE | re.MULTILINE)
+        ok_match    = re.search(r'^OK:\s*',    result, re.IGNORECASE | re.MULTILINE)
 
         if alert_match:
             return result[alert_match.end():].strip(), True
         if ok_match:
             return result[ok_match.end():].strip(), False
+
+        # No explicit prefix — strip the CFO thought process section if present
+        # and return just the strategic recommendation as all-clear.
+        rec_match = re.search(
+            r'##\s*STRATEGIC\s+RECOMMENDATION\s*\n', result, re.IGNORECASE
+        )
+        if rec_match:
+            return result[rec_match.end():].strip(), False
         return result, False
 
     # ------------------------------------------------------------------
