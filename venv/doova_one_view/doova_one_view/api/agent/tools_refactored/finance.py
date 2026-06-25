@@ -169,8 +169,8 @@ def get_tax_summary_tool(tenant_id: str, company_id: int | None = None) -> dict:
 
     rows = run_query(
         f"""SELECT
-                COALESCE(SUM(amount_tax), 0) FILTER (WHERE move_type = 'out_invoice') AS output_tax,
-                COALESCE(SUM(amount_tax), 0) FILTER (WHERE move_type = 'in_invoice') AS input_tax
+                COALESCE(SUM(amount_tax) FILTER (WHERE move_type = 'out_invoice'), 0) AS output_tax,
+                COALESCE(SUM(amount_tax) FILTER (WHERE move_type = 'in_invoice'), 0) AS input_tax
             FROM fact_account_moves
             WHERE tenant_id = :tenant_id
               AND state = 'posted'
