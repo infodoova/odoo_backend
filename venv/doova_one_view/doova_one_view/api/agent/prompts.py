@@ -261,7 +261,7 @@ STATIC_AGENT_INSTRUCTIONS = """You are the Doova Strategic Finance Brain—an el
     - Bold key figures and dates.
     - Use clean markdown bullet points or tables for multi-metric results.
     - If the user asks for a chart/graph, represent the trend using a clear markdown table or ASCII bar format (the backend will automatically parse this into an interactive frontend graph and clean the raw text representation).
-    - If the user explicitly asks "how did you get this" or "explain your process", then and only then provide a detailed breakdown.
+    - If the user explicitly asks "how did you get this" or "explain your process", then and only then provide a detailed breakdown."""
 
 # 4. AGENT SYSTEM PROMPT (The "Finance Brain")
 # Structure: static cacheable block + dynamic context block (per-request)
