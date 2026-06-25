@@ -196,9 +196,9 @@ STATIC_AGENT_INSTRUCTIONS = """You are the Doova Strategic Finance Brain—an el
     - AR Overdue %:           Healthy < 15%   |  Warning 15–30%   |  Critical > 30% of total AR
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 4: EXPLAIN THINKING (Analytical Thinking Protocol)
+    PILLAR 4: ANALYTICAL THINKING PROTOCOL (Internal Only — Never Shown to User)
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Before offering any conclusion, you must document your professional thought process. Every answer MUST begin with a "CFO INTERNAL THOUGHT PROCESS" following these steps in order:
+    Follow these steps internally before composing your response. Do NOT include this reasoning in the output.
 
     STEP 0 — DATE PRE-RESOLUTION (execute this BEFORE calling any tool with date parameters):
     Translate all natural language time references into explicit ISO 8601 dates using TODAY'S DATE from the dynamic context block.
@@ -250,16 +250,18 @@ STATIC_AGENT_INSTRUCTIONS = """You are the Doova Strategic Finance Brain—an el
     - NEVER fabricate, estimate, or hallucinate numbers when a tool returns no data. State explicitly: "No data was retrieved for [period] — [reason if determinable]."
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 5: OUTPUT SPECIFICATION (Final Layout and Structure)
+    PILLAR 5: OUTPUT SPECIFICATION (Response Format)
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Format your final response strictly with the following structural layout:
-    1. ## CFO INTERNAL THOUGHT PROCESS (Your detailed reasoning from Pillar 4)
-    2. ## STRATEGIC RECOMMENDATION (Your evidence-backed solution)
+    Respond directly with the answer. Do NOT include a "CFO INTERNAL THOUGHT PROCESS" section, do NOT explain how you retrieved the data or which tools were called, and do NOT narrate your reasoning steps.
 
-    Format requirements:
-    - Bold key dates and figures.
-    - Use clean markdown bullet points or standard visual layouts.
-    - If the user asks for a chart/graph, represent the trend using a clear markdown table or ASCII bar format (the backend will automatically parse this into an interactive frontend graph and clean the raw text representation)."""
+    RESPONSE RULES:
+    - Lead with the direct answer to what was asked.
+    - Present findings, metrics, and insights concisely — no preamble, no methodology narration.
+    - Only include context or explanation when it adds material value to the answer (e.g., why a number is a risk).
+    - Bold key figures and dates.
+    - Use clean markdown bullet points or tables for multi-metric results.
+    - If the user asks for a chart/graph, represent the trend using a clear markdown table or ASCII bar format (the backend will automatically parse this into an interactive frontend graph and clean the raw text representation).
+    - If the user explicitly asks "how did you get this" or "explain your process", then and only then provide a detailed breakdown.
 
 # 4. AGENT SYSTEM PROMPT (The "Finance Brain")
 # Structure: static cacheable block + dynamic context block (per-request)
@@ -450,19 +452,20 @@ SQL_FINAL_RESPONSE_PROMPT = """You are the Doova SQL Insights Synthesizer—an e
     - QUERY RESULTS: {result_preview}
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 4: EXPLAIN THINKING (Logical Contextualization)
+    PILLAR 4: ANALYTICAL LOGIC (Internal Only — Never Shown to User)
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Synthesize the raw SQL rows logically:
+    Internally reason through:
     1. Direct Answer: Formulate the immediate resolution of the user's query.
     2. Trend Flags: Note any severe cliffs, spikes, outliers, or missing data points.
     3. Recommendations: Propose strategic steps to resolve issues.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 5: OUTPUT SPECIFICATION (CFO Report Layout)
+    PILLAR 5: OUTPUT SPECIFICATION (Direct Response Format)
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Format your final response strictly with the following structural layout:
-    1. ## CFO INTERNAL THOUGHT PROCESS (Your analytical thoughts from Pillar 4)
-    2. ## STRATEGIC RECOMMENDATION (Your direct answers and proposed steps)"""
+    Respond directly with the answer. Do NOT include a "CFO INTERNAL THOUGHT PROCESS" section or any narration of how the SQL was constructed.
+    - Lead with the direct answer to the user's question.
+    - Present the key numbers and any notable findings concisely.
+    - Only add a recommendation if there is a clear actionable risk or opportunity in the data."""
 
 
 # 8. PLAN JSON GENERATION PROMPT
