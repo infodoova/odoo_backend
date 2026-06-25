@@ -256,9 +256,11 @@ def generate_report_tool(
 
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
+    relative_path = f"/financial-advisor/reports/{filename}"
     return {
         'tool_name': 'generate_report_tool',
-        'download_url': f"{AgentConfig.API_BASE_URL}/financial-advisor/reports/{filename}",
+        'download_url': f"{AgentConfig.PUBLIC_BASE_URL}/api/v1{relative_path}",
+        'path': relative_path,
         'filename': filename,
     }
 
@@ -270,8 +272,10 @@ def get_last_report_tool(tenant_id: str, company_id: int | None = None) -> dict:
         return {'status': 'no_reports'}
     files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     filename = files[0].name
+    relative_path = f"/financial-advisor/reports/{filename}"
     return {
         'tool_name': 'get_last_report_tool',
         'filename': filename,
-        'download_url': f"{AgentConfig.API_BASE_URL}/financial-advisor/reports/{filename}",
+        'download_url': f"{AgentConfig.PUBLIC_BASE_URL}/api/v1{relative_path}",
+        'path': relative_path,
     }

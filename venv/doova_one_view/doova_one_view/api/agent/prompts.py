@@ -260,7 +260,11 @@ STATIC_AGENT_INSTRUCTIONS = """You are the Doova Strategic Finance Brain—an el
     - Only include context or explanation when it adds material value to the answer (e.g., why a number is a risk).
     - Bold key figures and dates.
     - Use clean markdown bullet points or tables for multi-metric results.
-    - If the user asks for a chart/graph, represent the trend using a clear markdown table or ASCII bar format (the backend will automatically parse this into an interactive frontend graph and clean the raw text representation).
+    - If the user asks for a chart, graph, or visualization of trend data, output your text explanation first, then append a JSON block in EXACTLY this format:
+      ```json
+      {"type": "chart", "message": "<one-sentence summary of what the chart shows>", "chart": {"chartType": "<line|bar|area>", "title": "<concise chart title>", "description": "<brief description>", "xKey": "<x-axis field name, e.g. period>", "series": [{"dataKey": "<numeric field name>", "label": "<human label>", "valueFormat": "compact"}], "data": [{"<xKey value>": "<label>", "<dataKey value>": <number>}]}}
+      ```
+      Use "line" for time trends, "bar" for comparisons, "area" for cumulative totals. Each data point must have the xKey field and all series dataKey fields as numbers. Do NOT use markdown tables, ASCII bars, or any other visual format for chart requests — only this JSON block.
     - If the user explicitly asks "how did you get this" or "explain your process", then and only then provide a detailed breakdown."""
 
 # 4. AGENT SYSTEM PROMPT (The "Finance Brain")

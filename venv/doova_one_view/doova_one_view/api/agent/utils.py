@@ -2,7 +2,47 @@
 
 import os
 import re
+import json
 from pathlib import Path
+
+def parse_json_chart_from_text(text: str) -> dict | None:
+    """Extract the first {type: 'chart'} JSON block from agent output text."""
+    if not text:
+        return None
+
+    # Look for ```json ... ``` fence first
+    match = re.search(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE)
+    if match:
+        try:
+            parsed = json.loads(match.group(1))
+            if parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Fallback: bare JSON object containing "type": "chart"
+    match = re.search(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}(?=\s*$|\s*\n)', text)
+    if match:
+        try:
+            parsed = json.loads(match.group(0))
+            if parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    return None
+
+
+def strip_json_chart_from_text(text: str) -> str:
+    """Remove the JSON chart block (fenced or bare) from text, clean trailing whitespace."""
+    if not text:
+        return ""
+    # Remove ```json ... ``` blocks
+    text = re.sub(r'```json\s*[\s\S]*?\s*```', '', text, flags=re.IGNORECASE)
+    # Collapse excess blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
 
 def get_public_base_url() -> str:
     return os.getenv("PUBLIC_BASE_URL", "").rstrip("/")

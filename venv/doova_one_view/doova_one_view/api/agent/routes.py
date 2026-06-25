@@ -53,23 +53,30 @@ def make_chat_response(
     plan: Optional[dict] = None,
     status: Optional[str] = None
 ) -> dict:
-    from .utils import parse_graph_data_from_text, strip_visual_charts_from_text
-    
-    graph_data = parse_graph_data_from_text(answer)
-    has_parsed_graph = bool(graph_data)
-    
-    final_answer = answer
-    if has_parsed_graph:
-        final_answer = strip_visual_charts_from_text(answer)
-        
+    from .utils import parse_json_chart_from_text, strip_json_chart_from_text
+
+    chart_payload = parse_json_chart_from_text(answer)
+
+    if chart_payload:
+        final_answer = strip_json_chart_from_text(answer)
+        if not final_answer:
+            final_answer = chart_payload.get("message", "")
+        res_type = "graph"
+    else:
+        final_answer = answer
+        res_type = "text"
+
     res = {
         "answer": final_answer,
         "mode": mode,
         "session_id": session_id,
         "session_title": session_title,
-        "type": "graph" if has_parsed_graph else "text",
-        "graph_data": graph_data
+        "type": res_type,
     }
+
+    if chart_payload:
+        res["payload"] = chart_payload
+
     if plan is not None:
         res["plan"] = plan
     if status is not None:
@@ -514,7 +521,7 @@ async def generate_ai_report(request: Request):
             company_id=company_id,
             custom_content=custom_content
         )
-        return {"download_url": result["download_url"], "filename": result["filename"]}
+        return {"download_url": result.get("path", result["download_url"]), "filename": result["filename"]}
     except Exception as e:
         log_error("generate_ai_report", e)
         raise HTTPException(status_code=500, detail=str(e))

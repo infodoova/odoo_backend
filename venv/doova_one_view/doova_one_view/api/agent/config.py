@@ -34,7 +34,7 @@ class AgentConfig:
     # ── Token budgets ─────────────────────────────────────────────────
     # 8192 supports the CFO INTERNAL THOUGHT PROCESS + STRATEGIC RECOMMENDATION
     # sections without truncation on compound multi-tool analyses.
-    MAX_FAST_TOKENS = 8192
+    MAX_FAST_TOKENS = 4096
     MAX_REASONING_TOKENS = 8000
     MAX_ROUTER_TOKENS = 20
     # 1024 ensures the summarizer captures exact KPI numbers and date ranges
