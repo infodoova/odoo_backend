@@ -191,6 +191,8 @@ class ReportJobManager:
             f"- Do NOT include any preamble like 'Here is your report' — start directly with content\n\n"
             f"Call ALL relevant tools first (sales, finance, inventory, receivables, etc.) "
             f"to gather real data, then write a thorough, structured report with actual numbers.\n\n"
+            f"CRITICAL: Do NOT call the create_report or get_latest_report tools. "
+            f"Your final response must be the Markdown report text itself — it will be embedded into the PDF automatically.\n\n"
             f"User's report request:\n{user_prompt.strip() if user_prompt and user_prompt.strip() else default_prompt}"
         )
 

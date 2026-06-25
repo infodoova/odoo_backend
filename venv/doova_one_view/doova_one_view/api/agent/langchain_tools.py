@@ -256,13 +256,13 @@ def inventory_efficiency(tenant_id: str, company_id: Optional[int] = None):
 # ── Reporting Domain ─────────────────────────
 
 @tool
-def create_report(tenant_id: str, custom_content: str, company_id: Optional[int] = None):
+def create_report(tenant_id: str, custom_content: str = "", company_id: Optional[int] = None):
     """Generate a professional branded PDF executive report including vital signs and your analysis.
     custom_content must be a complete, well-structured markdown executive summary of your findings,
     recommendations, and risk flags — this becomes the main body of the PDF.
     Use only after completing all analysis tool calls so the report is comprehensive.
     Do NOT call this before you have gathered the data — the report cannot be regenerated mid-session."""
-    return generate_report_tool(tenant_id, company_id, custom_content=custom_content)
+    return generate_report_tool(tenant_id, company_id, custom_content=custom_content or None)
 
 @tool
 def get_latest_report(tenant_id: str, company_id: Optional[int] = None):
