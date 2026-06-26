@@ -91,6 +91,25 @@ class ReportJobManager:
 
         tenant_id = str(schedule.tenant.id)
         company_ids = schedule.companies if schedule.companies else None
+        next_dt = calculate_next_send(schedule.frequency, now)
+
+        # ── Claim immediately ────────────────────────────────────────────────
+        # Advance next_send_at BEFORE any work so that a server restart or a
+        # concurrent process cannot re-pick this schedule and send duplicates.
+        # The WHERE clause on next_send_at acts as an optimistic lock:
+        # if another process already claimed it, 0 rows match and we bail out.
+        @sync_to_async
+        def _claim():
+            from odoo_app.models.report_schedule import ReportSchedule
+            return ReportSchedule.objects.filter(
+                id=schedule.id,
+                next_send_at=schedule.next_send_at,
+            ).update(next_send_at=next_dt)
+
+        claimed = await _claim()
+        if not claimed:
+            logger.warning(f"ReportJobManager: schedule {schedule.id} already claimed — skipping")
+            return
 
         try:
             # 1. Build AI-generated report content using the user's prompt
@@ -126,14 +145,11 @@ class ReportJobManager:
                     attachments=[attachment],
                 )
 
-            # 5. Advance next_send_at and log success
-            next_dt = calculate_next_send(schedule.frequency, now)
-
+            # 5. Record last_sent_at — next_send_at was already advanced in _claim
             @sync_to_async
             def _save_success():
-                schedule.next_send_at = next_dt
                 schedule.last_sent_at = now
-                schedule.save(update_fields=['next_send_at', 'last_sent_at'])
+                schedule.save(update_fields=['last_sent_at'])
                 ReportLog.objects.create(schedule=schedule, status='sent', filename=filename)
 
             await _save_success()
@@ -143,12 +159,9 @@ class ReportJobManager:
             error_msg = str(e)
             logger.exception(f"Failed to fire schedule {schedule.id}")
 
+            # next_send_at already advanced — just log the failure
             @sync_to_async
             def _save_failure():
-                from doova_one_view.api.reports.utils import calculate_next_send
-                next_dt = calculate_next_send(schedule.frequency, now)
-                schedule.next_send_at = next_dt
-                schedule.save(update_fields=['next_send_at'])
                 ReportLog.objects.create(
                     schedule=schedule,
                     status='failed',

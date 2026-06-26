@@ -294,6 +294,26 @@ class AlertJobManager:
         now = datetime.now(tz.utc)
         company_ids = schedule.companies if schedule.companies else None
 
+        # ── Claim immediately (scheduled runs only) ──────────────────────────
+        # Advance next_check_at BEFORE the AI runs so a restart or concurrent
+        # process cannot re-pick this schedule and send duplicate alerts.
+        if not is_instant:
+            @sync_to_async
+            def _claim():
+                from odoo_app.models.alert_schedule import AlertSchedule
+                return AlertSchedule.objects.filter(
+                    id=schedule.id,
+                    next_check_at=schedule.next_check_at,
+                ).update(
+                    next_check_at=now + timedelta(days=1),
+                    last_checked_at=now,
+                )
+
+            claimed = await _claim()
+            if not claimed:
+                logger.warning(f"AlertJobManager: schedule {schedule.id} already claimed — skipping")
+                return {"has_anomalies": False, "summary": "", "alert_sent": False, "log_id": None}
+
         try:
             summary, has_anomalies = await AlertJobManager._detect_anomalies(
                 tenant_id=tenant_id,
@@ -309,14 +329,6 @@ class AlertJobManager:
                     summary=summary,
                 )
                 alert_sent = True
-
-            if not is_instant:
-                @sync_to_async
-                def _advance():
-                    schedule.next_check_at = now + timedelta(days=1)
-                    schedule.last_checked_at = now
-                    schedule.save(update_fields=['next_check_at', 'last_checked_at'])
-                await _advance()
 
             @sync_to_async
             def _log_success():
@@ -350,16 +362,7 @@ class AlertJobManager:
                 f"AlertJobManager: check failed schedule={schedule.id} tenant={tenant_id}"
             )
 
-            if not is_instant:
-                @sync_to_async
-                def _advance_on_err():
-                    schedule.next_check_at = now + timedelta(days=1)
-                    schedule.save(update_fields=['next_check_at'])
-                try:
-                    await _advance_on_err()
-                except Exception:
-                    pass
-
+            # next_check_at already advanced in _claim — just log the failure
             @sync_to_async
             def _log_failure():
                 from odoo_app.models.alert_schedule import AlertLog
@@ -432,26 +435,35 @@ class AlertJobManager:
         result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_id)
         result = result.strip()
 
-        # The agent system prompt forces every response to start with
-        # "## CFO INTERNAL THOUGHT PROCESS" before "## STRATEGIC RECOMMENDATION",
-        # so ALERT:/OK: can appear well past the first N characters.
-        # Search the ENTIRE response for ALERT:/OK: at the start of any line.
-        alert_match = re.search(r'^ALERT:\s*', result, re.IGNORECASE | re.MULTILINE)
-        ok_match    = re.search(r'^OK:\s*',    result, re.IGNORECASE | re.MULTILINE)
+        # The agent sometimes wraps ALERT:/OK: in bold (**ALERT:**) or places it
+        # after section headers. Use progressively looser patterns.
+
+        # Pass 1 — strict line-start, with optional bold markers
+        alert_match = re.search(r'^\*{0,2}ALERT:\*{0,2}\s*', result, re.IGNORECASE | re.MULTILINE)
+        ok_match    = re.search(r'^\*{0,2}OK:\*{0,2}\s*',    result, re.IGNORECASE | re.MULTILINE)
 
         if alert_match:
             return result[alert_match.end():].strip(), True
         if ok_match:
             return result[ok_match.end():].strip(), False
 
-        # No explicit prefix — strip the CFO thought process section if present
-        # and return just the strategic recommendation as all-clear.
-        rec_match = re.search(
-            r'##\s*STRATEGIC\s+RECOMMENDATION\s*\n', result, re.IGNORECASE
-        )
-        if rec_match:
-            return result[rec_match.end():].strip(), False
-        return result, False
+        # Pass 2 — find STRATEGIC RECOMMENDATION section, then search inside it
+        rec_match = re.search(r'##\s*STRATEGIC\s+RECOMMENDATION\b', result, re.IGNORECASE)
+        section = result[rec_match.end():].strip() if rec_match else result
+
+        alert_in_sec = re.search(r'\*{0,2}ALERT:\*{0,2}\s*', section, re.IGNORECASE)
+        ok_in_sec    = re.search(r'\*{0,2}OK:\*{0,2}\s*',    section, re.IGNORECASE)
+
+        if alert_in_sec:
+            return section[alert_in_sec.end():].strip(), True
+        if ok_in_sec:
+            return section[ok_in_sec.end():].strip(), False
+
+        # Pass 3 — bare keyword anywhere (e.g. "**ALERT** — headline")
+        if re.search(r'\bALERT\b', section, re.IGNORECASE):
+            return section, True
+
+        return section, False
 
     # ------------------------------------------------------------------
     # Alert email
