@@ -32,16 +32,21 @@ django_asgi = get_asgi_application()
 # Import FastAPI app after Django setup
 from doova_one_view.api.app import app as fastapi_app
 from doova_one_view.api.jobs.sync_job import SyncJobManager
+from doova_one_view.api.jobs.report_job import ReportJobManager
+from doova_one_view.api.jobs.alert_job import AlertJobManager
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app):
-    """Main application lifespan"""
-    # Start background sync job via the manager
+    """Main application lifespan — the FastAPI sub-app lifespan is NOT called
+    when mounted via Starlette Mount(), so all background jobs must be started here."""
     await SyncJobManager.start()
+    await ReportJobManager.start()
+    await AlertJobManager.start()
     yield
-    # Stop background sync job
     await SyncJobManager.stop()
+    await ReportJobManager.stop()
+    await AlertJobManager.stop()
 
 # ============================================================================
 # Main Application - Uses Mount-based routing with static files

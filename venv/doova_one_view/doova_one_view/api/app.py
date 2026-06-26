@@ -29,27 +29,16 @@ from doova_one_view.api.agent.routes import router as agent_router
 from doova_one_view.api.rbac.routes import router as rbac_router
 from doova_one_view.api.reports.routes import router as reports_router
 from doova_one_view.api.alerts.routes import router as alerts_router
-from doova_one_view.api.jobs.sync_job import SyncJobManager
-from doova_one_view.api.jobs.report_job import ReportJobManager
-from doova_one_view.api.jobs.alert_job import AlertJobManager
-
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager for FastAPI app"""
+    """Lifespan context manager for FastAPI app.
+    NOTE: When mounted under Starlette via Mount(), this lifespan is not invoked.
+    Background jobs are started by the outer Starlette lifespan in asgi.py."""
     logger.info("FastAPI application starting")
-    
-    await SyncJobManager.start()
-    await ReportJobManager.start()
-    await AlertJobManager.start()
-
     yield
-
-    await SyncJobManager.stop()
-    await ReportJobManager.stop()
-    await AlertJobManager.stop()
     logger.info("FastAPI application shutting down")
 
 
