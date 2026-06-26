@@ -14,7 +14,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_CHECK_INTERVAL_SECONDS = 15 * 60  # 15 minutes
+_CHECK_INTERVAL_SECONDS = 60  # 1 minute
 
 
 class ReportJobManager:

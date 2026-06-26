@@ -15,7 +15,7 @@ from datetime import datetime, timezone as tz, timedelta
 
 logger = logging.getLogger(__name__)
 
-_CHECK_INTERVAL_SECONDS = 60 * 60  # 1 hour
+_CHECK_INTERVAL_SECONDS = 60  # 1 minute
 
 DEFAULT_ALERT_PROMPT = (
     "Check ALL available business data (sales, purchases, inventory, finance, "
@@ -342,61 +342,114 @@ class AlertJobManager:
         except ImportError:
             summary_html = summary.replace('\n', '<br>')
 
-        html_body = f"""
-        <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#374151;">
-          <!-- Header banner -->
-          <div style="background:#dc2626;padding:18px 24px;border-radius:8px 8px 0 0;">
-            <h1 style="color:#fff;margin:0;font-size:18px;font-weight:700;">
-              &#9888;&#65039; Unusual Activity Detected
-            </h1>
-            <p style="color:#fecaca;margin:4px 0 0;font-size:13px;">
-              {tenant_name} &nbsp;·&nbsp; {company_note}
+        html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<style>
+  /* Reset */
+  body,table,td,p,a,li,blockquote{{margin:0;padding:0;border:0;font-size:100%;vertical-align:baseline}}
+  body{{background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%}}
+
+  /* AI content typography */
+  .ai-content p{{margin:0 0 10px;font-size:13.5px;line-height:1.65;color:#374151}}
+  .ai-content h2{{font-size:15px;font-weight:700;color:#111827;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #e5e7eb}}
+  .ai-content h3{{font-size:13.5px;font-weight:700;color:#374151;margin:16px 0 6px}}
+  .ai-content h4{{font-size:13px;font-weight:700;color:#374151;margin:12px 0 4px}}
+
+  /* Tables */
+  .ai-content table{{border-collapse:collapse;width:100%;font-size:12.5px;margin:12px 0 16px;border-radius:6px;overflow:hidden}}
+  .ai-content thead tr{{background:#1e3a5f}}
+  .ai-content th{{text-align:left;padding:9px 12px;font-weight:600;color:#ffffff;font-size:12px;letter-spacing:0.3px}}
+  .ai-content td{{padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;vertical-align:top}}
+  .ai-content tbody tr:nth-child(even) td{{background:#f8fafc}}
+  .ai-content tbody tr:hover td{{background:#eff6ff}}
+  .ai-content tbody tr:last-child td{{border-bottom:none}}
+
+  /* Blockquotes */
+  .ai-content blockquote{{border-left:4px solid #f59e0b;background:#fffbeb;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0}}
+  .ai-content blockquote p{{color:#92400e;font-size:13px;margin:0}}
+
+  /* Lists */
+  .ai-content ul,.ai-content ol{{margin:8px 0 12px 20px;padding:0}}
+  .ai-content li{{font-size:13.5px;line-height:1.6;color:#374151;margin-bottom:4px}}
+
+  /* Inline */
+  .ai-content strong{{color:#111827;font-weight:700}}
+  .ai-content em{{font-style:italic;color:#6b7280}}
+  .ai-content code{{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:3px;padding:1px 5px;font-size:12px;font-family:monospace}}
+  .ai-content hr{{border:none;border-top:1px solid #e5e7eb;margin:16px 0}}
+</style>
+</head>
+<body style="background:#f3f4f6;padding:24px 0;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center">
+<table width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
+
+  <!-- Header -->
+  <tr>
+    <td style="background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);padding:28px 32px;border-radius:12px 12px 0 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td>
+            <span style="display:inline-block;background:#dc2626;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;text-transform:uppercase;margin-bottom:10px;">&#9888; Alert</span>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 6px;line-height:1.2;">Unusual Activity Detected</h1>
+            <p style="color:#93c5fd;font-size:13px;margin:0;">{tenant_name}&nbsp;&nbsp;·&nbsp;&nbsp;{company_note}</p>
+          </td>
+          <td align="right" style="vertical-align:top;">
+            <span style="font-size:42px;line-height:1;">&#128680;</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Alert summary strip -->
+  <tr>
+    <td style="background:#dc2626;padding:12px 32px;">
+      <p style="color:#fff;font-size:13px;margin:0;line-height:1.5;">
+        The AI monitoring check has detected <strong style="color:#fef9c3;">anomalies that require your immediate attention.</strong>
+        Review the findings below and take action.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Main content -->
+  <tr>
+    <td style="background:#ffffff;padding:28px 32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+      <div class="ai-content">
+        {summary_html}
+      </div>
+    </td>
+  </tr>
+
+  <!-- CTA footer -->
+  <tr>
+    <td style="background:#f8fafc;padding:20px 32px;border:1px solid #e5e7eb;border-top:2px solid #1e3a5f;border-radius:0 0 12px 12px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="vertical-align:middle;">
+            <p style="color:#374151;font-size:13px;margin:0 0 2px;font-weight:600;">Doova OneView</p>
+            <p style="color:#6b7280;font-size:12px;margin:0;">Automated AI Business Monitoring</p>
+          </td>
+          <td align="right" style="vertical-align:middle;">
+            <p style="color:#9ca3af;font-size:11px;margin:0;text-align:right;line-height:1.5;">
+              To manage alert schedules,<br>visit the <strong style="color:#1e3a5f;">Alerts</strong> section in Doova OneView.
             </p>
-          </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 
-          <!-- Body -->
-          <div style="border:1px solid #fca5a5;border-top:none;padding:24px;border-radius:0 0 8px 8px;background:#fff;">
+</table>
+</td></tr>
+</table>
 
-            <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">
-              The daily alert check has detected unusual activity that requires your attention.
-            </p>
-
-            <!-- AI findings box -->
-            <div style="
-              background:#fef2f2;
-              border:1px solid #fca5a5;
-              border-left:4px solid #dc2626;
-              border-radius:6px;
-              padding:16px 20px;
-              margin-bottom:20px;
-              font-size:13px;
-              line-height:1.6;
-            ">
-              <style scoped>
-                table {{border-collapse:collapse;width:100%;font-size:12px;margin:8px 0}}
-                th {{text-align:left;padding:6px 8px;border-bottom:2px solid #fca5a5;font-weight:600;color:#7f1d1d}}
-                td {{padding:5px 8px;border-bottom:1px solid #fee2e2;color:#374151}}
-                tr:nth-child(even) td {{background:#fff5f5}}
-                h2,h3,h4 {{color:#991b1b;margin:12px 0 4px}}
-                hr {{border:none;border-top:1px solid #fca5a5;margin:10px 0}}
-                blockquote {{border-left:3px solid #f87171;padding:4px 10px;margin:4px 0;color:#7f1d1d;background:#fff1f2}}
-                strong {{color:#991b1b}}
-              </style>
-              {summary_html}
-            </div>
-
-            <p style="font-size:13px;margin:0 0 20px;">
-              Please log in to <strong>Doova OneView</strong> to review the details and take action.
-            </p>
-
-            <hr style="border:none;border-top:1px solid #fee2e2;margin:0 0 16px;" />
-            <p style="color:#9ca3af;font-size:11px;margin:0;line-height:1.5;">
-              This alert was automatically generated by Doova OneView.
-              To manage alert schedules, visit the <strong>Alerts</strong> section.
-            </p>
-          </div>
-        </div>
-        """
+</body>
+</html>"""
 
         for email in schedule.recipients:
             await EmailService.send(
