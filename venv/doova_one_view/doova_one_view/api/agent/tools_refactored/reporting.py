@@ -13,6 +13,7 @@ from reportlab.platypus import (
 from .common import AgentConfig
 from .sales import get_sales_summary_tool
 from .finance import get_business_health_score_tool
+from ..utils import make_report_url
 
 # ── Palette ──────────────────────────────────────────────────────────────────
 _NAVY       = colors.HexColor('#1e3a5f')
@@ -292,7 +293,7 @@ def _draw_header_footer(canv, doc, tenant_id: str, generated: str):
 
     canv.setFont('Helvetica', 8)
     canv.setFillColor(colors.HexColor('#94a3b8'))
-    canv.drawCentredString(w / 2, 11, 'Confidential  —  Powered by Doova Finance Brain')
+    canv.drawCentredString(w / 2, 11, 'Confidential  —  Powered by Nexus')
 
     canv.restoreState()
 
@@ -438,7 +439,7 @@ def generate_report_tool(
     relative_path = f"/financial-advisor/reports/{filename}"
     return {
         'tool_name': 'generate_report_tool',
-        'download_url': f"{AgentConfig.PUBLIC_BASE_URL}/api/v1{relative_path}",
+        'download_url': make_report_url(filename),
         'path': relative_path,
         'filename': filename,
     }
@@ -455,6 +456,6 @@ def get_last_report_tool(tenant_id: str, company_id: int | None = None) -> dict:
     return {
         'tool_name': 'get_last_report_tool',
         'filename': filename,
-        'download_url': f"{AgentConfig.PUBLIC_BASE_URL}/api/v1{relative_path}",
+        'download_url': make_report_url(filename),
         'path': relative_path,
     }

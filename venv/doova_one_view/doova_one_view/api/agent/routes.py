@@ -228,7 +228,7 @@ async def chat_endpoint(request: Request):
     }
     # Handle empty messages / simple social phrases before hitting the router
     if not user_message or not user_message.strip() or user_message.lower().strip("!.?") in SOCIAL_PHRASES:
-        answer = "Hello! I am your Doova Finance Brain. How can I assist you with your business data today?"
+        answer = "Hello! I am Nexus. How can I assist you with your business data today?"
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
         return make_chat_response(
             answer,
@@ -529,11 +529,13 @@ async def generate_ai_report(request: Request):
 
 @router.post("/analysis", dependencies=[_use_agent])
 async def run_analysis(request: Request):
+    import uuid
     body = await request.json()
     tenant_id = body.get("tenant_id", "default")
     company_id = body.get("company_id")
     focus_area = body.get("focus_area", "Sales & Revenue")
     dimension = body.get("dimension", "Overall Performance")
+    session_id = body.get("session_id") or str(uuid.uuid4())
 
     tool_map = {
         "Sales & Revenue": "sales_summary, period_comparison, top_products",
@@ -564,6 +566,10 @@ async def run_analysis(request: Request):
         "```"
     )
 
+    user_label = f"Analysis: {focus_area} — {dimension}"
+    await sync_to_async(session_manager.get_or_create_session)(session_id, tenant_id, user_label)
+    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
+
     try:
         answer = fast_path_node.run(
             message=prompt,
@@ -575,7 +581,12 @@ async def run_analysis(request: Request):
         structured = _extract_json_block(answer)
         if not structured:
             raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
-        return structured
+        await sync_to_async(session_manager.save_message)(
+            session_id, "assistant",
+            structured.get("summary", structured.get("title", "Analysis complete.")),
+            message_type="structured", payload=structured
+        )
+        return {**structured, "session_id": session_id}
     except HTTPException:
         raise
     except Exception as e:
@@ -585,11 +596,13 @@ async def run_analysis(request: Request):
 
 @router.post("/forecast", dependencies=[_use_agent])
 async def run_forecast(request: Request):
+    import uuid
     body = await request.json()
     tenant_id = body.get("tenant_id", "default")
     company_id = body.get("company_id")
     scope = body.get("scope", "Next 30 Days")
     risk_profile = body.get("risk_profile", "Balanced (Standard)")
+    session_id = body.get("session_id") or str(uuid.uuid4())
 
     scope_hint = {
         "Next 30 Days": "next 30 days",
@@ -625,6 +638,10 @@ async def run_forecast(request: Request):
         "```"
     )
 
+    user_label = f"Forecast: {scope} ({risk_profile})"
+    await sync_to_async(session_manager.get_or_create_session)(session_id, tenant_id, user_label)
+    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
+
     try:
         answer = fast_path_node.run(
             message=prompt,
@@ -636,7 +653,12 @@ async def run_forecast(request: Request):
         structured = _extract_json_block(answer)
         if not structured:
             raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
-        return structured
+        await sync_to_async(session_manager.save_message)(
+            session_id, "assistant",
+            structured.get("title", "Forecast complete."),
+            message_type="structured", payload=structured
+        )
+        return {**structured, "session_id": session_id}
     except HTTPException:
         raise
     except Exception as e:
@@ -646,11 +668,13 @@ async def run_forecast(request: Request):
 
 @router.post("/audit", dependencies=[_use_agent])
 async def run_audit(request: Request):
+    import uuid
     body = await request.json()
     tenant_id = body.get("tenant_id", "default")
     company_id = body.get("company_id")
     priority = body.get("priority", "Duplicate Detection")
     depth = body.get("depth", "Full Depth (Last Quarter)")
+    session_id = body.get("session_id") or str(uuid.uuid4())
 
     depth_hint = {
         "Quick Scan (Last 7 days)": "last 7 days",
@@ -691,6 +715,10 @@ async def run_audit(request: Request):
         "```"
     )
 
+    user_label = f"Audit: {priority} — {depth}"
+    await sync_to_async(session_manager.get_or_create_session)(session_id, tenant_id, user_label)
+    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
+
     try:
         answer = fast_path_node.run(
             message=prompt,
@@ -702,7 +730,12 @@ async def run_audit(request: Request):
         structured = _extract_json_block(answer)
         if not structured:
             raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
-        return structured
+        await sync_to_async(session_manager.save_message)(
+            session_id, "assistant",
+            structured.get("title", "Audit complete."),
+            message_type="structured", payload=structured
+        )
+        return {**structured, "session_id": session_id}
     except HTTPException:
         raise
     except Exception as e:

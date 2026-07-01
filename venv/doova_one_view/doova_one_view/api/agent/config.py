@@ -51,5 +51,5 @@ class AgentConfig:
     EXPIRY_WARNING_DAYS = 30
     
     # ── URL Configuration ─────────────────────────────────────────────
-    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
-    API_BASE_URL = os.getenv("API_BASE_URL", f"{PUBLIC_BASE_URL}/api/v1")
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    API_BASE_URL = os.getenv("API_BASE_URL", f"{PUBLIC_BASE_URL}/api/v1" if PUBLIC_BASE_URL else "/api/v1")
