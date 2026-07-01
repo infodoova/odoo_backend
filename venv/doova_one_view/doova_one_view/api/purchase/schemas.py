@@ -72,6 +72,7 @@ class SearchFilter(BaseModel):
     field: str
     operator: str
     value: Union[str, int, float, List[Any], None] = None
+    max_value: Optional[Union[str, int, float, None]] = None
 
 
 class SearchRequest(BaseModel):

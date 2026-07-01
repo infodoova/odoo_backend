@@ -407,6 +407,7 @@ class PurchaseService:
         def _filters():
             qs = PurchaseOrder.objects.filter(tenant_id=tenant_id)
             states = [s for s in qs.values_list("state", flat=True).distinct() if s]
+            invoice_statuses = [s for s in qs.values_list("invoice_status", flat=True).distinct() if s]
             currencies = [c for c in qs.values_list("currency_code", flat=True).distinct() if c]
             partners = [
                 {"id": row["partner_id"], "name": row["partner__name"] or ""}
@@ -417,9 +418,11 @@ class PurchaseService:
             ]
             vendor_names = [p["name"] for p in partners if p["name"]]
             static_states = ["draft", "sent", "to approve", "purchase", "done", "cancel"]
+            static_invoice = ["no", "to invoice", "invoiced"]
             return {
                 "state": states or static_states,
                 "states": states or static_states,
+                "invoice_status": invoice_statuses or static_invoice,
                 "currencies": currencies,
                 "vendor_names": vendor_names,
                 "partners": partners,
@@ -435,6 +438,8 @@ class PurchaseService:
         offset: int,
         company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
+        DATE_FIELDS = {"date_order", "date_approve", "date_planned", "synced_at"}
+
         def _search():
             qs = PurchaseService._base_qs(tenant_id, company_ids)
             field_map = {
@@ -444,6 +449,9 @@ class PurchaseService:
                 "partner_name": "partner__name",
                 "vendor_name": "partner__name",
                 "partner_ref": "partner_ref",
+                "partner_email": "partner__email",
+                "partner_phone": "partner__phone",
+                "partner_city": "partner__city",
                 "user_name": "user__name",
                 "company_name": "company__name",
                 "date_order": "date_order",
@@ -454,14 +462,17 @@ class PurchaseService:
                 "currency_code": "currency_code",
                 "amount_total": "amount_total",
                 "amount_untaxed": "amount_untaxed",
+                "synced_at": "synced_at",
             }
             for f in filters or []:
                 field = getattr(f, "field", None) or (f.get("field") if isinstance(f, dict) else None)
                 op = (getattr(f, "operator", None) or (f.get("operator") if isinstance(f, dict) else "")).lower()
                 value = getattr(f, "value", None) if hasattr(f, "value") else (f.get("value") if isinstance(f, dict) else None)
+                max_value = getattr(f, "max_value", None) if hasattr(f, "max_value") else (f.get("max_value") if isinstance(f, dict) else None)
                 orm_field = field_map.get(field)
                 if not orm_field:
                     continue
+                is_date = field in DATE_FIELDS
                 if op in ("contains", "contain"):
                     qs = qs.filter(**{f"{orm_field}__icontains": value})
                 elif op in ("startswith", "starts_with"):
@@ -469,13 +480,31 @@ class PurchaseService:
                 elif op in ("endswith", "ends_with"):
                     qs = qs.filter(**{f"{orm_field}__iendswith": value})
                 elif op in ("equals", "eq", "="):
-                    qs = qs.filter(**{orm_field: value})
+                    if is_date:
+                        qs = qs.filter(**{f"{orm_field}__date": value})
+                    else:
+                        qs = qs.filter(**{orm_field: value})
                 elif op in ("gt", "after"):
-                    qs = qs.filter(**{f"{orm_field}__gt": value})
+                    if is_date:
+                        qs = qs.filter(**{f"{orm_field}__date__gt": value})
+                    else:
+                        qs = qs.filter(**{f"{orm_field}__gt": value})
                 elif op in ("lt", "before"):
-                    qs = qs.filter(**{f"{orm_field}__lt": value})
-                elif op == "between" and isinstance(value, list) and len(value) == 2:
-                    qs = qs.filter(**{f"{orm_field}__range": (value[0], value[1])})
+                    if is_date:
+                        qs = qs.filter(**{f"{orm_field}__date__lt": value})
+                    else:
+                        qs = qs.filter(**{f"{orm_field}__lt": value})
+                elif op == "between":
+                    if max_value is not None and max_value != "":
+                        if is_date:
+                            qs = qs.filter(**{f"{orm_field}__date__range": (value, max_value)})
+                        else:
+                            qs = qs.filter(**{f"{orm_field}__range": (value, max_value)})
+                    elif isinstance(value, list) and len(value) == 2:
+                        if is_date:
+                            qs = qs.filter(**{f"{orm_field}__date__range": (value[0], value[1])})
+                        else:
+                            qs = qs.filter(**{f"{orm_field}__range": (value[0], value[1])})
 
             total = qs.count()
             orders = list(
