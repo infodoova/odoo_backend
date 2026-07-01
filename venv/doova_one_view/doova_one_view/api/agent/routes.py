@@ -584,7 +584,7 @@ async def run_analysis(request: Request):
         await sync_to_async(session_manager.save_message)(
             session_id, "assistant",
             structured.get("summary", structured.get("title", "Analysis complete.")),
-            message_type="structured", payload=structured
+            message_type="analysis", payload=structured
         )
         return {**structured, "session_id": session_id}
     except HTTPException:
@@ -656,7 +656,7 @@ async def run_forecast(request: Request):
         await sync_to_async(session_manager.save_message)(
             session_id, "assistant",
             structured.get("title", "Forecast complete."),
-            message_type="structured", payload=structured
+            message_type="forecast", payload=structured
         )
         return {**structured, "session_id": session_id}
     except HTTPException:
@@ -733,7 +733,7 @@ async def run_audit(request: Request):
         await sync_to_async(session_manager.save_message)(
             session_id, "assistant",
             structured.get("title", "Audit complete."),
-            message_type="structured", payload=structured
+            message_type="audit", payload=structured
         )
         return {**structured, "session_id": session_id}
     except HTTPException:
