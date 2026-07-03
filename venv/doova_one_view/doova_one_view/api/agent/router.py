@@ -8,7 +8,7 @@ from .logger import log_router_decision, log_error, logger
 
 class RouterNode:
     """
-    High-performance intent classifier for the Doova OneView Agent.
+    High-performance intent classifier for the Nexus Agent.
     Routes incoming messages to specialized execution paths (EXECUTE vs PLAN).
     """
     def __init__(self):

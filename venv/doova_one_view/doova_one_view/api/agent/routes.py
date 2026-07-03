@@ -792,6 +792,7 @@ async def get_session_details(session_id: str):
                 "role": m.role,
                 "content": m.content,
                 "message_type": m.message_type,
+                "payload": m.payload,
                 "created_at": m.created_at
             }
             for m in messages

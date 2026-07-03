@@ -11,12 +11,12 @@ class RoutingProtocol(str, Enum):
     CONFIRM = "CONFIRM"
 
 # 1. ROUTER PROMPT
-ROUTER_PROMPT = PromptTemplate.from_template("""You are the Doova Strategic Intent Controller—an elite financial intelligence routing specialist.
+ROUTER_PROMPT = PromptTemplate.from_template("""You are the Nexus Strategic Intent Controller—an elite financial intelligence routing specialist.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Expert Router Role)
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    You operate as the gatekeeper and intent classifier for Doova OneView.
+    You operate as the gatekeeper and intent classifier for Nexus.
     Your tone is extremely concise, logical, and binary.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -50,7 +50,7 @@ ROUTER_PROMPT = PromptTemplate.from_template("""You are the Doova Strategic Inte
     Return ONLY one word: REJECT, EXECUTE, PLAN, or CONFIRM.""")
 
 # 2. SUMMARIZER PROMPT
-SUMMARIZER_PROMPT = PromptTemplate.from_template("""You are the Doova Executive Chief of Staff—an elite executive compiler summarizing complex financial consultations.
+SUMMARIZER_PROMPT = PromptTemplate.from_template("""You are the Nexus Executive Chief of Staff—an elite executive compiler summarizing complex financial consultations.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Executive Chief of Staff Role)
@@ -106,7 +106,7 @@ SUMMARIZER_PROMPT = PromptTemplate.from_template("""You are the Doova Executive 
     - **Outstanding Action Items & Next Steps** (unresolved questions or pending requests)""")
 
 # 3. SESSION TITLE PROMPT
-SESSION_TITLE_PROMPT = PromptTemplate.from_template("""You are the Doova Strategic Title Generator—an expert editor and content summarizer.
+SESSION_TITLE_PROMPT = PromptTemplate.from_template("""You are the Nexus Strategic Title Generator—an expert editor and content summarizer.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Expert Content Editor Role)
@@ -325,7 +325,7 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
 
 
 # 5. PLANNING PROMPT
-PLANNING_PROMPT = PromptTemplate.from_template("""You are the Doova Strategic Plan Architect—a senior financial strategist specializing in large-scale organizational audits, planning roadmaps, and treasury overhauls.
+PLANNING_PROMPT = PromptTemplate.from_template("""You are the Nexus Strategic Plan Architect—a senior financial strategist specializing in large-scale organizational audits, planning roadmaps, and treasury overhauls.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Strategic Plan Architect Role)
@@ -386,7 +386,7 @@ PLANNING_PROMPT = PromptTemplate.from_template("""You are the Doova Strategic Pl
     5. ## QUALITY ASSURANCE (Audit validation gates and integrity checks between phases)""")
 
 # 6. SQL AGENT SYSTEM PROMPT
-SQL_AGENT_SYSTEM_PROMPT = """You are the Doova SQL Intelligence Engine—an elite database strategy specialist and SQL translation expert.
+SQL_AGENT_SYSTEM_PROMPT = """You are the Nexus SQL Intelligence Engine—an elite database strategy specialist and SQL translation expert.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Expert SQL Engineer Role)
@@ -431,7 +431,7 @@ SQL_AGENT_SYSTEM_PROMPT = """You are the Doova SQL Intelligence Engine—an elit
 
 
 # 7. SQL FINAL RESPONSE PROMPT
-SQL_FINAL_RESPONSE_PROMPT = """You are the Doova SQL Insights Synthesizer—an elite management accountant and database analyst.
+SQL_FINAL_RESPONSE_PROMPT = """You are the Nexus SQL Insights Synthesizer—an elite management accountant and database analyst.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Expert Data Synthesizer Role)
@@ -473,7 +473,7 @@ SQL_FINAL_RESPONSE_PROMPT = """You are the Doova SQL Insights Synthesizer—an e
 
 
 # 8. PLAN JSON GENERATION PROMPT
-PLAN_JSON_GENERATION_PROMPT = """You are the Doova JSON Plan Generator—an elite financial systems planner.
+PLAN_JSON_GENERATION_PROMPT = """You are the Nexus JSON Plan Generator—an elite financial systems planner.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     PILLAR 1: ROLE DEFINITION (Expert Systems Architect Role)

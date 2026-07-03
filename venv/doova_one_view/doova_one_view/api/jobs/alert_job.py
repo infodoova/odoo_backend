@@ -572,12 +572,12 @@ class AlertJobManager:
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="vertical-align:middle;">
-            <p style="color:#374151;font-size:13px;margin:0 0 2px;font-weight:600;">Doova OneView</p>
+            <p style="color:#374151;font-size:13px;margin:0 0 2px;font-weight:600;">Nexus</p>
             <p style="color:#6b7280;font-size:12px;margin:0;">Automated AI Business Monitoring</p>
           </td>
           <td align="right" style="vertical-align:middle;">
             <p style="color:#9ca3af;font-size:11px;margin:0;text-align:right;line-height:1.5;">
-              To manage alert schedules,<br>visit the <strong style="color:#1e3a5f;">Alerts</strong> section in Doova OneView.
+              To manage alert schedules,<br>visit the <strong style="color:#1e3a5f;">Alerts</strong> section in Nexus.
             </p>
           </td>
         </tr>

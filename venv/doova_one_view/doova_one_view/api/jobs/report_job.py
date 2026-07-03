@@ -259,10 +259,10 @@ def _build_email_body(schedule) -> str:
             Please find attached your <strong>{label}</strong> business report
             for <strong>{schedule.tenant.name}</strong> ({company_note}).
         </p>
-        <p>This report was automatically generated and sent by <strong>Doova OneView</strong>.</p>
+        <p>This report was automatically generated and sent by <strong>Nexus</strong>.</p>
         <hr style="border-color: #eee;" />
         <p style="color: #999; font-size: 12px;">
-            To manage your report schedule, visit the Reports section in Doova OneView.
+            To manage your report schedule, visit the Reports section in Nexus.
         </p>
     </div>
     """

@@ -274,7 +274,7 @@ def _draw_header_footer(canv, doc, tenant_id: str, generated: str):
     # Brand name
     canv.setFont('Helvetica-Bold', 22)
     canv.setFillColor(colors.white)
-    canv.drawString(40, h - 38, 'DOOVA ONEVIEW')
+    canv.drawString(40, h - 38, 'NEXUS')
 
     # Report type
     canv.setFont('Helvetica-Bold', 11)
