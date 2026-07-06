@@ -1,10 +1,15 @@
 """
 Accounting API routes.
+
+NOTE: Revenue / Expense / Profit summary endpoints have moved to /api/v1/kpi/
+      (revenues/today, revenues/monthly, revenues/yearly, expenses/*, profits/*)
+      so that numbers are consistent with the KPI overview dashboard.
 """
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Query
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from odoo_app.models import AppUser
@@ -15,6 +20,19 @@ from doova_one_view.api.dependencies import get_current_user
 from doova_one_view.api.tenants.service import TenantService
 
 router = APIRouter(prefix="/accounting", tags=["Accounting"])
+
+
+async def _get_tenant_id_for_user(user: AppUser) -> str:
+    """Return the first tenant the user has access to."""
+    def _fetch():
+        from odoo_app.models.user_tenant_access import UserTenantAccess
+        access = UserTenantAccess.objects.filter(user=user).select_related('tenant').first()
+        return str(access.tenant_id) if access else None
+
+    tenant_id = await asyncio.to_thread(_fetch)
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated with this user")
+    return tenant_id
 
 
 def _company_ids(company_id: Optional[int], companies: Optional[str]) -> Optional[list[int]]:
@@ -61,6 +79,7 @@ async def get_accounting_dashboard(
         end_date or date_to,
         _company_ids(company_id, companies),
     )
+
 
 
 @router.get("/{tenant_id}/kpis")

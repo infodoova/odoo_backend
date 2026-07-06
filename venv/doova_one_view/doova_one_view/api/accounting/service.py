@@ -453,6 +453,109 @@ class AccountingService:
         return await asyncio.to_thread(_dashboard)
 
     @staticmethod
+    async def get_period_transactions(
+        tenant_id: str,
+        move_types: list[str],
+        period: str,
+        date_str: Optional[str] = None,
+    ) -> dict[str, Any]:
+        def _fetch():
+            target_date = date.today()
+            if date_str:
+                try:
+                    target_date = date.fromisoformat(date_str)
+                except ValueError:
+                    pass
+
+            qs = AccountingService._base_qs(tenant_id).filter(
+                move_type__in=move_types,
+                state="posted"
+            )
+
+            if period == "today":
+                qs = qs.filter(date=target_date)
+            elif period == "monthly":
+                qs = qs.filter(date__year=target_date.year, date__month=target_date.month)
+            elif period == "yearly":
+                qs = qs.filter(date__year=target_date.year)
+
+            # Prefetch partner/company/lines for performance
+            moves = list(
+                qs.select_related("partner", "company")
+                .prefetch_related(
+                    Prefetch(
+                        "lines",
+                        queryset=AccountMoveLine.objects.select_related("product", "partner")
+                    )
+                )
+                .order_by("-date", "-id")
+            )
+
+            items = []
+            for m in moves:
+                categories = list(dict.fromkeys(
+                    line.account_name for line in m.lines.all() if line.account_name
+                ))
+
+                if not categories:
+                    categories = list(dict.fromkeys(
+                        line.product.name for line in m.lines.all() if line.product and line.product.name
+                    ))
+
+                items.append({
+                    "id": m.id,
+                    "odoo_id": m.odoo_id,
+                    "name": m.odoo_name or "",
+                    "amount": _to_float(m.amount_total),
+                    "source": m.partner.name if m.partner else ("Unknown Customer" if m.move_type == "out_invoice" else "Unknown Vendor"),
+                    "categories": categories,
+                    "category_summary": ", ".join(categories) if categories else "Uncategorized",
+                    "date": _iso(m.date),
+                    "time": _iso(m.synced_at),  # sync timestamp
+                    "move_type": m.move_type,
+                    "lines": [_line_to_item(line) for line in m.lines.all()]
+                })
+
+            return items, target_date
+
+        items, target_date = await asyncio.to_thread(_fetch)
+
+        # Calculate subtotals
+        revenues = [item for item in items if item["move_type"] == "out_invoice"]
+        expenses = [item for item in items if item["move_type"] == "in_invoice"]
+
+        total_revenue = sum(r["amount"] for r in revenues)
+        total_expenses = sum(e["amount"] for e in expenses)
+
+        return {
+            "date": target_date.isoformat(),
+            "items": items,
+            "revenues": revenues,
+            "expenses": expenses,
+            "total_count": len(items),
+            "revenue_count": len(revenues),
+            "expense_count": len(expenses),
+            "revenue_amount": total_revenue,
+            "expense_amount": total_expenses,
+            "net_profit": total_revenue - total_expenses,
+        }
+
+    @staticmethod
+    async def get_today_expenses(
+        tenant_id: str,
+        date_str: Optional[str] = None,
+    ) -> dict[str, Any]:
+        res = await AccountingService.get_period_transactions(
+            tenant_id, ["in_invoice"], "today", date_str
+        )
+        return {
+            "date": res["date"],
+            "items": res["items"],
+            "total_count": res["total_count"],
+            "total_amount": res["expense_amount"],
+        }
+
+    @staticmethod
     def _aging(qs, move_type: str) -> list[dict[str, Any]]:
         today = date.today()
         base = qs.filter(

@@ -9,6 +9,7 @@ from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q, 
 from django.db.models.functions import Coalesce, TruncMonth
 
 from odoo_app.models import AccountMove, PurchaseOrder, SalesOrder, SalesOrderLine, StockQuant
+from odoo_app.models.purchase_order_line import PurchaseOrderLine
 
 
 def _to_float(value: Any) -> float:
@@ -290,6 +291,23 @@ class KPIService:
                 if r["month"]
             ]
 
+            tenant_sales = list(
+                sales.annotate(month=TruncMonth("date_order"))
+                .values("month", "tenant__name")
+                .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))
+                .order_by("month")
+            )
+            
+            tenant_revenue = []
+            for row in tenant_sales:
+                if not row["month"]:
+                    continue
+                tenant_revenue.append({
+                    "month": row["month"].strftime("%Y-%m"),
+                    "tenant_name": row["tenant__name"] or "Unknown Tenant",
+                    "revenue": _to_float(row["revenue"])
+                })
+
             return {
                 "trends": {
                     "revenue": revenue_trend,
@@ -301,7 +319,7 @@ class KPIService:
                     "late_delivery": [],
                     "invoiced": [],
                     "overdue_ar": [],
-                    "tenant_revenue": revenue_trend,
+                    "tenant_revenue": tenant_revenue,
                 },
                 "revenue": revenue_trend,
                 "profit": profit_trend,
@@ -449,3 +467,261 @@ class KPIService:
             return {"items": items, "currencies": items, "base_currency": items[0]["currency"] if items else "USD"}
 
         return await asyncio.to_thread(_get)
+
+    @staticmethod
+    def _apply_period(qs, period: str, target_date: date):
+        """Filter queryset to the requested period window."""
+        if period == "today":
+            return qs.filter(date_order__date=target_date)
+        elif period == "monthly":
+            return qs.filter(date_order__year=target_date.year, date_order__month=target_date.month)
+        elif period == "yearly":
+            return qs.filter(date_order__year=target_date.year)
+        return qs
+
+    @staticmethod
+    def _so_line_to_item(line) -> dict[str, Any]:
+        product = line.product
+        return {
+            "id": line.id,
+            "odoo_id": line.odoo_id,
+            "product_id": line.product_id,
+            "product_name": product.name if product else "",
+            "product_code": getattr(product, "default_code", "") or "",
+            "quantity": _to_float(line.product_uom_qty),
+            "qty_delivered": _to_float(line.qty_delivered),
+            "qty_invoiced": _to_float(line.qty_invoiced),
+            "price_unit": _to_float(line.price_unit),
+            "price_subtotal": _to_float(line.price_subtotal),
+            "price_total": _to_float(line.price_total),
+            "discount": _to_float(line.discount),
+            "margin": _to_float(line.margin),
+            "purchase_price": _to_float(line.purchase_price),
+        }
+
+    @staticmethod
+    def _so_to_item(order: SalesOrder) -> dict[str, Any]:
+        partner = order.partner
+        company = order.company
+        order_lines = list(order.lines.all())
+        categories = list(dict.fromkeys(
+            line.product.name for line in order_lines if line.product and line.product.name
+        ))
+        return {
+            "id": order.id,
+            "odoo_id": order.odoo_id,
+            "name": order.odoo_name or "",
+            "amount": _to_float(order.amount_total),
+            "amount_total": _to_float(order.amount_total),
+            "amount_untaxed": _to_float(order.amount_untaxed),
+            "amount_tax": _to_float(order.amount_tax),
+            "source": partner.name if partner else "Unknown Customer",
+            "partner_name": partner.name if partner else "",
+            "company_name": company.name if company else "",
+            "tenant_id": str(order.tenant_id),
+            "tenant_name": order.tenant.name if order.tenant else "",
+            "categories": categories,
+            "category_summary": ", ".join(categories) if categories else "Uncategorized",
+            "date": order.date_order.date().isoformat() if order.date_order else None,
+            "time": order.date_order.isoformat() if order.date_order else None,
+            "state": order.state,
+            "invoice_status": order.invoice_status,
+            "currency_code": order.currency_code,
+            "type": "revenue",
+            "lines": [KPIService._so_line_to_item(l) for l in order_lines],
+            "line_count": len(order_lines),
+        }
+
+    @staticmethod
+    def _po_line_to_item(line) -> dict[str, Any]:
+        product = line.product
+        return {
+            "id": line.id,
+            "odoo_id": line.odoo_id,
+            "product_id": line.product_id,
+            "product_name": product.name if product else (line.name or ""),
+            "product_code": getattr(product, "default_code", "") or "",
+            "description": line.name or "",
+            "quantity": _to_float(line.product_qty),
+            "qty_received": _to_float(line.qty_received),
+            "qty_invoiced": _to_float(line.qty_invoiced),
+            "price_unit": _to_float(line.price_unit),
+            "price_subtotal": _to_float(line.price_subtotal),
+            "price_total": _to_float(line.price_total),
+            "date_planned": line.date_planned.isoformat() if line.date_planned else None,
+        }
+
+    @staticmethod
+    def _po_to_item(order: PurchaseOrder) -> dict[str, Any]:
+        partner = order.partner
+        company = order.company
+        order_lines = list(order.lines.all())  # prefetched — no extra queries
+        categories = list(dict.fromkeys(
+            line.product.name for line in order_lines if line.product and line.product.name
+        ))
+        return {
+            "id": order.id,
+            "odoo_id": order.odoo_id,
+            "name": order.odoo_name or "",
+            "amount": _to_float(order.amount_total),
+            "amount_total": _to_float(order.amount_total),
+            "amount_untaxed": _to_float(order.amount_untaxed),
+            "amount_tax": _to_float(order.amount_tax),
+            "source": partner.name if partner else "Unknown Vendor",
+            "partner_name": partner.name if partner else "",
+            "company_name": company.name if company else "",
+            "tenant_id": str(order.tenant_id),
+            "tenant_name": order.tenant.name if order.tenant else "",
+            "categories": categories,
+            "category_summary": ", ".join(categories) if categories else "Uncategorized",
+            "date": order.date_order.date().isoformat() if order.date_order else None,
+            "time": order.date_order.isoformat() if order.date_order else None,
+            "state": order.state,
+            "invoice_status": order.invoice_status,
+            "currency_code": order.currency_code,
+            "type": "expense",
+            "lines": [KPIService._po_line_to_item(l) for l in order_lines],
+            "line_count": len(order_lines),
+        }
+
+    @staticmethod
+    async def get_period_detail(
+        kind: str,   # "revenues" | "expenses" | "profits"
+        period: str, # "today"    | "monthly"  | "yearly"
+        date_str: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Return itemised breakdown of revenues / expenses / profits for the
+        requested period, summed across ALL tenants (same data source as
+        KPI overview so the numbers match).
+        
+        Uses DB aggregation for totals, and limit/offset for items.
+        """
+        def _fetch():
+            from django.db.models import Prefetch, Sum, Count
+            from django.db.models.functions import Coalesce
+            from decimal import Decimal
+            from odoo_app.models.sales_order_line import SalesOrderLine as SOLine
+            from odoo_app.models.purchase_order_line import PurchaseOrderLine as POLine
+
+            target_date = date.today()
+            if date_str:
+                try:
+                    target_date = date.fromisoformat(date_str)
+                except ValueError:
+                    pass
+
+            revenue_items: list[dict] = []
+            expense_items: list[dict] = []
+            
+            total_revenue = 0.0
+            total_expenses = 0.0
+            revenue_count = 0
+            expense_count = 0
+            
+            tenant_map: dict[str, dict] = {}
+
+            def _get_tenant(tid: str, tname: str):
+                if tid not in tenant_map:
+                    tenant_map[tid] = {
+                        "tenant_id": tid,
+                        "tenant_name": tname or tid,
+                        "revenue_amount": 0.0,
+                        "expense_amount": 0.0,
+                        "revenue_count": 0,
+                        "expense_count": 0,
+                    }
+                return tenant_map[tid]
+
+            # ── Revenues (SalesOrder + SalesOrderLines) ──────────────
+            if kind in ("revenues", "profits"):
+                so_qs = SalesOrder.objects.filter(state__in=["sale", "done"])
+                so_qs = KPIService._apply_period(so_qs, period, target_date)
+                
+                # Global Aggregates
+                so_agg = so_qs.aggregate(amount=Coalesce(Sum("amount_total"), Decimal("0")), count=Count("id"))
+                total_revenue = _to_float(so_agg["amount"])
+                revenue_count = _to_int(so_agg["count"])
+                
+                # Tenant Aggregates
+                so_tenant_agg = so_qs.values("tenant_id", "tenant__name").annotate(
+                    amount=Coalesce(Sum("amount_total"), Decimal("0")),
+                    count=Count("id")
+                )
+                for t in so_tenant_agg:
+                    tm = _get_tenant(str(t["tenant_id"]), t["tenant__name"])
+                    tm["revenue_amount"] += _to_float(t["amount"])
+                    tm["revenue_count"] += _to_int(t["count"])
+
+                # Items Pagination
+                so_page = (
+                    so_qs
+                    .select_related("partner", "company", "tenant")
+                    .prefetch_related(
+                        Prefetch("lines", queryset=SOLine.objects.select_related("product"))
+                    )
+                    .order_by("-date_order", "-id")
+                )[offset : offset + limit]
+                revenue_items = [KPIService._so_to_item(o) for o in so_page]
+
+            # ── Expenses (PurchaseOrder + PurchaseOrderLines) ─────────
+            if kind in ("expenses", "profits"):
+                po_qs = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
+                po_qs = KPIService._apply_period(po_qs, period, target_date)
+                
+                # Global Aggregates
+                po_agg = po_qs.aggregate(amount=Coalesce(Sum("amount_total"), Decimal("0")), count=Count("id"))
+                total_expenses = _to_float(po_agg["amount"])
+                expense_count = _to_int(po_agg["count"])
+                
+                # Tenant Aggregates
+                po_tenant_agg = po_qs.values("tenant_id", "tenant__name").annotate(
+                    amount=Coalesce(Sum("amount_total"), Decimal("0")),
+                    count=Count("id")
+                )
+                for t in po_tenant_agg:
+                    tm = _get_tenant(str(t["tenant_id"]), t["tenant__name"])
+                    tm["expense_amount"] += _to_float(t["amount"])
+                    tm["expense_count"] += _to_int(t["count"])
+
+                # Items Pagination
+                po_page = (
+                    po_qs
+                    .select_related("partner", "company", "tenant")
+                    .prefetch_related(
+                        Prefetch("lines", queryset=POLine.objects.select_related("product"))
+                    )
+                    .order_by("-date_order", "-id")
+                )[offset : offset + limit]
+                expense_items = [KPIService._po_to_item(o) for o in po_page]
+
+            # ── Format Response ─────────────────────────────────────────
+            net_profit = total_revenue - total_expenses
+
+            tenants = []
+            for t in tenant_map.values():
+                t["net_profit"] = t["revenue_amount"] - t["expense_amount"]
+                t["total_count"] = t["revenue_count"] + t["expense_count"]
+                tenants.append(t)
+
+            return {
+                "period": period,
+                "kind": kind,
+                "date": target_date.isoformat(),
+                "limit": limit,
+                "offset": offset,
+                "grand_revenue_amount": total_revenue,
+                "grand_expense_amount": total_expenses,
+                "grand_net_profit": net_profit,
+                "grand_total_count": revenue_count + expense_count,
+                "revenue_count": revenue_count,
+                "expense_count": expense_count,
+                "items": revenue_items if kind == "revenues" else (expense_items if kind == "expenses" else revenue_items + expense_items),
+                "revenues": revenue_items,
+                "expenses": expense_items,
+                "tenants": tenants,
+            }
+
+        return await asyncio.to_thread(_fetch)

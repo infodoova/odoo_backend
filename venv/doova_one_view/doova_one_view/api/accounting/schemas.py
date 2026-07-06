@@ -89,3 +89,180 @@ class SearchRequest(BaseModel):
     offset: int = Field(0, ge=0)
     company_id: Optional[int] = None
     companies: Optional[Union[str, int, List[Union[str, int]]]] = None
+
+
+# ---------------------------------------------------------------------------
+# Today's Expenses response schemas
+# ---------------------------------------------------------------------------
+
+class ExpenseProduct(BaseModel):
+    """Product details on an expense line."""
+    id: Optional[int] = None
+    odoo_id: Optional[int] = None
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    default_code: Optional[str] = None
+    barcode: Optional[str] = None
+    product_type: Optional[str] = None
+    list_price: Optional[float] = None
+    standard_price: Optional[float] = None
+    uom_name: Optional[str] = None
+
+
+class ExpensePartner(BaseModel):
+    """Partner (vendor) details on an expense line."""
+    id: Optional[int] = None
+    odoo_id: Optional[int] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    country_code: Optional[str] = None
+    city: Optional[str] = None
+    is_customer: bool = False
+    is_supplier: bool = False
+
+
+class ExpenseCompany(BaseModel):
+    """Company details on an expense line."""
+    id: Optional[int] = None
+    odoo_id: Optional[int] = None
+    name: Optional[str] = None
+    currency_code: Optional[str] = None
+    country_code: Optional[str] = None
+
+
+class ExpenseLineItem(BaseModel):
+    """A single line within a vendor bill expense."""
+    id: int = Field(..., description="Internal database ID of the line")
+    odoo_id: int = Field(..., description="Odoo source ID of the line")
+    account_id: Optional[int] = Field(None, description="Account ID (if available)")
+    account_name: Optional[str] = Field(None, description="Expense account name, e.g. 'Travel Expense'")
+    account_code: Optional[str] = Field(None, description="Expense account code, e.g. '6301'")
+    account_type: Optional[str] = Field(None, description="Account type, e.g. 'expense'")
+    name: Optional[str] = Field(None, description="Line description / product name")
+    quantity: float = Field(0.0, description="Quantity of the item")
+    price_unit: float = Field(0.0, description="Unit price")
+    price_subtotal: float = Field(0.0, description="Line subtotal (qty × unit price)")
+    price_total: float = Field(0.0, description="Same as price_subtotal")
+    debit: float = Field(0.0, description="Debit amount in accounting entry")
+    credit: float = Field(0.0, description="Credit amount in accounting entry")
+    balance: float = Field(0.0, description="Net balance (debit - credit)")
+    amount_currency: float = Field(0.0, description="Amount in the document's currency")
+    currency: Optional[str] = Field(None, description="Currency code")
+    currency_code: Optional[str] = Field(None, description="Currency code (alias)")
+    product: Optional[ExpenseProduct] = Field(None, description="Linked product, if any")
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    partner: Optional[ExpensePartner] = Field(None, description="Linked partner/vendor, if any")
+    partner_id: Optional[int] = None
+    partner_name: Optional[str] = None
+    company: Optional[ExpenseCompany] = Field(None, description="Company this line belongs to")
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    synced_at: Optional[str] = Field(None, description="Last sync timestamp (ISO datetime)")
+
+
+class ExpenseItem(BaseModel):
+    """A single vendor bill (expense) with its line items."""
+    id: int = Field(..., description="Internal database ID of the invoice")
+    odoo_id: int = Field(..., description="Odoo source ID of the invoice")
+    name: str = Field(..., description="Invoice reference, e.g. 'BILL/2026/07/0042'")
+    amount: float = Field(..., description="Total invoice amount")
+    source: str = Field(..., description="Vendor name, e.g. 'Office Depot'")
+    categories: List[str] = Field(
+        default_factory=list,
+        description="List of expense account names from the invoice lines"
+    )
+    category_summary: str = Field(
+        ...,
+        description="Categories joined as a comma-separated string, e.g. 'Travel Expense, Utilities'"
+    )
+    date: Optional[str] = Field(None, description="Invoice date (YYYY-MM-DD)")
+    time: Optional[str] = Field(None, description="Last sync timestamp (ISO datetime)")
+    lines: List[ExpenseLineItem] = Field(
+        default_factory=list,
+        description="Full line-item breakdown of this invoice"
+    )
+
+
+class TenantExpenses(BaseModel):
+    """Expenses for a single tenant."""
+    tenant_id: str = Field(..., description="UUID of the tenant")
+    tenant_name: str = Field(..., description="Display name of the tenant")
+    date: Optional[str] = Field(None, description="The queried date (YYYY-MM-DD)")
+    total_count: int = Field(..., description="Number of expense invoices for this tenant")
+    total_amount: float = Field(..., description="Sum of all expense amounts for this tenant")
+    items: List[ExpenseItem] = Field(
+        default_factory=list,
+        description="Individual expense invoices for this tenant"
+    )
+
+
+class AllTenantsExpensesResponse(BaseModel):
+    """Full response of today's expenses across all user tenants."""
+    date: Optional[str] = Field(None, description="The queried date (YYYY-MM-DD)")
+    grand_total_count: int = Field(..., description="Total expense invoices across all tenants")
+    grand_total_amount: float = Field(..., description="Total expense amount across all tenants")
+    tenants: List[TenantExpenses] = Field(
+        default_factory=list,
+        description="Per-tenant expense breakdown. Each entry contains that tenant's invoices."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Revenues & Profits response schemas
+# ---------------------------------------------------------------------------
+
+class TenantRevenues(BaseModel):
+    """Revenues for a single tenant."""
+    tenant_id: str = Field(..., description="UUID of the tenant")
+    tenant_name: str = Field(..., description="Display name of the tenant")
+    date: Optional[str] = Field(None, description="The queried date (YYYY-MM-DD)")
+    total_count: int = Field(..., description="Number of revenue invoices for this tenant")
+    total_amount: float = Field(..., description="Sum of all revenue amounts for this tenant")
+    items: List[ExpenseItem] = Field(
+        default_factory=list,
+        description="Individual revenue invoices for this tenant"
+    )
+
+
+class AllTenantsRevenuesResponse(BaseModel):
+    """Full response of revenues across all user tenants."""
+    date: Optional[str] = Field(None, description="The queried date (YYYY-MM-DD)")
+    grand_total_count: int = Field(..., description="Total revenue invoices across all tenants")
+    grand_total_amount: float = Field(..., description="Total revenue amount across all tenants")
+    tenants: List[TenantRevenues] = Field(
+        default_factory=list,
+        description="Per-tenant revenue breakdown"
+    )
+
+
+class TenantProfits(BaseModel):
+    """Profits (revenues & expenses combined) for a single tenant."""
+    tenant_id: str = Field(..., description="UUID of the tenant")
+    tenant_name: str = Field(..., description="Display name of the tenant")
+    date: Optional[str] = Field(None, description="The queried date (YYYY-MM-DD)")
+    total_count: int = Field(..., description="Total number of items (invoices & bills) for this tenant")
+    revenue_count: int = Field(..., description="Number of revenue invoices for this tenant")
+    expense_count: int = Field(..., description="Number of expense bills for this tenant")
+    revenue_amount: float = Field(..., description="Total revenue amount for this tenant")
+    expense_amount: float = Field(..., description="Total expense amount for this tenant")
+    net_profit: float = Field(..., description="Net profit (revenue - expense) for this tenant")
+    items: List[ExpenseItem] = Field(
+        default_factory=list,
+        description="Individual invoices & bills contributing to this profit"
+    )
+
+
+class AllTenantsProfitsResponse(BaseModel):
+    """Full response of profits across all user tenants."""
+    date: Optional[str] = Field(None, description="The queried date (YYYY-MM-DD)")
+    grand_revenue_amount: float = Field(..., description="Grand total revenue across all tenants")
+    grand_expense_amount: float = Field(..., description="Grand total expenses across all tenants")
+    grand_net_profit: float = Field(..., description="Grand net profit across all tenants")
+    grand_total_count: int = Field(..., description="Total number of transactions across all tenants")
+    tenants: List[TenantProfits] = Field(
+        default_factory=list,
+        description="Per-tenant profit breakdown"
+    )
+
