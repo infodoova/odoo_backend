@@ -33,4 +33,7 @@ from odoo_app.models.agent import *
 from odoo_app.models.password_reset_otp import *
 from odoo_app.models.report_schedule import *
 from odoo_app.models.alert_schedule import *
-
+from odoo_app.models.tenant_financial_mapping import *
+from odoo_app.models.chart_of_accounts import *
+from odoo_app.models.currency import *
+from odoo_app.models.currency_rate import *

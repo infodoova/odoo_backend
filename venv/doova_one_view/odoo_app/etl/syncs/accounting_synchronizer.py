@@ -42,7 +42,7 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             ]
             req_line_fields = [
                 'id', 'move_id', 'product_id', 'partner_id', 'company_id',
-                'account_id', 'debit', 'credit', 'balance', 'amount_currency',
+                'account_id', 'account_type', 'debit', 'credit', 'balance', 'amount_currency',
                 'currency_id', 'quantity', 'price_unit', 'price_subtotal',
                 'name', 'write_date'
             ]
@@ -149,7 +149,8 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET 
                 debit = EXCLUDED.debit, credit = EXCLUDED.credit,
-                balance = EXCLUDED.balance, odoo_write_date = EXCLUDED.odoo_write_date,
+                balance = EXCLUDED.balance, account_type = COALESCE(EXCLUDED.account_type, fact_account_move_lines.account_type),
+                odoo_write_date = EXCLUDED.odoo_write_date,
                 synced_at = NOW()
         """
         
@@ -173,11 +174,18 @@ class AccountMoveSynchronizer(BaseSynchronizer):
                 account_data = line.get('account_id')
                 account_code = None
                 account_name = None
+                account_odoo_id = None
                 if isinstance(account_data, (list, tuple)):
+                    account_odoo_id = account_data[0]
                     # Odoo often returns [id, "code name"]
                     parts = account_data[1].split(' ', 1)
                     account_code = parts[0]
                     account_name = parts[1] if len(parts) > 1 else parts[0]
+
+                # account_type: prefer direct Odoo field, fallback to CoA lookup
+                account_type = line.get('account_type') or None
+                if not account_type and account_code:
+                    account_type = self._lookup_account_type(tenant_id, account_code)
 
                 currency_data = line.get('currency_id')
                 currency_code = currency_data[1] if isinstance(currency_data, (list, tuple)) else None
@@ -185,7 +193,7 @@ class AccountMoveSynchronizer(BaseSynchronizer):
                 line_params.append((
                     tenant_id, account_move_id, line['id'], move_odoo_id,
                     product_id, partner_id, company_id, account_code,
-                    account_name, None, # account_type not easily available in first hop
+                    account_name, account_type,
                     self.transformer.parse_odoo_decimal(line.get('debit', 0)),
                     self.transformer.parse_odoo_decimal(line.get('credit', 0)),
                     self.transformer.parse_odoo_decimal(line.get('balance', 0)),
@@ -210,3 +218,40 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             line_params.clear()
         
         return len(moves), 0
+
+    def _lookup_account_type(self, tenant_id: str, account_code: str):
+        """
+        Look up account_type from the synced Chart of Accounts.
+        Uses the internal ID cache for performance.
+        """
+        cache_key = f"coa_type:{tenant_id}:{account_code}"
+        if cache_key in self._id_cache:
+            return self._id_cache[cache_key]
+
+        query = "SELECT account_type FROM dim_chart_of_accounts WHERE tenant_id = %s AND code = %s LIMIT 1"
+        result = self.db.fetch_one(query, (tenant_id, account_code))
+        account_type = result[0] if result else None
+        self._id_cache[cache_key] = account_type
+        return account_type
+
+    def backfill_account_types(self, tenant_id: str) -> int:
+        """
+        Backfill account_type for existing move lines where it is NULL,
+        using the synced dim_chart_of_accounts table.
+        Call this after a Chart of Accounts sync to fix historical data.
+        """
+        query = """
+            UPDATE fact_account_move_lines l
+            SET account_type = c.account_type
+            FROM dim_chart_of_accounts c
+            WHERE l.tenant_id = c.tenant_id
+              AND l.account_code = c.code
+              AND l.tenant_id = %s
+              AND l.account_type IS NULL
+              AND c.account_type IS NOT NULL
+        """
+        self.db.execute(query, (tenant_id,))
+        updated = self.db.cursor.rowcount
+        self.db.conn.commit()
+        logger.info(f"Backfilled account_type for {updated} move lines (tenant {tenant_id})")
+        return updated

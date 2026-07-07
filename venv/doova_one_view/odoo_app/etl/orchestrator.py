@@ -22,6 +22,8 @@ from odoo_app.etl.syncs.stock_move_synchronizer import StockMoveSynchronizer
 from odoo_app.etl.syncs.stock_quant_synchronizer import StockQuantSynchronizer
 from odoo_app.etl.syncs.accounting_synchronizer import AccountMoveSynchronizer
 from odoo_app.etl.syncs.purchase_synchronizer import PurchaseOrderSynchronizer
+from odoo_app.etl.syncs.chart_of_accounts_synchronizer import ChartOfAccountsSynchronizer
+from odoo_app.etl.syncs.currency_rate_synchronizer import CurrencyRateSynchronizer
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,8 @@ class ETLOrchestrator:
         self.sales_order_sync = SalesOrderSynchronizer(self.odoo, self.db)
         self.purchase_order_sync = PurchaseOrderSynchronizer(self.odoo, self.db)
         self.account_move_sync = AccountMoveSynchronizer(self.odoo, self.db)
+        self.chart_of_accounts_sync = ChartOfAccountsSynchronizer(self.odoo, self.db)
+        self.currency_rate_sync = CurrencyRateSynchronizer(self.odoo, self.db)
     
     def _acquire_lock(self, tenant_id: str) -> bool:
         """
@@ -105,7 +109,9 @@ class ETLOrchestrator:
                 ('partners', 'res.partner', self.partner_sync),
                 ('users', 'res.users', self.user_sync),
                 ('lots', 'stock.lot', self.lot_sync),
-                ('currencies', 'res.currency', self.currency_sync)
+                ('currencies', 'res.currency', self.currency_sync),
+                ('chart_of_accounts', 'account.account', self.chart_of_accounts_sync),
+                ('currency_rates', 'res.currency.rate', self.currency_rate_sync)
             ]
             
             # Sync Time Dimension first (no odoo model)
@@ -139,6 +145,10 @@ class ETLOrchestrator:
                 results['phases'][key] = {'synced': synced, 'failed': failed}
                 self.db.log_sync_completion(log_id, synced, failed)
                 logger.info(f"{key.capitalize()}: {synced} synced, {failed} failed")
+
+            # 4.5. Backfill Account Types
+            logger.info("=== Backfilling Account Types ===")
+            self.account_move_sync.backfill_account_types(tenant_id)
             
             # 5. Release Lock (Success)
             self._release_lock(tenant_id, 'active')
@@ -181,7 +191,10 @@ class ETLOrchestrator:
                 ('products', 'product.product', self.product_sync),
                 ('partners', 'res.partner', self.partner_sync),
                 ('users', 'res.users', self.user_sync),
-                ('lots', 'stock.lot', self.lot_sync)
+                ('lots', 'stock.lot', self.lot_sync),
+                ('currencies', 'res.currency', self.currency_sync),
+                ('chart_of_accounts', 'account.account', self.chart_of_accounts_sync),
+                ('currency_rates', 'res.currency.rate', self.currency_rate_sync)
             ]
 
             logger.info("--- Phase 1: Dimension Delta ---")
@@ -221,6 +234,10 @@ class ETLOrchestrator:
                     synced, failed = sync_obj.sync(tenant_id)
                     results['phases'][key] = {'synced': synced, 'failed': failed, 'type': 'full'}
                     self.db.log_sync_completion(log_id, synced, failed)
+
+            # 2.5 Backfill Account Types for any new lines that missed it
+            logger.info("--- Backfilling Account Types ---")
+            self.account_move_sync.backfill_account_types(tenant_id)
 
             # 3. Always sync quants in full as they are state, not transactions
             logger.info("--- Phase 3: Inventory State ---")

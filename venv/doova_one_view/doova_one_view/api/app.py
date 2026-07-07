@@ -14,6 +14,23 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "doova_one_view.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
+# --- PATCH ASYNCIO.TO_THREAD TO PREVENT DJANGO DB CONNECTION LEAKS ---
+import asyncio
+from django.db import close_old_connections
+
+_original_to_thread = asyncio.to_thread
+
+async def _patched_to_thread(func, /, *args, **kwargs):
+    def wrapper():
+        try:
+            return func(*args, **kwargs)
+        finally:
+            close_old_connections()
+    return await _original_to_thread(wrapper)
+
+asyncio.to_thread = _patched_to_thread
+# ----------------------------------------------------------------------
+
 from doova_one_view.api.config import settings
 from doova_one_view.api.middleware import logging_middleware
 from doova_one_view.api.auth.routes import router as auth_router
