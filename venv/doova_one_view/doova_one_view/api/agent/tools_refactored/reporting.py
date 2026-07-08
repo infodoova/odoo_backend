@@ -374,23 +374,39 @@ def _health_score_card(score: float, revenue: float, usable_width: float) -> Tab
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 def generate_report_tool(
-    tenant_id: str,
+    tenant_id: str, 
+    custom_content: str = "", 
     company_id: int | None = None,
-    company_ids: list[int] | None = None,
-    custom_content: str | None = None,
+    base_currency: str | None = None
 ) -> dict:
+    from ..utils import get_tenant_currency
+    
+    # In some places company_id string might slip in, parse properly in future
     resolved_company_id = company_id
-    if company_ids:
-        resolved_company_id = company_ids[0] if len(company_ids) == 1 else None
+    
+    # If the user did not provide custom Markdown, auto-generate a generic executive summary.
+    # We fetch a couple quick data points from other tools.
+    if not custom_content.strip():
+        try:
+            sales  = get_sales_summary_tool(tenant_id, resolved_company_id, base_currency=base_currency)
+            health = get_business_health_score_tool(tenant_id, resolved_company_id, base_currency=base_currency)
+            
+            currency = base_currency or get_tenant_currency(tenant_id, resolved_company_id)
+            rev = sales.get('total_revenue', 0)
+            score = health.get('business_health_score', 0)
+            
+            custom_content = f"""
+## Automated Summary
+The business is currently operating with a health score of **{score}/100** and generated **{rev:,.2f} {currency}** in revenue during this period.
+            """
+        except Exception as e:
+            custom_content = f"Failed to generate summary: {str(e)}"
 
     reports_dir = Path('reports')
     reports_dir.mkdir(exist_ok=True)
     generated = datetime.now().strftime('%B %d, %Y %H:%M')
     filename = f"business_report_{tenant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     path = reports_dir / filename
-
-    sales  = get_sales_summary_tool(tenant_id, resolved_company_id)
-    health = get_business_health_score_tool(tenant_id, resolved_company_id)
 
     w, _ = letter
     left_margin = right_margin = 44

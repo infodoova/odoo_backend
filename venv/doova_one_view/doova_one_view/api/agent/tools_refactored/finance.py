@@ -1,6 +1,6 @@
 # api/agent/tools_refactored/finance.py
 
-from .common import run_query, normalize_company_ids, build_company_filter_sql, calculate_ratio
+from .common import run_query, normalize_company_ids, build_company_filter_sql, calculate_ratio, build_currency_case_sql
 from .sales import get_sales_summary_tool
 from .inventory import get_inventory_efficiency_tool
 
@@ -9,7 +9,9 @@ from .inventory import get_inventory_efficiency_tool
 # 1. ACCOUNTS RECEIVABLE
 # ──────────────────────────────────────────────
 
-def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10) -> dict:
+def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    amount_m_col = build_currency_case_sql('m.amount_total', tenant_id, base_currency, 'm.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
     f_sql_m, f_params_m = build_company_filter_sql(tenant_id, company_id, column_name="m.company_id")
@@ -18,8 +20,8 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
 
     summary = run_query(
         f"""SELECT 
-                COALESCE(SUM(amount_total), 0) AS total_receivables,
-                COALESCE(SUM(amount_total) FILTER (WHERE invoice_date_due < CURRENT_DATE), 0) AS overdue
+                COALESCE(SUM({amount_col}), 0) AS total_receivables,
+                COALESCE(SUM({amount_col}) FILTER (WHERE invoice_date_due < CURRENT_DATE), 0) AS overdue
             FROM fact_account_moves
             WHERE tenant_id = :tenant_id
               AND move_type = 'out_invoice'
@@ -30,7 +32,7 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
     )[0]
 
     customer_rows = run_query(
-        f"""SELECT p.name AS partner_name, COALESCE(SUM(m.amount_total), 0) AS overdue_amount
+        f"""SELECT p.name AS partner_name, COALESCE(SUM({amount_m_col}), 0) AS overdue_amount
             FROM fact_account_moves m
             JOIN dim_partners p ON m.partner_id = p.odoo_id AND m.tenant_id = p.tenant_id
             WHERE m.tenant_id = :tenant_id
@@ -65,7 +67,9 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
 # 2. ACCOUNTS PAYABLE
 # ──────────────────────────────────────────────
 
-def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10) -> dict:
+def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    amount_m_col = build_currency_case_sql('m.amount_total', tenant_id, base_currency, 'm.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
     f_sql_m, f_params = build_company_filter_sql(tenant_id, company_id, column_name="m.company_id")
@@ -73,8 +77,8 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, li
 
     summary = run_query(
         f"""SELECT 
-                COALESCE(SUM(amount_total), 0) AS total_payables,
-                COALESCE(SUM(amount_total) FILTER (WHERE invoice_date_due < CURRENT_DATE), 0) AS overdue
+                COALESCE(SUM({amount_col}), 0) AS total_payables,
+                COALESCE(SUM({amount_col}) FILTER (WHERE invoice_date_due < CURRENT_DATE), 0) AS overdue
             FROM fact_account_moves
             WHERE tenant_id = :tenant_id
               AND move_type = 'in_invoice'
@@ -85,7 +89,7 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, li
     )[0]
 
     vendor_rows = run_query(
-        f"""SELECT p.name AS partner_name, COALESCE(SUM(m.amount_total), 0) AS overdue_amount
+        f"""SELECT p.name AS partner_name, COALESCE(SUM({amount_m_col}), 0) AS overdue_amount
             FROM fact_account_moves m
             JOIN dim_partners p ON m.partner_id = p.odoo_id AND m.tenant_id = p.tenant_id
             WHERE m.tenant_id = :tenant_id
@@ -118,7 +122,8 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, li
 # 12. EXPENSE BREAKDOWN BY CATEGORY
 # ──────────────────────────────────────────────
 
-def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 20) -> dict:
+def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 20, base_currency: str | None = None) -> dict:
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
@@ -134,7 +139,7 @@ def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, st
     rows = run_query(
         f"""SELECT
                 l.account_name AS category,
-                COALESCE(SUM(l.balance), 0) AS amount
+                COALESCE(SUM({balance_col}), 0) AS amount
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id
@@ -162,7 +167,8 @@ def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, st
 # 13. TAX LIABILITY ESTIMATION
 # ──────────────────────────────────────────────
 
-def get_tax_summary_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_tax_summary_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
     params.update(f_params)
@@ -203,13 +209,13 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
 
     # 1. Unbalanced journal entries (debit != credit)
     unbalanced = run_query(
-        f"""SELECT m.id::text AS move_ref, SUM(l.debit) AS total_debit, SUM(l.credit) AS total_credit,
-                ABS(SUM(l.debit) - SUM(l.credit)) AS variance
+        f"""SELECT m.id::text AS move_ref, SUM({debit_col}) AS total_debit, SUM({credit_col}) AS total_credit,
+                ABS(SUM({debit_col}) - SUM({credit_col})) AS variance
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql}
             GROUP BY m.id
-            HAVING ABS(SUM(l.debit) - SUM(l.credit)) > 0.01
+            HAVING ABS(SUM({debit_col}) - SUM({credit_col})) > 0.01
             ORDER BY variance DESC
             LIMIT :limit""",
         params,
@@ -253,7 +259,8 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
 # 15. MULTI-PERIOD COMPARISON (YoY / QoQ)
 # ──────────────────────────────────────────────
 
-def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month") -> dict:
+def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
     params.update(f_params)
@@ -298,7 +305,9 @@ def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, gr
 # 3. CASH FLOW HEALTH (Now uses real AP data)
 # ──────────────────────────────────────────────
 
-def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
     ar = get_receivables_analysis_tool(tenant_id, company_id)
     ap = get_payables_analysis_tool(tenant_id, company_id)
 
@@ -326,7 +335,8 @@ def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None) -> 
 # 4. AR/AP AGING BUCKETS
 # ──────────────────────────────────────────────
 
-def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, direction: str = "receivable") -> dict:
+def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, direction: str = "receivable", base_currency: str | None = None) -> dict:
+    residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
     move_type = "out_invoice" if direction == "receivable" else "in_invoice"
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
@@ -423,18 +433,19 @@ def analyze_profitability_tool(tenant_id: str, company_id: int | None = None) ->
 # 6. BALANCE SHEET
 # ──────────────────────────────────────────────
 
-def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
 
     rows = run_query(
         f"""SELECT
-                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('asset_receivable', 'asset_current', 'bank_and_cash')), 0) AS current_assets,
-                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('asset_non_current', 'asset_fixed')), 0) AS non_current_assets,
-                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('liability_current', 'liability_payable')), 0) * -1 AS current_liabilities,
-                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('liability_non_current')), 0) * -1 AS non_current_liabilities,
-                COALESCE(SUM(l.balance) FILTER (WHERE l.account_type IN ('equity', 'equity_unaffected')), 0) * -1 AS total_equity
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_receivable', 'asset_current', 'bank_and_cash')), 0) AS current_assets,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_non_current', 'asset_fixed')), 0) AS non_current_assets,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_current', 'liability_payable')), 0) * -1 AS current_liabilities,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_non_current')), 0) * -1 AS non_current_liabilities,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('equity', 'equity_unaffected')), 0) * -1 AS total_equity
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id
@@ -471,7 +482,8 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None) -> dic
 # 7. TRIAL BALANCE
 # ──────────────────────────────────────────────
 
-def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit: int = 50) -> dict:
+def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit: int = 50, base_currency: str | None = None) -> dict:
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)
@@ -480,9 +492,9 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit:
         f"""SELECT
                 l.account_code,
                 l.account_name,
-                COALESCE(SUM(l.debit), 0) AS total_debit,
-                COALESCE(SUM(l.credit), 0) AS total_credit,
-                COALESCE(SUM(l.balance), 0) AS balance
+                COALESCE(SUM({debit_col}), 0) AS total_debit,
+                COALESCE(SUM({credit_col}), 0) AS total_credit,
+                COALESCE(SUM({balance_col}), 0) AS balance
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id
@@ -521,7 +533,10 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit:
 # 8. FINANCIAL RATIOS DASHBOARD
 # ──────────────────────────────────────────────
 
-def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     bs = get_balance_sheet_tool(tenant_id, company_id)
     pnl = calculate_pnl_tool(tenant_id, company_id)
 
@@ -558,7 +573,8 @@ def _assess_ratios(current_ratio: float, debt_to_equity: float) -> str:
 # 9. WORKING CAPITAL
 # ──────────────────────────────────────────────
 
-def get_working_capital_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_working_capital_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     bs = get_balance_sheet_tool(tenant_id, company_id)
     wc = bs["current_assets"] - bs["current_liabilities"]
     wc_ratio = calculate_ratio(bs["current_assets"], bs["current_liabilities"])
@@ -577,7 +593,10 @@ def get_working_capital_tool(tenant_id: str, company_id: int | None = None) -> d
 # 10. BUSINESS HEALTH SCORE (Real weighted scoring)
 # ──────────────────────────────────────────────
 
-def get_business_health_score_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_business_health_score_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
     pnl = calculate_pnl_tool(tenant_id, company_id)
     ar = get_receivables_analysis_tool(tenant_id, company_id)
     bs = get_balance_sheet_tool(tenant_id, company_id)
@@ -609,7 +628,8 @@ def get_business_health_score_tool(tenant_id: str, company_id: int | None = None
 # 11. CUSTOMER METRICS (Real SQL)
 # ──────────────────────────────────────────────
 
-def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, limit: int = 10) -> dict:
+def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('s.amount_total', tenant_id, base_currency, 's.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="s.company_id")
     params.update(f_params)
@@ -635,7 +655,7 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, lim
 
     # Top customers by revenue
     top = run_query(
-        f"""SELECT p.name AS partner_name, COUNT(*) AS orders, COALESCE(SUM(s.amount_total), 0) AS revenue
+        f"""SELECT p.name AS partner_name, COUNT(*) AS orders, COALESCE(SUM({amount_col}), 0) AS revenue
             FROM fact_sales_orders s
             JOIN dim_partners p ON s.partner_id = p.odoo_id AND s.tenant_id = p.tenant_id
             WHERE s.tenant_id = :tenant_id AND s.state IN ('sale', 'done') {f_sql}

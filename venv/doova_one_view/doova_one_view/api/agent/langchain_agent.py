@@ -89,20 +89,9 @@ class DoovaLangChainAgent:
         try:
             from .utils import get_tenant_currency, fix_currency_symbols
 
-            # Resolve company_id: if not provided, fall back to the first active company
-            # for this tenant so the prompt always renders an integer, never the string "None".
             resolved_company_id = company_id
             if resolved_company_id is None:
-                try:
-                    from odoo_app.models.company import Company
-                    resolved_company_id = (
-                        Company.objects
-                        .filter(tenant_id=tenant_id, is_active=True)
-                        .values_list("id", flat=True)
-                        .first()
-                    )
-                except Exception:
-                    resolved_company_id = None
+                resolved_company_id = "All Companies"
 
             currency = get_tenant_currency(tenant_id, resolved_company_id)
 

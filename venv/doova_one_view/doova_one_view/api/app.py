@@ -25,7 +25,8 @@ async def _patched_to_thread(func, /, *args, **kwargs):
         try:
             return func(*args, **kwargs)
         finally:
-            close_old_connections()
+            from django.db import connections
+            connections.close_all()
     return await _original_to_thread(wrapper)
 
 asyncio.to_thread = _patched_to_thread

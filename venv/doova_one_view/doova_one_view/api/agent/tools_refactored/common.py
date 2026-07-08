@@ -25,7 +25,7 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None) -> di
                 name,
                 'Not Specified' AS industry,
                 'Not Specified' AS company_type,
-                COALESCE(currency_name, 'USD') AS currency
+                COALESCE(currency_name, currency_code, 'USD') AS currency
             FROM dim_companies
             WHERE tenant_id = :tenant_id {company_f_sql}
             LIMIT 5""",
@@ -124,3 +124,52 @@ def generate_pdf(text: str, filename: str = "output.pdf") -> str:
 
 def calculate_ratio(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator != 0 else 0.0
+
+def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | None, currency_column: str = "currency_code") -> str:
+    """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""
+    if not base_currency:
+        return column
+
+    try:
+        from doova_one_view.api.kpi.service import _get_rate_map
+        rate_map = _get_rate_map()
+        
+        # Inject the tenant's base currency with a rate of 1.0 so conversions to/from it work
+        from doova_one_view.api.agent.utils import get_tenant_currency
+        tenant_base = get_tenant_currency(tenant_id)
+        if tenant_base and tenant_base not in rate_map:
+            rate_map[tenant_base] = 1.0
+
+        if not rate_map or base_currency not in rate_map:
+            return column
+            
+        target_rate = rate_map[base_currency]
+        if target_rate == 0:
+            return column
+
+        cases = []
+        for cur_code, row_rate in rate_map.items():
+            if not cur_code or row_rate == 0:
+                continue
+                
+            # Factor to convert from cur_code to base_currency
+            # value_in_base = value_in_cur_code / row_rate
+            # value_in_target = value_in_base * target_rate
+            # therefore factor = target_rate / row_rate
+            factor = target_rate / row_rate
+            
+            # Avoid emitting " * 1.0 " if the factor is exactly 1
+            if abs(factor - 1.0) < 0.0001:
+                continue
+                
+            cases.append(f"WHEN {currency_column} = '{cur_code}' THEN {column} * {factor}")
+            
+        if not cases:
+            return column
+            
+        case_str = " ".join(cases)
+        return f"(CASE {case_str} ELSE {column} END)"
+    except Exception as e:
+        import logging
+        logging.error(f"Error building currency case sql: {e}")
+        return column

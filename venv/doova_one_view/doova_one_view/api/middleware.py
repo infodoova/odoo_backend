@@ -38,3 +38,7 @@ async def logging_middleware(request: Request, call_next):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"}
         )
+    finally:
+        # Cleanup Django database connections opened in the main async thread
+        from django.db import connections
+        connections.close_all()

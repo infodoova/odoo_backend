@@ -291,6 +291,7 @@ class InventoryService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _dashboard():
             quants = InventoryService._company_filter(

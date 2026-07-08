@@ -67,46 +67,50 @@ def tenant_profile(tenant_id: str, company_id: Optional[int] = None):
 # ── Sales Domain ─────────────────────────────
 
 @tool
-def sales_summary(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None):
-    """Get total sales revenue and order count for a given period.
+def sales_summary(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Get total sales revenue
+    Always pass the target base_currency. and order count for a given period.
     Always pass explicit ISO start_date and end_date (YYYY-MM-DD) when a time period is mentioned.
     Use for: revenue totals, order volume, period-specific sales snapshots.
     Prefer this over sales_trend when the user wants a single aggregate, not a time series."""
-    return get_sales_summary_tool(tenant_id, company_id, start_date=start_date, end_date=end_date)
+    return get_sales_summary_tool(tenant_id, company_id, start_date=start_date, end_date=end_date, base_currency=base_currency)
 
 @tool
-def top_products(tenant_id: str, company_id: Optional[int] = None, limit: int = 10):
-    """Get the top-selling products ranked by revenue, with quantities sold.
+def top_products(tenant_id: str, company_id: Optional[int] = None, limit: int = 10, base_currency: str = None):
+    """Get the top-selling products
+    Always pass the target base_currency. ranked by revenue, with quantities sold.
     Use for: 'best sellers', 'top products', 'what's driving revenue', product mix analysis.
     Increase limit beyond 10 if the user asks for a broader list (e.g., top 20, top 50)."""
-    return get_top_products_tool(tenant_id, company_id, limit=limit)
+    return get_top_products_tool(tenant_id, company_id, limit=limit, base_currency=base_currency)
 
 @tool
-def sales_trend(tenant_id: str, company_id: Optional[int] = None, granularity: str = "month"):
-    """Get sales revenue as a time series broken down by period.
+def sales_trend(tenant_id: str, company_id: Optional[int] = None, granularity: str = "month", base_currency: str = None):
+    """Get sales revenue as a time series
+    Always pass the target base_currency. broken down by period.
     granularity options: 'day', 'week', 'month' (default), 'quarter', 'year'.
     Use for: trend charts, growth trajectory, seasonality patterns, time series graphs.
     Prefer this over sales_summary when the user wants change over time, not a single total."""
-    return get_time_series_data_tool(tenant_id, company_id, granularity)
+    return get_time_series_data_tool(tenant_id, company_id, granularity, base_currency=base_currency)
 
 @tool
-def variance_analysis(tenant_id: str, company_id: Optional[int] = None):
-    """Analyze month-over-month sales variance — absolute change and percentage swing.
+def variance_analysis(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
+    """Analyze month-over-month
+    Always pass the target base_currency. sales variance — absolute change and percentage swing.
     Use for: detecting revenue spikes or drops, explaining monthly performance deviations,
     identifying which months underperformed. Run after sales_summary for deep-dive context."""
-    return analyze_variance_tool(tenant_id, company_id)
+    return analyze_variance_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def sales_forecast(tenant_id: str, company_id: Optional[int] = None):
+def sales_forecast(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Generate a forward-looking sales forecast based on historical trend data.
     Use for: projected revenue, future planning, budget gap analysis.
     Always pair the forecast output with variance_analysis to show the historical baseline."""
-    return forecast_sales_tool(tenant_id, company_id)
+    return forecast_sales_tool(tenant_id, company_id, base_currency=base_currency)
 
 # ── Finance Domain ───────────────────────────
 
 @tool
-def calculate_pnl(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None):
+def calculate_pnl(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
     """Calculate the Profit & Loss statement for a specific period.
     Returns: Total Income, COGS, Gross Profit, Operating Expenses, Net Profit, and all margin %.
     Always pass explicit ISO start_date and end_date when a period is mentioned.
@@ -115,110 +119,110 @@ def calculate_pnl(tenant_id: str, company_id: Optional[int] = None, start_date: 
     return calculate_pnl_tool(tenant_id, company_id, start_date, end_date)
 
 @tool
-def balance_sheet(tenant_id: str, company_id: Optional[int] = None):
+def balance_sheet(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Generate the Balance Sheet: Assets, Liabilities, and Equity with an A=L+E integrity check.
     Use for: net worth assessment, leverage analysis, equity position, solvency review.
     If the integrity check fails (A ≠ L+E), immediately call detect_anomalies to investigate.
     Run alongside financial_ratios for ratio-to-balance context."""
-    return get_balance_sheet_tool(tenant_id, company_id)
+    return get_balance_sheet_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def trial_balance(tenant_id: str, company_id: Optional[int] = None):
+def trial_balance(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Generate the Trial Balance with account-level debit and credit totals.
     Includes an integrity check verifying total debits = total credits.
     Use for: accounting accuracy verification, ledger review, pre-audit checks.
     If the trial balance is unbalanced, call detect_anomalies immediately."""
-    return get_trial_balance_tool(tenant_id, company_id)
+    return get_trial_balance_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def financial_ratios(tenant_id: str, company_id: Optional[int] = None):
+def financial_ratios(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Calculate all key financial ratios: Current Ratio, Quick Ratio, Debt-to-Equity,
     ROE, ROA, Gross Margin %, and Net Margin %.
     Use for: financial health scoring, benchmark comparisons, investor-level analysis.
     Always call tenant_profile first to know the correct industry benchmarks to compare against.
     Pair with business_health for a weighted composite score."""
-    return get_financial_ratios_tool(tenant_id, company_id)
+    return get_financial_ratios_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def working_capital(tenant_id: str, company_id: Optional[int] = None):
+def working_capital(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Calculate Working Capital (Current Assets minus Current Liabilities) and the WC ratio.
     Use for: short-term liquidity assessment, operational funding buffer, cash runway estimation.
     A negative working capital is a critical red flag — flag it immediately.
     Pair with cash_flow_health and aging_analysis for full liquidity context."""
-    return get_working_capital_tool(tenant_id, company_id)
+    return get_working_capital_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def receivables_analysis(tenant_id: str, company_id: Optional[int] = None):
+def receivables_analysis(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Analyze Accounts Receivable: total outstanding, overdue balance, and top overdue customers.
     Use for: collections health overview, credit risk summary, DSO context.
     Prefer aging_analysis when you need bucket distribution (30/60/90 day breakdown).
     Use this for high-level AR totals; use aging_analysis for detailed overdue structure."""
-    return get_receivables_analysis_tool(tenant_id, company_id)
+    return get_receivables_analysis_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def payables_analysis(tenant_id: str, company_id: Optional[int] = None):
+def payables_analysis(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Analyze Accounts Payable: total outstanding, overdue balance, and top overdue vendors.
     Use for: supplier payment risk, DPO context, cash outflow exposure.
     Prefer aging_analysis(direction='payable') when you need bucket-level overdue breakdown.
     Use this for high-level AP totals; use aging_analysis for detailed overdue structure."""
-    return get_payables_analysis_tool(tenant_id, company_id)
+    return get_payables_analysis_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def aging_analysis(tenant_id: str, company_id: Optional[int] = None, direction: str = "receivable"):
+def aging_analysis(tenant_id: str, company_id: Optional[int] = None, direction: str = "receivable", base_currency: str = None):
     """Get AR or AP aging bucket distribution: Current, 1–30, 31–60, 61–90, and 90+ days overdue.
     direction='receivable' for customer AR aging (default).
     direction='payable' for supplier AP aging.
     Use for: overdue collections risk, vendor payment stress, aging-based cash flow projections.
     Prefer this over receivables_analysis/payables_analysis when you need the bucket breakdown,
     not just totals. Critical for identifying if overdue concentration is in the 90+ bucket."""
-    return get_aging_analysis_tool(tenant_id, company_id, direction)
+    return get_aging_analysis_tool(tenant_id, company_id, direction, base_currency=base_currency)
 
 @tool
-def cash_flow_health(tenant_id: str, company_id: Optional[int] = None):
+def cash_flow_health(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Assess overall cash flow and liquidity health using real AR and AP balances.
     Returns: net cash position, burn rate indicators, and liquidity stress signals.
     Use for: cash runway assessment, liquidity crisis detection, short-term solvency.
     Run first in any liquidity investigation before diving into working_capital or aging."""
-    return get_cash_flow_health_tool(tenant_id, company_id)
+    return get_cash_flow_health_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def business_health(tenant_id: str, company_id: Optional[int] = None):
+def business_health(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Calculate the composite weighted business health score (0–100) across four dimensions:
     Profitability, Liquidity, Leverage, and Collections efficiency.
     Use for: executive health dashboards, overall company performance scoring, board summaries.
     Always run financial_ratios before this to have the underlying ratio context available."""
-    return get_business_health_score_tool(tenant_id, company_id)
+    return get_business_health_score_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def profitability_analysis(tenant_id: str, company_id: Optional[int] = None):
+def profitability_analysis(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Analyze gross margin and net margin with exact percentage calculations.
     Use for: margin compression detection, profitability trend context, cost structure review.
     Best run after calculate_pnl to contextualize which cost lines are driving margin changes."""
     return analyze_profitability_tool(tenant_id, company_id)
 
 @tool
-def customer_metrics(tenant_id: str, company_id: Optional[int] = None):
+def customer_metrics(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Get customer retention rate, churn risk score, and top customers ranked by revenue.
     Use for: customer concentration risk, revenue dependency analysis, churn early warning.
     If top-3 customers represent >50% of revenue, flag as high concentration risk.
     Follow with receivables_analysis and aging_analysis(receivable) to check their payment behavior."""
-    return get_customer_metrics_tool(tenant_id, company_id)
+    return get_customer_metrics_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
-def expense_breakdown(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None):
+def expense_breakdown(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
     """Get a detailed expense breakdown by category with each category's % of total spend.
     Always pass explicit ISO start_date and end_date when a period is mentioned.
     Use for: cost structure analysis, budget overrun investigation, opex vs capex split,
     identifying the largest expense drivers. Pair with calculate_pnl for full P&L context."""
-    return get_expense_breakdown_tool(tenant_id, company_id, start_date, end_date)
+    return get_expense_breakdown_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
 
 @tool
-def tax_summary(tenant_id: str, company_id: Optional[int] = None):
+def tax_summary(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
     """Calculate net tax position: Output Tax (collected from customers) minus Input Tax (paid to vendors).
     Returns net VAT/tax payable or reclaimable.
     Use for: tax liability assessment, VAT filing preparation, tax health review.
     Follow with expense_breakdown to verify deductible expense categories supporting input tax claims."""
-    return get_tax_summary_tool(tenant_id, company_id)
+    return get_tax_summary_tool(tenant_id, company_id, base_currency=base_currency)
 
 @tool
 def detect_anomalies(tenant_id: str, company_id: Optional[int] = None):
@@ -229,12 +233,12 @@ def detect_anomalies(tenant_id: str, company_id: Optional[int] = None):
     return detect_anomalies_tool(tenant_id, company_id)
 
 @tool
-def period_comparison(tenant_id: str, company_id: Optional[int] = None, granularity: str = "month"):
+def period_comparison(tenant_id: str, company_id: Optional[int] = None, granularity: str = "month", base_currency: str = None):
     """Compare revenue and order counts across consecutive periods with % change calculations.
     granularity options: 'month' (default), 'quarter', 'year'.
     Use for: MoM / QoQ / YoY comparisons, growth rate analysis, identifying peak periods.
     Prefer this over sales_trend when the user wants relative change %, not raw time series values."""
-    return get_period_comparison_tool(tenant_id, company_id, granularity)
+    return get_period_comparison_tool(tenant_id, company_id, granularity, base_currency=base_currency)
 
 # ── Inventory Domain ─────────────────────────
 

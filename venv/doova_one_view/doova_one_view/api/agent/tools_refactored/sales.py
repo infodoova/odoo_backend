@@ -1,10 +1,11 @@
 # api/agent/tools_refactored/sales.py
 
-from .common import run_query, normalize_company_ids, build_company_filter_sql
+from .common import run_query, normalize_company_ids, build_company_filter_sql, build_currency_case_sql
 
-def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, period: str = "selected_period") -> dict:
+def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, period: str = "selected_period", base_currency: str | None = None) -> dict:
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    query = "SELECT COALESCE(SUM(amount_total), 0) AS total_revenue, COUNT(*) AS order_count, COALESCE(AVG(amount_total), 0) AS average_order_value, COALESCE(MIN(date_order), NULL) AS first_order_date, COALESCE(MAX(date_order), NULL) AS last_order_date FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done')"
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    query = f"SELECT COALESCE(SUM({amount_col}), 0) AS total_revenue, COUNT(*) AS order_count, COALESCE(AVG({amount_col}), 0) AS average_order_value, COALESCE(MIN(date_order), NULL) AS first_order_date, COALESCE(MAX(date_order), NULL) AS last_order_date FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done')"
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids)
     query += f_sql
@@ -15,14 +16,15 @@ def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, compan
     row = rows[0] if rows else {}
     return {"tool_name": "get_sales_summary_tool", "total_revenue": float(row.get("total_revenue") or 0), "order_count": int(row.get("order_count") or 0), "average_order_value": float(row.get("average_order_value") or 0)}
 
-def get_top_products_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 10) -> dict:
+def get_top_products_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    query = """
+    price_col = build_currency_case_sql('l.price_total', tenant_id, base_currency, currency_column='o.currency_code')
+    query = f"""
         SELECT 
             l.product_id, 
             p.name AS product_name, 
             COALESCE(SUM(l.product_uom_qty), 0) AS quantity, 
-            COALESCE(SUM(l.price_total), 0) AS revenue 
+            COALESCE(SUM({price_col}), 0) AS revenue 
         FROM fact_sales_order_lines l 
         JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id 
         JOIN dim_products p ON l.product_id = p.odoo_id AND l.tenant_id = p.tenant_id
@@ -40,8 +42,9 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
     rows = run_query(query, params)
     return {"tool_name": "get_top_products_tool", "products": [{"product": r["product_name"], "revenue": float(r["revenue"]), "quantity": float(r["quantity"])} for r in rows]}
 
-def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month") -> dict:
-    query = f"SELECT DATE_TRUNC('{granularity}', date_order) AS period, COALESCE(SUM(amount_total), 0) AS revenue, COUNT(*) AS order_count FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') AND date_order IS NOT NULL"
+def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    query = f"SELECT DATE_TRUNC('{granularity}', date_order) AS period, COALESCE(SUM({amount_col}), 0) AS revenue, COUNT(*) AS order_count FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') AND date_order IS NOT NULL"
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
     query += f_sql + f" GROUP BY period ORDER BY period ASC"
@@ -49,33 +52,35 @@ def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, gra
     rows = run_query(query, params)
     return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r["period"]), "revenue": float(r["revenue"]), "order_count": int(r["order_count"])} for r in rows]}
 
-def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month") -> dict:
-    data = get_time_series_data_tool(tenant_id, company_id, granularity)
+def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
+    data = get_time_series_data_tool(tenant_id, company_id, granularity, base_currency)
     return {"tool_name": "get_sales_chart_data_tool", "chart": {"type": "line", "data": data["points"]}}
 
-def analyze_variance_tool(tenant_id: str, company_id: int | None = None) -> dict:
-    query = "SELECT DATE_TRUNC('month', date_order) AS month, SUM(amount_total) AS revenue FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') GROUP BY month ORDER BY month DESC LIMIT 2"
+def analyze_variance_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    query = f"SELECT DATE_TRUNC('month', date_order) AS month, SUM({amount_col}) AS revenue FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') GROUP BY month ORDER BY month DESC LIMIT 2"
     rows = run_query(query, {"tenant_id": tenant_id})
     if len(rows) < 2: return {"status": "not_enough_data"}
     curr, prev = rows[0], rows[1]
     change = float(curr["revenue"]) - float(prev["revenue"])
     return {"tool_name": "analyze_variance_tool", "current": float(curr["revenue"]), "previous": float(prev["revenue"]), "change": change}
 
-def forecast_sales_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def forecast_sales_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
     params.update(f_params)
+    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
 
     rows = run_query(
         f"""SELECT DATE_TRUNC('month', date_order) AS month,
-                COALESCE(SUM(amount_total), 0) AS revenue
+                COALESCE(SUM({amount_col}), 0) AS revenue
             FROM fact_sales_orders
             WHERE tenant_id = :tenant_id
               AND state IN ('sale', 'done')
               AND date_order >= CURRENT_DATE - INTERVAL '6 months'
-              {f_sql}
+              {{f_sql}}
             GROUP BY month
-            ORDER BY month ASC""",
+            ORDER BY month ASC""".format(f_sql=f_sql),
         params,
     )
 
