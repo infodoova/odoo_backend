@@ -12,7 +12,9 @@ from django.db.models.functions import TruncDate
 from odoo_app.models.purchase_order import PurchaseOrder
 from odoo_app.models.purchase_order_line import PurchaseOrderLine
 from doova_one_view.api.common.exceptions import NotFoundError
-
+from doova_one_view.api.kpi.service import (
+    _get_rate_map, _get_conversion_rate, _sum_converted
+)
 
 def _to_float(value: Any) -> float:
     if value is None:
@@ -289,22 +291,25 @@ class PurchaseService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _summary():
             qs = PurchaseService._date_qs(
                 PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
             )
-            stats = qs.aggregate(
-                total_count=Count("id"),
-                total_amount=Sum("amount_total"),
-                average_order_value=Avg("amount_total"),
-            )
-            total_count = stats["total_count"] or 0
+            
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
+            total_amount = _sum_converted(qs, "amount_total", effective_base, rate_map)
+            total_count = qs.count()
+            average_order_value = total_amount / total_count if total_count > 0 else 0.0
+
             billed_count = qs.filter(invoice_status="invoiced").count()
             return {
                 "total_count": total_count,
-                "total_amount": _to_float(stats["total_amount"]),
-                "average_order_value": _to_float(stats["average_order_value"]),
+                "total_amount": total_amount,
+                "average_order_value": average_order_value,
                 "billed_percentage": (billed_count / total_count * 100) if total_count else 0.0,
                 "applied_filters": {
                     "tenant_id": tenant_id,
@@ -322,40 +327,55 @@ class PurchaseService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _dashboard():
             qs = PurchaseService._date_qs(
                 PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
             )
-            stats = qs.aggregate(
-                total_spend=Sum("amount_total"),
-                order_count=Count("id"),
-                avg_order_value=Avg("amount_total"),
-            )
-            total_spend = _to_float(stats["total_spend"])
-            order_count = stats["order_count"] or 0
-            avg_order_value = _to_float(stats["avg_order_value"])
+            
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
+            total_spend = _sum_converted(qs, "amount_total", effective_base, rate_map)
+            order_count = qs.count()
+            avg_order_value = total_spend / order_count if order_count > 0 else 0.0
 
-            top_vendors = [
-                {
-                    "id": row["partner_id"],
-                    "name": row["partner__name"] or "",
-                    "value": _to_float(row["spend"]),
-                    "spend": _to_float(row["spend"]),
-                    "count": row["order_count"],
-                    "orders": row["order_count"],
-                }
-                for row in qs.values("partner_id", "partner__name")
-                .annotate(spend=Sum("amount_total"), order_count=Count("id"))
-                .order_by("-spend")[:5]
-            ]
-            spend_trend = [
-                {"date": _iso(row["day"]), "value": _to_float(row["spend"]), "spend": _to_float(row["spend"])}
-                for row in qs.annotate(day=TruncDate("date_order"))
-                .values("day")
-                .annotate(spend=Sum("amount_total"))
-                .order_by("day")
-            ]
+            top_vendors = []
+            cust_rows = list(qs.values("partner_id", "partner__name", "currency_code")
+                .annotate(spend=Sum("amount_total"), order_count=Count("id")))
+            cust_map = {}
+            for r in cust_rows:
+                pid = r['partner_id']
+                if pid not in cust_map:
+                    cust_map[pid] = {'name': r['partner__name'], 'spend': 0.0, 'count': 0}
+                code = r['currency_code'] or "COMPANY_BASE"
+                cust_map[pid]['spend'] += _to_float(r['spend']) * _get_conversion_rate(code, effective_base, rate_map)
+                cust_map[pid]['count'] += r['order_count']
+                
+            sorted_vendors = sorted(cust_map.items(), key=lambda x: x[1]['spend'], reverse=True)[:5]
+            for pid, vdata in sorted_vendors:
+                top_vendors.append({
+                    "id": pid,
+                    "name": vdata['name'] or "",
+                    "value": vdata['spend'],
+                    "spend": vdata['spend'],
+                    "count": vdata['count'],
+                    "orders": vdata['count']
+                })
+                
+            trend_rows = list(qs.annotate(day=TruncDate("date_order"))
+                .values("day", "currency_code")
+                .annotate(spend=Sum("amount_total")))
+            trend_map = {}
+            for r in trend_rows:
+                if not r['day']: continue
+                d_str = _iso(r['day'])
+                code = r['currency_code'] or "COMPANY_BASE"
+                val = _to_float(r['spend']) * _get_conversion_rate(code, effective_base, rate_map)
+                trend_map[d_str] = trend_map.get(d_str, 0.0) + val
+                
+            spend_trend = [{"date": d, "value": v, "spend": v} for d, v in sorted(trend_map.items())]
             state_distribution = {
                 row["state"] or "unknown": row["state_count"]
                 for row in qs.values("state").annotate(state_count=Count("id"))

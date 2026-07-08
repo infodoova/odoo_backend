@@ -26,11 +26,12 @@ async def get_inventory_summary(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_inventory_summary(
-        tenant_id, _company_ids(company_id, companies)
+        tenant_id, _company_ids(company_id, companies), base_currency
     )
 
 
@@ -45,6 +46,7 @@ async def get_inventory_dashboard(
     companies: Optional[str] = Query(None),
     includeCompanies: Optional[str] = Query(None),
     include_companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -53,6 +55,7 @@ async def get_inventory_dashboard(
         start_date or date_from,
         end_date or date_to,
         _company_ids(company_id, companies),
+        base_currency,
     )
 
 

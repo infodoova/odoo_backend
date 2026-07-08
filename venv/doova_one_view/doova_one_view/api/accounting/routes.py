@@ -48,6 +48,7 @@ async def get_accounting_summary(
     date_to: Optional[str] = Query(None),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -56,6 +57,7 @@ async def get_accounting_summary(
         start_date or date_from,
         end_date or date_to,
         _company_ids(company_id, companies),
+        base_currency,
     )
 
 
@@ -70,6 +72,7 @@ async def get_accounting_dashboard(
     companies: Optional[str] = Query(None),
     includeCompanies: Optional[str] = Query(None),
     include_companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -78,6 +81,7 @@ async def get_accounting_dashboard(
         start_date or date_from,
         end_date or date_to,
         _company_ids(company_id, companies),
+        base_currency,
     )
 
 
@@ -93,6 +97,7 @@ async def get_accounting_kpis(
     companies: Optional[str] = Query(None),
     includeCompanies: Optional[str] = Query(None),
     include_companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -101,6 +106,7 @@ async def get_accounting_kpis(
         start_date or date_from,
         end_date or date_to,
         _company_ids(company_id, companies),
+        base_currency,
     )
 
 

@@ -33,12 +33,13 @@ async def get_purchase_summary(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> PurchaseSummary:
     """doova-compatible summary plus optional backend filters."""
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_summary(
-        tenant_id, start_date, end_date, _company_ids(companies)
+        tenant_id, start_date, end_date, _company_ids(companies), base_currency
     )
 
 
@@ -48,11 +49,12 @@ async def get_purchase_dashboard(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_dashboard(
-        tenant_id, start_date, end_date, _company_ids(companies)
+        tenant_id, start_date, end_date, _company_ids(companies), base_currency
     )
 
 
@@ -62,11 +64,12 @@ async def get_purchase_kpis(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_dashboard(
-        tenant_id, start_date, end_date, _company_ids(companies)
+        tenant_id, start_date, end_date, _company_ids(companies), base_currency
     )
 
 

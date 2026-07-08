@@ -27,12 +27,13 @@ async def get_sales_dashboard(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user)
 ) -> SalesDashboard:
     """Get comprehensive sales dashboard metrics for a tenant"""
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
-    return await SalesService.get_dashboard(tenant_id, start_date, end_date, company_ids)
+    return await SalesService.get_dashboard(tenant_id, start_date, end_date, company_ids, base_currency)
 
 @router.get("/{tenant_id}/kpis")
 async def get_sales_kpis(
@@ -40,12 +41,13 @@ async def get_sales_kpis(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user)
 ) -> SalesDashboard:
     """Alias for dashboard"""
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
-    return await SalesService.get_dashboard(tenant_id, start_date, end_date, company_ids)
+    return await SalesService.get_dashboard(tenant_id, start_date, end_date, company_ids, base_currency)
 
 @router.get("/{tenant_id}/orders")
 async def list_sales_orders(

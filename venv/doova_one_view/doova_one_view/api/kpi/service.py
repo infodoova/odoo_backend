@@ -52,6 +52,43 @@ def _sum(qs, field: str) -> float:
     return _to_float(qs.aggregate(value=Coalesce(Sum(field), Decimal("0")))["value"])
 
 
+def _get_rate_map() -> dict:
+    from django.db import connection
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT DISTINCT ON (c.code) c.code, cr.rate
+            FROM dim_currency_rates cr
+            JOIN dim_currencies c ON cr.currency_id = c.id AND cr.tenant_id = c.tenant_id
+            ORDER BY c.code, cr.name DESC
+        """)
+        all_rate_rows = cursor.fetchall()
+    
+    rate_map = {}
+    for code, rate in all_rate_rows:
+        rate_map[code] = float(rate) if rate else 1.0
+    return rate_map
+
+
+def _get_conversion_rate(from_curr: str, to_curr: str, rate_map: dict) -> float:
+    if from_curr == to_curr:
+        return 1.0
+    rate_from = rate_map.get(from_curr, 1.0)
+    rate_to = rate_map.get(to_curr, 1.0)
+    if rate_from == 0:
+        return 0.0
+    return rate_to / rate_from
+
+
+def _sum_converted(qs, field: str, effective_base: str, rate_map: dict) -> float:
+    rows = list(qs.values("currency_code").annotate(total=Coalesce(Sum(field), Decimal("0"))))
+    total_converted = 0.0
+    for r in rows:
+        code = r["currency_code"] or "COMPANY_BASE"
+        raw_val = _to_float(r["total"])
+        total_converted += raw_val * _get_conversion_rate(code, effective_base, rate_map)
+    return total_converted
+
+
 def _empty_overview(tenant_ids: list[str], date_from, date_to, company_ids):
     return {
         "kpis": {
@@ -90,20 +127,24 @@ class KPIService:
     async def get_overview(
         date_from: Optional[str],
         date_to: Optional[str],
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _get():
             today = date.today()
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
             # Dashboard metrics (Today/Month/Year) - Independent of filters
             dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
 
-            revenue_today = _sum(dashboard_sales.filter(date_order__date=today), "amount_total")
-            revenue_month = _sum(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
-            revenue_year = _sum(dashboard_sales.filter(date_order__year=today.year), "amount_total")
+            revenue_today = _sum_converted(dashboard_sales.filter(date_order__date=today), "amount_total", effective_base, rate_map)
+            revenue_month = _sum_converted(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total", effective_base, rate_map)
+            revenue_year = _sum_converted(dashboard_sales.filter(date_order__year=today.year), "amount_total", effective_base, rate_map)
             
-            expenses_today = _sum(dashboard_purchases.filter(date_order__date=today), "amount_total")
-            expenses_month = _sum(dashboard_purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total")
-            expenses_year = _sum(dashboard_purchases.filter(date_order__year=today.year), "amount_total")
+            expenses_today = _sum_converted(dashboard_purchases.filter(date_order__date=today), "amount_total", effective_base, rate_map)
+            expenses_month = _sum_converted(dashboard_purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total", effective_base, rate_map)
+            expenses_year = _sum_converted(dashboard_purchases.filter(date_order__year=today.year), "amount_total", effective_base, rate_map)
 
             # Receivables and Inventory - Independent of filters
             receivables = AccountMove.objects.filter(
@@ -111,8 +152,8 @@ class KPIService:
                 move_type="out_invoice",
                 payment_state__in=["not_paid", "partial", "in_payment"],
             )
-            receivables_value = _sum(receivables, "amount_residual")
-            overdue_value = _sum(receivables.filter(invoice_date_due__lt=today), "amount_residual")
+            receivables_value = _sum_converted(receivables, "amount_residual", effective_base, rate_map)
+            overdue_value = _sum_converted(receivables.filter(invoice_date_due__lt=today), "amount_residual", effective_base, rate_map)
 
             inventory_expr = ExpressionWrapper(
                 F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
@@ -120,20 +161,24 @@ class KPIService:
             )
             # Only count positive inventory for the dashboard value
             quants = StockQuant.objects.filter(quantity__gt=0)
-            inventory_value = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
+            inventory_raw = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
+            # Inventory value is evaluated in COMPANY_BASE
+            inventory_value = inventory_raw * _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
 
-            # Net Working Capital Additions
+            # Net Working Capital Additions (balances are in COMPANY_BASE)
+            base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
+            
             cash_value = _sum(AccountMoveLine.objects.filter(
                 account_type='bank_and_cash',
                 account_move__state='posted'
-            ), "balance")
+            ), "balance") * base_multiplier
 
             payables = AccountMove.objects.filter(
                 state="posted",
                 move_type="in_invoice",
                 payment_state__in=["not_paid", "partial", "in_payment"],
             )
-            payables_value = _sum(payables, "amount_residual")
+            payables_value = _sum_converted(payables, "amount_residual", effective_base, rate_map)
             
             from odoo_app.models import TenantFinancialMapping
             
@@ -150,26 +195,26 @@ class KPIService:
             total_other_liabilities = -1 * _sum(AccountMoveLine.objects.filter(
                 account_type='liability_current',
                 account_move__state='posted'
-            ), "balance")
+            ), "balance") * base_multiplier
 
             accrued_expenses_value = 0.0
             if q_accrued:
                 accrued_expenses_value = -1 * _sum(AccountMoveLine.objects.filter(
                     account_type='liability_current',
                     account_move__state='posted'
-                ).filter(q_accrued), "balance")
+                ).filter(q_accrued), "balance") * base_multiplier
 
             short_term_debt_value = 0.0
             if q_short_term:
                 short_term_debt_value = -1 * _sum(AccountMoveLine.objects.filter(
                     account_type='liability_current',
                     account_move__state='posted'
-                ).filter(q_short_term), "balance")
-                
-            other_liabilities_value = total_other_liabilities - accrued_expenses_value - short_term_debt_value
+                ).filter(q_short_term), "balance") * base_multiplier
 
+            other_liabilities_value = total_other_liabilities - accrued_expenses_value - short_term_debt_value
+            
             current_assets = cash_value + receivables_value + inventory_value
-            current_liabilities = payables_value + total_other_liabilities
+            current_liabilities = payables_value + accrued_expenses_value + short_term_debt_value + other_liabilities_value
             net_working_capital = current_assets - current_liabilities
 
             # Historical Metrics - Dependent on filters
@@ -260,23 +305,42 @@ class KPIService:
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
 
             sales_stats = sales.aggregate(
-                total_revenue=Coalesce(Sum("amount_total"), Decimal("0")),
                 order_count=Count("id"),
-                avg_order_value=Coalesce(Avg("amount_total"), Decimal("0")),
                 gross_margin=Coalesce(Sum("margin"), Decimal("0")),
             )
-            total_revenue = _to_float(sales_stats["total_revenue"])
-            total_expenses = _sum(purchases, "amount_total")
+            total_revenue = _sum_converted(sales, "amount_total", effective_base, rate_map)
+            total_expenses = _sum_converted(purchases, "amount_total", effective_base, rate_map)
             order_count = _to_int(sales_stats["order_count"])
-            avg_order_value = _to_float(sales_stats["avg_order_value"])
-            gross_margin_value = _to_float(sales_stats["gross_margin"]) or (total_revenue - total_expenses)
+            avg_order_value = (total_revenue / order_count) if order_count else 0.0
+            
+            # Since margin is in COMPANY_BASE in Odoo, convert it
+            gross_margin_value = _to_float(sales_stats["gross_margin"]) * base_multiplier if sales_stats["gross_margin"] else (total_revenue - total_expenses)
             gross_margin_pct = (gross_margin_value / total_revenue * 100) if total_revenue else 0.0
 
+            # Tenant benchmarks (converting margin and revenue)
             tenant_rows = list(
                 sales.values("tenant_id", "tenant__name")
-                .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")), order_count=Count("id"), margin=Coalesce(Sum("margin"), Decimal("0")))
-                .order_by("-revenue")
+                .annotate(order_count=Count("id"), margin=Coalesce(Sum("margin"), Decimal("0")))
             )
+            
+            # Re-fetch grouped by tenant and currency for accurate revenue conversion
+            tenant_rev_rows = list(
+                sales.values("tenant_id", "currency_code")
+                .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))
+            )
+            
+            tenant_rev_map = {}
+            for r in tenant_rev_rows:
+                tid = r["tenant_id"]
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
+                tenant_rev_map[tid] = tenant_rev_map.get(tid, 0.0) + val
+
+            for row in tenant_rows:
+                tid = row["tenant_id"]
+                row["revenue"] = tenant_rev_map.get(tid, 0.0)
+            
+            tenant_rows.sort(key=lambda x: x["revenue"], reverse=True)
 
             return {
                 "kpis": {
@@ -341,8 +405,13 @@ class KPIService:
     async def get_trends(
         date_from: Optional[str],
         date_to: Optional[str],
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _get():
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
+            
             sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             sales = _date_filter(sales, "date_order", date_from, date_to)
             purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
@@ -350,57 +419,94 @@ class KPIService:
 
             sales_rows = list(
                 sales.annotate(month=TruncMonth("date_order"))
-                .values("month")
+                .values("month", "currency_code")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")), orders=Count("id"), margin=Coalesce(Sum("margin"), Decimal("0")))
                 .order_by("month")
             )
             purchase_rows = list(
                 purchases.annotate(month=TruncMonth("date_order"))
-                .values("month")
+                .values("month", "currency_code")
                 .annotate(expenses=Coalesce(Sum("amount_total"), Decimal("0")))
                 .order_by("month")
             )
 
-            expense_by_month = {r["month"].strftime("%Y-%m"): _to_float(r["expenses"]) for r in purchase_rows if r["month"]}
+            # Aggregate expenses by month converting currencies
+            expense_by_month = {}
+            for r in purchase_rows:
+                if not r["month"]:
+                    continue
+                key = r["month"].strftime("%Y-%m")
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["expenses"]) * _get_conversion_rate(code, effective_base, rate_map)
+                expense_by_month[key] = expense_by_month.get(key, 0.0) + val
+
+            # Aggregate sales by month converting currencies
+            sales_by_month = {}
+            for r in sales_rows:
+                if not r["month"]:
+                    continue
+                key = r["month"].strftime("%Y-%m")
+                code = r["currency_code"] or "COMPANY_BASE"
+                rev = _to_float(r["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
+                margin = _to_float(r["margin"]) * base_multiplier
+                orders = _to_float(r["orders"])
+                
+                if key not in sales_by_month:
+                    sales_by_month[key] = {"revenue": 0.0, "margin": 0.0, "orders": 0.0}
+                sales_by_month[key]["revenue"] += rev
+                sales_by_month[key]["margin"] += margin
+                sales_by_month[key]["orders"] += orders
+
             revenue_trend = []
             orders_trend = []
             profit_trend = []
             margin_trend = []
 
-            for row in sales_rows:
-                if not row["month"]:
-                    continue
-                key = row["month"].strftime("%Y-%m")
-                revenue = _to_float(row["revenue"])
+            # Sort keys to ensure chronological order
+            all_months = sorted(list(set(list(sales_by_month.keys()) + list(expense_by_month.keys()))))
+            
+            for key in all_months:
+                s_data = sales_by_month.get(key, {"revenue": 0.0, "margin": 0.0, "orders": 0.0})
+                revenue = s_data["revenue"]
                 expenses = expense_by_month.get(key, 0.0)
                 profit = revenue - expenses
                 margin_pct = (profit / revenue * 100) if revenue else 0.0
+                
                 revenue_trend.append({"month": key, "date": key, "value": revenue})
-                orders_trend.append({"month": key, "date": key, "value": _to_float(row["orders"])})
+                orders_trend.append({"month": key, "date": key, "value": s_data["orders"]})
                 profit_trend.append({"month": key, "date": key, "value": profit, "profit": profit})
                 margin_trend.append({"month": key, "date": key, "value": margin_pct, "margin": profit, "margin_pct": margin_pct})
 
             procurement_trend = [
-                {"month": r["month"].strftime("%Y-%m"), "date": r["month"].strftime("%Y-%m"), "value": _to_float(r["expenses"])}
-                for r in purchase_rows
-                if r["month"]
+                {"month": k, "date": k, "value": v}
+                for k, v in sorted(expense_by_month.items())
             ]
 
             tenant_sales = list(
                 sales.annotate(month=TruncMonth("date_order"))
-                .values("month", "tenant__name")
+                .values("month", "tenant__name", "currency_code")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))
                 .order_by("month")
             )
             
-            tenant_revenue = []
+            tenant_rev_map = {}
             for row in tenant_sales:
                 if not row["month"]:
                     continue
+                month_str = row["month"].strftime("%Y-%m")
+                t_name = row["tenant__name"] or "Unknown Tenant"
+                key = (month_str, t_name)
+                
+                code = row["currency_code"] or "COMPANY_BASE"
+                val = _to_float(row["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
+                tenant_rev_map[key] = tenant_rev_map.get(key, 0.0) + val
+                
+            tenant_revenue = []
+            for (m, t), v in sorted(tenant_rev_map.items()):
                 tenant_revenue.append({
-                    "month": row["month"].strftime("%Y-%m"),
-                    "tenant_name": row["tenant__name"] or "Unknown Tenant",
-                    "revenue": _to_float(row["revenue"])
+                    "month": m,
+                    "tenant_name": t,
+                    "revenue": v
                 })
 
             return {
@@ -435,30 +541,56 @@ class KPIService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_top_products(limit: int, descending: bool = True) -> dict[str, Any]:
+    async def get_top_products(limit: int, descending: bool = True, base_currency: Optional[str] = None) -> dict[str, Any]:
         def _get():
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
+            
             lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"])
-            ordering = "-revenue" if descending else "revenue"
             rows = list(
-                lines.values("product_id", "product__name", "product__default_code")
+                lines.values("product_id", "product__name", "product__default_code", "sales_order__currency_code")
                 .annotate(
                     revenue=Coalesce(Sum("price_subtotal"), Decimal("0")),
                     quantity=Coalesce(Sum("product_uom_qty"), Decimal("0")),
                     margin=Coalesce(Sum("margin"), Decimal("0")),
                 )
-                .order_by(ordering)[:limit]
             )
+            
+            # Aggregate python side to handle multiple currencies
+            prod_map = {}
+            for r in rows:
+                pid = r["product_id"]
+                if pid not in prod_map:
+                    prod_map[pid] = {
+                        "product_id": pid,
+                        "product__name": r["product__name"],
+                        "product__default_code": r["product__default_code"],
+                        "revenue": 0.0,
+                        "quantity": 0.0,
+                        "margin": 0.0,
+                    }
+                code = r["sales_order__currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
+                
+                prod_map[pid]["revenue"] += val
+                prod_map[pid]["quantity"] += _to_float(r["quantity"])
+                prod_map[pid]["margin"] += _to_float(r["margin"]) * base_multiplier  # margin is in COMPANY_BASE
+                
+            agg_rows = list(prod_map.values())
+            agg_rows.sort(key=lambda x: x["revenue"], reverse=descending)
+            agg_rows = agg_rows[:limit]
             products = []
-            for row in rows:
-                revenue = _to_float(row["revenue"])
-                margin = _to_float(row["margin"])
+            for row in agg_rows:
+                revenue = row["revenue"]
+                margin = row["margin"]
                 products.append({
                     "id": _to_int(row["product_id"]),
                     "name": row["product__name"] or "Unknown Product",
                     "product__name": row["product__name"] or "Unknown Product",
                     "product__default_code": row["product__default_code"] or "",
                     "revenue": revenue,
-                    "quantity": _to_float(row["quantity"]),
+                    "quantity": row["quantity"],
                     "margin_pct": (margin / revenue * 100) if revenue else 0.0,
                 })
             return {"products": products, "items": products, "total": len(products)}
@@ -542,18 +674,49 @@ class KPIService:
         return await asyncio.to_thread(_fetch)
 
     @staticmethod
-    async def get_top_customers(limit: int) -> dict[str, Any]:
+    async def get_top_customers(limit: int, base_currency: Optional[str] = None) -> dict[str, Any]:
         def _get():
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
             sales = SalesOrder.objects.filter(state__in=["sale", "done"])
             rows = list(
-                sales.values("partner_id", "partner__name")
-                .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")), orders=Count("id"))
-                .order_by("-revenue")[:limit]
+                sales.values("partner_id", "partner__name", "currency_code")
+                .annotate(
+                    revenue=Coalesce(Sum("amount_total"), Decimal("0")),
+                    order_count=Count("id")
+                )
             )
-            customers = [
-                {"id": _to_int(r["partner_id"]), "name": r["partner__name"] or "Unknown Customer", "revenue": _to_float(r["revenue"]), "orders": _to_int(r["orders"])}
-                for r in rows
-            ]
+            
+            cust_map = {}
+            for r in rows:
+                pid = r["partner_id"]
+                if pid not in cust_map:
+                    cust_map[pid] = {
+                        "partner_id": pid,
+                        "partner__name": r["partner__name"],
+                        "revenue": 0.0,
+                        "order_count": 0,
+                    }
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
+                
+                cust_map[pid]["revenue"] += val
+                cust_map[pid]["order_count"] += _to_int(r["order_count"])
+                
+            agg_rows = list(cust_map.values())
+            agg_rows.sort(key=lambda x: x["revenue"], reverse=True)
+            agg_rows = agg_rows[:limit]
+            
+            customers = []
+            for row in agg_rows:
+                customers.append({
+                    "id": _to_int(row["partner_id"]),
+                    "name": row["partner__name"] or "Unknown Customer",
+                    "partner__name": row["partner__name"] or "Unknown Customer",
+                    "revenue": row["revenue"],
+                    "order_count": row["order_count"],
+                })
             return {"customers": customers, "items": customers, "total": len(customers)}
 
         return await asyncio.to_thread(_get)
@@ -1151,6 +1314,7 @@ class KPIService:
         date_str: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Return itemised breakdown of revenues / expenses / profits for the
@@ -1172,6 +1336,9 @@ class KPIService:
                     target_date = date.fromisoformat(date_str)
                 except ValueError:
                     pass
+
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
 
             revenue_items: list[dict] = []
             expense_items: list[dict] = []
@@ -1201,18 +1368,19 @@ class KPIService:
                 so_qs = KPIService._apply_period(so_qs, period, target_date)
                 
                 # Global Aggregates
-                so_agg = so_qs.aggregate(amount=Coalesce(Sum("amount_total"), Decimal("0")), count=Count("id"))
-                total_revenue = _to_float(so_agg["amount"])
-                revenue_count = _to_int(so_agg["count"])
+                total_revenue = _sum_converted(so_qs, "amount_total", effective_base, rate_map)
+                revenue_count = so_qs.count()
                 
                 # Tenant Aggregates
-                so_tenant_agg = so_qs.values("tenant_id", "tenant__name").annotate(
+                so_tenant_agg = so_qs.values("tenant_id", "tenant__name", "currency_code").annotate(
                     amount=Coalesce(Sum("amount_total"), Decimal("0")),
                     count=Count("id")
                 )
                 for t in so_tenant_agg:
                     tm = _get_tenant(str(t["tenant_id"]), t["tenant__name"])
-                    tm["revenue_amount"] += _to_float(t["amount"])
+                    code = t["currency_code"] or "COMPANY_BASE"
+                    val = _to_float(t["amount"]) * _get_conversion_rate(code, effective_base, rate_map)
+                    tm["revenue_amount"] += val
                     tm["revenue_count"] += _to_int(t["count"])
 
                 # Items Pagination
@@ -1232,18 +1400,19 @@ class KPIService:
                 po_qs = KPIService._apply_period(po_qs, period, target_date)
                 
                 # Global Aggregates
-                po_agg = po_qs.aggregate(amount=Coalesce(Sum("amount_total"), Decimal("0")), count=Count("id"))
-                total_expenses = _to_float(po_agg["amount"])
-                expense_count = _to_int(po_agg["count"])
+                total_expenses = _sum_converted(po_qs, "amount_total", effective_base, rate_map)
+                expense_count = po_qs.count()
                 
                 # Tenant Aggregates
-                po_tenant_agg = po_qs.values("tenant_id", "tenant__name").annotate(
+                po_tenant_agg = po_qs.values("tenant_id", "tenant__name", "currency_code").annotate(
                     amount=Coalesce(Sum("amount_total"), Decimal("0")),
                     count=Count("id")
                 )
                 for t in po_tenant_agg:
                     tm = _get_tenant(str(t["tenant_id"]), t["tenant__name"])
-                    tm["expense_amount"] += _to_float(t["amount"])
+                    code = t["currency_code"] or "COMPANY_BASE"
+                    val = _to_float(t["amount"]) * _get_conversion_rate(code, effective_base, rate_map)
+                    tm["expense_amount"] += val
                     tm["expense_count"] += _to_int(t["count"])
 
                 # Items Pagination

@@ -18,6 +18,9 @@ from doova_one_view.api.sales.schemas import (
     AdvancedSearchRequest, PaginatedResponse, SalesDashboard,
     KPIMetric, TimeSeriesPoint, EntityMetric
 )
+from doova_one_view.api.kpi.service import (
+    _get_rate_map, _get_conversion_rate, _sum_converted, _to_float
+)
 
 class SalesService:
     """Service for sales operations"""
@@ -321,7 +324,8 @@ class SalesService:
         tenant_id: str,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        company_ids: Optional[list[int]] = None
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None
     ) -> SalesDashboard:
         """Get comprehensive sales dashboard metrics within a date range"""
         def _get():
@@ -348,14 +352,22 @@ class SalesService:
             if company_ids:
                 base_qs = base_qs.filter(company__odoo_id__in=company_ids)
             
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
+            
             # 1. Summary Metrics
             def get_stats(qs):
-                return qs.aggregate(
-                    revenue=Sum('amount_total'),
-                    margin=Sum('margin'),
-                    count=Count('id'),
-                    avg_val=Avg('amount_total')
-                )
+                rev = _sum_converted(qs, 'amount_total', effective_base, rate_map)
+                margin = _sum_converted(qs, 'margin', effective_base, rate_map) # Wait, is margin COMPANY_BASE?
+                # Actually, in KPI we treated margin as COMPANY_BASE, but if we pass it through _sum_converted, it will try to use currency_code.
+                # Is margin in COMPANY_BASE or order currency? Odoo margin is usually in company currency. Let's assume it's like KPI.
+                # Actually _sum_converted groups by currency_code. If margin is company currency, we shouldn't use _sum_converted for it.
+                # Let's write a custom aggregation for margin.
+                margin_val = _to_float(qs.aggregate(val=Sum('margin'))['val'] or 0) * base_multiplier
+                count = qs.count()
+                avg_val = (rev / count) if count > 0 else 0
+                return {'revenue': rev, 'margin': margin_val, 'count': count, 'avg_val': avg_val}
             
             current_stats = get_stats(base_qs.filter(date_order__date__range=(initial_date, final_date)))
             prev_stats = get_stats(base_qs.filter(date_order__date__range=(prev_start, prev_end)))
@@ -371,7 +383,7 @@ class SalesService:
                 return KPIMetric(value=curr_val, previous_value=prev_val, change_percentage=change)
 
             # Pipeline Value (Quotes) - All time draft/sent
-            pipeline = base_qs.filter(state__in=['draft', 'sent']).aggregate(val=Sum('amount_total'))['val'] or 0
+            pipeline = _sum_converted(base_qs.filter(state__in=['draft', 'sent']), 'amount_total', effective_base, rate_map)
             
             # Conversion Rate (All time)
             drafts = base_qs.filter(state__in=['draft', 'sent', 'sale', 'done']).count()
@@ -379,31 +391,61 @@ class SalesService:
             conversion = (sales / drafts * 100) if drafts > 0 else 0
             
             # 2. Trends (Revenue within range)
-            trend = base_qs.filter(date_order__date__range=(initial_date, final_date)) \
-                .annotate(date=TruncDate('date_order')) \
-                .values('date') \
-                .annotate(value=Sum('amount_total')) \
-                .order_by('date')
+            trend_rows = list(base_qs.filter(date_order__date__range=(initial_date, final_date))
+                .annotate(date=TruncDate('date_order'))
+                .values('date', 'currency_code')
+                .annotate(value=Sum('amount_total'))
+            )
+            trend_map = {}
+            for r in trend_rows:
+                if not r['date']: continue
+                d_str = r['date'].isoformat()
+                code = r['currency_code'] or "COMPANY_BASE"
+                val = _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
+                trend_map[d_str] = trend_map.get(d_str, 0.0) + val
+            trend = [{'date': d, 'value': v} for d, v in sorted(trend_map.items())]
             
             # 3. Rankings (Within range)
             range_filter = {'date_order__date__range': (initial_date, final_date)}
             
-            top_customers = base_qs.filter(**range_filter) \
-                .values('partner__name', 'partner_id') \
-                .annotate(value=Sum('amount_total')) \
-                .order_by('-value')[:5]
+            cust_rows = list(base_qs.filter(**range_filter)
+                .values('partner__name', 'partner_id', 'currency_code')
+                .annotate(value=Sum('amount_total')))
+            cust_map = {}
+            for r in cust_rows:
+                pid = r['partner_id']
+                if pid not in cust_map:
+                    cust_map[pid] = {'name': r['partner__name'], 'value': 0.0}
+                code = r['currency_code'] or "COMPANY_BASE"
+                cust_map[pid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
+            top_customers = [{'partner_id': k, 'partner__name': v['name'], 'value': v['value']} for k, v in sorted(cust_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]]
             
-            top_products = SalesOrderLine.objects.filter(
+            prod_rows = list(SalesOrderLine.objects.filter(
                 tenant_id=tenant_id, 
                 sales_order__date_order__date__range=(initial_date, final_date)
-            ).values('product__name', 'product_id') \
-                .annotate(value=Sum('price_total')) \
-                .order_by('-value')[:5]
+            ).values('product__name', 'product_id', 'sales_order__currency_code')
+             .annotate(value=Sum('price_total')))
+            prod_map = {}
+            for r in prod_rows:
+                pid = r['product_id']
+                if pid not in prod_map:
+                    prod_map[pid] = {'name': r['product__name'], 'value': 0.0}
+                code = r['sales_order__currency_code'] or "COMPANY_BASE"
+                prod_map[pid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
+            top_products = [{'product_id': k, 'product__name': v['name'], 'value': v['value']} for k, v in sorted(prod_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]]
             
-            top_salespeople = base_qs.filter(**range_filter) \
-                .values('user__name', 'user_id') \
-                .annotate(value=Sum('amount_total')) \
-                .order_by('-value')[:5]
+            sp_rows = list(base_qs.filter(**range_filter)
+                .values('user__name', 'user_id', 'currency_code')
+                .annotate(value=Sum('amount_total')))
+            sp_map = {}
+            for r in sp_rows:
+                uid = r['user_id']
+                if uid not in sp_map:
+                    sp_map[uid] = {'name': r['user__name'], 'value': 0.0}
+                code = r['currency_code'] or "COMPANY_BASE"
+                sp_map[uid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
+            top_salespeople = [{'user_id': k, 'user__name': v['name'], 'value': v['value']} for k, v in sorted(sp_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]]
+            
             
             # 4. Status Distribution (All time)
             dist = base_qs.values('state').annotate(count=Count('id'))

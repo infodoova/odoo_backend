@@ -11,7 +11,9 @@ from django.db.models import Avg, Count, Prefetch, Q, Sum
 from odoo_app.models.account_move import AccountMove
 from odoo_app.models.account_move_line import AccountMoveLine
 from doova_one_view.api.common.exceptions import NotFoundError
-
+from doova_one_view.api.kpi.service import (
+    _get_rate_map, _get_conversion_rate, _sum_converted
+)
 
 def _to_float(value: Any) -> float:
     if value is None:
@@ -274,26 +276,28 @@ class AccountingService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _summary():
             qs = AccountingService._date_qs(
                 AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
             )
-            invoices = qs.filter(move_type="out_invoice", state="posted").aggregate(
-                total=Sum("amount_total"),
-                residual=Sum("amount_residual"),
-            )
-            bills = qs.filter(move_type="in_invoice", state="posted").aggregate(
-                total=Sum("amount_total"),
-                residual=Sum("amount_residual"),
-            )
-            total_invoiced = _to_float(invoices["total"])
-            total_bills = _to_float(bills["total"])
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
+            invoices = qs.filter(move_type="out_invoice", state="posted")
+            bills = qs.filter(move_type="in_invoice", state="posted")
+            
+            total_invoiced = _sum_converted(invoices, "amount_total", effective_base, rate_map)
+            total_receivable = _sum_converted(invoices, "amount_residual", effective_base, rate_map)
+            
+            total_bills = _sum_converted(bills, "amount_total", effective_base, rate_map)
+            total_payable = _sum_converted(bills, "amount_residual", effective_base, rate_map)
             return {
                 "total_invoiced": total_invoiced,
                 "total_bills": total_bills,
-                "total_receivable": _to_float(invoices["residual"]),
-                "total_payable": _to_float(bills["residual"]),
+                "total_receivable": total_receivable,
+                "total_payable": total_payable,
                 "net_profit_estimate": total_invoiced - total_bills,
                 "applied_filters": {
                     "tenant_id": tenant_id,
@@ -311,83 +315,83 @@ class AccountingService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _dashboard():
             qs = AccountingService._date_qs(
                 AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
             )
+            
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
             revenue_qs = qs.filter(move_type="out_invoice", state="posted")
             expense_qs = qs.filter(move_type="in_invoice", state="posted")
 
-            total_revenue = _to_float(revenue_qs.aggregate(total=Sum("amount_total"))["total"])
-            total_expenses = _to_float(expense_qs.aggregate(total=Sum("amount_total"))["total"])
-            receivable_balance = _to_float(
-                qs.filter(
-                    move_type="out_invoice",
-                    payment_state__in=["not_paid", "partial"],
-                    amount_residual__gt=0,
-                ).aggregate(total=Sum("amount_residual"))["total"]
+            total_revenue = _sum_converted(revenue_qs, "amount_total", effective_base, rate_map)
+            total_expenses = _sum_converted(expense_qs, "amount_total", effective_base, rate_map)
+            
+            receivable_balance = _sum_converted(
+                qs.filter(move_type="out_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0),
+                "amount_residual", effective_base, rate_map
             )
-            payable_balance = _to_float(
-                qs.filter(
-                    move_type="in_invoice",
-                    payment_state__in=["not_paid", "partial"],
-                    amount_residual__gt=0,
-                ).aggregate(total=Sum("amount_residual"))["total"]
+            payable_balance = _sum_converted(
+                qs.filter(move_type="in_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0),
+                "amount_residual", effective_base, rate_map
             )
 
             today = date.today()
             overdue_filter = Q(invoice_date_due__lt=today) & ~Q(payment_state__in=["paid", "reversed"])
-            overdue_receivable = _to_float(
-                qs.filter(
-                    overdue_filter,
-                    move_type="out_invoice",
-                    amount_residual__gt=0,
-                ).aggregate(total=Sum("amount_residual"))["total"]
+            overdue_receivable = _sum_converted(
+                qs.filter(overdue_filter, move_type="out_invoice", amount_residual__gt=0),
+                "amount_residual", effective_base, rate_map
             )
-            overdue_payable = _to_float(
-                qs.filter(
-                    overdue_filter,
-                    move_type="in_invoice",
-                    amount_residual__gt=0,
-                ).aggregate(total=Sum("amount_residual"))["total"]
+            overdue_payable = _sum_converted(
+                qs.filter(overdue_filter, move_type="in_invoice", amount_residual__gt=0),
+                "amount_residual", effective_base, rate_map
             )
 
+            rev_cust_map = {}
+            for r in revenue_qs.filter(partner_id__isnull=False).values("partner_id", "partner__name", "currency_code").annotate(value=Sum("amount_total")):
+                pid = r['partner_id']
+                if pid not in rev_cust_map:
+                    rev_cust_map[pid] = {'name': r['partner__name'], 'value': 0.0}
+                code = r['currency_code'] or "COMPANY_BASE"
+                rev_cust_map[pid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
             top_revenue_customers = [
-                {
-                    "id": row["partner_id"],
-                    "name": row["partner__name"] or "",
-                    "value": _to_float(row["value"]),
-                }
-                for row in revenue_qs.filter(partner_id__isnull=False)
-                .values("partner_id", "partner__name")
-                .annotate(value=Sum("amount_total"))
-                .order_by("-value")[:5]
+                {"id": k, "name": v['name'] or "", "value": v['value']}
+                for k, v in sorted(rev_cust_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]
             ]
+            
+            exp_vend_map = {}
+            for r in expense_qs.filter(partner_id__isnull=False).values("partner_id", "partner__name", "currency_code").annotate(value=Sum("amount_total")):
+                pid = r['partner_id']
+                if pid not in exp_vend_map:
+                    exp_vend_map[pid] = {'name': r['partner__name'], 'value': 0.0}
+                code = r['currency_code'] or "COMPANY_BASE"
+                exp_vend_map[pid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
             top_expense_vendors = [
-                {
-                    "id": row["partner_id"],
-                    "name": row["partner__name"] or "",
-                    "value": _to_float(row["value"]),
-                }
-                for row in expense_qs.filter(partner_id__isnull=False)
-                .values("partner_id", "partner__name")
-                .annotate(value=Sum("amount_total"))
-                .order_by("-value")[:5]
+                {"id": k, "name": v['name'] or "", "value": v['value']}
+                for k, v in sorted(exp_vend_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]
             ]
 
-            revenue_trend = [
-                {"date": _iso(row["date"]), "value": _to_float(row["value"])}
-                for row in revenue_qs.values("date")
-                .annotate(value=Sum("amount_total"))
-                .order_by("date")
-            ]
-            expense_trend = [
-                {"date": _iso(row["date"]), "value": _to_float(row["value"])}
-                for row in expense_qs.values("date")
-                .annotate(value=Sum("amount_total"))
-                .order_by("date")
-            ]
+            revenue_trend_map = {}
+            for r in revenue_qs.values("date", "currency_code").annotate(value=Sum("amount_total")):
+                if not r['date']: continue
+                d_str = _iso(r['date'])
+                code = r['currency_code'] or "COMPANY_BASE"
+                val = _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
+                revenue_trend_map[d_str] = revenue_trend_map.get(d_str, 0.0) + val
+            revenue_trend = [{"date": d, "value": v} for d, v in sorted(revenue_trend_map.items())]
+
+            expense_trend_map = {}
+            for r in expense_qs.values("date", "currency_code").annotate(value=Sum("amount_total")):
+                if not r['date']: continue
+                d_str = _iso(r['date'])
+                code = r['currency_code'] or "COMPANY_BASE"
+                val = _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
+                expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + val
+            expense_trend = [{"date": d, "value": v} for d, v in sorted(expense_trend_map.items())]
             cash_flow_map: dict[str, float] = {}
             for entry in revenue_trend:
                 if entry["date"]:
@@ -412,8 +416,8 @@ class AccountingService:
                 for row in qs.values("move_type").annotate(count=Count("id"))
             }
 
-            receivables_aging = AccountingService._aging(qs, "out_invoice")
-            payables_aging = AccountingService._aging(qs, "in_invoice")
+            receivables_aging = AccountingService._aging(qs, "out_invoice", effective_base, rate_map)
+            payables_aging = AccountingService._aging(qs, "in_invoice", effective_base, rate_map)
 
             net_profit = total_revenue - total_expenses
             net_profit_margin_pct = (net_profit / total_revenue * 100) if total_revenue else 0.0
@@ -556,7 +560,9 @@ class AccountingService:
         }
 
     @staticmethod
-    def _aging(qs, move_type: str) -> list[dict[str, Any]]:
+    def _aging(qs, move_type: str, effective_base: str = "XAF", rate_map: dict = None) -> list[dict[str, Any]]:
+        if rate_map is None:
+            rate_map = {}
         today = date.today()
         base = qs.filter(
             move_type=move_type,
@@ -574,11 +580,14 @@ class AccountingService:
             bucket_qs = base.filter(invoice_date_due__lte=end)
             if start is not None:
                 bucket_qs = bucket_qs.filter(invoice_date_due__gte=start)
-            agg = bucket_qs.aggregate(amount=Sum("amount_residual"), count=Count("id"))
+            
+            amount = _sum_converted(bucket_qs, "amount_residual", effective_base, rate_map)
+            count = bucket_qs.count()
+            
             out.append({
                 "bucket": label,
-                "amount": _to_float(agg["amount"]),
-                "count": agg["count"] or 0,
+                "amount": amount,
+                "count": count or 0,
             })
         return out or _empty_aging()
 
