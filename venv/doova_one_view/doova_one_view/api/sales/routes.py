@@ -14,7 +14,12 @@ from doova_one_view.api.sales.schemas import (
     SearchRequest,
     SalesDashboard,
     SalesOrderRead,
-    SalesOrderWithLinesRead
+    SalesOrderWithLinesRead,
+    MetricDetailResponse,
+    DailyOrdersResponse,
+    MarketBreakdownResponse,
+    EntityProfileResponse,
+    ProductSalesDetailResponse
 )
 from doova_one_view.api.sales.service import SalesService
 from doova_one_view.api.tenants.service import TenantService
@@ -28,12 +33,131 @@ async def get_sales_dashboard(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     user: AppUser = Depends(get_current_user)
 ) -> SalesDashboard:
     """Get comprehensive sales dashboard metrics for a tenant"""
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
     return await SalesService.get_dashboard(tenant_id, start_date, end_date, company_ids, base_currency)
+
+@router.get("/{tenant_id}/dashboard/metric-details")
+async def get_dashboard_metric_details(
+    tenant_id: str,
+    metric: str = Query(..., description="The metric name (e.g., total_revenue, total_profit, pipeline_value, order_count, avg_order_value)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> MetricDetailResponse:
+    """Get detailed order breakdown for a specific dashboard metric"""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await SalesService.get_dashboard_metric_details(
+        tenant_id=tenant_id,
+        metric=metric,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{tenant_id}/dashboard/daily-orders")
+async def get_daily_orders(
+    tenant_id: str,
+    day: str = Query(..., description="The calendar day to drill into (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> DailyOrdersResponse:
+    """Get all confirmed orders placed on a specific calendar day (Daily Performance drill-down)"""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await SalesService.get_daily_orders(
+        tenant_id=tenant_id,
+        day=day,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{tenant_id}/dashboard/market-breakdown")
+async def get_market_breakdown_details(
+    tenant_id: str,
+    section: str = Query(..., description="Section name: top_customers, top_products, or top_salespeople"),
+    entity_id: int = Query(..., description="The entity ID (partner_id / product_id / user_id)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> MarketBreakdownResponse:
+    """Drill into a market-breakdown entity to see confirmed orders for a specific customer, product, or salesperson"""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await SalesService.get_market_breakdown_details(
+        tenant_id=tenant_id,
+        section=section,
+        entity_id=entity_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{tenant_id}/dashboard/entity-profile")
+async def get_entity_profile(
+    tenant_id: str,
+    entity_type: str = Query(..., description="'salesperson' or 'customer'"),
+    entity_id: int = Query(..., description="The entity's Django pk (same ID from dashboard rankings)"),
+    user: AppUser = Depends(get_current_user)
+) -> EntityProfileResponse:
+    """Get profile details for a salesperson or customer (name, phone, email, etc.)"""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await SalesService.get_entity_profile(
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        entity_id=entity_id
+    )
+
+@router.get("/{tenant_id}/dashboard/product-sales-details")
+async def get_product_sales_details(
+    tenant_id: str,
+    product_id: int = Query(..., description="The product's Django pk (same ID from top_products)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> ProductSalesDetailResponse:
+    """Get every sale-line for a specific product — when sold, how many pieces, price, customer, etc."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await SalesService.get_product_sales_details(
+        tenant_id=tenant_id,
+        product_id=product_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
 
 @router.get("/{tenant_id}/kpis")
 async def get_sales_kpis(
@@ -42,6 +166,8 @@ async def get_sales_kpis(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     user: AppUser = Depends(get_current_user)
 ) -> SalesDashboard:
     """Alias for dashboard"""

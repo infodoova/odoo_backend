@@ -112,6 +112,7 @@ class SalesDashboard(BaseModel):
     """Comprehensive sales dashboard schema"""
     # Key Summary Metrics
     total_revenue: KPIMetric
+    total_profit: KPIMetric
     profit_margin_pct: KPIMetric
     avg_order_value: KPIMetric
     pipeline_value: KPIMetric  # Draft/Sent orders
@@ -216,7 +217,129 @@ class SearchRequest(BaseModel):
     limit: int = 50
     offset: int = 0
     companies: Optional[str] = None
+
+class MetricDetailOrder(BaseModel):
+    id: int
+    odoo_id: int
+    odoo_name: Optional[str]
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    date_order: datetime
+    state: str
+    amount_total: float
+    margin: float
+    currency_code: Optional[str]
+    lines: List[SalesOrderLineRead]
+    converted_amount: float
+    converted_margin: float
     
+    model_config = ConfigDict(from_attributes=True)
+
+class MetricDetailCompanyGroup(BaseModel):
+    company_id: Optional[int]
+    company_name: str
+    metric_value: float
+
+
+class MetricDetailResponse(BaseModel):
+    metric_name: str
+    base_currency: str
+    total_metric_value: float
+    company_groups: List[MetricDetailCompanyGroup]
+    
+    items: List[MetricDetailOrder]
+    total: int
+    limit: int
+    offset: int
+
+
+class DailyOrdersResponse(BaseModel):
+    """Response for orders on a specific day (Daily Performance drill-down)"""
+    date: str                        # YYYY-MM-DD of the requested day
+    base_currency: str
+    total_revenue: float             # sum of converted amount_total
+    order_count: int                 # total orders on this day
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[MetricDetailOrder]
+    total: int
+    limit: int
+    offset: int
+
+
+class MarketBreakdownResponse(BaseModel):
+    """Drill-down into a Market-breakdown entity (customer, product, salesperson)"""
+    section: str                     # top_customers | top_products | top_salespeople
+    entity_id: int                   # partner_id / product_id / user_id
+    entity_name: str
+    base_currency: str
+    total_revenue: float
+    order_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[MetricDetailOrder]
+    total: int
+    limit: int
+    offset: int
+
+
+class EntityProfileResponse(BaseModel):
+    """Profile details for a salesperson (User) or customer/key account (Partner)"""
+    entity_type: str                   # "salesperson" or "customer"
+    id: int                            # Django pk
+    odoo_id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    # Partner-only fields
+    city: Optional[str] = None
+    country_code: Optional[str] = None
+    is_customer: Optional[bool] = None
+    is_supplier: Optional[bool] = None
+    customer_rank: Optional[int] = None
+    supplier_rank: Optional[int] = None
+    is_active: Optional[bool] = None
+    created_at: Optional[datetime] = None    # date started / date synced
+
+
+class ProductSaleLineDetail(BaseModel):
+    """A single sale-line occurrence of a product"""
+    line_id: int
+    order_id: int
+    order_odoo_id: int
+    order_name: Optional[str] = None
+    date_order: datetime
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    customer_name: Optional[str] = None
+    product_uom_qty: float             # pieces ordered
+    qty_delivered: float
+    qty_invoiced: float
+    price_unit: float
+    discount: float
+    price_subtotal: float
+    price_total: float
+    margin: float
+    currency_code: Optional[str] = None
+    converted_subtotal: float
+    converted_total: float
+
+
+class ProductSalesDetailResponse(BaseModel):
+    """Drill-down for a product — every sale line with order context"""
+    product_id: int
+    product_name: str
+    product_sku: Optional[str] = None
+    product_type: Optional[str] = None
+    list_price: Optional[float] = None
+    base_currency: str
+    total_revenue: float
+    total_qty_sold: float
+    line_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[ProductSaleLineDetail]
+    total: int
+    limit: int
+    offset: int
+
 CompanyRef = Company
 PartnerRef = Partner
 UserRef = User
