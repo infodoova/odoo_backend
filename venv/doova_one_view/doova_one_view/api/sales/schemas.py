@@ -340,6 +340,26 @@ class ProductSalesDetailResponse(BaseModel):
     limit: int
     offset: int
 
+class CustomerMetric(BaseModel):
+    partner_id: int
+    partner_name: str
+    order_count: int
+    first_order_date: datetime
+    last_order_date: datetime
+    lifespan_days: int
+    lifespan_months: float
+    frequency_per_year: float
+    frequency_per_month: float
+
+class CustomerMetricsResponse(BaseModel):
+    tenant_id: str
+    average_lifespan_days: float
+    average_lifespan_months: float
+    average_frequency_per_year: float
+    average_frequency_per_month: float
+    total_customers: int
+    items: List[CustomerMetric]
+
 CompanyRef = Company
 PartnerRef = Partner
 UserRef = User

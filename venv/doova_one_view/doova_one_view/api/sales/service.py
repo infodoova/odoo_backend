@@ -19,7 +19,8 @@ from doova_one_view.api.sales.schemas import (
     KPIMetric, TimeSeriesPoint, EntityMetric,
     MetricDetailResponse, MetricDetailCompanyGroup, MetricDetailOrder,
     DailyOrdersResponse, MarketBreakdownResponse,
-    EntityProfileResponse, ProductSaleLineDetail, ProductSalesDetailResponse
+    EntityProfileResponse, ProductSaleLineDetail, ProductSalesDetailResponse,
+    CustomerMetric, CustomerMetricsResponse
 )
 from odoo_app.models.partner import Partner
 from odoo_app.models.odoo_user import User as OdooUser
@@ -1029,4 +1030,116 @@ class SalesService:
                 offset=offset
             )
 
+        return await asyncio.to_thread(_get)
+
+    # ── Customer Metrics ───────────────────────────────────────────────────
+
+    @staticmethod
+    async def get_customer_metrics(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        partner_id: Optional[int] = None
+    ) -> CustomerMetricsResponse:
+        """Calculate and return Purchase Frequency and Customer Lifespan."""
+        def _get():
+            from django.db.models import Count, Min, Max
+            
+            initial_date = SalesService._parse_date(start_date)
+            final_date = SalesService._parse_date(end_date)
+            
+            # Start with base queryset
+            qs = SalesOrder.objects.filter(
+                tenant_id=tenant_id, 
+                state__in=['sale', 'done'],
+                partner__isnull=False
+            )
+            
+            # Apply date filters if provided
+            if initial_date:
+                start_dt = timezone.make_aware(datetime.combine(initial_date, time.min))
+                qs = qs.filter(date_order__gte=start_dt)
+            if final_date:
+                end_dt = timezone.make_aware(datetime.combine(final_date, time.max))
+                qs = qs.filter(date_order__lte=end_dt)
+                
+            # Apply company filters if provided
+            if company_ids:
+                qs = qs.filter(company__odoo_id__in=company_ids)
+                
+            # Apply partner filter if provided
+            if partner_id:
+                qs = qs.filter(partner_id=partner_id)
+
+            qs = qs.values(
+                'partner_id', 'partner__name'
+            ).annotate(
+                order_count=Count('id'),
+                first_order=Min('date_order'),
+                last_order=Max('date_order')
+            )
+
+            metrics = []
+            total_lifespan_days = 0
+            total_lifespan_months = 0.0
+            total_frequency_year = 0.0
+            total_frequency_month = 0.0
+
+            for row in qs:
+                pid = row['partner_id']
+                pname = row['partner__name']
+                count = row['order_count']
+                first = row['first_order']
+                last = row['last_order']
+                
+                # Lifespan
+                diff = last - first
+                lifespan_days = diff.days
+                lifespan_months = lifespan_days / 30.44
+
+                # Frequency
+                if lifespan_days > 0:
+                    freq_per_year = (count / lifespan_days) * 365.0
+                else:
+                    freq_per_year = float(count)
+                    
+                if lifespan_months > 0:
+                    freq_per_month = count / lifespan_months
+                else:
+                    freq_per_month = float(count)
+
+                metrics.append(CustomerMetric(
+                    partner_id=pid,
+                    partner_name=pname or "Unknown",
+                    order_count=count,
+                    first_order_date=first,
+                    last_order_date=last,
+                    lifespan_days=lifespan_days,
+                    lifespan_months=round(lifespan_months, 2),
+                    frequency_per_year=round(freq_per_year, 2),
+                    frequency_per_month=round(freq_per_month, 2)
+                ))
+
+                total_lifespan_days += lifespan_days
+                total_lifespan_months += lifespan_months
+                total_frequency_year += freq_per_year
+                total_frequency_month += freq_per_month
+
+            total_customers = len(metrics)
+            avg_lifespan_days = total_lifespan_days / total_customers if total_customers else 0
+            avg_lifespan_months = total_lifespan_months / total_customers if total_customers else 0
+            avg_freq_year = total_frequency_year / total_customers if total_customers else 0
+            avg_freq_month = total_frequency_month / total_customers if total_customers else 0
+
+            return CustomerMetricsResponse(
+                tenant_id=tenant_id,
+                average_lifespan_days=round(avg_lifespan_days, 2),
+                average_lifespan_months=round(avg_lifespan_months, 2),
+                average_frequency_per_year=round(avg_freq_year, 2),
+                average_frequency_per_month=round(avg_freq_month, 2),
+                total_customers=total_customers,
+                items=metrics
+            )
+            
         return await asyncio.to_thread(_get)

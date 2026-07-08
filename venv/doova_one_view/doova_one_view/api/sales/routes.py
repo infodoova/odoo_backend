@@ -19,7 +19,8 @@ from doova_one_view.api.sales.schemas import (
     DailyOrdersResponse,
     MarketBreakdownResponse,
     EntityProfileResponse,
-    ProductSalesDetailResponse
+    ProductSalesDetailResponse,
+    CustomerMetricsResponse
 )
 from doova_one_view.api.sales.service import SalesService
 from doova_one_view.api.tenants.service import TenantService
@@ -157,6 +158,26 @@ async def get_product_sales_details(
         base_currency=base_currency,
         limit=limit,
         offset=offset
+    )
+
+@router.get("/{tenant_id}/customer-metrics")
+async def get_customer_metrics(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    partner_id: Optional[int] = Query(None, description="Filter by a specific customer"),
+    user: AppUser = Depends(get_current_user)
+) -> CustomerMetricsResponse:
+    """Calculate and return Purchase Frequency and Customer Lifespan."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await SalesService.get_customer_metrics(
+        tenant_id=tenant_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        partner_id=partner_id
     )
 
 @router.get("/{tenant_id}/kpis")
