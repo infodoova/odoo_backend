@@ -224,6 +224,8 @@ class MetricDetailOrder(BaseModel):
     odoo_name: Optional[str]
     company_id: Optional[int] = None
     company_name: Optional[str] = None
+    customer: Optional[PartnerRead] = None
+    salesperson: Optional[UserRead] = None
     date_order: datetime
     state: str
     amount_total: float

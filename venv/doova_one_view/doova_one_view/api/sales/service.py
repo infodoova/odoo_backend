@@ -139,7 +139,7 @@ class SalesService:
         def _search():
             qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                qs = qs.filter(company__odoo_id__in=company_ids)
+                qs = qs.filter(company_id__in=company_ids)
 
             for f in request.filters:
                 field = f.field
@@ -225,7 +225,7 @@ class SalesService:
         def _get_orders():
             qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                qs = qs.filter(company__odoo_id__in=company_ids)
+                qs = qs.filter(company_id__in=company_ids)
             return list(qs.select_related('partner', 'user', 'company').order_by('-date_order'))
 
         orders = await asyncio.to_thread(_get_orders)
@@ -357,7 +357,7 @@ class SalesService:
             
             base_qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                base_qs = base_qs.filter(company__odoo_id__in=company_ids)
+                base_qs = base_qs.filter(company_id__in=company_ids)
             
             rate_map = _get_rate_map()
             effective_base = base_currency or "XAF"
@@ -530,18 +530,15 @@ class SalesService:
 
             base_qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
-                base_qs = base_qs.filter(company__odoo_id__in=company_ids)
+                base_qs = base_qs.filter(company_id__in=company_ids)
 
             # Apply specific metric filters
-            # Use explicit UTC datetime boundaries to avoid timezone edge-day clipping.
-            # date_order is stored as UTC; using __date lookup with USE_TZ=True can miss
-            # orders whose local time falls on the start date but UTC time is the day before.
-            start_dt = timezone.make_aware(datetime.combine(initial_date, time.min))
-            end_dt = timezone.make_aware(datetime.combine(final_date, time.max))
+            # Use date_order__date__range for date-only comparison, consistent
+            # with get_dashboard() so both endpoints return matching totals.
             if metric == 'pipeline_value':
                 qs = base_qs.filter(state__in=['draft', 'sent'])
             elif metric in ['total_revenue', 'total_profit', 'order_count', 'avg_order_value']:
-                qs = base_qs.filter(state__in=['sale', 'done'], date_order__gte=start_dt, date_order__lte=end_dt)
+                qs = base_qs.filter(state__in=['sale', 'done'], date_order__date__range=(initial_date, final_date))
             else:
                 raise ValidationError(f"Metric drill-down not supported for: {metric}")
 
@@ -593,6 +590,8 @@ class SalesService:
                     odoo_name=order.odoo_name,
                     company_id=cid,
                     company_name=cname,
+                    customer=order.partner,
+                    salesperson=order.user,
                     date_order=order.date_order,
                     state=order.state,
                     amount_total=_to_float(order.amount_total),
@@ -649,24 +648,21 @@ class SalesService:
             if not target_date:
                 raise ValidationError("'day' parameter is required in YYYY-MM-DD format")
 
-            # Full UTC day boundaries so the filter is truly inclusive
-            start_dt = timezone.make_aware(datetime.combine(target_date, time.min))
-            end_dt   = timezone.make_aware(datetime.combine(target_date, time.max))
-
+            # Use date_order__date for date-only comparison, consistent
+            # with get_dashboard()'s TruncDate grouping so totals match.
             base_qs = SalesOrder.objects.filter(
                 tenant_id=tenant_id,
                 state__in=['sale', 'done'],
-                date_order__gte=start_dt,
-                date_order__lte=end_dt
+                date_order__date=target_date
             )
             if company_ids:
-                base_qs = base_qs.filter(company__odoo_id__in=company_ids)
+                base_qs = base_qs.filter(company_id__in=company_ids)
 
             orders = base_qs.select_related('company').prefetch_related(
                 'lines', 'lines__product'
             ).order_by('date_order')
 
-            effective_base = (base_currency or 'EUR').upper()
+            effective_base = (base_currency or 'XAF').upper()
             rate_map = _get_rate_map()
 
             groups: dict[int, dict] = {}
@@ -694,6 +690,8 @@ class SalesService:
                     odoo_name=order.odoo_name,
                     company_id=cid,
                     company_name=cname,
+                    customer=order.partner,
+                    salesperson=order.user,
                     date_order=order.date_order,
                     state=order.state,
                     amount_total=_to_float(order.amount_total),
@@ -759,17 +757,13 @@ class SalesService:
             if not initial_date:
                 initial_date = final_date - timedelta(days=30)
 
-            start_dt = timezone.make_aware(datetime.combine(initial_date, time.min))
-            end_dt   = timezone.make_aware(datetime.combine(final_date, time.max))
-
             base_qs = SalesOrder.objects.filter(
                 tenant_id=tenant_id,
                 state__in=['sale', 'done'],
-                date_order__gte=start_dt,
-                date_order__lte=end_dt
+                date_order__date__range=(initial_date, final_date)
             )
             if company_ids:
-                base_qs = base_qs.filter(company__odoo_id__in=company_ids)
+                base_qs = base_qs.filter(company_id__in=company_ids)
 
             # Filter by the chosen entity
             base_qs = base_qs.filter(**{fk_field: entity_id})
@@ -792,7 +786,7 @@ class SalesService:
                 'lines', 'lines__product'
             ).distinct().order_by('-date_order')
 
-            effective_base = (base_currency or 'EUR').upper()
+            effective_base = (base_currency or 'XAF').upper()
             rate_map = _get_rate_map()
 
             groups: dict[int, dict] = {}
@@ -820,6 +814,8 @@ class SalesService:
                     odoo_name=order.odoo_name,
                     company_id=cid,
                     company_name=cname,
+                    customer=order.partner,
+                    salesperson=order.user,
                     date_order=order.date_order,
                     state=order.state,
                     amount_total=_to_float(order.amount_total),
@@ -942,23 +938,19 @@ class SalesService:
             if not initial_date:
                 initial_date = final_date - timedelta(days=30)
 
-            start_dt = timezone.make_aware(datetime.combine(initial_date, time.min))
-            end_dt   = timezone.make_aware(datetime.combine(final_date, time.max))
-
             lines_qs = SalesOrderLine.objects.filter(
                 tenant_id=tenant_id,
                 product_id=product_id,
                 sales_order__state__in=['sale', 'done'],
-                sales_order__date_order__gte=start_dt,
-                sales_order__date_order__lte=end_dt
+                sales_order__date_order__date__range=(initial_date, final_date)
             ).select_related(
                 'sales_order', 'sales_order__company', 'sales_order__partner', 'product'
             ).order_by('-sales_order__date_order')
 
             if company_ids:
-                lines_qs = lines_qs.filter(sales_order__company__odoo_id__in=company_ids)
+                lines_qs = lines_qs.filter(sales_order__company_id__in=company_ids)
 
-            effective_base = (base_currency or 'EUR').upper()
+            effective_base = (base_currency or 'XAF').upper()
             rate_map = _get_rate_map()
 
             groups: dict[int, dict] = {}
@@ -1066,7 +1058,7 @@ class SalesService:
                 
             # Apply company filters if provided
             if company_ids:
-                qs = qs.filter(company__odoo_id__in=company_ids)
+                qs = qs.filter(company_id__in=company_ids)
                 
             # Apply partner filter if provided
             if partner_id:
