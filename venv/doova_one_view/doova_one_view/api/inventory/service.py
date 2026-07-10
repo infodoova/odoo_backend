@@ -314,10 +314,28 @@ class InventoryService:
                 "Reserved": quants.filter(reserved_quantity__gt=0).count(),
                 "Empty": quants.filter(quantity__lte=0).count(),
             }
-            company_distribution = {
-                row["company__name"] or "Unknown": row["count"]
-                for row in quants.values("company__name").annotate(count=Count("id"))
-            }
+            company_distribution = [
+                {
+                    # Local database ID — use this with company_id filters and drill-downs
+                    "company_id": row["company_id"],
+
+                    # Original company ID from Odoo
+                    "company_odoo_id": row["company__odoo_id"],
+
+                    "company_name": row["company__name"] or "Unknown",
+                    "count": row["count"],
+                }
+                for row in (
+                    quants
+                    .values(
+                        "company_id",
+                        "company__odoo_id",
+                        "company__name",
+                    )
+                    .annotate(count=Count("id"))
+                    .order_by("-count")
+                )
+            ]
             location_distribution = {
                 row["location_name"] or "Unknown": row["count"]
                 for row in quants.values("location_name").annotate(count=Count("id")).order_by("-count")[:10]
