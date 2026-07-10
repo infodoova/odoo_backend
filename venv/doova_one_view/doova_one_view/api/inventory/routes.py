@@ -10,7 +10,14 @@ from fastapi.responses import Response
 from odoo_app.models import AppUser
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
-from doova_one_view.api.inventory.schemas import SearchRequest
+from doova_one_view.api.inventory.schemas import (
+    SearchRequest,
+    MetricDetailResponse,
+    DailyMovesResponse,
+    MarketBreakdownResponse,
+    EntityProfileResponse,
+    ProductInventoryDetailResponse,
+)
 from doova_one_view.api.inventory.service import InventoryService
 from doova_one_view.api.tenants.service import TenantService
 
@@ -264,4 +271,123 @@ async def get_filters(
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_filters(
         tenant_id, _company_ids(company_id, companies)
+    )
+
+
+@router.get("/{tenant_id}/dashboard/metric-details")
+async def get_dashboard_metric_details(
+    tenant_id: str,
+    metric: str = Query(..., description="Metric name: total_items_in_stock, incoming_shipments_count, outgoing_shipments_count, expiring_soon_count"),
+    start_date: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user),
+) -> MetricDetailResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_dashboard_metric_details(
+        tenant_id,
+        metric,
+        start_date,
+        end_date,
+        _company_ids(company_id, companies),
+        base_currency,
+        limit,
+        offset,
+    )
+
+
+@router.get("/{tenant_id}/dashboard/daily-moves")
+async def get_daily_moves(
+    tenant_id: str,
+    day: str = Query(..., description="The calendar day to drill into (YYYY-MM-DD)"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user),
+) -> DailyMovesResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_daily_moves(
+        tenant_id,
+        day,
+        _company_ids(company_id, companies),
+        base_currency,
+        limit,
+        offset,
+    )
+
+
+@router.get("/{tenant_id}/dashboard/market-breakdown")
+async def get_market_breakdown_details(
+    tenant_id: str,
+    section: str = Query(..., description="Section name: top_locations, top_companies, top_statuses"),
+    entity_id: str = Query(..., description="The entity ID or name"),
+    start_date: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user),
+) -> MarketBreakdownResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    parsed_entity_id: Any = entity_id
+    try:
+        parsed_entity_id = int(entity_id)
+    except ValueError:
+        pass
+
+    return await InventoryService.get_market_breakdown_details(
+        tenant_id,
+        section,
+        parsed_entity_id,
+        start_date,
+        end_date,
+        _company_ids(company_id, companies),
+        base_currency,
+        limit,
+        offset,
+    )
+
+
+@router.get("/{tenant_id}/dashboard/entity-profile")
+async def get_entity_profile(
+    tenant_id: str,
+    entity_type: str = Query(..., description="Entity type: customer, vendor, supplier"),
+    entity_id: int = Query(..., description="Partner ID"),
+    user: AppUser = Depends(get_current_user),
+) -> EntityProfileResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_entity_profile(tenant_id, entity_type, entity_id)
+
+
+@router.get("/{tenant_id}/dashboard/product-inventory-details")
+async def get_product_inventory_details(
+    tenant_id: str,
+    product_id: int = Query(..., description="Product ID"),
+    start_date: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user),
+) -> ProductInventoryDetailResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_product_inventory_details(
+        tenant_id,
+        product_id,
+        start_date,
+        end_date,
+        _company_ids(company_id, companies),
+        base_currency,
+        limit,
+        offset,
     )

@@ -5,7 +5,7 @@ Inventory API schemas
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, Optional, List, Union
 from datetime import datetime
-from doova_one_view.api.common.schemas import ProductRead, LotRead, PaginatedResponse
+from doova_one_view.api.common.schemas import ProductRead, LotRead, PaginatedResponse, PartnerRead, CompanyRead
 
 
 class StockQuantRead(BaseModel):
@@ -65,3 +65,89 @@ class SearchRequest(BaseModel):
     offset: int = Field(0, ge=0)
     company_id: Optional[int] = None
     companies: Optional[Union[str, int, List[Union[str, int]]]] = None
+
+
+class StockPickingRead(BaseModel):
+    """Stock picking schema"""
+    id: int
+    odoo_id: int
+    name: str
+    partner: Optional[PartnerRead] = None
+    partner_id: Optional[int] = None
+    partner_name: Optional[str] = None
+    picking_type: str
+    picking_type_code: str
+    origin: Optional[str] = None
+    state: str
+    scheduled_date: Optional[datetime] = None
+    date_done: Optional[datetime] = None
+    company: Optional[CompanyRead] = None
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    synced_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MetricDetailCompanyGroup(BaseModel):
+    company_id: Optional[int] = None
+    company_name: str
+    metric_value: float
+
+
+class MetricDetailResponse(BaseModel):
+    metric_name: str
+    total_metric_value: float
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[Union[StockQuantRead, StockPickingRead]]
+    total: int
+    limit: int
+    offset: int
+
+
+class DailyMovesResponse(BaseModel):
+    date: str
+    total_quantity: float
+    picking_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[Union[StockQuantRead, StockPickingRead]]
+    total: int
+    limit: int
+    offset: int
+
+
+class MarketBreakdownResponse(BaseModel):
+    section: str
+    entity_id: Union[int, str]
+    entity_name: str
+    total_quantity: float
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[StockQuantRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class EntityProfileResponse(BaseModel):
+    entity_id: int
+    entity_type: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+
+
+class ProductInventoryDetailResponse(BaseModel):
+    product_id: int
+    product_name: str
+    product_sku: Optional[str] = None
+    product_type: Optional[str] = None
+    list_price: Optional[float] = None
+    total_quantity: float
+    total_reserved: float
+    line_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[StockQuantRead]
+    total: int
+    limit: int
+    offset: int

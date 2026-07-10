@@ -1,8 +1,11 @@
 from datetime import date, timedelta
 from django.test import TransactionTestCase
 from asgiref.sync import async_to_sync
-from odoo_app.models import Tenant, Company, Partner, AccountMove, AccountMoveLine
+from odoo_app.models import Tenant, Company, Partner, AccountMove, AccountMoveLine, Product
+from odoo_app.models.stock_quant import StockQuant
+from odoo_app.models.stock_picking import StockPicking
 from doova_one_view.api.accounting.service import AccountingService
+from doova_one_view.api.inventory.service import InventoryService
 
 
 class TodayExpensesTestCase(TransactionTestCase):
@@ -277,3 +280,276 @@ class MultiTenantExpensesTestCase(TransactionTestCase):
         # No cross-contamination: Tenant A does not see Tenant B's data
         names_a = {item["name"] for item in result_a["items"]}
         self.assertNotIn("BILL-B-001", names_a)
+
+
+class AccountingDrillDownTestCase(TransactionTestCase):
+    def setUp(self):
+        # Create tenant
+        self.tenant = Tenant.objects.create(
+            name="Alpha Tenant", odoo_url="https://alpha.odoo.com", odoo_database="alpha_db"
+        )
+        # Create company
+        self.company = Company.objects.create(
+            tenant=self.tenant, odoo_id=1, name="Company A", currency_code="XAF"
+        )
+        # Create partner (vendor)
+        self.vendor = Partner.objects.create(
+            tenant=self.tenant, odoo_id=10, name="Supplier A", is_supplier=True
+        )
+        # Create partner (customer)
+        self.customer = Partner.objects.create(
+            tenant=self.tenant, odoo_id=11, name="Customer A", is_customer=True
+        )
+
+        today = date.today()
+
+        # Create posted vendor bill (expense) for today
+        self.bill = AccountMove.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=1001,
+            odoo_name="BILL-001",
+            partner=self.vendor,
+            date=today,
+            invoice_date=today,
+            invoice_date_due=today + timedelta(days=15),
+            move_type="in_invoice",
+            state="posted",
+            payment_state="not_paid",
+            amount_total=1000.00,
+            amount_residual=1000.00,
+            currency_code="XAF"
+        )
+        # Create posted customer invoice (revenue) for today
+        self.invoice = AccountMove.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=1002,
+            odoo_name="INV-001",
+            partner=self.customer,
+            date=today,
+            invoice_date=today,
+            invoice_date_due=today - timedelta(days=5), # Overdue
+            move_type="out_invoice",
+            state="posted",
+            payment_state="not_paid",
+            amount_total=2500.00,
+            amount_residual=2500.00,
+            currency_code="XAF"
+        )
+
+    def _verify_kpis(self, start_date=None, end_date=None):
+        """Helper to assert overview dashboard metrics match metric-details totals."""
+        dash = async_to_sync(AccountingService.get_dashboard)(
+            tenant_id=str(self.tenant.id),
+            start_date=start_date,
+            end_date=end_date,
+            base_currency="XAF"
+        )
+        
+        metrics = [
+            ("total_revenue", "value", "converted_amount"),
+            ("total_expenses", "value", "converted_amount"),
+            ("net_profit", "value", "converted_amount"), # net_profit needs custom summation below
+            ("receivable_balance", None, "converted_residual"),
+            ("payable_balance", None, "converted_residual"),
+            ("overdue_receivable", None, "converted_residual"),
+            ("overdue_payable", None, "converted_residual"),
+        ]
+
+        for m_name, kpi_sub_field, detail_field in metrics:
+            details = async_to_sync(AccountingService.get_dashboard_metric_details)(
+                tenant_id=str(self.tenant.id),
+                metric=m_name,
+                start_date=start_date,
+                end_date=end_date,
+                base_currency="XAF"
+            )
+            
+            # Extract KPI value
+            kpi_val = dash[m_name]
+            if kpi_sub_field:
+                kpi_val = kpi_val[kpi_sub_field]
+            
+            # Compute detail sum
+            if m_name == "net_profit":
+                detail_sum = 0.0
+                for item in details["items"]:
+                    if item["move_type"] == "out_invoice":
+                        detail_sum += item[detail_field]
+                    else:
+                        detail_sum -= item[detail_field]
+            else:
+                detail_sum = sum(item[detail_field] for item in details["items"])
+            
+            self.assertEqual(detail_sum, kpi_val, f"Mismatch for metric: {m_name}")
+            if kpi_sub_field:
+                self.assertEqual(details["total_metric_value"], kpi_val, f"Mismatch for metric total_metric_value: {m_name}")
+
+    def test_dashboard_vs_metric_details_all_time(self):
+        """Verify that dashboard metrics and metric-details match exactly for all-time view."""
+        self._verify_kpis(start_date=None, end_date=None)
+
+    def test_dashboard_vs_metric_details_with_dates(self):
+        """Verify that dashboard metrics and metric-details match exactly when date filters are applied."""
+        today_str = date.today().isoformat()
+        self._verify_kpis(start_date=today_str, end_date=today_str)
+
+    def test_daily_moves(self):
+        day_str = date.today().isoformat()
+        res = async_to_sync(AccountingService.get_daily_moves)(
+            tenant_id=str(self.tenant.id),
+            day=day_str,
+            base_currency="XAF"
+        )
+        self.assertEqual(res["move_count"], 2)
+        self.assertEqual(res["total_revenue"], 2500.00)
+        self.assertEqual(res["total_expenses"], 1000.00)
+        self.assertEqual(res["net_profit"], 1500.00)
+
+    def test_market_breakdown(self):
+        res = async_to_sync(AccountingService.get_market_breakdown_details)(
+            tenant_id=str(self.tenant.id),
+            section="top_revenue_customers",
+            entity_id=self.customer.id,
+            base_currency="XAF"
+        )
+        self.assertEqual(res["entity_name"], "Customer A")
+        self.assertEqual(res["total_amount"], 2500.00)
+        self.assertEqual(res["move_count"], 1)
+
+    def test_entity_profile(self):
+        prof = async_to_sync(AccountingService.get_entity_profile)(
+            tenant_id=str(self.tenant.id),
+            entity_type="customer",
+            entity_id=self.customer.id
+        )
+        self.assertEqual(prof["name"], "Customer A")
+
+
+class InventoryDrillDownTestCase(TransactionTestCase):
+    def setUp(self):
+        # Create tenant
+        self.tenant = Tenant.objects.create(
+            name="Beta Tenant", odoo_url="https://beta.odoo.com", odoo_database="beta_db"
+        )
+        # Create company
+        self.company = Company.objects.create(
+            tenant=self.tenant, odoo_id=1, name="Company B", currency_code="USD"
+        )
+        # Create partner (vendor)
+        self.vendor = Partner.objects.create(
+            tenant=self.tenant, odoo_id=10, name="Vendor B", is_supplier=True
+        )
+        # Create product
+        self.product = Product.objects.create(
+            tenant=self.tenant, odoo_id=50, name="Product B", default_code="PROD-B", barcode="12345", product_type="product", list_price=10.0, standard_price=8.0
+        )
+
+        today = date.today()
+
+        # Create stock quant (total 100 units, 20 reserved)
+        self.quant = StockQuant.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=3001,
+            product=self.product,
+            location_name="Warehouse A",
+            quantity=100.0,
+            reserved_quantity=20.0,
+            in_date=today,
+            synced_at=today
+        )
+
+        # Create stock picking (incoming)
+        self.picking = StockPicking.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=4001,
+            odoo_name="IN-001",
+            partner=self.vendor,
+            picking_type="incoming",
+            state="assigned",
+            scheduled_date=today,
+            synced_at=today
+        )
+
+    def _verify_kpis(self, start_date=None, end_date=None):
+        dash = async_to_sync(InventoryService.get_dashboard)(
+            tenant_id=str(self.tenant.id),
+            start_date=start_date,
+            end_date=end_date,
+            base_currency="USD"
+        )
+
+        kpis = [
+            ("total_items_in_stock", "total_items_in_stock", "quantity"),
+            ("incoming_shipments_count", "incoming_shipments_count", None),
+            ("outgoing_shipments_count", "outgoing_shipments_count", None),
+            ("expiring_soon_count", "expiring_soon_count", None),
+        ]
+
+        for m_name, dash_key, item_field in kpis:
+            details = async_to_sync(InventoryService.get_dashboard_metric_details)(
+                tenant_id=str(self.tenant.id),
+                metric=m_name,
+                start_date=start_date,
+                end_date=end_date,
+                base_currency="USD"
+            )
+
+            dash_val = dash[dash_key]
+            if item_field:
+                detail_sum = sum(item[item_field] for item in details["items"])
+            else:
+                detail_sum = float(len(details["items"]))
+
+            self.assertEqual(detail_sum, dash_val, f"Mismatch for metric: {m_name}")
+            self.assertEqual(details["total_metric_value"], dash_val, f"Mismatch for metric total_metric_value: {m_name}")
+
+    def test_dashboard_vs_metric_details_all_time(self):
+        self._verify_kpis(start_date=None, end_date=None)
+
+    def test_dashboard_vs_metric_details_with_dates(self):
+        today_str = date.today().isoformat()
+        self._verify_kpis(start_date=today_str, end_date=today_str)
+
+    def test_daily_moves(self):
+        day_str = date.today().isoformat()
+        res = async_to_sync(InventoryService.get_daily_moves)(
+            tenant_id=str(self.tenant.id),
+            day=day_str,
+            base_currency="USD"
+        )
+        self.assertEqual(res["total_quantity"], 100.0)
+        self.assertEqual(res["picking_count"], 1)
+
+    def test_market_breakdown(self):
+        res = async_to_sync(InventoryService.get_market_breakdown_details)(
+            tenant_id=str(self.tenant.id),
+            section="location_distribution",
+            entity_id="Warehouse A",
+            base_currency="USD"
+        )
+        self.assertEqual(res["entity_name"], "Warehouse A")
+        self.assertEqual(res["total_quantity"], 100.0)
+
+    def test_entity_profile(self):
+        prof = async_to_sync(InventoryService.get_entity_profile)(
+            tenant_id=str(self.tenant.id),
+            entity_type="vendor",
+            entity_id=self.vendor.id
+        )
+        self.assertEqual(prof["name"], "Vendor B")
+
+    def test_product_inventory_details(self):
+        res = async_to_sync(InventoryService.get_product_inventory_details)(
+            tenant_id=str(self.tenant.id),
+            product_id=self.product.id,
+            base_currency="USD"
+        )
+        self.assertEqual(res["product_name"], "Product B")
+        self.assertEqual(res["total_quantity"], 100.0)
+        self.assertEqual(res["total_reserved"], 20.0)
+
+

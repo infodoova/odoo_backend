@@ -35,6 +35,18 @@ async def _get_tenant_id_for_user(user: AppUser) -> str:
     return tenant_id
 
 
+async def _get_all_tenants_for_user(user: AppUser) -> list[dict[str, Any]]:
+    """Return all tenants the user has access to."""
+    def _fetch():
+        from odoo_app.models.user_tenant_access import UserTenantAccess
+        return list(UserTenantAccess.objects.filter(user=user).select_related('tenant'))
+
+    accesses = await asyncio.to_thread(_fetch)
+    if not accesses:
+        raise HTTPException(status_code=400, detail="No tenants associated with this user")
+    return [{"id": str(access.tenant_id), "name": access.tenant.name} for access in accesses]
+
+
 def _company_ids(company_id: Optional[int], companies: Optional[str]) -> Optional[list[int]]:
     return parse_company_ids(company_id if company_id is not None else companies)
 
@@ -181,3 +193,124 @@ async def export_accounting_moves(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=account_moves_{tenant_id}.csv"},
     )
+
+
+# ── Drill-Down Endpoints ────────────────────────────────────────────────────────
+
+from doova_one_view.api.accounting.schemas import (
+    MetricDetailResponse, DailyMovesResponse, MarketBreakdownResponse,
+    ProductMovesDetailResponse, EntityProfileResponse
+)
+
+@router.get("/{tenant_id}/dashboard/metric-details")
+async def get_dashboard_metric_details(
+    tenant_id: str,
+    metric: str = Query(..., description="The metric name (e.g., total_revenue, total_expenses, net_profit, receivable_balance, payable_balance, overdue_receivable, overdue_payable)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> MetricDetailResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await AccountingService.get_dashboard_metric_details(
+        tenant_id=tenant_id,
+        metric=metric,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{tenant_id}/dashboard/daily-moves")
+async def get_daily_moves(
+    tenant_id: str,
+    day: str = Query(..., description="The calendar day to drill into (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> DailyMovesResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await AccountingService.get_daily_moves(
+        tenant_id=tenant_id,
+        day=day,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{tenant_id}/dashboard/market-breakdown")
+async def get_market_breakdown_details(
+    tenant_id: str,
+    section: str = Query(..., description="Section name: top_revenue_customers or top_expense_vendors"),
+    entity_id: int = Query(..., description="The entity ID (partner_id)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> MarketBreakdownResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await AccountingService.get_market_breakdown_details(
+        tenant_id=tenant_id,
+        section=section,
+        entity_id=entity_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{tenant_id}/dashboard/entity-profile")
+async def get_entity_profile(
+    tenant_id: str,
+    entity_type: str = Query(..., description="'customer' or 'vendor'/'supplier'"),
+    entity_id: int = Query(..., description="The entity's Django pk"),
+    user: AppUser = Depends(get_current_user)
+) -> EntityProfileResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await AccountingService.get_entity_profile(
+        tenant_id=tenant_id,
+        entity_type=entity_type,
+        entity_id=entity_id
+    )
+
+@router.get("/{tenant_id}/dashboard/product-moves-details")
+async def get_product_moves_details(
+    tenant_id: str,
+    product_id: int = Query(..., description="The product's Django pk"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> ProductMovesDetailResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await AccountingService.get_product_moves_details(
+        tenant_id=tenant_id,
+        product_id=product_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
+

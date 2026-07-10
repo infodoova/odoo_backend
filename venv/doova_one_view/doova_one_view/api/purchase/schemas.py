@@ -81,3 +81,92 @@ class SearchRequest(BaseModel):
     limit: int = Field(50, ge=1, le=500)
     offset: int = Field(0, ge=0)
     companies: Optional[str] = None
+
+
+# ── Drill-Down Schemas ──────────────────────────────────────────────────────────
+
+class PurchaseMetricDetailOrder(BaseModel):
+    id: int
+    odoo_id: int
+    odoo_name: Optional[str]
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    vendor: Optional[PartnerRead] = None
+    buyer: Optional[UserRead] = None
+    date_order: datetime
+    state: str
+    amount_total: float
+    currency_code: Optional[str]
+    lines: List[PurchaseOrderLineRead]
+    converted_amount: float
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MetricDetailCompanyGroup(BaseModel):
+    company_id: Optional[int]
+    company_name: str
+    metric_value: float
+
+
+class MetricDetailResponse(BaseModel):
+    metric_name: str
+    base_currency: str
+    total_metric_value: float
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[PurchaseMetricDetailOrder]
+    total: int
+    limit: int
+    offset: int
+
+
+class DailyOrdersResponse(BaseModel):
+    date: str
+    base_currency: str
+    total_spend: float
+    order_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[PurchaseMetricDetailOrder]
+    total: int
+    limit: int
+    offset: int
+
+
+class MarketBreakdownResponse(BaseModel):
+    section: str
+    entity_id: int
+    entity_name: str
+    base_currency: str
+    total_spend: float
+    order_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[PurchaseMetricDetailOrder]
+    total: int
+    limit: int
+    offset: int
+
+
+class ProductPurchaseDetailResponse(BaseModel):
+    product_id: int
+    product_name: str
+    product_sku: Optional[str] = None
+    product_type: Optional[str] = None
+    list_price: Optional[float] = None
+    base_currency: str
+    total_spend: float
+    total_qty_purchased: float
+    line_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[PurchaseOrderLineRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class EntityProfileResponse(BaseModel):
+    entity_id: int
+    entity_type: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None

@@ -725,3 +725,481 @@ class AccountingService:
             item = _move_to_item(move)
             lines.append(",".join(_csv_escape(item.get(col, "")) for col in header_cols))
         return "\n".join(lines)
+
+    # ── Drill-Down Implementations ──────────────────────────────────────────
+
+    @staticmethod
+    def _parse_date(date_str: Optional[str]) -> Optional[date]:
+        if not date_str:
+            return None
+        try:
+            return date.fromisoformat(date_str)
+        except ValueError:
+            return None
+
+    @staticmethod
+    async def get_dashboard_metric_details(
+        tenant_id: str,
+        metric: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.accounting.schemas import (
+                AccountingDetailMove, MetricDetailCompanyGroup, MetricDetailResponse
+            )
+            
+            base_qs = AccountingService._base_qs(tenant_id, company_ids)
+            qs = AccountingService._date_qs(base_qs, start_date, end_date)
+            
+            if metric == 'total_revenue':
+                qs = qs.filter(move_type="out_invoice", state="posted")
+            elif metric == 'total_expenses':
+                qs = qs.filter(move_type="in_invoice", state="posted")
+            elif metric in ['net_profit', 'gross_profit', 'ebit']:
+                qs = qs.filter(move_type__in=["out_invoice", "in_invoice"], state="posted")
+            elif metric == 'receivable_balance':
+                qs = qs.filter(move_type="out_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0)
+            elif metric == 'payable_balance':
+                qs = qs.filter(move_type="in_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0)
+            elif metric == 'overdue_receivable':
+                overdue_filter = Q(invoice_date_due__lt=date.today()) & ~Q(payment_state__in=["paid", "reversed"])
+                qs = qs.filter(overdue_filter, move_type="out_invoice", amount_residual__gt=0)
+            elif metric == 'overdue_payable':
+                overdue_filter = Q(invoice_date_due__lt=date.today()) & ~Q(payment_state__in=["paid", "reversed"])
+                qs = qs.filter(overdue_filter, move_type="in_invoice", amount_residual__gt=0)
+            else:
+                raise ValueError(f"Metric drill-down not supported for: {metric}")
+
+            moves = qs.select_related('partner', 'company').prefetch_related(
+                'lines', 'lines__product', 'lines__partner', 'lines__company'
+            ).order_by('-date', '-id')
+
+            rate_map = _get_rate_map()
+            effective_base = (base_currency or "XAF").upper()
+            
+            groups = {}
+            total_metric_sum = 0.0
+            flat_moves = []
+
+            for move in moves:
+                company_obj = move.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = move.currency_code or "COMPANY_BASE"
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                
+                converted_amount = _to_float(move.amount_total) * rate
+                converted_residual = _to_float(move.amount_residual) * rate
+
+                move_value = 0.0
+                if metric == 'total_revenue':
+                    move_value = converted_amount
+                elif metric == 'total_expenses':
+                    move_value = converted_amount
+                elif metric in ['net_profit', 'gross_profit', 'ebit']:
+                    if move.move_type == 'out_invoice':
+                        move_value = converted_amount
+                    else:
+                        move_value = -converted_amount
+                elif metric in ['receivable_balance', 'payable_balance', 'overdue_receivable', 'overdue_payable']:
+                    move_value = converted_residual
+
+                groups[cid]["metric_value"] += move_value
+                total_metric_sum += move_value
+
+                flat_moves.append(AccountingDetailMove(
+                    id=move.id,
+                    odoo_id=move.odoo_id,
+                    odoo_name=move.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    partner=_partner_obj(move),
+                    date=move.date,
+                    state=move.state,
+                    payment_state=move.payment_state,
+                    move_type=move.move_type,
+                    amount_total=_to_float(move.amount_total),
+                    amount_residual=_to_float(move.amount_residual),
+                    currency_code=code,
+                    lines=[_line_to_item(l) for l in move.lines.all()],
+                    converted_amount=converted_amount,
+                    converted_residual=converted_residual,
+                    ref=move.ref,
+                    synced_at=move.synced_at
+                ))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_moves)
+            paginated_moves = flat_moves[offset:offset + limit]
+
+            return MetricDetailResponse(
+                metric_name=metric,
+                base_currency=effective_base,
+                total_metric_value=total_metric_sum,
+                company_groups=company_groups,
+                items=paginated_moves,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_daily_moves(
+        tenant_id: str,
+        day: str,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.accounting.schemas import (
+                AccountingDetailMove, MetricDetailCompanyGroup, DailyMovesResponse
+            )
+            target_date = AccountingService._parse_date(day)
+            if not target_date:
+                raise ValueError("Invalid day format. Expected YYYY-MM-DD")
+
+            qs = AccountingService._base_qs(tenant_id, company_ids).filter(date=target_date)
+            moves = qs.select_related('partner', 'company').prefetch_related(
+                'lines', 'lines__product', 'lines__partner', 'lines__company'
+            ).order_by('-id')
+
+            effective_base = (base_currency or 'XAF').upper()
+            rate_map = _get_rate_map()
+
+            groups = {}
+            total_revenue = 0.0
+            total_expenses = 0.0
+            flat_moves = []
+
+            for move in moves:
+                company_obj = move.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = move.currency_code or 'COMPANY_BASE'
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                converted_amount = _to_float(move.amount_total) * rate
+                converted_residual = _to_float(move.amount_residual) * rate
+
+                if move.state == 'posted':
+                    if move.move_type == 'out_invoice':
+                        total_revenue += converted_amount
+                        groups[cid]['metric_value'] += converted_amount
+                    elif move.move_type == 'in_invoice':
+                        total_expenses += converted_amount
+                        groups[cid]['metric_value'] -= converted_amount
+
+                flat_moves.append(AccountingDetailMove(
+                    id=move.id,
+                    odoo_id=move.odoo_id,
+                    odoo_name=move.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    partner=_partner_obj(move),
+                    date=move.date,
+                    state=move.state,
+                    payment_state=move.payment_state,
+                    move_type=move.move_type,
+                    amount_total=_to_float(move.amount_total),
+                    amount_residual=_to_float(move.amount_residual),
+                    currency_code=code,
+                    lines=[_line_to_item(l) for l in move.lines.all()],
+                    converted_amount=converted_amount,
+                    converted_residual=converted_residual,
+                    ref=move.ref,
+                    synced_at=move.synced_at
+                ))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_moves)
+            paginated_moves = flat_moves[offset:offset + limit]
+
+            return DailyMovesResponse(
+                date=day,
+                base_currency=effective_base,
+                total_revenue=total_revenue,
+                total_expenses=total_expenses,
+                net_profit=total_revenue - total_expenses,
+                move_count=total_items,
+                company_groups=company_groups,
+                items=paginated_moves,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_market_breakdown_details(
+        tenant_id: str,
+        section: str,
+        entity_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.accounting.schemas import (
+                AccountingDetailMove, MetricDetailCompanyGroup, MarketBreakdownResponse
+            )
+            SECTION_FILTER = {
+                'top_revenue_customers': ('partner_id', 'partner__name'),
+                'top_expense_vendors':   ('partner_id', 'partner__name'),
+            }
+
+            if section not in SECTION_FILTER:
+                raise ValueError(f"Invalid section: {section}")
+
+            fk_field, name_field = SECTION_FILTER[section]
+
+            base_qs = AccountingService._base_qs(tenant_id, company_ids)
+            base_qs = AccountingService._date_qs(base_qs, start_date, end_date)
+            
+            if section == 'top_revenue_customers':
+                base_qs = base_qs.filter(move_type="out_invoice", state="posted")
+            else:
+                base_qs = base_qs.filter(move_type="in_invoice", state="posted")
+
+            base_qs = base_qs.filter(**{fk_field: entity_id})
+
+            first = base_qs.first()
+            entity_name = first.partner.name if (first and first.partner) else 'Unknown'
+
+            moves = base_qs.select_related('partner', 'company').prefetch_related(
+                'lines', 'lines__product', 'lines__partner', 'lines__company'
+            ).distinct().order_by('-date', '-id')
+
+            effective_base = (base_currency or 'XAF').upper()
+            rate_map = _get_rate_map()
+
+            groups = {}
+            flat_moves = []
+            total_amount = 0.0
+
+            for move in moves:
+                company_obj = move.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = move.currency_code or 'COMPANY_BASE'
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                converted_amount = _to_float(move.amount_total) * rate
+                converted_residual = _to_float(move.amount_residual) * rate
+
+                groups[cid]['metric_value'] += converted_amount
+                total_amount += converted_amount
+
+                flat_moves.append(AccountingDetailMove(
+                    id=move.id,
+                    odoo_id=move.odoo_id,
+                    odoo_name=move.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    partner=_partner_obj(move),
+                    date=move.date,
+                    state=move.state,
+                    payment_state=move.payment_state,
+                    move_type=move.move_type,
+                    amount_total=_to_float(move.amount_total),
+                    amount_residual=_to_float(move.amount_residual),
+                    currency_code=code,
+                    lines=[_line_to_item(l) for l in move.lines.all()],
+                    converted_amount=converted_amount,
+                    converted_residual=converted_residual,
+                    ref=move.ref,
+                    synced_at=move.synced_at
+                ))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_moves)
+            paginated_moves = flat_moves[offset:offset + limit]
+
+            return MarketBreakdownResponse(
+                section=section,
+                entity_id=entity_id,
+                entity_name=entity_name,
+                base_currency=effective_base,
+                total_amount=total_amount,
+                move_count=total_items,
+                company_groups=company_groups,
+                items=paginated_moves,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_entity_profile(
+        tenant_id: str,
+        entity_type: str,
+        entity_id: int
+    ) -> dict[str, Any]:
+        def _get():
+            from odoo_app.models import Partner
+            from doova_one_view.api.accounting.schemas import EntityProfileResponse
+            
+            if entity_type not in ['customer', 'vendor', 'supplier']:
+                raise ValueError(f"Invalid entity type: {entity_type}")
+                
+            try:
+                p = Partner.objects.get(id=entity_id, tenant_id=tenant_id)
+                return EntityProfileResponse(
+                    entity_id=p.id,
+                    entity_type=entity_type,
+                    name=p.name,
+                    email=p.email,
+                    phone=p.phone,
+                    city=p.city
+                ).model_dump()
+            except Partner.DoesNotExist:
+                raise NotFoundError("Partner", str(entity_id))
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_product_moves_details(
+        tenant_id: str,
+        product_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from odoo_app.models import Product
+            from doova_one_view.api.accounting.schemas import (
+                ProductMovesDetailResponse, MetricDetailCompanyGroup
+            )
+            try:
+                product = Product.objects.get(id=product_id, tenant_id=tenant_id)
+            except Product.DoesNotExist:
+                raise NotFoundError("Product", str(product_id))
+
+            lines_qs = AccountMoveLine.objects.filter(
+                tenant_id=tenant_id,
+                product_id=product_id
+            )
+            
+            if start_date:
+                lines_qs = lines_qs.filter(account_move__date__gte=start_date)
+            if end_date:
+                lines_qs = lines_qs.filter(account_move__date__lte=end_date)
+
+            lines_qs = lines_qs.select_related(
+                'account_move', 'account_move__company', 'account_move__partner', 'product'
+            ).order_by('-account_move__date')
+
+            if company_ids:
+                lines_qs = lines_qs.filter(account_move__company_id__in=company_ids)
+
+            effective_base = (base_currency or 'XAF').upper()
+            rate_map = _get_rate_map()
+
+            groups = {}
+            flat_lines = []
+            total_amount = 0.0
+            total_qty = 0.0
+
+            for line in lines_qs:
+                move = line.account_move
+                if not move:
+                    continue
+
+                company_obj = move.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = move.currency_code or 'COMPANY_BASE'
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                
+                line_total = _to_float(line.price_subtotal)
+                converted_amount = line_total * rate
+                
+                groups[cid]['metric_value'] += converted_amount
+                total_amount += converted_amount
+                
+                qty = _to_float(line.quantity)
+                total_qty += qty
+
+                flat_lines.append(_line_to_item(line))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_lines)
+            paginated = flat_lines[offset:offset + limit]
+
+            return ProductMovesDetailResponse(
+                product_id=product.id,
+                product_name=product.name,
+                product_sku=product.default_code,
+                product_type=product.product_type,
+                list_price=_to_float(product.list_price) if product.list_price else None,
+                base_currency=effective_base,
+                total_amount=total_amount,
+                total_qty=total_qty,
+                line_count=total_items,
+                company_groups=company_groups,
+                items=paginated,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+

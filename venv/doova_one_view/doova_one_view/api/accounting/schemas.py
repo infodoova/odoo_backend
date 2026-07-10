@@ -266,3 +266,100 @@ class AllTenantsProfitsResponse(BaseModel):
         description="Per-tenant profit breakdown"
     )
 
+
+# ── Drill-Down Schemas ──────────────────────────────────────────────────────────
+
+class AccountingDetailMove(BaseModel):
+    id: int
+    odoo_id: int
+    odoo_name: Optional[str]
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    partner: Optional[PartnerRead] = None
+    date: date
+    state: str
+    payment_state: Optional[str] = None
+    move_type: str
+    amount_total: float
+    amount_residual: float
+    currency_code: Optional[str]
+    lines: List[AccountMoveLineRead]
+    converted_amount: float
+    converted_residual: float
+    ref: Optional[str] = None
+    synced_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MetricDetailCompanyGroup(BaseModel):
+    company_id: Optional[int]
+    company_name: str
+    metric_value: float
+
+
+class MetricDetailResponse(BaseModel):
+    metric_name: str
+    base_currency: str
+    total_metric_value: float
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[AccountingDetailMove]
+    total: int
+    limit: int
+    offset: int
+
+
+class DailyMovesResponse(BaseModel):
+    date: str
+    base_currency: str
+    total_revenue: float
+    total_expenses: float
+    net_profit: float
+    move_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[AccountingDetailMove]
+    total: int
+    limit: int
+    offset: int
+
+
+class MarketBreakdownResponse(BaseModel):
+    section: str
+    entity_id: int
+    entity_name: str
+    base_currency: str
+    total_amount: float
+    move_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[AccountingDetailMove]
+    total: int
+    limit: int
+    offset: int
+
+
+class ProductMovesDetailResponse(BaseModel):
+    product_id: int
+    product_name: str
+    product_sku: Optional[str] = None
+    product_type: Optional[str] = None
+    list_price: Optional[float] = None
+    base_currency: str
+    total_amount: float
+    total_qty: float
+    line_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[AccountMoveLineRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class EntityProfileResponse(BaseModel):
+    entity_id: int
+    entity_type: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+
+

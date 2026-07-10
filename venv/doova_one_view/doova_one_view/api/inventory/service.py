@@ -3,8 +3,8 @@ Inventory API service.
 """
 
 import asyncio
-from datetime import timedelta
-from typing import Any, Optional
+from datetime import date, timedelta
+from typing import Any, Optional, Union
 
 from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
@@ -559,3 +559,374 @@ class InventoryService:
         headers = ["id", "odoo_id", "product_name", "product_code", "location_name", "lot_name", "quantity", "reserved_quantity", "available_quantity", "in_date", "company_name", "synced_at"]
         rows = (await InventoryService.get_quants(tenant_id, 100000, 0, None, company_ids))["items"]
         return "\n".join([",".join(headers)] + [",".join(_csv_escape(item.get(h, "")) for h in headers) for item in rows])
+
+    # ── Drill-Down Implementations ──────────────────────────────────────────
+
+    @staticmethod
+    async def get_dashboard_metric_details(
+        tenant_id: str,
+        metric: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.inventory.schemas import (
+                StockQuantRead, StockPickingRead, MetricDetailCompanyGroup, MetricDetailResponse
+            )
+            
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id), company_ids
+            )
+            pickings = InventoryService._company_filter(
+                StockPicking.objects.filter(tenant_id=tenant_id), company_ids
+            )
+
+            if start_date:
+                quants = quants.filter(in_date__gte=start_date)
+                pickings = pickings.filter(scheduled_date__gte=start_date)
+            if end_date:
+                quants = quants.filter(in_date__lte=end_date)
+                pickings = pickings.filter(scheduled_date__lte=end_date)
+
+            is_picking_metric = False
+            total_metric_value = 0.0
+            
+            if metric in ["total_items_in_stock", "total_quantity", "total_items"]:
+                qs = quants
+                total_metric_value = _to_float(qs.aggregate(total=Sum("quantity"))["total"])
+            elif metric in ["incoming_shipments_count", "incoming"]:
+                is_picking_metric = True
+                qs = pickings.exclude(state__in=["done", "cancel"]).filter(
+                    Q(picking_type="incoming") | Q(picking_type__icontains="receipt")
+                )
+                total_metric_value = float(qs.count())
+            elif metric in ["outgoing_shipments_count", "outgoing"]:
+                is_picking_metric = True
+                qs = pickings.exclude(state__in=["done", "cancel"]).filter(
+                    Q(picking_type="outgoing") | Q(picking_type__icontains="delivery")
+                )
+                total_metric_value = float(qs.count())
+            elif metric in ["expiring_soon_count", "expiring"]:
+                soon = timezone.now().date() + timedelta(days=30)
+                qs = quants.filter(lot__expiration_date__lte=soon)
+                total_metric_value = float(qs.count())
+            else:
+                raise ValueError(f"Metric drill-down not supported for: {metric}")
+
+            groups = {}
+            flat_items = []
+
+            if is_picking_metric:
+                pickings_list = list(qs.select_related("partner", "company").order_by("-scheduled_date", "-id"))
+                total_items = len(pickings_list)
+                paginated = pickings_list[offset:offset + limit]
+                
+                for p in pickings_list:
+                    company_obj = p.company
+                    cid = company_obj.odoo_id if company_obj else None
+                    cname = company_obj.name if company_obj else "Unknown Company"
+                    if cid not in groups:
+                        groups[cid] = {
+                            "company_id": cid,
+                            "company_name": cname,
+                            "metric_value": 0.0
+                        }
+                    groups[cid]["metric_value"] += 1.0
+
+                for p in paginated:
+                    flat_items.append(_picking_to_item(p))
+            else:
+                quants_list = list(qs.select_related("product", "lot", "company").order_by("-quantity", "-id"))
+                total_items = len(quants_list)
+                paginated = quants_list[offset:offset + limit]
+
+                for q in quants_list:
+                    company_obj = q.company
+                    cid = company_obj.odoo_id if company_obj else None
+                    cname = company_obj.name if company_obj else "Unknown Company"
+                    if cid not in groups:
+                        groups[cid] = {
+                            "company_id": cid,
+                            "company_name": cname,
+                            "metric_value": 0.0
+                        }
+                    val = 1.0 if metric in ["expiring_soon_count", "expiring"] else _to_float(q.quantity)
+                    groups[cid]["metric_value"] += val
+
+                for q in paginated:
+                    flat_items.append(_quant_to_item(q))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            return MetricDetailResponse(
+                metric_name=metric,
+                total_metric_value=total_metric_value,
+                company_groups=company_groups,
+                items=flat_items,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_daily_moves(
+        tenant_id: str,
+        day: str,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.inventory.schemas import (
+                StockQuantRead, StockPickingRead, MetricDetailCompanyGroup, DailyMovesResponse
+            )
+            try:
+                target_date = date.fromisoformat(day)
+            except ValueError:
+                raise ValueError("Invalid day format. Expected YYYY-MM-DD")
+
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id, in_date__date=target_date),
+                company_ids
+            ).select_related("product", "lot", "company")
+
+            pickings = InventoryService._company_filter(
+                StockPicking.objects.filter(tenant_id=tenant_id, scheduled_date__date=target_date),
+                company_ids
+            ).select_related("partner", "company")
+
+            total_qty = _to_float(quants.aggregate(total=Sum("quantity"))["total"])
+            picking_count = pickings.count()
+
+            groups = {}
+            for q in quants:
+                company_obj = q.company
+                cid = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name if company_obj else "Unknown Company"
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+                groups[cid]["metric_value"] += _to_float(q.quantity)
+
+            flat_items = []
+            for q in quants:
+                flat_items.append(_quant_to_item(q))
+            for p in pickings:
+                flat_items.append(_picking_to_item(p))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_items)
+            paginated = flat_items[offset:offset + limit]
+
+            return DailyMovesResponse(
+                date=day,
+                total_quantity=total_qty,
+                picking_count=picking_count,
+                company_groups=company_groups,
+                items=paginated,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_market_breakdown_details(
+        tenant_id: str,
+        section: str,
+        entity_id: Union[int, str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.inventory.schemas import (
+                StockQuantRead, MetricDetailCompanyGroup, MarketBreakdownResponse
+            )
+            
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id), company_ids
+            )
+            
+            if start_date:
+                quants = quants.filter(in_date__gte=start_date)
+            if end_date:
+                quants = quants.filter(in_date__lte=end_date)
+
+            entity_name = "Unknown"
+            if section in ["company_distribution", "top_companies"]:
+                quants = quants.filter(company_id=entity_id)
+                first = quants.first()
+                if first and first.company:
+                    entity_name = first.company.name
+            elif section in ["location_distribution", "top_locations"]:
+                quants = quants.filter(location_name=entity_id)
+                entity_name = str(entity_id)
+            elif section in ["stock_status_distribution", "top_statuses"]:
+                status = str(entity_id).lower()
+                if status == "available":
+                    quants = quants.filter(quantity__gt=0, reserved_quantity__lt=F("quantity"))
+                elif status == "reserved":
+                    quants = quants.filter(reserved_quantity__gt=0)
+                elif status == "empty":
+                    quants = quants.filter(quantity__lte=0)
+                entity_name = str(entity_id)
+            else:
+                raise ValueError(f"Invalid section: {section}")
+
+            quants_list = list(quants.select_related("product", "lot", "company").order_by("-quantity", "-id"))
+            total_qty = _to_float(quants.aggregate(total=Sum("quantity"))["total"])
+
+            groups = {}
+            for q in quants_list:
+                company_obj = q.company
+                cid = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name if company_obj else "Unknown Company"
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+                groups[cid]["metric_value"] += _to_float(q.quantity)
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(quants_list)
+            paginated = quants_list[offset:offset + limit]
+
+            return MarketBreakdownResponse(
+                section=section,
+                entity_id=entity_id,
+                entity_name=entity_name,
+                total_quantity=total_qty,
+                company_groups=company_groups,
+                items=[_quant_to_item(q) for q in paginated],
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_entity_profile(
+        tenant_id: str,
+        entity_type: str,
+        entity_id: int,
+    ) -> dict[str, Any]:
+        def _get():
+            from odoo_app.models import Partner
+            from doova_one_view.api.inventory.schemas import EntityProfileResponse
+            
+            if entity_type not in ["customer", "vendor", "supplier"]:
+                raise ValueError(f"Invalid entity type: {entity_type}")
+                
+            try:
+                p = Partner.objects.get(id=entity_id, tenant_id=tenant_id)
+                return EntityProfileResponse(
+                    entity_id=p.id,
+                    entity_type=entity_type,
+                    name=p.name,
+                    email=p.email,
+                    phone=p.phone,
+                    city=p.city
+                ).model_dump()
+            except Partner.DoesNotExist:
+                raise NotFoundError("Partner", str(entity_id))
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_product_inventory_details(
+        tenant_id: str,
+        product_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        def _get():
+            from odoo_app.models import Product
+            from doova_one_view.api.inventory.schemas import (
+                ProductInventoryDetailResponse, MetricDetailCompanyGroup
+            )
+            try:
+                product = Product.objects.get(id=product_id, tenant_id=tenant_id)
+            except Product.DoesNotExist:
+                raise NotFoundError("Product", str(product_id))
+
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id, product_id=product_id),
+                company_ids
+            )
+            
+            if start_date:
+                quants = quants.filter(in_date__gte=start_date)
+            if end_date:
+                quants = quants.filter(in_date__lte=end_date)
+
+            quants_list = list(quants.select_related("lot", "company").order_by("-quantity", "-id"))
+            total_qty = _to_float(quants.aggregate(total=Sum("quantity"))["total"])
+            total_res = _to_float(quants.aggregate(total=Sum("reserved_quantity"))["total"])
+
+            groups = {}
+            for q in quants_list:
+                company_obj = q.company
+                cid = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name if company_obj else "Unknown Company"
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+                groups[cid]["metric_value"] += _to_float(q.quantity)
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(quants_list)
+            paginated = quants_list[offset:offset + limit]
+
+            return ProductInventoryDetailResponse(
+                product_id=product.id,
+                product_name=product.name,
+                product_sku=product.default_code,
+                product_type=product.product_type,
+                list_price=_to_float(product.list_price) if product.list_price else None,
+                total_quantity=total_qty,
+                total_reserved=total_res,
+                line_count=total_items,
+                company_groups=company_groups,
+                items=[_quant_to_item(q) for q in paginated],
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)

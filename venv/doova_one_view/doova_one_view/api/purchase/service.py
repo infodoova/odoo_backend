@@ -4,10 +4,14 @@ Purchase API service.
 
 import asyncio
 from typing import Any, Optional
+from datetime import datetime, timedelta
 
+from django.utils import timezone
 from django.db.models import Avg, Count, Prefetch, Sum
 from django.db.models import Q
 from django.db.models.functions import TruncDate
+
+from pydantic import ValidationError
 
 from odoo_app.models.purchase_order import PurchaseOrder
 from odoo_app.models.purchase_order_line import PurchaseOrderLine
@@ -571,3 +575,499 @@ class PurchaseService:
             item = _order_to_item(order)
             lines.append(",".join(_csv_escape(item.get(col, "")) for col in header_cols))
         return "\n".join(lines)
+
+    # ── Drill-Down Implementations ──────────────────────────────────────────
+
+    @staticmethod
+    def _parse_date(date_str: Optional[str]) -> Optional[datetime.date]:
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    @staticmethod
+    async def get_dashboard_metric_details(
+        tenant_id: str,
+        metric: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.purchase.schemas import (
+                PurchaseMetricDetailOrder, MetricDetailCompanyGroup, MetricDetailResponse
+            )
+            start_date_parsed = PurchaseService._parse_date(start_date)
+            end_date_parsed = PurchaseService._parse_date(end_date)
+            
+            if not end_date_parsed:
+                final_date = timezone.now().date()
+            else:
+                final_date = end_date_parsed
+                
+            if not start_date_parsed:
+                initial_date = final_date - timedelta(days=30)
+            else:
+                initial_date = start_date_parsed
+
+            base_qs = PurchaseOrder.objects.filter(tenant_id=tenant_id)
+            if company_ids:
+                base_qs = base_qs.filter(company_id__in=company_ids)
+
+            if metric in ['total_purchase', 'total_spend', 'order_count', 'avg_order_value', 'average_order_value']:
+                qs = base_qs.filter(date_order__date__range=(initial_date, final_date))
+            elif metric in ['draft', 'purchase', 'done', 'cancel', 'to approve']:
+                qs = base_qs.filter(state=metric)
+            else:
+                # Default fallback
+                qs = base_qs.filter(date_order__date__range=(initial_date, final_date))
+
+            orders = qs.select_related('partner', 'user', 'company').prefetch_related(
+                'lines', 'lines__product'
+            ).order_by('-date_order')
+
+            rate_map = _get_rate_map()
+            effective_base = (base_currency or "XAF").upper()
+            
+            groups = {}
+            total_metric_sum = 0.0
+            flat_orders = []
+
+            for order in orders:
+                company_obj = order.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0,
+                        "order_count": 0
+                    }
+
+                code = order.currency_code or "COMPANY_BASE"
+                conversion_rate = _get_conversion_rate(code, effective_base, rate_map)
+                
+                converted_amount = _to_float(order.amount_total) * conversion_rate
+
+                order_value = 0.0
+                if metric in ['total_purchase', 'total_spend', 'avg_order_value', 'average_order_value']:
+                    order_value = converted_amount
+                elif metric == 'order_count' or metric in ['draft', 'purchase', 'done', 'cancel', 'to approve']:
+                    order_value = 1.0
+
+                groups[cid]["metric_value"] += order_value
+                total_metric_sum += order_value
+                groups[cid]["order_count"] += 1
+
+                flat_orders.append(PurchaseMetricDetailOrder(
+                    id=order.id,
+                    odoo_id=order.odoo_id,
+                    odoo_name=order.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    vendor=order.partner,
+                    buyer=order.user,
+                    date_order=order.date_order,
+                    state=order.state,
+                    amount_total=_to_float(order.amount_total),
+                    currency_code=code,
+                    lines=list(order.lines.all()),
+                    converted_amount=converted_amount
+                ))
+
+            if metric in ['avg_order_value', 'average_order_value']:
+                total_count = len(flat_orders)
+                if total_count > 0:
+                    for g in groups.values():
+                        if g["order_count"] > 0:
+                            g["metric_value"] = g["metric_value"] / g["order_count"]
+                    total_metric_sum = total_metric_sum / total_count
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_orders)
+            paginated_orders = flat_orders[offset:offset + limit]
+
+            return MetricDetailResponse(
+                metric_name=metric,
+                base_currency=effective_base,
+                total_metric_value=total_metric_sum,
+                company_groups=company_groups,
+                items=paginated_orders,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_daily_orders(
+        tenant_id: str,
+        day: str,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.purchase.schemas import (
+                PurchaseMetricDetailOrder, MetricDetailCompanyGroup, DailyOrdersResponse
+            )
+            try:
+                target_date = datetime.strptime(day, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError("Invalid day format. Expected YYYY-MM-DD")
+
+            qs = PurchaseOrder.objects.filter(
+                tenant_id=tenant_id,
+                date_order__date=target_date
+            )
+            if company_ids:
+                qs = qs.filter(company_id__in=company_ids)
+
+            orders = qs.select_related('partner', 'user', 'company').prefetch_related(
+                'lines', 'lines__product'
+            ).order_by('-id')
+
+            effective_base = (base_currency or 'XAF').upper()
+            rate_map = _get_rate_map()
+
+            groups = {}
+            total_spend = 0.0
+            flat_orders = []
+
+            for order in orders:
+                company_obj = order.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = order.currency_code or 'COMPANY_BASE'
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                converted_amount = _to_float(order.amount_total) * rate
+
+                groups[cid]['metric_value'] += converted_amount
+                total_spend += converted_amount
+
+                flat_orders.append(PurchaseMetricDetailOrder(
+                    id=order.id,
+                    odoo_id=order.odoo_id,
+                    odoo_name=order.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    vendor=order.partner,
+                    buyer=order.user,
+                    date_order=order.date_order,
+                    state=order.state,
+                    amount_total=_to_float(order.amount_total),
+                    currency_code=code,
+                    lines=list(order.lines.all()),
+                    converted_amount=converted_amount
+                ))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_orders)
+            paginated_orders = flat_orders[offset:offset + limit]
+
+            return DailyOrdersResponse(
+                date=day,
+                base_currency=effective_base,
+                total_spend=total_spend,
+                order_count=total_items,
+                company_groups=company_groups,
+                items=paginated_orders,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_market_breakdown_details(
+        tenant_id: str,
+        section: str,
+        entity_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.purchase.schemas import (
+                PurchaseMetricDetailOrder, MetricDetailCompanyGroup, MarketBreakdownResponse
+            )
+            initial_date = PurchaseService._parse_date(start_date)
+            final_date = PurchaseService._parse_date(end_date)
+            
+            if not final_date:
+                final_date = timezone.now().date()
+            if not initial_date:
+                initial_date = final_date - timedelta(days=30)
+
+            SECTION_FILTER = {
+                'top_vendors':   ('partner_id',           'partner__name'),
+                'top_suppliers': ('partner_id',           'partner__name'),
+                'top_products':  ('lines__product_id',    'lines__product__name'),
+                'top_buyers':    ('user_id',              'user__name'),
+            }
+
+            if section not in SECTION_FILTER:
+                raise ValidationError(f"Invalid section: {section}")
+
+            fk_field, name_field = SECTION_FILTER[section]
+
+            base_qs = PurchaseOrder.objects.filter(
+                tenant_id=tenant_id,
+                date_order__date__range=(initial_date, final_date)
+            )
+            if company_ids:
+                base_qs = base_qs.filter(company_id__in=company_ids)
+
+            base_qs = base_qs.filter(**{fk_field: entity_id})
+
+            first = base_qs.first()
+            if first is None:
+                entity_name = 'Unknown'
+            else:
+                if section in ['top_vendors', 'top_suppliers']:
+                    entity_name = first.partner.name if first.partner else 'Unknown'
+                elif section == 'top_products':
+                    prod = first.lines.filter(product_id=entity_id).first()
+                    entity_name = prod.product.name if (prod and prod.product) else 'Unknown'
+                else:
+                    entity_name = first.user.name if first.user else 'Unknown'
+
+            orders = base_qs.select_related('partner', 'user', 'company').prefetch_related(
+                'lines', 'lines__product'
+            ).distinct().order_by('-date_order')
+
+            effective_base = (base_currency or 'XAF').upper()
+            rate_map = _get_rate_map()
+
+            groups = {}
+            flat_orders = []
+            total_spend = 0.0
+
+            for order in orders:
+                company_obj = order.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = order.currency_code or 'COMPANY_BASE'
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                converted_amount = _to_float(order.amount_total) * rate
+
+                groups[cid]['metric_value'] += converted_amount
+                total_spend += converted_amount
+
+                flat_orders.append(PurchaseMetricDetailOrder(
+                    id=order.id,
+                    odoo_id=order.odoo_id,
+                    odoo_name=order.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    vendor=order.partner,
+                    buyer=order.user,
+                    date_order=order.date_order,
+                    state=order.state,
+                    amount_total=_to_float(order.amount_total),
+                    currency_code=code,
+                    lines=list(order.lines.all()),
+                    converted_amount=converted_amount
+                ))
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_orders)
+            paginated_orders = flat_orders[offset:offset + limit]
+
+            return MarketBreakdownResponse(
+                section=section,
+                entity_id=entity_id,
+                entity_name=entity_name,
+                base_currency=effective_base,
+                total_spend=total_spend,
+                order_count=total_items,
+                company_groups=company_groups,
+                items=paginated_orders,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_product_purchase_details(
+        tenant_id: str,
+        product_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from odoo_app.models import Product
+            from doova_one_view.api.purchase.schemas import (
+                PurchaseOrderLineRead, MetricDetailCompanyGroup, ProductPurchaseDetailResponse
+            )
+            try:
+                product = Product.objects.get(id=product_id, tenant_id=tenant_id)
+            except Product.DoesNotExist:
+                raise ValidationError(f"Product not found: {product_id}")
+
+            initial_date = PurchaseService._parse_date(start_date)
+            final_date = PurchaseService._parse_date(end_date)
+            if not final_date:
+                final_date = timezone.now().date()
+            if not initial_date:
+                initial_date = final_date - timedelta(days=30)
+
+            lines_qs = PurchaseOrderLine.objects.filter(
+                tenant_id=tenant_id,
+                product_id=product_id,
+                purchase_order__date_order__date__range=(initial_date, final_date)
+            ).select_related(
+                'purchase_order', 'purchase_order__company', 'purchase_order__partner', 'product'
+            ).order_by('-purchase_order__date_order')
+
+            if company_ids:
+                lines_qs = lines_qs.filter(purchase_order__company_id__in=company_ids)
+
+            effective_base = (base_currency or 'XAF').upper()
+            rate_map = _get_rate_map()
+
+            groups = {}
+            flat_lines = []
+            total_spend = 0.0
+            total_qty = 0.0
+
+            for line in lines_qs:
+                order = line.purchase_order
+                if not order:
+                    continue
+
+                company_obj = order.company
+                cid   = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name     if company_obj else "Unknown Company"
+
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": cid,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+
+                code = order.currency_code or 'COMPANY_BASE'
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                
+                line_total = _to_float(line.price_total)
+                converted_amount = line_total * rate
+                
+                groups[cid]['metric_value'] += converted_amount
+                total_spend += converted_amount
+                
+                qty = _to_float(line.product_qty)
+                total_qty += qty
+
+                line_read = PurchaseOrderLineRead.model_validate(line)
+                flat_lines.append(line_read)
+
+            company_groups = [
+                MetricDetailCompanyGroup(**g) for g in groups.values()
+            ]
+
+            total_items = len(flat_lines)
+            paginated = flat_lines[offset:offset + limit]
+
+            return ProductPurchaseDetailResponse(
+                product_id=product.id,
+                product_name=product.name,
+                product_sku=product.default_code,
+                product_type=product.product_type,
+                list_price=_to_float(product.list_price) if product.list_price else None,
+                base_currency=effective_base,
+                total_spend=total_spend,
+                total_qty_purchased=total_qty,
+                line_count=total_items,
+                company_groups=company_groups,
+                items=paginated,
+                total=total_items,
+                limit=limit,
+                offset=offset
+            ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_entity_profile(
+        tenant_id: str,
+        entity_type: str,
+        entity_id: int
+    ) -> dict[str, Any]:
+        def _get():
+            from odoo_app.models import Partner, User
+            from doova_one_view.api.purchase.schemas import EntityProfileResponse
+            if entity_type in ['vendor', 'supplier']:
+                try:
+                    p = Partner.objects.get(id=entity_id, tenant_id=tenant_id)
+                    return EntityProfileResponse(
+                        entity_id=p.id,
+                        entity_type=entity_type,
+                        name=p.name,
+                        email=p.email,
+                        phone=p.phone,
+                        city=p.city
+                    ).model_dump()
+                except Partner.DoesNotExist:
+                    raise ValidationError(f"Vendor not found: {entity_id}")
+            elif entity_type == 'buyer':
+                try:
+                    u = User.objects.get(id=entity_id, tenant_id=tenant_id)
+                    return EntityProfileResponse(
+                        entity_id=u.id,
+                        entity_type='buyer',
+                        name=u.name,
+                        email=u.email,
+                        phone=u.phone,
+                        city=u.city
+                    ).model_dump()
+                except User.DoesNotExist:
+                    raise ValidationError(f"Buyer not found: {entity_id}")
+            else:
+                raise ValidationError(f"Invalid entity type: {entity_type}")
+
+        return await asyncio.to_thread(_get)
+
