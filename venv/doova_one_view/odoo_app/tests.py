@@ -461,7 +461,20 @@ class InventoryDrillDownTestCase(TransactionTestCase):
             synced_at=today
         )
 
-        # Create stock picking (incoming)
+        # Create another stock quant in the past (total 50 units)
+        self.quant_past = StockQuant.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=3002,
+            product=self.product,
+            location_name="Warehouse A",
+            quantity=50.0,
+            reserved_quantity=0.0,
+            in_date=today - timedelta(days=10),
+            synced_at=today
+        )
+
+        # Create stock picking (incoming) scheduled for today
         self.picking = StockPicking.objects.create(
             tenant=self.tenant,
             company=self.company,
@@ -471,6 +484,19 @@ class InventoryDrillDownTestCase(TransactionTestCase):
             picking_type="incoming",
             state="assigned",
             scheduled_date=today,
+            synced_at=today
+        )
+
+        # Create another stock picking scheduled in the future
+        self.picking_future = StockPicking.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=4002,
+            odoo_name="IN-002",
+            partner=self.vendor,
+            picking_type="incoming",
+            state="assigned",
+            scheduled_date=today + timedelta(days=2),
             synced_at=today
         )
 
@@ -532,7 +558,7 @@ class InventoryDrillDownTestCase(TransactionTestCase):
             base_currency="USD"
         )
         self.assertEqual(res["entity_name"], "Warehouse A")
-        self.assertEqual(res["total_quantity"], 100.0)
+        self.assertEqual(res["total_quantity"], 150.0)
 
     def test_entity_profile(self):
         prof = async_to_sync(InventoryService.get_entity_profile)(
@@ -549,7 +575,7 @@ class InventoryDrillDownTestCase(TransactionTestCase):
             base_currency="USD"
         )
         self.assertEqual(res["product_name"], "Product B")
-        self.assertEqual(res["total_quantity"], 100.0)
+        self.assertEqual(res["total_quantity"], 150.0)
         self.assertEqual(res["total_reserved"], 20.0)
 
 

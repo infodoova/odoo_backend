@@ -585,13 +585,6 @@ class InventoryService:
                 StockPicking.objects.filter(tenant_id=tenant_id), company_ids
             )
 
-            if start_date:
-                quants = quants.filter(in_date__gte=start_date)
-                pickings = pickings.filter(scheduled_date__gte=start_date)
-            if end_date:
-                quants = quants.filter(in_date__lte=end_date)
-                pickings = pickings.filter(scheduled_date__lte=end_date)
-
             is_picking_metric = False
             total_metric_value = 0.0
             
@@ -600,12 +593,20 @@ class InventoryService:
                 total_metric_value = _to_float(qs.aggregate(total=Sum("quantity"))["total"])
             elif metric in ["incoming_shipments_count", "incoming"]:
                 is_picking_metric = True
+                if start_date:
+                    pickings = pickings.filter(scheduled_date__gte=start_date)
+                if end_date:
+                    pickings = pickings.filter(scheduled_date__lte=end_date)
                 qs = pickings.exclude(state__in=["done", "cancel"]).filter(
                     Q(picking_type="incoming") | Q(picking_type__icontains="receipt")
                 )
                 total_metric_value = float(qs.count())
             elif metric in ["outgoing_shipments_count", "outgoing"]:
                 is_picking_metric = True
+                if start_date:
+                    pickings = pickings.filter(scheduled_date__gte=start_date)
+                if end_date:
+                    pickings = pickings.filter(scheduled_date__lte=end_date)
                 qs = pickings.exclude(state__in=["done", "cancel"]).filter(
                     Q(picking_type="outgoing") | Q(picking_type__icontains="delivery")
                 )
@@ -767,11 +768,6 @@ class InventoryService:
                 StockQuant.objects.filter(tenant_id=tenant_id), company_ids
             )
             
-            if start_date:
-                quants = quants.filter(in_date__gte=start_date)
-            if end_date:
-                quants = quants.filter(in_date__lte=end_date)
-
             entity_name = "Unknown"
             if section in ["company_distribution", "top_companies"]:
                 quants = quants.filter(company_id=entity_id)
@@ -884,11 +880,6 @@ class InventoryService:
                 company_ids
             )
             
-            if start_date:
-                quants = quants.filter(in_date__gte=start_date)
-            if end_date:
-                quants = quants.filter(in_date__lte=end_date)
-
             quants_list = list(quants.select_related("lot", "company").order_by("-quantity", "-id"))
             total_qty = _to_float(quants.aggregate(total=Sum("quantity"))["total"])
             total_res = _to_float(quants.aggregate(total=Sum("reserved_quantity"))["total"])
