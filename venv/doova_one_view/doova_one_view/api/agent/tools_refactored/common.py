@@ -10,7 +10,7 @@ from ..query_context import extract_date_range, normalize_company_ids, build_com
 from ..config import AgentConfig
 
 def get_companies_tool(tenant_id: str) -> dict:
-    rows = run_query("SELECT odoo_id as id, name FROM dim_companies WHERE tenant_id = :tenant_id", {"tenant_id": tenant_id})
+    rows = run_query("SELECT id, name FROM dim_companies WHERE tenant_id = :tenant_id", {"tenant_id": tenant_id})
     return {"tool_name": "get_companies_tool", "companies": rows}
 
 def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None) -> dict:

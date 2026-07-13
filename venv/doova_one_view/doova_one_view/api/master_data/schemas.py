@@ -2,7 +2,7 @@
 Master Data API schemas (Products, Partners)
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 from typing import Any, Optional, List, Union
 from datetime import datetime
 from uuid import UUID
@@ -67,9 +67,23 @@ class CompanyRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ChartOfAccountsRead(BaseModel):
+    """Chart of Accounts schema"""
+    id: int
+    odoo_id: int
+    code: str
+    name: str
+    account_type: Optional[str]
+    reconcile: bool
+    deprecated: bool
+    synced_at: Optional[datetime]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SearchFilter(BaseModel):
     """Filter criteria for master-data search."""
-    field: str
+    field: str = Field(validation_alias=AliasChoices("field", "column"))
     operator: str
     value: Union[str, int, float, bool, List[Any], None] = None
     maxValue: Union[str, int, float, None] = None

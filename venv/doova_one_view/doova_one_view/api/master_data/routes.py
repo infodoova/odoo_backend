@@ -10,7 +10,7 @@ from fastapi.responses import Response
 from odoo_app.models import AppUser
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
-from doova_one_view.api.master_data.schemas import SearchRequest
+from doova_one_view.api.master_data.schemas import SearchRequest, ChartOfAccountsRead
 from doova_one_view.api.master_data.service import MasterDataService
 from doova_one_view.api.tenants.service import TenantService
 
@@ -286,3 +286,53 @@ async def list_currencies(
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_currencies(tenant_id, limit, offset, active_only)
+
+
+# Chart of Accounts: static subpaths before /chart-of-accounts
+@router.post("/{tenant_id}/chart-of-accounts/search")
+async def search_chart_of_accounts(
+    tenant_id: str,
+    request: SearchRequest,
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await MasterDataService.search_chart_of_accounts(
+        tenant_id, request.filters, request.limit, request.offset
+    )
+
+
+@router.get("/{tenant_id}/chart-of-accounts/export")
+async def export_chart_of_accounts(
+    tenant_id: str,
+    user: AppUser = Depends(get_current_user),
+) -> Response:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    csv_content = await MasterDataService.export_chart_of_accounts_csv(tenant_id)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=chart_of_accounts_{tenant_id}.csv"},
+    )
+
+
+@router.get("/{tenant_id}/chart-of-accounts/filters")
+async def get_chart_of_accounts_filters(
+    tenant_id: str,
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await MasterDataService.get_chart_of_accounts_filters(tenant_id)
+
+
+@router.get("/{tenant_id}/chart-of-accounts")
+async def list_chart_of_accounts(
+    tenant_id: str,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(None),
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await MasterDataService.get_chart_of_accounts(
+        tenant_id, limit, offset, search
+    )

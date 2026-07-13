@@ -144,6 +144,7 @@ class TenantService:
             List[TenantRead]: List of tenant data
         """
         def _list():
+            from django.db.models import Count
             if user_id:
                 # Filter by user access
                 access_records = UserTenantAccess.objects.filter(
@@ -153,27 +154,30 @@ class TenantService:
             else:
                 qs = Tenant.objects.all().order_by('-created_at')
             
-            return list(qs[offset:offset+limit])
+            tenants = list(qs[offset:offset+limit])
+            
+            tenant_ids = [t.id for t in tenants]
+            counts = UserTenantAccess.objects.filter(tenant_id__in=tenant_ids).values('tenant_id').annotate(c=Count('id'))
+            count_map = {str(row['tenant_id']): row['c'] for row in counts}
+            
+            result = []
+            for t in tenants:
+                user_count = count_map.get(str(t.id), 0)
+                result.append(TenantRead(
+                    id=str(t.id),
+                    name=t.name,
+                    odoo_url=t.odoo_url,
+                    odoo_database=t.odoo_database,
+                    is_active=t.is_active,
+                    sync_status=t.sync_status,
+                    last_sync_at=t.last_sync_at,
+                    created_at=t.created_at,
+                    updated_at=t.updated_at,
+                    user_count=user_count
+                ))
+            return result
         
-        tenants = await asyncio.to_thread(_list)
-        
-        result = []
-        for tenant in tenants:
-            user_count = await TenantService.get_tenant_user_count(str(tenant.id))
-            result.append(TenantRead(
-                id=str(tenant.id),
-                name=tenant.name,
-                odoo_url=tenant.odoo_url,
-                odoo_database=tenant.odoo_database,
-                is_active=tenant.is_active,
-                sync_status=tenant.sync_status,
-                last_sync_at=tenant.last_sync_at,
-                created_at=tenant.created_at,
-                updated_at=tenant.updated_at,
-                user_count=user_count
-            ))
-        
-        return result
+        return await asyncio.to_thread(_list)
     
     # ── Tenant access management ───────────────────────────────────────────────
 

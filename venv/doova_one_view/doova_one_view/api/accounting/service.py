@@ -334,7 +334,7 @@ class AccountingService:
             
             line_aggs = AccountMoveLine.objects.filter(
                 account_move__in=posted_qs
-            ).values("account_type", "company__currency_code").annotate(
+            ).values("account_type", "account_code", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
@@ -346,6 +346,7 @@ class AccountingService:
             
             for agg in line_aggs:
                 atype = agg["account_type"] or ""
+                acode = agg["account_code"] or ""
                 # Use company currency to convert to dashboard base currency
                 company_currency = agg["company__currency_code"] or "COMPANY_BASE"
                 rate = _get_conversion_rate(company_currency, effective_base, rate_map)
@@ -360,29 +361,49 @@ class AccountingService:
                     if atype == "expense_direct_cost":
                         true_cogs += net_debit
                     elif atype in ("expense", "expense_depreciation"):
-                        true_opex += net_debit
+                        if not (acode.startswith("64") or acode.startswith("67") or acode.startswith("69")):
+                            true_opex += net_debit
 
             gross_profit = true_revenue - true_cogs
             ebit = gross_profit - true_opex
             net_profit = true_revenue - true_expenses
             
-            receivable_balance = _sum_converted(
-                qs.filter(move_type="out_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0),
-                "amount_residual", effective_base, rate_map
+            cumulative_qs = AccountingService._base_qs(tenant_id, company_ids)
+            if end_date:
+                cumulative_qs = cumulative_qs.filter(date__lte=end_date)
+            cumulative_qs = cumulative_qs.filter(state='posted')
+            
+            cumulative_aggs = AccountMoveLine.objects.filter(
+                account_move__in=cumulative_qs,
+                account_type__in=["asset_receivable", "liability_payable", "liability_current"]
+            ).values("account_type", "company__currency_code").annotate(
+                total_debit=Sum("debit"),
+                total_credit=Sum("credit")
             )
-            payable_balance = _sum_converted(
-                qs.filter(move_type="in_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0),
-                "amount_residual", effective_base, rate_map
-            )
+            
+            receivable_balance = 0.0
+            payable_balance = 0.0
+            
+            for agg in cumulative_aggs:
+                company_currency = agg["company__currency_code"] or "COMPANY_BASE"
+                rate = _get_conversion_rate(company_currency, effective_base, rate_map)
+                net = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
+                if agg["account_type"] == "asset_receivable":
+                    receivable_balance += net
+                elif agg["account_type"] in ("liability_payable", "liability_current"):
+                    payable_balance += net
 
             today = date.today()
             overdue_filter = Q(invoice_date_due__lt=today) & ~Q(payment_state__in=["paid", "reversed"])
+            
+            # Note: overdue amounts still rely on invoice residuals but look at ALL invoices up to end_date
+            # because 'amount_residual' is an invoice-level field, not easily derived from generic move lines.
             overdue_receivable = _sum_converted(
-                qs.filter(overdue_filter, move_type="out_invoice", amount_residual__gt=0),
+                cumulative_qs.filter(overdue_filter, move_type="out_invoice", amount_residual__gt=0),
                 "amount_residual", effective_base, rate_map
             )
             overdue_payable = _sum_converted(
-                qs.filter(overdue_filter, move_type="in_invoice", amount_residual__gt=0),
+                cumulative_qs.filter(overdue_filter, move_type="in_invoice", amount_residual__gt=0),
                 "amount_residual", effective_base, rate_map
             )
 
@@ -463,6 +484,10 @@ class AccountingService:
             payables_aging = AccountingService._aging(qs, "in_invoice", effective_base, rate_map)
 
             net_profit_margin_pct = (net_profit / true_revenue * 100) if true_revenue else 0.0
+            
+            # Calculate total cash flow from the trend array
+            total_cash_flow = sum(item["value"] for item in cash_flow_trend)
+            
             applied = {
                 "tenant_id": tenant_id,
                 "start_date": start_date,
@@ -473,6 +498,7 @@ class AccountingService:
                 "total_revenue": _metric(true_revenue),
                 "total_expenses": _metric(true_expenses),
                 "net_profit": _metric(net_profit),
+                "net_cash_flow": _metric(total_cash_flow),
                 "gross_profit": _metric(gross_profit),
                 "ebit": _metric(ebit),
                 "net_profit_margin_pct": net_profit_margin_pct,
@@ -796,22 +822,30 @@ class AccountingService:
             )
             
             base_qs = AccountingService._base_qs(tenant_id, company_ids)
-            qs = AccountingService._date_qs(base_qs, start_date, end_date)
             
-            if metric in ['total_revenue', 'total_expenses', 'net_profit', 'gross_profit', 'ebit']:
-                qs = qs.filter(state="posted")
-            elif metric == 'receivable_balance':
-                qs = qs.filter(move_type="out_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0)
-            elif metric == 'payable_balance':
-                qs = qs.filter(move_type="in_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0)
-            elif metric == 'overdue_receivable':
-                overdue_filter = Q(invoice_date_due__lt=date.today()) & ~Q(payment_state__in=["paid", "reversed"])
-                qs = qs.filter(overdue_filter, move_type="out_invoice", amount_residual__gt=0)
-            elif metric == 'overdue_payable':
-                overdue_filter = Q(invoice_date_due__lt=date.today()) & ~Q(payment_state__in=["paid", "reversed"])
-                qs = qs.filter(overdue_filter, move_type="in_invoice", amount_residual__gt=0)
+            if metric in ['receivable_balance', 'payable_balance', 'overdue_receivable', 'overdue_payable']:
+                # Balances are cumulative up to end_date, so we ignore start_date
+                qs = base_qs.filter(state="posted")
+                if end_date:
+                    qs = qs.filter(date__lte=end_date)
+                    
+                if metric == 'receivable_balance':
+                    qs = qs.filter(~Q(payment_state__in=["paid", "reversed"]), move_type="out_invoice", amount_residual__gt=0)
+                elif metric == 'payable_balance':
+                    qs = qs.filter(~Q(payment_state__in=["paid", "reversed"]), move_type="in_invoice", amount_residual__gt=0)
+                elif metric == 'overdue_receivable':
+                    overdue_filter = Q(invoice_date_due__lt=date.today()) & ~Q(payment_state__in=["paid", "reversed"])
+                    qs = qs.filter(overdue_filter, move_type="out_invoice", amount_residual__gt=0)
+                elif metric == 'overdue_payable':
+                    overdue_filter = Q(invoice_date_due__lt=date.today()) & ~Q(payment_state__in=["paid", "reversed"])
+                    qs = qs.filter(overdue_filter, move_type="in_invoice", amount_residual__gt=0)
             else:
-                raise ValueError(f"Metric drill-down not supported for: {metric}")
+                # Other metrics use the strict date range
+                qs = AccountingService._date_qs(base_qs, start_date, end_date)
+                if metric in ['total_revenue', 'total_expenses', 'net_profit', 'gross_profit', 'ebit', 'net_cash_flow']:
+                    qs = qs.filter(state="posted")
+                else:
+                    raise ValueError(f"Metric drill-down not supported for: {metric}")
 
             moves = qs.select_related('partner', 'company').prefetch_related(
                 'lines', 'lines__product', 'lines__partner', 'lines__company'
@@ -845,7 +879,7 @@ class AccountingService:
                 converted_residual = _to_float(move.amount_residual) * rate
 
                 move_value = 0.0
-                if metric in ['total_revenue', 'total_expenses', 'net_profit', 'gross_profit', 'ebit']:
+                if metric in ['total_revenue', 'total_expenses', 'net_profit', 'gross_profit', 'ebit', 'net_cash_flow']:
                     rev = 0.0
                     exp = 0.0
                     cogs = 0.0
@@ -857,6 +891,7 @@ class AccountingService:
                         net_credit = (_to_float(l.credit) - _to_float(l.debit)) * l_rate
                         net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
                         atype = l.account_type or ""
+                        acode = l.account_code or ""
                         
                         if atype.startswith("income"):
                             rev += net_credit
@@ -865,7 +900,8 @@ class AccountingService:
                             if atype == "expense_direct_cost":
                                 cogs += net_debit
                             elif atype in ("expense", "expense_depreciation"):
-                                opex += net_debit
+                                if not (acode.startswith("64") or acode.startswith("67") or acode.startswith("69")):
+                                    opex += net_debit
                         elif atype in ["asset_cash", "liability_credit_card"]:
                             cf += net_debit
                                 
@@ -883,6 +919,8 @@ class AccountingService:
                         move_value = rev - cogs - opex
                     elif metric == 'net_profit':
                         move_value = rev - exp
+                    elif metric == 'net_cash_flow':
+                        move_value = cf
                         
                     if move_value == 0.0:
                         continue

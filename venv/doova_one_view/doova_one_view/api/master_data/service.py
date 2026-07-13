@@ -13,6 +13,7 @@ from odoo_app.models.lot import Lot
 from odoo_app.models.partner import Partner
 from odoo_app.models.product import Product
 from odoo_app.models.product_category import ProductCategory
+from odoo_app.models.chart_of_accounts import ChartOfAccounts
 from doova_one_view.api.common.exceptions import NotFoundError
 
 
@@ -144,14 +145,27 @@ def _lot_to_item(lot: Lot) -> dict[str, Any]:
             {"id": product.id, "name": product.name, "default_code": product.default_code}
             if product else None
         ),
+        "company_id": getattr(lot, "company_id", None),
+        "company_name": company.name if company else "",
+        "company": {"id": company.id, "name": company.name} if company else None,
         "expiration_date": _iso(lot.expiration_date),
         "use_date": _iso(lot.use_date),
         "removal_date": _iso(lot.removal_date),
         "alert_date": _iso(lot.alert_date),
-        "company_id": getattr(lot, "company_id", None),
-        "company_name": company.name if company else "",
-        "company": {"id": company.id, "name": company.name} if company else None,
         "synced_at": _iso(lot.synced_at),
+    }
+
+
+def _coa_to_item(coa: ChartOfAccounts) -> dict[str, Any]:
+    return {
+        "id": coa.id,
+        "odoo_id": coa.odoo_id,
+        "code": coa.code,
+        "name": coa.name,
+        "account_type": coa.account_type,
+        "reconcile": coa.reconcile,
+        "deprecated": coa.deprecated,
+        "synced_at": _iso(coa.synced_at),
     }
 
 
@@ -519,6 +533,57 @@ class MasterDataService:
             _csv_escape(row.get("company_name") or ""),
             _csv_escape(row.get("synced_at") or ""),
         ]) for row in rows])
+
+    @staticmethod
+    async def get_chart_of_accounts(tenant_id: str, limit: int = 50, offset: int = 0, search: Optional[str] = None) -> dict[str, Any]:
+        def _list():
+            qs = ChartOfAccounts.objects.filter(tenant_id=tenant_id)
+            if search:
+                qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search))
+            total = qs.count()
+            items = [_coa_to_item(c) for c in qs.order_by("code", "id")[offset : offset + limit]]
+            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id}}
+        return await asyncio.to_thread(_list)
+
+    @staticmethod
+    async def search_chart_of_accounts(tenant_id: str, filters: list[Any], limit: int, offset: int) -> dict[str, Any]:
+        field_map = {
+            "id": "id", "odoo_id": "odoo_id", "code": "code", "name": "name",
+            "account_type": "account_type", "reconcile": "reconcile", "deprecated": "deprecated",
+        }
+        def _search():
+            qs = ChartOfAccounts.objects.filter(tenant_id=tenant_id)
+            qs = MasterDataService._apply_search(qs, filters, field_map)
+            total = qs.count()
+            items = [_coa_to_item(c) for c in qs.order_by("code", "id")[offset : offset + limit]]
+            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "filters": [getattr(f, "model_dump", lambda: dict(f))() for f in (filters or [])]}}
+        return await asyncio.to_thread(_search)
+
+    @staticmethod
+    async def get_chart_of_accounts_filters(tenant_id: str) -> dict[str, Any]:
+        def _filters():
+            qs = ChartOfAccounts.objects.filter(tenant_id=tenant_id)
+            account_types = [v for v in qs.values_list("account_type", flat=True).distinct().order_by("account_type") if v]
+            return {
+                "account_types": account_types,
+                "applied_filters": {"tenant_id": tenant_id},
+            }
+        return await asyncio.to_thread(_filters)
+
+    @staticmethod
+    async def export_chart_of_accounts_csv(tenant_id: str) -> str:
+        headers = ["Odoo ID", "Code", "Name", "Account Type", "Reconcile", "Deprecated", "Synced"]
+        rows = (await MasterDataService.get_chart_of_accounts(tenant_id, 100000, 0))["items"]
+        return "\n".join([",".join(headers)] + [",".join([
+            _csv_escape(row.get("odoo_id") or ""),
+            _csv_escape(row.get("code") or ""),
+            _csv_escape(row.get("name") or ""),
+            _csv_escape(row.get("account_type") or ""),
+            _bool_to_csv(row.get("reconcile")),
+            _bool_to_csv(row.get("deprecated")),
+            _csv_escape(row.get("synced_at") or ""),
+        ]) for row in rows])
+
 
     # Backward-compatible method names used by older routes/tests.
     list_products = get_products

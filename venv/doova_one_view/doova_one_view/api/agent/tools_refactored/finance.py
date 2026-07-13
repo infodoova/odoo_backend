@@ -391,7 +391,10 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date
         f"""SELECT 
                 SUM(CASE WHEN l.account_type LIKE 'income%' THEN l.balance ELSE 0 END) * -1 AS total_income,
                 SUM(CASE WHEN l.account_type LIKE 'expense%' THEN l.balance ELSE 0 END) AS total_expenses,
-                SUM(CASE WHEN l.account_type = 'expense_direct_cost' THEN l.balance ELSE 0 END) AS cogs
+                SUM(CASE WHEN l.account_type = 'expense_direct_cost' THEN l.balance ELSE 0 END) AS cogs,
+                SUM(CASE WHEN l.account_type IN ('expense', 'expense_depreciation') 
+                         AND NOT (l.account_code LIKE '64%' OR l.account_code LIKE '67%' OR l.account_code LIKE '69%') 
+                         THEN l.balance ELSE 0 END) AS opex
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql} {date_sql}""",
@@ -402,7 +405,10 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date
     income = float(row.get("total_income") or 0)
     expenses = float(row.get("total_expenses") or 0)
     cogs = float(row.get("cogs") or 0)
+    opex = float(row.get("opex") or 0)
+    
     gross = income - cogs
+    ebit = gross - opex
     net = income - expenses
 
     return {
@@ -410,7 +416,9 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date
         "total_income": income,
         "total_expenses": expenses,
         "cogs": cogs,
+        "operating_expenses": opex,
         "gross_profit": gross,
+        "ebit": ebit,
         "net_profit": net,
         "gross_margin_pct": round(calculate_ratio(gross, income) * 100, 2),
         "net_margin_pct": round(calculate_ratio(net, income) * 100, 2),
