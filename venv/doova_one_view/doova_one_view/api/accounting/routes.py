@@ -199,7 +199,7 @@ async def export_accounting_moves(
 
 from doova_one_view.api.accounting.schemas import (
     MetricDetailResponse, DailyMovesResponse, MarketBreakdownResponse,
-    ProductMovesDetailResponse, EntityProfileResponse
+    ProductMovesDetailResponse, EntityProfileResponse, AgingDetailsResponse
 )
 
 @router.get("/{tenant_id}/dashboard/metric-details")
@@ -314,3 +314,30 @@ async def get_product_moves_details(
         offset=offset
     )
 
+
+@router.get("/{tenant_id}/dashboard/aging-details")
+async def get_aging_details(
+    tenant_id: str,
+    bucket: str = Query(..., description="Aging bucket: '0-30', '31-60', '61-90', '90+'"),
+    move_type: str = Query(..., description="'out_invoice' for receivables, 'in_invoice' for payables"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> AgingDetailsResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await AccountingService.get_aging_details(
+        tenant_id=tenant_id,
+        bucket=bucket,
+        move_type=move_type,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )

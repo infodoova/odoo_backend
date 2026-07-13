@@ -328,8 +328,43 @@ class AccountingService:
             revenue_qs = qs.filter(move_type="out_invoice", state="posted")
             expense_qs = qs.filter(move_type="in_invoice", state="posted")
 
-            total_revenue = _sum_converted(revenue_qs, "amount_total", effective_base, rate_map)
-            total_expenses = _sum_converted(expense_qs, "amount_total", effective_base, rate_map)
+            posted_qs = qs.filter(state="posted")
+            from odoo_app.models.account_move_line import AccountMoveLine
+            from django.db.models import Sum
+            
+            line_aggs = AccountMoveLine.objects.filter(
+                account_move__in=posted_qs
+            ).values("account_type", "company__currency_code").annotate(
+                total_debit=Sum("debit"),
+                total_credit=Sum("credit")
+            )
+            
+            true_revenue = 0.0
+            true_expenses = 0.0
+            true_cogs = 0.0
+            true_opex = 0.0
+            
+            for agg in line_aggs:
+                atype = agg["account_type"] or ""
+                # Use company currency to convert to dashboard base currency
+                company_currency = agg["company__currency_code"] or "COMPANY_BASE"
+                rate = _get_conversion_rate(company_currency, effective_base, rate_map)
+                
+                net_credit = (_to_float(agg["total_credit"]) - _to_float(agg["total_debit"])) * rate
+                net_debit = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
+                
+                if atype.startswith("income"):
+                    true_revenue += net_credit
+                elif atype.startswith("expense"):
+                    true_expenses += net_debit
+                    if atype == "expense_direct_cost":
+                        true_cogs += net_debit
+                    elif atype in ("expense", "expense_depreciation"):
+                        true_opex += net_debit
+
+            gross_profit = true_revenue - true_cogs
+            ebit = gross_profit - true_opex
+            net_profit = true_revenue - true_expenses
             
             receivable_balance = _sum_converted(
                 qs.filter(move_type="out_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0),
@@ -375,33 +410,41 @@ class AccountingService:
                 for k, v in sorted(exp_vend_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]
             ]
 
+            trend_aggs = AccountMoveLine.objects.filter(
+                account_move__in=posted_qs
+            ).values("account_move__date", "account_type", "company__currency_code").annotate(
+                total_debit=Sum("debit"),
+                total_credit=Sum("credit")
+            )
+            
             revenue_trend_map = {}
-            for r in revenue_qs.values("date", "currency_code").annotate(value=Sum("amount_total")):
-                if not r['date']: continue
-                d_str = _iso(r['date'])
-                code = r['currency_code'] or "COMPANY_BASE"
-                val = _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
-                revenue_trend_map[d_str] = revenue_trend_map.get(d_str, 0.0) + val
-            revenue_trend = [{"date": d, "value": v} for d, v in sorted(revenue_trend_map.items())]
-
             expense_trend_map = {}
-            for r in expense_qs.values("date", "currency_code").annotate(value=Sum("amount_total")):
-                if not r['date']: continue
-                d_str = _iso(r['date'])
-                code = r['currency_code'] or "COMPANY_BASE"
-                val = _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
-                expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + val
+            cash_flow_map = {}
+            
+            for row in trend_aggs:
+                if not row["account_move__date"]: continue
+                d_str = _iso(row["account_move__date"])
+                company_currency = row["company__currency_code"] or "COMPANY_BASE"
+                rate = _get_conversion_rate(company_currency, effective_base, rate_map)
+                
+                net_credit = (_to_float(row["total_credit"]) - _to_float(row["total_debit"])) * rate
+                net_debit = (_to_float(row["total_debit"]) - _to_float(row["total_credit"])) * rate
+                
+                atype = row["account_type"] or ""
+                
+                if atype.startswith("income"):
+                    revenue_trend_map[d_str] = revenue_trend_map.get(d_str, 0.0) + net_credit
+                elif atype.startswith("expense"):
+                    expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + net_debit
+                    
+                if atype in ["asset_cash", "liability_credit_card"]:
+                    cash_flow_map[d_str] = cash_flow_map.get(d_str, 0.0) + net_debit # debit increases cash
+
+            revenue_trend = [{"date": d, "value": v} for d, v in sorted(revenue_trend_map.items())]
             expense_trend = [{"date": d, "value": v} for d, v in sorted(expense_trend_map.items())]
-            cash_flow_map: dict[str, float] = {}
-            for entry in revenue_trend:
-                if entry["date"]:
-                    cash_flow_map[entry["date"]] = cash_flow_map.get(entry["date"], 0.0) + entry["value"]
-            for entry in expense_trend:
-                if entry["date"]:
-                    cash_flow_map[entry["date"]] = cash_flow_map.get(entry["date"], 0.0) - entry["value"]
-            cash_flow_trend = [
-                {"date": day, "value": cash_flow_map[day]} for day in sorted(cash_flow_map)
-            ]
+            cash_flow_trend = [{"date": d, "value": v} for d, v in sorted(cash_flow_map.items())]
+
+
 
             state_distribution = {
                 row["state"] or "unknown": row["count"]
@@ -419,8 +462,7 @@ class AccountingService:
             receivables_aging = AccountingService._aging(qs, "out_invoice", effective_base, rate_map)
             payables_aging = AccountingService._aging(qs, "in_invoice", effective_base, rate_map)
 
-            net_profit = total_revenue - total_expenses
-            net_profit_margin_pct = (net_profit / total_revenue * 100) if total_revenue else 0.0
+            net_profit_margin_pct = (net_profit / true_revenue * 100) if true_revenue else 0.0
             applied = {
                 "tenant_id": tenant_id,
                 "start_date": start_date,
@@ -428,11 +470,11 @@ class AccountingService:
                 "company_ids": company_ids,
             }
             return {
-                "total_revenue": _metric(total_revenue),
-                "total_expenses": _metric(total_expenses),
+                "total_revenue": _metric(true_revenue),
+                "total_expenses": _metric(true_expenses),
                 "net_profit": _metric(net_profit),
-                "gross_profit": _metric(net_profit),
-                "ebit": _metric(net_profit),
+                "gross_profit": _metric(gross_profit),
+                "ebit": _metric(ebit),
                 "net_profit_margin_pct": net_profit_margin_pct,
                 "receivable_balance": receivable_balance,
                 "overdue_receivable": overdue_receivable,
@@ -756,12 +798,8 @@ class AccountingService:
             base_qs = AccountingService._base_qs(tenant_id, company_ids)
             qs = AccountingService._date_qs(base_qs, start_date, end_date)
             
-            if metric == 'total_revenue':
-                qs = qs.filter(move_type="out_invoice", state="posted")
-            elif metric == 'total_expenses':
-                qs = qs.filter(move_type="in_invoice", state="posted")
-            elif metric in ['net_profit', 'gross_profit', 'ebit']:
-                qs = qs.filter(move_type__in=["out_invoice", "in_invoice"], state="posted")
+            if metric in ['total_revenue', 'total_expenses', 'net_profit', 'gross_profit', 'ebit']:
+                qs = qs.filter(state="posted")
             elif metric == 'receivable_balance':
                 qs = qs.filter(move_type="out_invoice", payment_state__in=["not_paid", "partial"], amount_residual__gt=0)
             elif metric == 'payable_balance':
@@ -783,6 +821,9 @@ class AccountingService:
             effective_base = (base_currency or "XAF").upper()
             
             groups = {}
+            total_revenue = 0.0
+            total_expenses = 0.0
+            total_cash_flow = 0.0
             total_metric_sum = 0.0
             flat_moves = []
 
@@ -804,15 +845,48 @@ class AccountingService:
                 converted_residual = _to_float(move.amount_residual) * rate
 
                 move_value = 0.0
-                if metric == 'total_revenue':
-                    move_value = converted_amount
-                elif metric == 'total_expenses':
-                    move_value = converted_amount
-                elif metric in ['net_profit', 'gross_profit', 'ebit']:
-                    if move.move_type == 'out_invoice':
-                        move_value = converted_amount
-                    else:
-                        move_value = -converted_amount
+                if metric in ['total_revenue', 'total_expenses', 'net_profit', 'gross_profit', 'ebit']:
+                    rev = 0.0
+                    exp = 0.0
+                    cogs = 0.0
+                    opex = 0.0
+                    cf = 0.0
+                    for l in move.lines.all():
+                        company_currency = l.company.currency_code if l.company and hasattr(l.company, 'currency_code') else "COMPANY_BASE"
+                        l_rate = _get_conversion_rate(company_currency, effective_base, rate_map)
+                        net_credit = (_to_float(l.credit) - _to_float(l.debit)) * l_rate
+                        net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
+                        atype = l.account_type or ""
+                        
+                        if atype.startswith("income"):
+                            rev += net_credit
+                        elif atype.startswith("expense"):
+                            exp += net_debit
+                            if atype == "expense_direct_cost":
+                                cogs += net_debit
+                            elif atype in ("expense", "expense_depreciation"):
+                                opex += net_debit
+                        elif atype in ["asset_cash", "liability_credit_card"]:
+                            cf += net_debit
+                                
+                    total_revenue += rev
+                    total_expenses += exp
+                    total_cash_flow += cf
+                    
+                    if metric == 'total_revenue':
+                        move_value = rev
+                    elif metric == 'total_expenses':
+                        move_value = exp
+                    elif metric == 'gross_profit':
+                        move_value = rev - cogs
+                    elif metric == 'ebit':
+                        move_value = rev - cogs - opex
+                    elif metric == 'net_profit':
+                        move_value = rev - exp
+                        
+                    if move_value == 0.0:
+                        continue
+
                 elif metric in ['receivable_balance', 'payable_balance', 'overdue_receivable', 'overdue_payable']:
                     move_value = converted_residual
 
@@ -888,6 +962,7 @@ class AccountingService:
             groups = {}
             total_revenue = 0.0
             total_expenses = 0.0
+            total_cash_flow = 0.0
             flat_moves = []
 
             for move in moves:
@@ -908,12 +983,27 @@ class AccountingService:
                 converted_residual = _to_float(move.amount_residual) * rate
 
                 if move.state == 'posted':
-                    if move.move_type == 'out_invoice':
-                        total_revenue += converted_amount
-                        groups[cid]['metric_value'] += converted_amount
-                    elif move.move_type == 'in_invoice':
-                        total_expenses += converted_amount
-                        groups[cid]['metric_value'] -= converted_amount
+                    rev = 0.0
+                    exp = 0.0
+                    cf = 0.0
+                    for l in move.lines.all():
+                        company_currency = l.company.currency_code if l.company and hasattr(l.company, 'currency_code') else "COMPANY_BASE"
+                        l_rate = _get_conversion_rate(company_currency, effective_base, rate_map)
+                        net_credit = (_to_float(l.credit) - _to_float(l.debit)) * l_rate
+                        net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
+                        atype = l.account_type or ""
+                        
+                        if atype.startswith("income"):
+                            rev += net_credit
+                        elif atype.startswith("expense"):
+                            exp += net_debit
+                        elif atype in ["asset_cash", "liability_credit_card"]:
+                            cf += net_debit
+                            
+                    total_revenue += rev
+                    total_expenses += exp
+                    total_cash_flow += cf
+                    groups[cid]['metric_value'] += (rev - exp)
 
                 flat_moves.append(AccountingDetailMove(
                     id=move.id,
@@ -949,6 +1039,7 @@ class AccountingService:
                 total_revenue=total_revenue,
                 total_expenses=total_expenses,
                 net_profit=total_revenue - total_expenses,
+                net_cash_flow=total_cash_flow,
                 move_count=total_items,
                 company_groups=company_groups,
                 items=paginated_moves,
@@ -1203,3 +1294,123 @@ class AccountingService:
 
         return await asyncio.to_thread(_get)
 
+    @staticmethod
+    async def get_aging_details(
+        tenant_id: str,
+        bucket: str,
+        move_type: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> dict[str, Any]:
+        def _get():
+            from doova_one_view.api.accounting.schemas import (
+                AccountingDetailMove, MetricDetailCompanyGroup, AgingDetailsResponse
+            )
+            qs = AccountingService._date_qs(
+                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            )
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
+            today = date.today()
+            base = qs.filter(
+                move_type=move_type,
+                invoice_date_due__isnull=False,
+                amount_residual__gt=0,
+            ).exclude(payment_state__in=["paid", "reversed"])
+            
+            if bucket == "0-30":
+                start_b, end_b = today - timedelta(days=30), today
+            elif bucket == "31-60":
+                start_b, end_b = today - timedelta(days=60), today - timedelta(days=31)
+            elif bucket == "61-90":
+                start_b, end_b = today - timedelta(days=90), today - timedelta(days=61)
+            elif bucket == "90+":
+                start_b, end_b = None, today - timedelta(days=91)
+            else:
+                raise ValueError(f"Invalid bucket: {bucket}")
+                
+            bucket_qs = base.filter(invoice_date_due__lte=end_b)
+            if start_b is not None:
+                bucket_qs = bucket_qs.filter(invoice_date_due__gte=start_b)
+                
+            moves = bucket_qs.select_related("partner", "company").prefetch_related("lines", "lines__product").order_by("-date", "-id")
+            
+            total_count = moves.count()
+            
+            groups = {}
+            total_amount = 0.0
+            
+            # Use values to quickly calculate the totals and groups
+            aggs = bucket_qs.values("company_id", "company__odoo_id", "company__name", "currency_code").annotate(
+                val=Sum("amount_residual")
+            )
+            for row in aggs:
+                cid = row["company_id"]
+                c_odoo_id = row["company__odoo_id"]
+                cname = row["company__name"] or "Unknown Company"
+                code = row["currency_code"] or "COMPANY_BASE"
+                val = _to_float(row["val"]) * _get_conversion_rate(code, effective_base, rate_map)
+                
+                if cid not in groups:
+                    groups[cid] = {
+                        "company_id": c_odoo_id,
+                        "company_name": cname,
+                        "metric_value": 0.0
+                    }
+                groups[cid]["metric_value"] += val
+                total_amount += val
+                
+            company_groups = [MetricDetailCompanyGroup(**g) for g in groups.values()]
+            company_groups.sort(key=lambda x: x.metric_value, reverse=True)
+            
+            flat_moves = []
+            for move in moves[offset:offset + limit]:
+                code = move.currency_code or "COMPANY_BASE"
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                conv_amount = _to_float(move.amount_total) * rate
+                conv_res = _to_float(move.amount_residual) * rate
+                
+                company_obj = move.company
+                cid = company_obj.odoo_id if company_obj else None
+                cname = company_obj.name if company_obj else "Unknown Company"
+
+                flat_moves.append(AccountingDetailMove(
+                    id=move.id,
+                    odoo_id=move.odoo_id,
+                    odoo_name=move.odoo_name,
+                    company_id=cid,
+                    company_name=cname,
+                    partner=_partner_obj(move),
+                    date=move.date,
+                    state=move.state,
+                    payment_state=move.payment_state,
+                    move_type=move.move_type,
+                    amount_total=_to_float(move.amount_total),
+                    amount_residual=_to_float(move.amount_residual),
+                    currency_code=code,
+                    lines=[_line_to_item(l) for l in move.lines.all()],
+                    converted_amount=conv_amount,
+                    converted_residual=conv_res,
+                    ref=move.ref,
+                    synced_at=move.synced_at
+                ))
+                
+            return AgingDetailsResponse(
+                bucket=bucket,
+                move_type=move_type,
+                base_currency=effective_base,
+                total_amount=total_amount,
+                move_count=total_count,
+                company_groups=company_groups,
+                items=flat_moves,
+                total=total_count,
+                limit=limit,
+                offset=offset,
+            ).model_dump()
+            
+        return await asyncio.to_thread(_get)

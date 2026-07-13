@@ -209,13 +209,13 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
 
     # 1. Unbalanced journal entries (debit != credit)
     unbalanced = run_query(
-        f"""SELECT m.id::text AS move_ref, SUM({debit_col}) AS total_debit, SUM({credit_col}) AS total_credit,
-                ABS(SUM({debit_col}) - SUM({credit_col})) AS variance
+        f"""SELECT m.id::text AS move_ref, SUM(l.debit) AS total_debit, SUM(l.credit) AS total_credit,
+                ABS(SUM(l.debit) - SUM(l.credit)) AS variance
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql}
             GROUP BY m.id
-            HAVING ABS(SUM({debit_col}) - SUM({credit_col})) > 0.01
+            HAVING ABS(SUM(l.debit) - SUM(l.credit)) > 0.01
             ORDER BY variance DESC
             LIMIT :limit""",
         params,
@@ -389,9 +389,9 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date
 
     rows = run_query(
         f"""SELECT 
-                SUM(CASE WHEN l.account_type IN ('income', 'other_income') THEN l.balance ELSE 0 END) * -1 AS total_income,
-                SUM(CASE WHEN l.account_type IN ('expenses', 'cost_of_goods_sold', 'depreciation') THEN l.balance ELSE 0 END) AS total_expenses,
-                SUM(CASE WHEN l.account_type = 'cost_of_goods_sold' THEN l.balance ELSE 0 END) AS cogs
+                SUM(CASE WHEN l.account_type LIKE 'income%' THEN l.balance ELSE 0 END) * -1 AS total_income,
+                SUM(CASE WHEN l.account_type LIKE 'expense%' THEN l.balance ELSE 0 END) AS total_expenses,
+                SUM(CASE WHEN l.account_type = 'expense_direct_cost' THEN l.balance ELSE 0 END) AS cogs
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id AND m.state = 'posted' {f_sql} {date_sql}""",
@@ -484,6 +484,8 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, base_c
 
 def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit: int = 50, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
     params.update(f_params)

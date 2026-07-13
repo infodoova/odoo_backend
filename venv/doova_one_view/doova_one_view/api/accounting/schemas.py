@@ -309,12 +309,14 @@ class MetricDetailResponse(BaseModel):
     offset: int
 
 
+
 class DailyMovesResponse(BaseModel):
     date: str
     base_currency: str
     total_revenue: float
     total_expenses: float
     net_profit: float
+    net_cash_flow: float = 0.0
     move_count: int
     company_groups: List[MetricDetailCompanyGroup]
     items: List[AccountingDetailMove]
@@ -363,3 +365,14 @@ class EntityProfileResponse(BaseModel):
     city: Optional[str] = None
 
 
+class AgingDetailsResponse(BaseModel):
+    bucket: str
+    move_type: str
+    base_currency: str
+    total_amount: float
+    move_count: int
+    company_groups: List[MetricDetailCompanyGroup]
+    items: List[AccountingDetailMove]
+    total: int
+    limit: int
+    offset: int
