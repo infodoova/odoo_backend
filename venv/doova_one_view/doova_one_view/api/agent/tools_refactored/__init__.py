@@ -31,7 +31,7 @@ from .finance import (
     detect_anomalies_tool,
     get_period_comparison_tool,
 )
-from .reporting import (
+from .reporting_v2 import (
     generate_report_tool,
     get_last_report_tool,
 )

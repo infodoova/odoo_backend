@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: letter;
+            margin: 0.5cm 0 1.5cm 0;
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #334155;
+            line-height: 1.6;
+            font-size: 11pt;
+        }
+
+        .page-break {
+            pdf-pagebreak-before: always;
+        }
+
+        /* Cover Page */
+        .cover-page {
+            border-top: 10px solid #1e3a8a;
+            border-bottom: 10px solid #1e3a8a;
+        }
+
+        .cover-body {
+            padding: 130px 60px 40px 60px;
+            text-align: center;
+        }
+
+        .cover-eyebrow {
+            display: inline-block;
+            font-size: 9pt;
+            color: #1e3a8a;
+            background-color: #eaf1fc;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+            padding: 5px 16px;
+            margin-bottom: 24px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .cover-title {
+            font-size: 32pt;
+            color: #0f172a;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            line-height: 1.25;
+            margin-bottom: 18px;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .cover-rule {
+            width: 90px;
+            height: 4px;
+            background-color: #3b82f6;
+            margin: 0 auto 22px auto;
+        }
+
+        .cover-tagline {
+            font-size: 11pt;
+            color: #64748b;
+            max-width: 420px;
+            margin: 0 auto 40px auto;
+            line-height: 1.6;
+        }
+
+        .cover-info-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-top: 3px solid #3b82f6;
+            width: 78%;
+            margin: 0 auto 30px auto;
+            padding: 6px 10px;
+        }
+
+        .cover-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cover-meta-col {
+            width: 33.33%;
+            text-align: center;
+            vertical-align: middle;
+            padding: 14px 10px;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .cover-meta-col-last {
+            border-right: none;
+        }
+
+        .cover-meta-label {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .cover-meta-value {
+            text-align: center;
+            color: #0f172a;
+            font-weight: bold;
+            font-size: 10.5pt;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .cover-stamp {
+            display: inline-block;
+            color: #64748b;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: bold;
+            border: 1px solid #cbd5e1;
+            padding: 5px 16px;
+            margin-bottom: 14px;
+        }
+
+        .cover-footnote {
+            font-size: 8pt;
+            color: #94a3b8;
+            max-width: 380px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        /* Inner Page Styles */
+        .content-wrapper {
+            padding: 14px 50px 24px 50px;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            -pdf-keep-with-next: true;
+        }
+
+        h1 {
+            color: #0f172a;
+            font-size: 18pt;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 5px;
+            margin-top: 6px;
+            margin-bottom: 10px;
+        }
+
+        .content-wrapper>h1:first-child {
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #1e3a8a;
+            font-size: 14pt;
+            margin-top: 14px;
+            margin-bottom: 7px;
+        }
+
+        h3 {
+            color: #334155;
+            font-size: 11.5pt;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        h4,
+        h5,
+        h6 {
+            color: #334155;
+            font-size: 10.5pt;
+            margin-top: 8px;
+            margin-bottom: 5px;
+        }
+
+        p {
+            margin-bottom: 8px;
+            text-align: justify;
+        }
+
+        a {
+            color: #1d4ed8;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 10px 0;
+        }
+
+        blockquote {
+            margin: 10px 0;
+            padding: 8px 15px;
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            color: #334155;
+            font-style: italic;
+            -pdf-keep-with-next: false;
+        }
+
+        /* KPI Cards using Tables */
+        .kpi-container {
+            width: 100%;
+            margin-bottom: 16px;
+            margin-top: 8px;
+            table-layout: fixed;
+        }
+
+        .kpi-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-top: 3px solid #3b82f6;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .kpi-title {
+            color: #64748b;
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .kpi-value {
+            color: #0f172a;
+            font-size: 16pt;
+            font-weight: bold;
+            line-height: 1.2;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        /* Charts */
+        .chart-container {
+            text-align: center;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        .chart-image {
+            width: 700px;
+            height: auto;
+            max-height: 320px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            margin-top: 8px;
+            -pdf-keep-with-next: false;
+            table-layout: auto;
+            border: 1px solid #cbd5e1;
+        }
+
+        .kpi-container {
+            border: none;
+        }
+
+        /*
+      FIX: tables whose first column is a short row label (or, worse, has
+      NO header text at all -- e.g. a markdown table like
+      "| | Accounts Receivable | Accounts Payable | Net |" with a blank
+      first <th>) were getting squeezed almost to zero width by
+      table-layout:auto, since the browser/renderer distributes width based
+      on the OTHER columns' longer content. That's what forced labels like
+      "Total Outstanding" to wrap into a vertical stack ("Total" / "Outstanding")
+      instead of sitting on one line.
+      This is the standard "shrink-to-fit" trick: width:1% tells the layout
+      engine "give this column the least width possible", and
+      white-space:nowrap stops it from wrapping once shrunk -- so it ends up
+      exactly as wide as its longest label, no matter how blank/short its
+    */
+
+        thead {
+            display: table-header-group;
+        }
+
+        th {
+            background-color: #eaf1fc;
+            color: #1e3a8a;
+            text-align: left;
+            padding: 6px 10px;
+            font-size: 8.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #1e3a8a;
+            line-height: 1.15;
+        }
+
+        td {
+            padding: 5px 10px;
+            font-size: 9.5pt;
+            line-height: 1.15;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            color: #334155;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th p,
+        td p {
+            margin: 0;
+            padding: 0;
+            text-align: inherit;
+        }
+
+        th.num,
+        td.num,
+        th.number,
+        td.number {
+            text-align: right;
+        }
+
+        tbody tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+
+        tbody tr:last-child td,
+        tr.total-row td {
+            border-top: 2px solid #1e3a8a;
+            border-bottom: none;
+            background-color: #eaf1fc;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        /* Lists */
+        ul,
+        ol {
+            margin-bottom: 12px;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+
+        .analysis-content img {
+            width: 100%;
+            max-height: 320px;
+        }
+
+        b,
+        strong {
+            color: #0f172a;
+        }
+
+        /*
+      STATUS BADGES -- replaces emoji (🔴 🟠 🟡 🟢 ⚠️ 🚨) in AI-generated
+      body_html. Helvetica/Arial (what xhtml2pdf renders with) has no emoji
+      glyphs, so those characters were either being swapped for literal
+      bracket text ("[Alert]", "[Note]", "[Good]", "[Watch]") by an
+      incomplete fallback step, or -- for emoji that fallback didn't cover,
+      like 🟠 -- falling straight through to reportlab and rendering as a
+      "missing glyph" box ("■"). Run body_html through
+      emoji_to_badges.normalize_status_emoji() BEFORE it reaches this
+      template so every status emoji becomes one of the spans below instead.
+    */
+        .badge {
+            display: inline-block;
+            font-size: 7.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 2px;
+            border: 1px solid transparent;
+        }
+
+        .badge-urgent {
+            color: #ffffff;
+            background-color: #dc2626;
+            border-color: #b91c1c;
+        }
+
+        .badge-critical {
+            color: #b91c1c;
+            background-color: #fee2e2;
+            border-color: #fca5a5;
+        }
+
+        .badge-high {
+            color: #c2410c;
+            background-color: #ffedd5;
+            border-color: #fdba74;
+        }
+
+        .badge-medium {
+            color: #a16207;
+            background-color: #fef9c3;
+            border-color: #fde68a;
+        }
+
+        .badge-warning {
+            color: #92400e;
+            background-color: #fef3c7;
+            border-color: #fcd34d;
+        }
+
+        .badge-good {
+            color: #15803d;
+            background-color: #dcfce7;
+            border-color: #86efac;
+        }
+
+        .badge-note {
+            color: #1e3a8a;
+            background-color: #eaf1fc;
+            border-color: #93c5fd;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Cover Page -->
+    <div class="cover-page">
+        <div class="cover-body">
+            <div class="cover-eyebrow">Executive Financial Report</div>
+            <div class="cover-title">{{ company_name|default("Financial Overview") }}</div>
+            <div class="cover-rule"></div>
+            <div class="cover-tagline">A confidential summary of financial performance and business health, prepared for
+                tenant leadership.</div>
+
+            <div class="cover-info-card">
+                <table class="cover-meta-table">
+                    <tr>
+                        <td class="cover-meta-col">
+                            <div class="cover-meta-label">Tenant ID</div>
+                            <div class="cover-meta-value">{{ tenant_id|default("—") }}</div>
+                        </td>
+                        <td class="cover-meta-col">
+                            <div class="cover-meta-label">Prepared On</div>
+                            <div class="cover-meta-value">{{ date|default("—") }}</div>
+                        </td>
+                        <td class="cover-meta-col cover-meta-col-last">
+                            <div class="cover-meta-label">Generated By</div>
+                            <div class="cover-meta-value">Doova AI Financial Advisor</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="cover-stamp">Confidential &middot; Internal Use Only</div>
+            <div class="cover-footnote">This document contains confidential and proprietary financial information.
+                Distribution is limited to authorized recipients.</div>
+        </div>
+    </div>
+
+    <div class="content-wrapper page-break">
+        <!-- KPI Dashboard -->
+        <h1>Business Vital Signs</h1>
+        <table class="kpi-container">
+            <tr>
+                <td class="kpi-card" style="width: 32%;">
+                    <div class="kpi-title">Health Score</div>
+                    <div class="kpi-value">{% if health_score is defined and health_score is not none %}{{ health_score
+                        }}/100{% else %}N/A{% endif %}</div>
+                </td>
+                <td style="width: 2%; padding: 0; border: none;"></td>
+                <td class="kpi-card" style="width: 32%;">
+                    <div class="kpi-title">Total Revenue</div>
+                    <div class="kpi-value">{{ revenue|default("N/A") }}</div>
+                </td>
+                <td style="width: 2%; padding: 0; border: none;"></td>
+                <td class="kpi-card" style="width: 32%;">
+                    <div class="kpi-title">EBIT</div>
+                    <div class="kpi-value">{{ margin|default("N/A") }}</div>
+                </td>
+            </tr>
+        </table>
+
+        {% if chart_b64 %}
+        <div class="chart-container">
+            <img class="chart-image" width="700" src="data:image/png;base64,{{ chart_b64 }}" />
+        </div>
+        {% endif %}
+
+        <div class="analysis-content">
+            {% if body_html %}
+            {{ body_html|safe }}
+            {% else %}
+            <p><em>Analysis content is not yet available for this reporting period.</em></p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+
+</html>

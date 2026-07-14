@@ -260,13 +260,24 @@ def inventory_efficiency(tenant_id: str, company_id: Optional[int] = None):
 # ── Reporting Domain ─────────────────────────
 
 @tool
-def create_report(tenant_id: str, custom_content: str = "", company_id: Optional[int] = None):
-    """Generate a professional branded PDF executive report including vital signs and your analysis.
-    custom_content must be a complete, well-structured markdown executive summary of your findings,
-    recommendations, and risk flags — this becomes the main body of the PDF.
-    Use only after completing all analysis tool calls so the report is comprehensive.
+def create_report(tenant_id: str, custom_content: str, company_id: Optional[int] = None):
+    """MANDATORY: When the user asks to 'generate a report' or 'create a report', you MUST call this tool.
+    Generate a professional branded PDF executive report including vital signs and your analysis.
+    You MUST pass your full markdown report analysis into the `custom_content` parameter. This parameter is REQUIRED.
+    Do NOT output the report directly in the chat text. Pass it ALL into `custom_content`.
     Do NOT call this before you have gathered the data — the report cannot be regenerated mid-session."""
-    return generate_report_tool(tenant_id, company_id, custom_content=custom_content or None)
+    
+    # Generate the report. If custom_content is missing, it will use the default automated summary.
+    result = generate_report_tool(tenant_id, custom_content=custom_content, company_id=company_id)
+    url = result.get("download_url", "")
+    
+    # Return a loud, explicit string to Claude so it stops looping and responds to the user!
+    return (
+        f"SUCCESS! The report has been successfully generated and saved.\n"
+        f"Download URL: {url}\n\n"
+        f"CRITICAL INSTRUCTION: You must now STOP calling tools. Do NOT call create_report again. "
+        f"Output your final response to the user containing this download link."
+    )
 
 @tool
 def get_latest_report(tenant_id: str, company_id: Optional[int] = None):

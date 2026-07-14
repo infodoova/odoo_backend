@@ -384,13 +384,17 @@ def generate_report_tool(
     # In some places company_id string might slip in, parse properly in future
     resolved_company_id = company_id
     
+    # Fetch core data needed for the scorecard
+    try:
+        sales  = get_sales_summary_tool(tenant_id, resolved_company_id, base_currency=base_currency)
+        health = get_business_health_score_tool(tenant_id, resolved_company_id, base_currency=base_currency)
+    except Exception:
+        sales = {}
+        health = {}
+        
     # If the user did not provide custom Markdown, auto-generate a generic executive summary.
-    # We fetch a couple quick data points from other tools.
     if not custom_content.strip():
         try:
-            sales  = get_sales_summary_tool(tenant_id, resolved_company_id, base_currency=base_currency)
-            health = get_business_health_score_tool(tenant_id, resolved_company_id, base_currency=base_currency)
-            
             currency = base_currency or get_tenant_currency(tenant_id, resolved_company_id)
             rev = sales.get('total_revenue', 0)
             score = health.get('business_health_score', 0)
