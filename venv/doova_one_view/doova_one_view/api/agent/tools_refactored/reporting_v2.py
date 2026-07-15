@@ -21,30 +21,43 @@ def generate_report_tool(
     tenant_id: str, 
     custom_content: str = "", 
     company_id: int | None = None,
+    company_ids: list[int] | None = None,
     base_currency: str | None = None
 ) -> dict:
     from ..utils import get_tenant_currency
+    from .common import normalize_company_ids
     
-    resolved_company_id = company_id
+    resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
+    
     currency = base_currency or get_tenant_currency(tenant_id, resolved_company_id)
     
     # 1. ALWAYS Fetch Core KPI Data for the Dashboard
     sales = {}
     health = {}
     pnl = {}
-    company_name = "Financial Overview"
+    
+    # Generate a descriptive title for multiple companies
+    if len(resolved_company_ids) == 0:
+        company_name = "All Companies (Consolidated)"
+    elif len(resolved_company_ids) > 1:
+        company_name = f"Multi-Company ({len(resolved_company_ids)} Selected)"
+    else:
+        company_name = "Financial Overview"
     
     try:
-        sales = get_sales_summary_tool(tenant_id, resolved_company_id, base_currency=base_currency)
-        health = get_business_health_score_tool(tenant_id, resolved_company_id, base_currency=base_currency)
-        pnl = calculate_pnl_tool(tenant_id, resolved_company_id, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"), base_currency=base_currency)
+        sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency)
+        health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency)
+        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"), base_currency=base_currency)
         
-        # Get company name
-        companies = get_companies_tool(tenant_id)
-        for c in companies:
-            if c.get("id") == resolved_company_id:
-                company_name = c.get("name", company_name)
-    except Exception:
+        # Get specific company name if only one is selected
+        if len(resolved_company_ids) == 1:
+            companies = get_companies_tool(tenant_id)
+            for c in companies:
+                if c.get("id") == resolved_company_ids[0]:
+                    company_name = c.get("name", company_name)
+    except Exception as e:
+        print(f"Error fetching KPI data: {e}")
         pass
         
     revenue_val = sales.get('total_revenue', 0)
@@ -65,7 +78,7 @@ The business is currently operating with a health score of **{score_val}/100** a
     # 2. Generate Matplotlib Chart (Sales Trend)
     chart_b64 = ""
     try:
-        ts_result = get_time_series_data_tool(tenant_id, resolved_company_id, granularity="month", base_currency=base_currency)
+        ts_result = get_time_series_data_tool(tenant_id, company_ids=resolved_company_ids, granularity="month", base_currency=base_currency)
         ts_data = ts_result.get("points", [])
         if ts_data and isinstance(ts_data, list) and len(ts_data) > 0:
             labels = [str(d.get("period", ""))[:7] for d in ts_data] # YYYY-MM

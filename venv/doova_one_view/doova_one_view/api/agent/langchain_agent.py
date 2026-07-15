@@ -57,11 +57,12 @@ class DoovaLangChainAgent:
                 formatted.append(AIMessage(content=msg.get("content", "")))
         return formatted
 
-    def run(self, message: str, tenant_id: str, company_id: int = None, chat_history: list = None, memory_summary: str = "", on_summary=None) -> str:
+    def run(self, message: str, tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, chat_history: list = None, memory_summary: str = "", on_summary=None) -> str:
         start = time.time()
         formatted_history = self._format_history(chat_history or [])
         
-        log_agent_start(message, tenant_id, company_id, len(formatted_history))
+        # Ensure we always pass the list representation for logging
+        log_agent_start(message, tenant_id, company_ids or company_id, len(formatted_history))
         
         active_history = formatted_history
         new_summary_generated = None
@@ -88,17 +89,17 @@ class DoovaLangChainAgent:
 
         try:
             from .utils import get_tenant_currency, fix_currency_symbols
-
-            resolved_company_id = company_id
-            if resolved_company_id is None:
-                resolved_company_id = "All Companies"
+            from .query_context import normalize_company_ids
+            
+            resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+            resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
 
             currency = get_tenant_currency(tenant_id, resolved_company_id)
 
             response = self.executor.invoke({
                 "input": message,
                 "tenant_id": tenant_id,
-                "company_id": resolved_company_id,
+                "company_ids": resolved_company_ids,
                 "currency": currency,
                 "chat_history": active_history,
                 "memory_summary": memory_summary,

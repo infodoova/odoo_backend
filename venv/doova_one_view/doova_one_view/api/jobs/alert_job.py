@@ -402,14 +402,10 @@ class AlertJobManager:
         """
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
 
-        company_id = (
-            company_ids[0]
-            if company_ids and len(company_ids) == 1
-            else None
-        )
-        company_ctx = (
-            f"for Company ID {company_id}" if company_id else "across all companies"
-        )
+        if company_ids and len(company_ids) > 0:
+            company_ctx = f"for selected companies {company_ids}"
+        else:
+            company_ctx = "across all companies"
         effective_prompt = (
             user_prompt.strip()
             if user_prompt and user_prompt.strip()
@@ -432,7 +428,7 @@ class AlertJobManager:
         )
 
         agent = DoovaLangChainAgent()
-        result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_id)
+        result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids)
         result = result.strip()
 
         # The agent sometimes wraps ALERT:/OK: in bold (**ALERT:**) or places it

@@ -42,21 +42,21 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
     rows = run_query(query, params)
     return {"tool_name": "get_top_products_tool", "products": [{"product": r["product_name"], "revenue": float(r["revenue"]), "quantity": float(r["quantity"])} for r in rows]}
 
-def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
+def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     query = f"SELECT DATE_TRUNC('{granularity}', date_order) AS period, COALESCE(SUM({amount_col}), 0) AS revenue, COUNT(*) AS order_count FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') AND date_order IS NOT NULL"
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
     query += f_sql + f" GROUP BY period ORDER BY period ASC"
     params.update(f_params)
     rows = run_query(query, params)
     return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r["period"]), "revenue": float(r["revenue"]), "order_count": int(r["order_count"])} for r in rows]}
 
-def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
-    data = get_time_series_data_tool(tenant_id, company_id, granularity, base_currency)
+def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
+    data = get_time_series_data_tool(tenant_id, company_id=company_id, company_ids=company_ids, granularity=granularity, base_currency=base_currency)
     return {"tool_name": "get_sales_chart_data_tool", "chart": {"type": "line", "data": data["points"]}}
 
-def analyze_variance_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def analyze_variance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     query = f"SELECT DATE_TRUNC('month', date_order) AS month, SUM({amount_col}) AS revenue FROM fact_sales_orders WHERE tenant_id = :tenant_id AND state IN ('sale', 'done') GROUP BY month ORDER BY month DESC LIMIT 2"
     rows = run_query(query, {"tenant_id": tenant_id})
@@ -65,9 +65,9 @@ def analyze_variance_tool(tenant_id: str, company_id: int | None = None, base_cu
     change = float(curr["revenue"]) - float(prev["revenue"])
     return {"tool_name": "analyze_variance_tool", "current": float(curr["revenue"]), "previous": float(prev["revenue"]), "change": change}
 
-def forecast_sales_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def forecast_sales_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
     params.update(f_params)
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
 

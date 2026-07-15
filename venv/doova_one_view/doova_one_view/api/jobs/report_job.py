@@ -132,10 +132,9 @@ class ReportJobManager:
             )
 
             # 2. Generate PDF
-            company_id = company_ids[0] if company_ids and len(company_ids) == 1 else None
             result = await sync_to_async(generate_report_tool)(
                 tenant_id=tenant_id,
-                company_id=company_id,
+                company_ids=company_ids,
                 custom_content=custom_content,
             )
             filename = result['filename']
@@ -201,8 +200,10 @@ class ReportJobManager:
         """
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
 
-        company_id = company_ids[0] if company_ids and len(company_ids) == 1 else None
-        company_ctx = f"for Company ID {company_id}" if company_id else "across all companies"
+        if company_ids and len(company_ids) > 0:
+            company_ctx = f"for selected companies {company_ids}"
+        else:
+            company_ctx = "across all companies"
 
         default_prompt = (
             f"Generate a comprehensive {report_type} business report with all key metrics, "
@@ -230,7 +231,7 @@ class ReportJobManager:
 
         try:
             agent = DoovaLangChainAgent()
-            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_id)
+            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids)
             return result
         except Exception as e:
             logger.exception(f"AI agent failed for schedule — using fallback content")

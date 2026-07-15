@@ -284,7 +284,7 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
     ]),
     # BLOCK 2: Dynamic context — sent fresh every request (small, ~100 tokens)
     ("system", """TENANT: {tenant_id}
-    COMPANY: {company_id}
+    COMPANY_IDS: {company_ids}
     CURRENCY: {currency}
 
     EXECUTIVE CONTEXT (PREVIOUS SESSIONS):
@@ -315,10 +315,10 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     COMPANY FILTER RULES — MANDATORY
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    - You are operating for company_id = {company_id}.
-    - EVERY tool call you make MUST pass company_id = {company_id} as a parameter.
-    - NEVER omit company_id from any tool invocation. Omitting it returns data for ALL companies, which is a critical data isolation violation.
-    - If a tool does not accept company_id, ensure tenant_id = {tenant_id} is passed to restrict the scope.
+    - You are operating for company_ids = {company_ids}.
+    - EVERY tool call you make MUST pass company_ids = {company_ids} as a parameter.
+    - NEVER omit company_ids from any tool invocation. Omitting it returns data for ALL companies, which is a critical data isolation violation if specific companies were requested.
+    - If a tool does not accept company_ids, ensure tenant_id = {tenant_id} is passed to restrict the scope.
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""),
     MessagesPlaceholder(variable_name="chat_history"),
     ("human", "{input}"),

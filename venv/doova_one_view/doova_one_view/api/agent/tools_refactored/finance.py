@@ -9,12 +9,12 @@ from .inventory import get_inventory_efficiency_tool
 # 1. ACCOUNTS RECEIVABLE
 # ──────────────────────────────────────────────
 
-def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
+def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     amount_m_col = build_currency_case_sql('m.amount_total', tenant_id, base_currency, 'm.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
-    f_sql_m, f_params_m = build_company_filter_sql(tenant_id, company_id, column_name="m.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
+    f_sql_m, f_params_m = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="m.company_id")
     params.update(f_params)
     params.update(f_params_m)
 
@@ -67,12 +67,12 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
 # 2. ACCOUNTS PAYABLE
 # ──────────────────────────────────────────────
 
-def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
+def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     amount_m_col = build_currency_case_sql('m.amount_total', tenant_id, base_currency, 'm.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
-    f_sql_m, f_params = build_company_filter_sql(tenant_id, company_id, column_name="m.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
+    f_sql_m, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="m.company_id")
     params.update(f_params)
 
     summary = run_query(
@@ -122,10 +122,10 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, li
 # 12. EXPENSE BREAKDOWN BY CATEGORY
 # ──────────────────────────────────────────────
 
-def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 20, base_currency: str | None = None) -> dict:
+def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 20, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
 
     date_sql = ""
@@ -167,10 +167,10 @@ def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, st
 # 13. TAX LIABILITY ESTIMATION
 # ──────────────────────────────────────────────
 
-def get_tax_summary_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def get_tax_summary_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
     params.update(f_params)
 
     rows = run_query(
@@ -202,9 +202,9 @@ def get_tax_summary_tool(tenant_id: str, company_id: int | None = None, base_cur
 # 14. JOURNAL ENTRY ANOMALY DETECTION (Audit)
 # ──────────────────────────────────────────────
 
-def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: int = 15) -> dict:
+def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 15) -> dict:
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
 
     # 1. Unbalanced journal entries (debit != credit)
@@ -259,10 +259,10 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, limit: 
 # 15. MULTI-PERIOD COMPARISON (YoY / QoQ)
 # ──────────────────────────────────────────────
 
-def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
+def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
     params.update(f_params)
 
     rows = run_query(
@@ -305,11 +305,11 @@ def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, gr
 # 3. CASH FLOW HEALTH (Now uses real AP data)
 # ──────────────────────────────────────────────
 
-def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
     credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
-    ar = get_receivables_analysis_tool(tenant_id, company_id)
-    ap = get_payables_analysis_tool(tenant_id, company_id)
+    ar = get_receivables_analysis_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+    ap = get_payables_analysis_tool(tenant_id, company_id=company_id, company_ids=company_ids)
 
     net_position = ar["total_receivables"] - ap["total_payables"]
     overdue_exposure = ar["overdue_receivables"] + ap["overdue_payables"]
@@ -335,11 +335,11 @@ def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, bas
 # 4. AR/AP AGING BUCKETS
 # ──────────────────────────────────────────────
 
-def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, direction: str = "receivable", base_currency: str | None = None) -> dict:
+def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, direction: str = "receivable", base_currency: str | None = None) -> dict:
     residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
     move_type = "out_invoice" if direction == "receivable" else "in_invoice"
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
     params.update(f_params)
 
     rows = run_query(
@@ -374,9 +374,9 @@ def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, direc
 # 5. PROFIT & LOSS
 # ──────────────────────────────────────────────
 
-def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date: str | None = None, end_date: str | None = None) -> dict:
+def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None) -> dict:
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
 
     date_sql = ""
@@ -425,8 +425,8 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, start_date
     }
 
 
-def analyze_profitability_tool(tenant_id: str, company_id: int | None = None) -> dict:
-    pnl = calculate_pnl_tool(tenant_id, company_id)
+def analyze_profitability_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None) -> dict:
+    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     return {
         "tool_name": "analyze_profitability_tool",
         "gross_profit": pnl["gross_profit"],
@@ -441,10 +441,10 @@ def analyze_profitability_tool(tenant_id: str, company_id: int | None = None) ->
 # 6. BALANCE SHEET
 # ──────────────────────────────────────────────
 
-def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
 
     rows = run_query(
@@ -490,12 +490,12 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, base_c
 # 7. TRIAL BALANCE
 # ──────────────────────────────────────────────
 
-def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit: int = 50, base_currency: str | None = None) -> dict:
+def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 50, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
     credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="l.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
 
     rows = run_query(
@@ -543,12 +543,12 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, limit:
 # 8. FINANCIAL RATIOS DASHBOARD
 # ──────────────────────────────────────────────
 
-def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    bs = get_balance_sheet_tool(tenant_id, company_id)
-    pnl = calculate_pnl_tool(tenant_id, company_id)
+    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
 
     current_ratio = calculate_ratio(bs["current_assets"], bs["current_liabilities"])
     # Quick ratio approximation: current assets minus inventory value
@@ -583,9 +583,9 @@ def _assess_ratios(current_ratio: float, debt_to_equity: float) -> str:
 # 9. WORKING CAPITAL
 # ──────────────────────────────────────────────
 
-def get_working_capital_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def get_working_capital_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
-    bs = get_balance_sheet_tool(tenant_id, company_id)
+    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     wc = bs["current_assets"] - bs["current_liabilities"]
     wc_ratio = calculate_ratio(bs["current_assets"], bs["current_liabilities"])
 
@@ -603,13 +603,13 @@ def get_working_capital_tool(tenant_id: str, company_id: int | None = None, base
 # 10. BUSINESS HEALTH SCORE (Real weighted scoring)
 # ──────────────────────────────────────────────
 
-def get_business_health_score_tool(tenant_id: str, company_id: int | None = None, base_currency: str | None = None) -> dict:
+def get_business_health_score_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
-    pnl = calculate_pnl_tool(tenant_id, company_id)
-    ar = get_receivables_analysis_tool(tenant_id, company_id)
-    bs = get_balance_sheet_tool(tenant_id, company_id)
+    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+    ar = get_receivables_analysis_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
 
     # Weighted scoring: Profitability (35%), Liquidity (25%), Leverage (20%), Collections (20%)
     profitability_score = min(35, max(0, pnl["net_margin_pct"] * 3.5))
@@ -638,10 +638,10 @@ def get_business_health_score_tool(tenant_id: str, company_id: int | None = None
 # 11. CUSTOMER METRICS (Real SQL)
 # ──────────────────────────────────────────────
 
-def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
+def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 10, base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('s.amount_total', tenant_id, base_currency, 's.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id, column_name="s.company_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="s.company_id")
     params.update(f_params)
 
     # Total unique customers and repeat customers
