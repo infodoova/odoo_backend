@@ -107,6 +107,135 @@ The business is currently operating with a health score of **{score_val}/100** a
     # Convert status emojis to HTML badges
     custom_content = normalize_status_emoji(custom_content)
 
+    import re
+    import json
+
+    # ── Generic chart renderer ────────────────────────────────────────────
+    def _render_chart(chart_type: str, title: str, labels: list, values: list) -> str:
+        """
+        Render any chart type to a base64 PNG string.
+        Handles edge cases: empty data, single value, long labels, many items.
+        Returns an HTML <div> with embedded <img>, or a fallback message.
+        """
+        # Sanitise inputs
+        if not values or not labels:
+            return ""
+        # Ensure equal length
+        min_len = min(len(labels), len(values))
+        labels = [str(l) for l in labels[:min_len]]
+        values = [float(v) for v in values[:min_len]]
+        n = len(values)
+
+        # Truncate very long labels (>25 chars)
+        display_labels = [l[:22] + "..." if len(l) > 25 else l for l in labels]
+
+        # Dynamic blue palette
+        cmap = matplotlib.colormaps['Blues']
+        colors = [cmap(0.3 + 0.6 * i / max(n - 1, 1)) for i in range(n)]
+
+        chart_type = chart_type.lower().strip()
+
+        try:
+            fig, ax = plt.subplots(figsize=(8, 4), facecolor='white')
+
+            if chart_type == "pie":
+                # Explode the largest slice
+                max_idx = values.index(max(values))
+                explode = [0.05 if i == max_idx else 0 for i in range(n)]
+
+                total = sum(values) or 1
+                wedges, _ = ax.pie(
+                    values,
+                    colors=colors,
+                    explode=explode,
+                    startangle=90,
+                    wedgeprops={'edgecolor': 'white', 'linewidth': 2},
+                )
+
+                # Donut hole
+                ax.add_artist(plt.Circle((0, 0), 0.55, fc='white'))
+
+                # Legend with label + percentage (avoids text overlap on small slices)
+                legend_labels = [
+                    f"{lab}  —  {val / total * 100:.1f}%"
+                    for lab, val in zip(labels, values)
+                ]
+                ax.legend(
+                    wedges, legend_labels,
+                    loc="center left", bbox_to_anchor=(1, 0.5),
+                    fontsize=9, frameon=False,
+                )
+
+            elif chart_type == "bar":
+                bar_colors = colors if n > 1 else ['#2563eb']
+                bars = ax.bar(display_labels, values, color=bar_colors, alpha=0.9)
+                # Add value labels on top of bars
+                for bar, val in zip(bars, values):
+                    ax.text(
+                        bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                        f"{val:,.0f}", ha='center', va='bottom',
+                        fontsize=7, color='#334155',
+                    )
+
+            else:  # line (default)
+                ax.plot(display_labels, values, marker='o', color='#2563eb', linewidth=2.5, markersize=6)
+                ax.fill_between(display_labels, values, color='#eff6ff', alpha=0.6)
+
+            # Shared styling for non-pie charts
+            if chart_type != "pie":
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.spines['left'].set_color('#cbd5e1')
+                ax.spines['bottom'].set_color('#cbd5e1')
+                ax.tick_params(colors='#64748b', labelsize=8)
+                ax.yaxis.grid(True, linestyle=':', color='#e2e8f0', alpha=0.8)
+                ax.xaxis.grid(False)
+                # Auto-rotate labels when there are many items or long text
+                if n > 5 or any(len(l) > 10 for l in display_labels):
+                    plt.xticks(rotation=45, ha='right')
+
+            if title:
+                plt.title(title, fontsize=12, color='#0f172a', fontweight='bold', pad=15)
+            plt.tight_layout()
+
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+            buf.seek(0)
+            img_b64 = base64.b64encode(buf.read()).decode('utf-8')
+            plt.close(fig)
+
+            return (
+                f'<div class="chart-container">'
+                f'<img class="chart-image" width="700" '
+                f'src="data:image/png;base64,{img_b64}" alt="{title}" />'
+                f'</div>'
+            )
+        except Exception as exc:
+            plt.close('all')
+            print(f"Chart render error ({chart_type}): {exc}")
+            return ""
+
+    # ── Parse ```chart blocks and replace with rendered images ─────────
+    def _chart_block_replacer(match):
+        json_str = match.group(1)
+        try:
+            cfg = json.loads(json_str)
+        except json.JSONDecodeError:
+            return "*(Invalid chart JSON)*"
+        return _render_chart(
+            chart_type=cfg.get("chart_type", "bar"),
+            title=cfg.get("title", ""),
+            labels=cfg.get("labels", []),
+            values=cfg.get("values", []),
+        )
+
+    custom_content = re.sub(
+        r'```chart\s*\n(.*?)\n```',
+        _chart_block_replacer,
+        custom_content,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+
     # 3. Convert dynamic Markdown to HTML
     md = markdown.Markdown(extensions=['tables', 'fenced_code', 'sane_lists'])
     body_html = md.convert(custom_content)

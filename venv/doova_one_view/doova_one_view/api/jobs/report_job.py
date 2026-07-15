@@ -87,7 +87,7 @@ class ReportJobManager:
         from odoo_app.models.report_schedule import ReportLog
         from doova_one_view.api.email.service import EmailService
         from doova_one_view.api.reports.utils import calculate_next_send
-        from doova_one_view.api.agent.tools_refactored.reporting import generate_report_tool
+        from doova_one_view.api.agent.tools_refactored.reporting_v2 import generate_report_tool
 
         tenant_id = str(schedule.tenant.id)
         company_ids = schedule.companies if schedule.companies else None
@@ -112,15 +112,30 @@ class ReportJobManager:
             return
 
         try:
+            # 0. Fast-fail check: If there are recipients, ensure email is configured
+            if schedule.recipients:
+                from django.conf import settings
+                if not getattr(settings, 'EMAIL_HOST_USER', None):
+                    logger.error(f"ReportJobManager: EMAIL_HOST_USER is missing. Aborting schedule {schedule.id} to save AI credits.")
+                    # Log failure early
+                    from asgiref.sync import sync_to_async
+                    from odoo_app.models.report_schedule import ReportLog
+                    @sync_to_async
+                    def _save_early_failure():
+                        ReportLog.objects.create(schedule=schedule, status='failed', error_message='SMTP credentials not configured')
+                    await _save_early_failure()
+                    return
+
             # 1. Build AI-generated report content using the user's prompt
             custom_content = await ReportJobManager._build_analysis(
                 tenant_id, schedule.report_type, company_ids, schedule.prompt
             )
 
             # 2. Generate PDF
+            company_id = company_ids[0] if company_ids and len(company_ids) == 1 else None
             result = await sync_to_async(generate_report_tool)(
                 tenant_id=tenant_id,
-                company_ids=company_ids,
+                company_id=company_id,
                 custom_content=custom_content,
             )
             filename = result['filename']
@@ -138,12 +153,15 @@ class ReportJobManager:
             subject = _build_subject(schedule)
             html_body = _build_email_body(schedule)
             for email in schedule.recipients:
-                await EmailService.send_report_email(
-                    to=email,
-                    subject=subject,
-                    html_body=html_body,
-                    attachments=[attachment],
-                )
+                try:
+                    await EmailService.send_report_email(
+                        to=email,
+                        subject=subject,
+                        html_body=html_body,
+                        attachments=[attachment],
+                    )
+                except Exception as email_err:
+                    logger.warning(f"Could not send email to {email}: {email_err}")
 
             # 5. Record last_sent_at — next_send_at was already advanced in _claim
             @sync_to_async
@@ -201,6 +219,7 @@ class ReportJobManager:
             f"- Use Markdown tables with | for tabular data (e.g. top products, top customers)\n"
             f"- Use - bullet points for lists\n"
             f"- Use **bold** to highlight key numbers and metrics\n"
+            f"- To include a chart, output a fenced code block with language `chart` (i.e. ```chart). Inside, provide a JSON object with keys: `chart_type` ('bar', 'line', or 'pie'), `title` (string), `labels` (list of strings), and `values` (list of numbers).\n"
             f"- Do NOT include any preamble like 'Here is your report' — start directly with content\n\n"
             f"Call ALL relevant tools first (sales, finance, inventory, receivables, etc.) "
             f"to gather real data, then write a thorough, structured report with actual numbers.\n\n"

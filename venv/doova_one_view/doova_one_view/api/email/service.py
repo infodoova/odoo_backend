@@ -21,23 +21,6 @@ class EmailServiceError(Exception):
 class EmailService:
 
     @staticmethod
-    def _headers() -> dict:
-        token = settings.SMTP_GATEWAY_TOKEN
-        if not token:
-            raise EmailServiceError("SMTP_GATEWAY_TOKEN is not configured")
-        return {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        }
-
-    @staticmethod
-    def _base_url() -> str:
-        url = settings.SMTP_GATEWAY_URL
-        if not url:
-            raise EmailServiceError("SMTP_GATEWAY_URL is not configured")
-        return url.rstrip("/")
-
-    @staticmethod
     async def send(
         to: str,
         subject: str,
@@ -51,42 +34,36 @@ class EmailService:
         Low-level send. Returns the gateway response dict { jobId, status }.
         Raises EmailServiceError on any failure.
         """
-        payload: dict = {
-            "to": to,
-            "subject": subject,
-            "htmlBody": html_body,
-            "priority": priority,
-        }
-        if to_name:
-            payload["toName"] = to_name
-        if text_body:
-            payload["textBody"] = text_body
-        if attachments:
-            payload["attachments"] = attachments
+        from django.core.mail import EmailMultiAlternatives
+        from asgiref.sync import sync_to_async
+        import base64
 
-        url = f"{EmailService._base_url()}/emails/send"
+        to_address = f"{to_name} <{to}>" if to_name else to
+        text_content = text_body or "Please view this email in an HTML-compatible client."
+
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[to_address],
+        )
+        msg.attach_alternative(html_body, "text/html")
+
+        if attachments:
+            for att in attachments:
+                # Expects { "filename": "...", "content": "<base64>", "contentType": "..." }
+                file_content = base64.b64decode(att["content"])
+                msg.attach(att["filename"], file_content, att["contentType"])
 
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.post(url, json=payload, headers=EmailService._headers())
-
-            if response.status_code in (200, 201):
-                body = response.json()
-                # Gateway wraps response: { success, data: { jobId, status } }
-                return body.get("data", body)
-
-            logger.error(
-                "SMTP gateway error %s: %s",
-                response.status_code,
-                response.text,
-            )
-            raise EmailServiceError(
-                f"Gateway returned {response.status_code}: {response.text}"
-            )
-
-        except httpx.RequestError as exc:
-            logger.error("SMTP gateway connection error: %s", exc)
-            raise EmailServiceError(f"Could not reach email gateway: {exc}") from exc
+            # send() returns the number of successfully delivered messages (1 or 0)
+            sent = await sync_to_async(msg.send)(fail_silently=False)
+            if sent == 0:
+                raise EmailServiceError("Email backend returned 0 messages sent.")
+            return {"status": "sent"}
+        except Exception as exc:
+            logger.error("SMTP sending error: %s", exc)
+            raise EmailServiceError(f"Could not send email: {exc}") from exc
 
     @staticmethod
     async def send_otp_email(to: str, to_name: Optional[str], otp_code: str) -> dict:
