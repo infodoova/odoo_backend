@@ -79,13 +79,6 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
         "Internal primary key: id. Odoo external ID: odoo_id. "
         "ALWAYS filter with tenant_id."
     ),
-    "dim_accounts": (
-        "Chart of accounts dimension. "
-        "account_type classifies the account: 'asset_current', 'asset_non_current', "
-        "'liability_current', 'liability_non_current', 'equity', 'income', 'expense', 'cogs'. "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "ALWAYS filter with tenant_id."
-    ),
     "dim_lots": (
         "Inventory lot and serial number master data. "
         "expiration_date column tracks lot expiry. "
