@@ -47,14 +47,7 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
         "Links to chart of accounts via account_id. "
         "ALWAYS filter with tenant_id AND company_id."
     ),
-    "fact_invoices": (
-        "Customer invoices and vendor bills. "
-        "DATE column: invoice_date. Due date: invoice_date_due. "
-        "move_type: 'out_invoice' = customer invoice, 'in_invoice' = vendor bill, "
-        "'out_refund' = customer credit note, 'in_refund' = vendor credit note. "
-        "payment_state: 'not_paid', 'in_payment', 'partial', 'paid', 'reversed'. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
+
     "fact_stock_moves": (
         "Inventory movement records (in/out/transfer). "
         "DATE column: date. Quantity column: product_qty. "
@@ -67,12 +60,7 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
         "Available = quantity - reserved_quantity. "
         "ALWAYS filter with tenant_id AND company_id."
     ),
-    "fact_tax_lines": (
-        "Tax transaction lines. "
-        "tax_type: 'sale' for output tax (collected), 'purchase' for input tax (paid). "
-        "Amount column: tax_amount. DATE column: date. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
+
     "dim_companies": (
         "Company master data dimension. "
         "Internal primary key: id. Odoo external ID: odoo_id. "
@@ -102,6 +90,83 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
         "Inventory lot and serial number master data. "
         "expiration_date column tracks lot expiry. "
         "ALWAYS filter with tenant_id."
+    ),
+    "fact_purchase_orders": (
+        "Purchase transaction records (PO). "
+        "DATE column: date_order (YYYY-MM-DD). "
+        "state: 'purchase' or 'done' for active orders. "
+        "Total amount column: amount_total. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_purchase_order_lines": (
+        "Line items for purchase orders. "
+        "Quantity column: product_qty. Price column: price_unit. Subtotal column: price_subtotal. "
+        "Links to fact_purchase_orders via purchase_order_id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_sales_order_lines": (
+        "Line items for sales orders. "
+        "Quantity column: product_uom_qty. Price column: price_unit. Subtotal column: price_subtotal. "
+        "Links to fact_sales_orders via sales_order_id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_stock_pickings": (
+        "Inventory transfers and operations (receipts, deliveries, internal moves). "
+        "DATE columns: scheduled_date, date_done. "
+        "state: 'done' for completed transfers. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "dim_product_categories": (
+        "Hierarchy of product categories. "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "dim_currencies": (
+        "Master data for currencies used in the system. "
+        "Currency code column: code. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "dim_currency_rates": (
+        "Historical exchange rates for currencies. "
+        "Rate column: rate (relative to base currency). "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "fact_account_moves": (
+        "Base table for all accounting journal entries, invoices, and bills (often queried via fact_invoices view). "
+        "DATE column: date. "
+        "state: 'posted' for confirmed entries. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+    "dim_chart_of_accounts": (
+        "Chart of accounts dimension (physical table backing dim_accounts). "
+        "code column: account code (e.g. '411000'). name column: account label. "
+        "account_type classifies: 'asset_current', 'asset_non_current', "
+        "'liability_current', 'liability_non_current', 'equity', 'income', "
+        "'expense', 'expense_direct_cost' (COGS). "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "dim_time": (
+        "Date dimension for time-based analysis. "
+        "Primary key: date_id (integer). full_date column: actual date value. "
+        "Provides: year, quarter, month, month_name, week, day_of_month, "
+        "day_of_week, day_name, is_weekend, is_holiday, fiscal_year, fiscal_quarter. "
+        "Join fact tables via date_id foreign keys (e.g. date_order_id, date_done_id)."
+    ),
+    "dim_users": (
+        "User master data. "
+        "name column: user display name. email column: user email. "
+        "is_active: whether the user account is active. "
+        "Internal primary key: id. Odoo external ID: odoo_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+    "fact_stock_move_lines": (
+        "Detailed inventory move line items (serial/lot-level granularity). "
+        "DATE column: date. Quantity column: qty_done. "
+        "location_src: source warehouse location. location_dest: destination location. "
+        "Links to fact_stock_moves via stock_move_id and to dim_lots via lot_id. "
+        "state: 'done' for completed move lines. "
+        "ALWAYS filter with tenant_id AND company_id."
     ),
 }
 
