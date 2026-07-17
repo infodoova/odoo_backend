@@ -765,6 +765,59 @@ class AccountingService:
                 "end_date": end_date,
                 "company_ids": company_ids,
             }
+            
+            # --- Intelligent Alerts Engine ---
+            alerts = []
+            
+            # 1. Receivables Aging Alert (>25% over 90 days)
+            total_recv = sum(b.get("amount", 0.0) for b in receivables_aging)
+            over_90_recv = 0.0
+            for bucket in receivables_aging:
+                if bucket.get("bucket") == "90+":
+                    over_90_recv = bucket.get("amount", 0.0)
+            if total_recv > 0 and (over_90_recv / total_recv) > 0.25:
+                alerts.append({
+                    "severity": "high",
+                    "type": "receivables_aging",
+                    "message": f"High risk: {over_90_recv / total_recv:.0%} of your unpaid receivables are older than 90 days."
+                })
+                
+            # 2. Expense Spike Alert (>3x average daily)
+            if expense_trend:
+                avg_expense = sum(d["value"] for d in expense_trend) / len(expense_trend)
+                if avg_expense > 0:
+                    for d in expense_trend:
+                        if d["value"] > avg_expense * 3 and d["value"] > 1000:
+                            alerts.append({
+                                "severity": "medium",
+                                "type": "expense_spike",
+                                "message": f"Expenses spiked sharply on {d['date']} to {d['value']:,.0f}."
+                            })
+                            break
+                            
+            # 3. Vendor Concentration Alert (>40% total expenses)
+            if top_expense_vendors and true_expenses > 0:
+                top_vendor = top_expense_vendors[0]
+                if (top_vendor["value"] / true_expenses) > 0.40:
+                    alerts.append({
+                        "severity": "medium",
+                        "type": "vendor_concentration",
+                        "message": f"Vendor concentration: '{top_vendor['name']}' represents {top_vendor['value'] / true_expenses:.0%} of your total expenses."
+                    })
+                    
+            # 4. Cash Flow Drop Alert (>3x negative average)
+            negative_flows = [d["value"] for d in cash_flow_trend if d["value"] < 0]
+            if negative_flows:
+                avg_negative = sum(negative_flows) / len(negative_flows)
+                for d in cash_flow_trend:
+                    if d["value"] < avg_negative * 3:
+                        alerts.append({
+                            "severity": "medium",
+                            "type": "cash_flow_drop",
+                            "message": f"Significant cash flow drop observed on {d['date']} ({d['value']:,.0f})."
+                        })
+                        break
+
             return {
                 "total_revenue": _metric(true_revenue),
                 "total_expenses": _metric(true_expenses),
@@ -796,6 +849,7 @@ class AccountingService:
                 "payables_aging": payables_aging,
                 "ar_aging": receivables_aging,
                 "ap_aging": payables_aging,
+                "alerts": alerts,
                 "applied_filters": applied,
             }
 
