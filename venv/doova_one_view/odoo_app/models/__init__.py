@@ -40,6 +40,7 @@ from odoo_app.models.currency_rate import *
 from odoo_app.models.bank_statement import *
 from odoo_app.models.bank_statement_line import *
 from odoo_app.models.account_journal import *
+from odoo_app.models.account_partial_reconcile import *
 
 __all__ = [
     'PurchaseOrderLine',
@@ -47,4 +48,5 @@ __all__ = [
     'BankStatement',
     'BankStatementLine',
     'AccountJournal',
+    'AccountPartialReconcile',
 ]

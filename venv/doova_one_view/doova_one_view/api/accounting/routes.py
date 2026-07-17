@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from odoo_app.models import AppUser
-from doova_one_view.api.accounting.schemas import SearchRequest
+from doova_one_view.api.accounting.schemas import SearchRequest, ProfitAndLossSummary, ExpenseBreakdownResponse
 from doova_one_view.api.accounting.service import AccountingService
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
@@ -96,6 +96,84 @@ async def get_accounting_dashboard(
         base_currency,
     )
 
+from doova_one_view.api.accounting.schemas import BankCashSummaryResponse
+
+@router.get("/{tenant_id}/dashboard/bank-cash-summary", response_model=BankCashSummaryResponse)
+async def get_bank_cash_summary(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    user: AppUser = Depends(get_current_user),
+) -> BankCashSummaryResponse:
+    """Dedicated endpoint for the Bank & Cash Balance vs Cash Flow dashboard card."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    data = await AccountingService.get_dashboard(
+        tenant_id,
+        start_date or date_from,
+        end_date or date_to,
+        _company_ids(company_id, companies),
+        base_currency,
+    )
+    return BankCashSummaryResponse(
+        opening_cash_balance=data.get("opening_cash_balance", 0.0),
+        cash_in=data.get("cash_in", 0.0),
+        cash_out=data.get("cash_out", 0.0),
+        closing_cash_balance=data.get("closing_cash_balance", 0.0),
+        bank_balance=data.get("bank_balance", 0.0),
+        cash_flow_breakdown=data.get("cash_flow_breakdown", [])
+    )
+
+@router.get("/{tenant_id}/pnl", response_model=ProfitAndLossSummary)
+async def get_profit_and_loss(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    user: AppUser = Depends(get_current_user),
+) -> ProfitAndLossSummary:
+    """Retrieve a structured Profit & Loss breakdown."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    data = await AccountingService.get_pnl_summary(
+        tenant_id,
+        start_date or date_from,
+        end_date or date_to,
+        _company_ids(company_id, companies),
+        base_currency,
+    )
+    return ProfitAndLossSummary(**data)
+
+
+@router.get("/{tenant_id}/expense-breakdown", response_model=ExpenseBreakdownResponse)
+async def get_expense_breakdown(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    user: AppUser = Depends(get_current_user),
+) -> ExpenseBreakdownResponse:
+    """Expense breakdown by category (Rent, Salaries, Purchases, etc.)."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    data = await AccountingService.get_expense_breakdown(
+        tenant_id,
+        start_date or date_from,
+        end_date or date_to,
+        _company_ids(company_id, companies),
+        base_currency,
+    )
+    return ExpenseBreakdownResponse(**data)
 
 
 @router.get("/{tenant_id}/kpis")
@@ -120,6 +198,30 @@ async def get_accounting_kpis(
         _company_ids(company_id, companies),
         base_currency,
     )
+
+@router.get("/{tenant_id}/pnl", response_model=ProfitAndLossSummary)
+async def get_profit_and_loss(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    user: AppUser = Depends(get_current_user),
+) -> ProfitAndLossSummary:
+    """Retrieve a structured Profit & Loss breakdown."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    data = await AccountingService.get_pnl_summary(
+        tenant_id,
+        start_date or date_from,
+        end_date or date_to,
+        _company_ids(company_id, companies),
+        base_currency,
+    )
+    return ProfitAndLossSummary(**data)
+
 
 
 @router.get("/{tenant_id}/moves")

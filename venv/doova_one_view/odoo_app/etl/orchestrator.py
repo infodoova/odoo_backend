@@ -25,6 +25,7 @@ from odoo_app.etl.syncs.purchase_synchronizer import PurchaseOrderSynchronizer
 from odoo_app.etl.syncs.chart_of_accounts_synchronizer import ChartOfAccountsSynchronizer
 from odoo_app.etl.syncs.currency_rate_synchronizer import CurrencyRateSynchronizer
 from odoo_app.etl.syncs.bank_statement_synchronizer import BankStatementSynchronizer
+from odoo_app.etl.syncs.account_partial_reconcile_synchronizer import AccountPartialReconcileSynchronizer
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class ETLOrchestrator:
         from odoo_app.etl.syncs.journal_synchronizer import JournalSynchronizer
         self.journal_sync = JournalSynchronizer(self.odoo, self.db)
         self.bank_statement_sync = BankStatementSynchronizer(self.odoo, self.db)
+        self.account_partial_reconcile_sync = AccountPartialReconcileSynchronizer(self.odoo, self.db)
     
     def _acquire_lock(self, tenant_id: str) -> bool:
         """
@@ -137,6 +139,7 @@ class ETLOrchestrator:
                 ('sales_orders', 'sale.order', self.sales_order_sync),
                 ('purchase_orders', 'purchase.order', self.purchase_order_sync),
                 ('account_moves', 'account.move', self.account_move_sync),
+                ('account_partial_reconciles', 'account.partial.reconcile', self.account_partial_reconcile_sync),
                 ('bank_statements', 'account.bank.statement', self.bank_statement_sync),
                 ('stock_pickings', 'stock.picking', self.picking_sync),
                 ('stock_moves', 'stock.move', self.move_sync),
@@ -221,6 +224,7 @@ class ETLOrchestrator:
                 ('sales_orders', 'sale.order', self.sales_order_sync),
                 ('purchase_orders', 'purchase.order', self.purchase_order_sync),
                 ('account_moves', 'account.move', self.account_move_sync),
+                ('account_partial_reconciles', 'account.partial.reconcile', self.account_partial_reconcile_sync),
                 ('bank_statements', 'account.bank.statement', self.bank_statement_sync),
                 ('stock_pickings', 'stock.picking', self.picking_sync),
                 ('stock_moves', 'stock.move', self.move_sync)

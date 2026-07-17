@@ -354,6 +354,9 @@ class AccountingService:
                 net_credit = (_to_float(agg["total_credit"]) - _to_float(agg["total_debit"])) * rate
                 net_debit = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
                 
+                if acode in ("60520003", "60510002"):
+                    continue
+
                 if atype.startswith("income"):
                     true_revenue += net_credit
                 elif atype.startswith("expense"):
@@ -361,7 +364,9 @@ class AccountingService:
                     if atype == "expense_direct_cost":
                         true_cogs += net_debit
                     elif atype in ("expense", "expense_depreciation"):
-                        if not (acode.startswith("64") or acode.startswith("67") or acode.startswith("69")):
+                        if acode.startswith("67") or acode.startswith("69"):
+                            pass  # financial charges + income tax excluded from opex
+                        else:
                             true_opex += net_debit
 
             gross_profit = true_revenue - true_cogs
@@ -375,7 +380,7 @@ class AccountingService:
             
             cumulative_aggs = AccountMoveLine.objects.filter(
                 account_move__in=cumulative_qs,
-                account_type__in=["asset_receivable", "liability_payable", "liability_current"]
+                account_type__in=["asset_receivable", "liability_payable", "liability_current", "asset_cash"]
             ).values("account_type", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
@@ -383,6 +388,7 @@ class AccountingService:
             
             receivable_balance = 0.0
             payable_balance = 0.0
+            bank_balance = 0.0
             
             for agg in cumulative_aggs:
                 company_currency = agg["company__currency_code"] or "COMPANY_BASE"
@@ -391,7 +397,51 @@ class AccountingService:
                 if agg["account_type"] == "asset_receivable":
                     receivable_balance += net
                 elif agg["account_type"] in ("liability_payable", "liability_current"):
-                    payable_balance += net
+                    payable_balance -= net # payables are credit normal
+                elif agg["account_type"] == "asset_cash":
+                    bank_balance += net
+
+            # --- Bank & Cash Balances Details ---
+            opening_cash_balance = 0.0
+            cash_in = 0.0
+            cash_out = 0.0
+            
+            # Opening balance (moves strictly before start_date)
+            if start_date:
+                opening_qs = AccountingService._base_qs(tenant_id, company_ids).filter(
+                    date__lt=start_date, state='posted'
+                )
+                opening_aggs = AccountMoveLine.objects.filter(
+                    account_move__in=opening_qs,
+                    account_type="asset_cash"
+                ).values("company__currency_code").annotate(
+                    net_cash=Sum("debit") - Sum("credit")
+                )
+                for agg in opening_aggs:
+                    comp_curr = agg["company__currency_code"] or "COMPANY_BASE"
+                    rate = _get_conversion_rate(comp_curr, effective_base, rate_map)
+                    opening_cash_balance += _to_float(agg["net_cash"]) * rate
+            else:
+                opening_cash_balance = 0.0 # If all-time, opening is 0
+
+            # Cash In & Out (moves within the date range)
+            period_qs = AccountingService._date_qs(
+                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            ).filter(state='posted')
+            period_aggs = AccountMoveLine.objects.filter(
+                account_move__in=period_qs,
+                account_type="asset_cash"
+            ).values("company__currency_code").annotate(
+                total_debit=Sum("debit"),
+                total_credit=Sum("credit")
+            )
+            for agg in period_aggs:
+                comp_curr = agg["company__currency_code"] or "COMPANY_BASE"
+                rate = _get_conversion_rate(comp_curr, effective_base, rate_map)
+                
+                # In Odoo, for asset accounts, Debit is Increase (In), Credit is Decrease (Out)
+                cash_in += _to_float(agg["total_debit"]) * rate
+                cash_out += _to_float(agg["total_credit"]) * rate
 
             today = date.today()
             overdue_filter = Q(invoice_date_due__lt=today) & ~Q(payment_state__in=["paid", "reversed"])
@@ -488,6 +538,156 @@ class AccountingService:
             # Calculate total cash flow from the trend array
             total_cash_flow = sum(item["value"] for item in cash_flow_trend)
             
+            # --- Deep Cash Flow Tracing (Breakdown) ---
+            from django.db import connection
+            cash_flow_breakdown_map = {}
+            with connection.cursor() as cursor:
+                # We pull the cash lines and their reconciliation links
+                sql = """
+                    SELECT 
+                        pay_line.id as cash_line_id,
+                        pay_line.debit - pay_line.credit as cash_amount,
+                        comp.currency_code,
+                        recon.amount as recon_amount,
+                        inv_inc_line.account_name as inv_account_name,
+                        ABS(inv_inc_line.balance) as inc_balance,
+                        ABS(inv_ar_line.balance) as ar_balance,
+                        pay_inc_line.account_name as direct_account_name,
+                        ABS(pay_inc_line.balance) as direct_balance
+                    FROM fact_account_move_lines pay_line
+                    JOIN fact_account_moves pay_move ON pay_line.account_move_id = pay_move.id
+                    LEFT JOIN dim_companies comp ON pay_line.company_id = comp.id
+                    
+                    -- === Path 1: Reconciled Invoices ===
+                    -- Find AR/AP line on the payment move
+                    LEFT JOIN fact_account_move_lines pay_ar_line 
+                        ON pay_ar_line.account_move_id = pay_move.id 
+                        AND pay_ar_line.id != pay_line.id
+                        AND pay_ar_line.account_type IN ('asset_receivable', 'liability_payable')
+                        
+                    -- Find reconciliation
+                    LEFT JOIN fact_account_partial_reconciles recon 
+                        ON (pay_ar_line.id = recon.debit_move_line_id OR pay_ar_line.id = recon.credit_move_line_id)
+                        
+                    -- Find AR/AP line on the invoice
+                    LEFT JOIN fact_account_move_lines inv_ar_line 
+                        ON (inv_ar_line.id = recon.debit_move_line_id OR inv_ar_line.id = recon.credit_move_line_id) 
+                        AND inv_ar_line.id != pay_ar_line.id
+                        
+                    -- Find income/expense lines on the invoice
+                    LEFT JOIN fact_account_move_lines inv_inc_line
+                        ON inv_inc_line.account_move_id = inv_ar_line.account_move_id
+                        AND inv_inc_line.id != inv_ar_line.id
+                        AND inv_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable')
+                        
+                    -- === Path 2: Direct Cash Movements (No Invoice) ===
+                    -- Find income/expense/tax lines directly on the payment move
+                    LEFT JOIN fact_account_move_lines pay_inc_line
+                        ON pay_inc_line.account_move_id = pay_move.id
+                        AND pay_inc_line.id != pay_line.id
+                        AND pay_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable')
+                        
+                    WHERE pay_line.tenant_id = %s
+                      AND pay_line.account_type = 'asset_cash'
+                      AND pay_move.state = 'posted'
+                """
+                params = [tenant_id]
+                
+                if start_date:
+                    sql += " AND pay_move.date >= %s"
+                    params.append(start_date)
+                if end_date:
+                    sql += " AND pay_move.date <= %s"
+                    params.append(end_date)
+                if company_ids:
+                    placeholders = ','.join(['%s'] * len(company_ids))
+                    sql += f" AND pay_line.company_id IN ({placeholders})"
+                    params.extend(company_ids)
+                    
+                cursor.execute(sql, params)
+                columns = [col[0] for col in cursor.description]
+                
+                # Process in python to handle partial reconciles accurately
+                cash_line_totals = {}
+                cash_line_reconciled = {}
+                direct_allocations = {}
+                
+                for row in cursor.fetchall():
+                    d = dict(zip(columns, row))
+                    c_id = d['cash_line_id']
+                    
+                    if c_id not in cash_line_totals:
+                        cash_line_totals[c_id] = {
+                            "amount": _to_float(d['cash_amount']),
+                            "currency": d['currency_code'] or "COMPANY_BASE"
+                        }
+                        cash_line_reconciled[c_id] = 0.0
+                        direct_allocations[c_id] = []
+                        
+                    recon_amount = _to_float(d['recon_amount'])
+                    if recon_amount > 0 and d['inc_balance'] is not None and d['ar_balance'] is not None and d['ar_balance'] > 0:
+                        # allocate via Invoice path
+                        ratio = _to_float(d['inc_balance']) / _to_float(d['ar_balance'])
+                        allocated = recon_amount * ratio
+                        
+                        cash_amt = cash_line_totals[c_id]['amount']
+                        signed_allocated = allocated if cash_amt > 0 else -allocated
+                        
+                        cat = d['inv_account_name'] or "Unknown Income/Expense"
+                        comp_currency = d['currency_code'] or "COMPANY_BASE"
+                        rate = _get_conversion_rate(comp_currency, effective_base, rate_map)
+                        
+                        cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (signed_allocated * rate)
+                        cash_line_reconciled[c_id] += allocated
+                        
+                    elif d['direct_account_name'] is not None:
+                        # Track direct cash movements on the payment move itself (to be allocated from the unreconciled remainder)
+                        direct_allocations[c_id].append({
+                            "cat": d['direct_account_name'],
+                            "balance": _to_float(d['direct_balance'])
+                        })
+                        
+                # Now allocate the unreconciled remainder for each cash line
+                for c_id, info in cash_line_totals.items():
+                    total_abs = abs(info["amount"])
+                    explained = cash_line_reconciled[c_id]
+                    unreconciled = total_abs - explained
+                    
+                    if unreconciled > 0.01:
+                        rate = _get_conversion_rate(info["currency"], effective_base, rate_map)
+                        direct_lines = direct_allocations[c_id]
+                        
+                        if direct_lines:
+                            # Allocate the unreconciled amount proportionally across the direct lines
+                            # Note: direct_allocations might have duplicate dicts due to the LEFT JOIN Cartesian product
+                            # Let's deduplicate by category
+                            unique_direct = {}
+                            for line in direct_lines:
+                                unique_direct[line["cat"]] = line["balance"]
+                            
+                            total_direct_balance = sum(unique_direct.values())
+                            
+                            if total_direct_balance > 0:
+                                for cat, bal in unique_direct.items():
+                                    ratio = bal / total_direct_balance
+                                    allocated = unreconciled * ratio
+                                    signed_allocated = allocated if info["amount"] > 0 else -allocated
+                                    cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (signed_allocated * rate)
+                            else:
+                                signed_unreconciled = unreconciled if info["amount"] > 0 else -unreconciled
+                                cash_flow_breakdown_map["Unreconciled Cash Entry"] = cash_flow_breakdown_map.get("Unreconciled Cash Entry", 0.0) + (signed_unreconciled * rate)
+                        else:
+                            # Truly unreconciled (e.g. an advance payment with no direct expense/income lines)
+                            # Odoo usually puts this in an AR/AP account. We could label it with the AR/AP account name.
+                            signed_unreconciled = unreconciled if info["amount"] > 0 else -unreconciled
+                            cash_flow_breakdown_map["Unreconciled Cash Entry"] = cash_flow_breakdown_map.get("Unreconciled Cash Entry", 0.0) + (signed_unreconciled * rate)
+            
+            # Format breakdown for output
+            cash_flow_breakdown = [
+                {"category": cat, "value": val} 
+                for cat, val in sorted(cash_flow_breakdown_map.items(), key=lambda x: abs(x[1]), reverse=True)
+            ]
+            
             applied = {
                 "tenant_id": tenant_id,
                 "start_date": start_date,
@@ -502,6 +702,11 @@ class AccountingService:
                 "gross_profit": _metric(gross_profit),
                 "ebit": _metric(ebit),
                 "net_profit_margin_pct": net_profit_margin_pct,
+                "bank_balance": bank_balance,
+                "opening_cash_balance": opening_cash_balance,
+                "cash_in": cash_in,
+                "cash_out": cash_out,
+                "closing_cash_balance": opening_cash_balance + cash_in - cash_out,
                 "receivable_balance": receivable_balance,
                 "overdue_receivable": overdue_receivable,
                 "payable_balance": payable_balance,
@@ -511,6 +716,7 @@ class AccountingService:
                 "revenue_trend": revenue_trend,
                 "expense_trend": expense_trend,
                 "cash_flow_trend": cash_flow_trend,
+                "cash_flow_breakdown": cash_flow_breakdown,
                 "state_distribution": state_distribution,
                 "payment_state_distribution": payment_state_distribution,
                 "payment_status_distribution": payment_state_distribution,
@@ -523,6 +729,162 @@ class AccountingService:
             }
 
         return await asyncio.to_thread(_dashboard)
+
+    @staticmethod
+    async def get_pnl_summary(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Calculates a proper P&L breakdown by analyzing AccountMoveLines."""
+        def _calc_pnl():
+            qs = AccountingService._date_qs(
+                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            ).filter(state='posted')
+
+            lines_aggs = AccountMoveLine.objects.filter(
+                account_move__in=qs
+            ).values("account_type", "account_code", "company__currency_code").annotate(
+                net_debit=Sum("debit"),
+                net_credit=Sum("credit")
+            )
+
+            effective_base = base_currency or "XAF"
+            rate_map = _get_rate_map()
+
+            revenue = 0.0
+            cogs = 0.0
+            opex = 0.0
+            taxes_interest = 0.0
+
+            for agg in lines_aggs:
+                atype = agg.get("account_type") or ""
+                acode = agg.get("account_code") or ""
+                company_curr = agg.get("company__currency_code") or "XAF"
+                
+                rate = _get_conversion_rate(company_curr, effective_base, rate_map)
+                
+                net_debit = (_to_float(agg.get("net_debit")) - _to_float(agg.get("net_credit"))) * rate
+                net_credit = (_to_float(agg.get("net_credit")) - _to_float(agg.get("net_debit"))) * rate
+
+                if acode in ("60520003", "60510002"):
+                    continue
+
+                if atype.startswith("income"):
+                    revenue += net_credit
+                elif atype.startswith("expense"):
+                    if atype == "expense_direct_cost":
+                        cogs += net_debit
+                    elif atype in ("expense", "expense_depreciation"):
+                        if acode.startswith("67") or acode.startswith("69"):
+                            taxes_interest += net_debit
+                        else:
+                            opex += net_debit
+
+            gross_profit = revenue - cogs
+            ebit = gross_profit - opex
+            net_profit = ebit - taxes_interest
+
+            return {
+                "revenue": revenue,
+                "cogs": cogs,
+                "gross_profit": gross_profit,
+                "operating_expenses": opex,
+                "ebit": ebit,
+                "taxes_and_interest": taxes_interest,
+                "net_profit": net_profit,
+            }
+
+        return await asyncio.to_thread(_calc_pnl)
+
+    # ── Expense category keyword mapping ──────────────────────────────────
+    _EXPENSE_CATEGORIES = [
+        ("Rent",       ["rent"]),
+        ("Salaries",   ["salar", "wage", "staff charge", "worker", "personnel",
+                        "income tax on salar"]),
+        ("Purchases",  ["purchase", "cost of goods purchased", "customs",
+                        "freight", "containers", "packing"]),
+        ("Marketing",  ["marketing", "commission"]),
+        ("Logistics",  ["transport", "travel", "car expense", "fuel", "logistics"]),
+        ("Utilities",  ["electric", "internet", "telephone", "mobile",
+                        "water", "satellite"]),
+    ]
+
+    @staticmethod
+    def _classify_expense(account_name: str, account_code: str) -> str:
+        """Return the expense category for a given account name/code."""
+        name_lower = (account_name or "").lower()
+        for category, keywords in AccountingService._EXPENSE_CATEGORIES:
+            if any(kw in name_lower for kw in keywords):
+                return category
+        return "Other Expenses"
+
+    @staticmethod
+    async def get_expense_breakdown(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Expense breakdown by category (Rent, Salaries, Purchases, etc.)."""
+        def _breakdown():
+            qs = AccountingService._date_qs(
+                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            ).filter(state='posted')
+
+            lines_aggs = AccountMoveLine.objects.filter(
+                account_move__in=qs,
+                account_type__startswith='expense',
+            ).exclude(
+                account_type='expense_direct_cost',
+            ).exclude(
+                account_code__in=('60520003', '60510002'),
+            ).values(
+                "account_code", "account_name", "company__currency_code"
+            ).annotate(
+                total_debit=Sum("debit"),
+                total_credit=Sum("credit"),
+            )
+
+            effective_base = base_currency or "XAF"
+            rate_map = _get_rate_map()
+
+            category_totals: dict[str, float] = {}
+
+            for agg in lines_aggs:
+                acode = agg.get("account_code") or ""
+                aname = agg.get("account_name") or ""
+                company_curr = agg.get("company__currency_code") or "XAF"
+
+                rate = _get_conversion_rate(company_curr, effective_base, rate_map)
+                balance = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
+
+                cat = AccountingService._classify_expense(aname, acode)
+                category_totals[cat] = category_totals.get(cat, 0.0) + balance
+
+            total = sum(category_totals.values())
+
+            categories = []
+            for cat in ["Rent", "Salaries", "Purchases", "Marketing",
+                         "Logistics", "Utilities", "Other Expenses"]:
+                amount = category_totals.get(cat, 0.0)
+                pct = (amount / total * 100) if total else 0.0
+                categories.append({
+                    "category": cat,
+                    "amount": amount,
+                    "percentage": round(pct, 2),
+                })
+
+            return {
+                "total_expenses": total,
+                "categories": categories,
+            }
+
+        return await asyncio.to_thread(_breakdown)
+
 
     @staticmethod
     async def get_period_transactions(
@@ -892,15 +1254,19 @@ class AccountingService:
                         net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
                         atype = l.account_type or ""
                         acode = l.account_code or ""
-                        
-                        if atype.startswith("income"):
+
+                        if acode in ("60520003", "60510002"):
+                            pass  # excluded inventory adjustment accounts
+                        elif atype.startswith("income"):
                             rev += net_credit
                         elif atype.startswith("expense"):
                             exp += net_debit
                             if atype == "expense_direct_cost":
                                 cogs += net_debit
                             elif atype in ("expense", "expense_depreciation"):
-                                if not (acode.startswith("64") or acode.startswith("67") or acode.startswith("69")):
+                                if acode.startswith("67") or acode.startswith("69"):
+                                    pass  # financial charges + income tax excluded from opex
+                                else:
                                     opex += net_debit
                         elif atype in ["asset_cash", "liability_credit_card"]:
                             cf += net_debit
@@ -1030,8 +1396,11 @@ class AccountingService:
                         net_credit = (_to_float(l.credit) - _to_float(l.debit)) * l_rate
                         net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
                         atype = l.account_type or ""
-                        
-                        if atype.startswith("income"):
+                        acode = l.account_code or ""
+
+                        if acode in ("60520003", "60510002"):
+                            pass  # excluded inventory adjustment accounts
+                        elif atype.startswith("income"):
                             rev += net_credit
                         elif atype.startswith("expense"):
                             exp += net_debit

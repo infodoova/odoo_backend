@@ -73,6 +73,45 @@ class AccountingSummary(BaseModel):
     net_profit_estimate: float
 
 
+class ProfitAndLossSummary(BaseModel):
+    """Structured Profit & Loss table breakdown."""
+    revenue: float = Field(..., description="Total operating revenue (income)")
+    cogs: float = Field(..., description="Cost of Goods Sold (direct costs)")
+    gross_profit: float = Field(..., description="Revenue minus COGS")
+    operating_expenses: float = Field(..., description="General operating expenses and depreciation")
+    ebit: float = Field(..., description="Earnings Before Interest and Taxes (Gross Profit - Operating Expenses)")
+    taxes_and_interest: float = Field(..., description="Taxes, duties, and financial interest expenses")
+    net_profit: float = Field(..., description="Final net profit (EBIT - Taxes and Interest)")
+
+
+class CashFlowBreakdownItem(BaseModel):
+    category: str
+    value: float
+
+
+class BankCashSummaryResponse(BaseModel):
+    """Bank and Cash Balance summary for the dashboard card."""
+    opening_cash_balance: float = Field(..., description="Sum of all cash up to the start_date")
+    cash_in: float = Field(..., description="Total cash received during the selected period")
+    cash_out: float = Field(..., description="Total cash spent during the selected period")
+    closing_cash_balance: float = Field(..., description="Opening + In - Out")
+    bank_balance: float = Field(..., description="Absolute point-in-time balance of all bank/cash accounts")
+    cash_flow_breakdown: List[CashFlowBreakdownItem] = Field(default_factory=list, description="Deeply traced cash flow categories")
+
+
+class ExpenseCategoryItem(BaseModel):
+    """A single expense category with its total amount."""
+    category: str = Field(..., description="Expense category name")
+    amount: float = Field(..., description="Total amount for this category")
+    percentage: float = Field(..., description="Percentage of total expenses")
+
+
+class ExpenseBreakdownResponse(BaseModel):
+    """Expense breakdown by category."""
+    total_expenses: float = Field(..., description="Sum of all expense categories")
+    categories: List[ExpenseCategoryItem] = Field(..., description="Breakdown by category")
+
+
 class SearchFilter(BaseModel):
     """Filter criteria for advanced accounting search."""
     field: str
