@@ -47,6 +47,7 @@ from doova_one_view.api.agent.routes import router as agent_router
 from doova_one_view.api.rbac.routes import router as rbac_router
 from doova_one_view.api.reports.routes import router as reports_router
 from doova_one_view.api.alerts.routes import router as alerts_router
+from doova_one_view.api.bank_statements.routes import router as bank_statements_router
 logger = logging.getLogger(__name__)
 
 
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(rbac_router)
     app.include_router(reports_router)
     app.include_router(alerts_router)
+    app.include_router(bank_statements_router)
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])

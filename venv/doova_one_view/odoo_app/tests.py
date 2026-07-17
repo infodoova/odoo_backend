@@ -579,3 +579,61 @@ class InventoryDrillDownTestCase(TransactionTestCase):
         self.assertEqual(res["total_reserved"], 20.0)
 
 
+class BankStatementsTestCase(TransactionTestCase):
+    def setUp(self):
+        from odoo_app.models import Tenant, Company, Partner, BankStatement, BankStatementLine
+        self.tenant = Tenant.objects.create(name="Test Tenant", odoo_url="https://test", odoo_database="test")
+        self.company = Company.objects.create(tenant=self.tenant, odoo_id=1, name="Test Company", currency_code="USD")
+        self.partner = Partner.objects.create(tenant=self.tenant, odoo_id=1, name="Test Partner")
+
+        self.statement = BankStatement.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=10,
+            odoo_name="BNK/2026/001",
+            date=date.today(),
+            journal_name="Bank",
+            balance_start=100.0,
+            balance_end_real=200.0,
+            state="posted"
+        )
+        
+        self.line = BankStatementLine.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=100,
+            statement=self.statement,
+            date=date.today(),
+            name="Test Line",
+            amount=100.0,
+            partner=self.partner,
+            ref="INV/2026/001"
+        )
+
+    def test_get_statements(self):
+        from doova_one_view.api.bank_statements.service import BankStatementService
+        res = async_to_sync(BankStatementService.get_statements)(str(self.tenant.id))
+        self.assertEqual(res["total"], 1)
+        self.assertEqual(res["items"][0]["odoo_name"], "BNK/2026/001")
+        self.assertEqual(res["items"][0]["balance_start"], 100.0)
+
+    def test_search_statements(self):
+        from doova_one_view.api.bank_statements.service import BankStatementService
+        from doova_one_view.api.bank_statements.schemas import SearchFilter
+        
+        filters = [SearchFilter(field="state", operator="equals", value="posted")]
+        res = async_to_sync(BankStatementService.search_statements)(str(self.tenant.id), filters, 50, 0)
+        self.assertEqual(res["total"], 1)
+
+    def test_get_statement_lines(self):
+        from doova_one_view.api.bank_statements.service import BankStatementService
+        res = async_to_sync(BankStatementService.get_statement_lines)(str(self.tenant.id), statement_id=self.statement.id)
+        self.assertEqual(res["total"], 1)
+        self.assertEqual(res["items"][0]["name"], "Test Line")
+        self.assertEqual(res["items"][0]["amount"], 100.0)
+
+    def test_export_statements(self):
+        from doova_one_view.api.bank_statements.service import BankStatementService
+        csv = async_to_sync(BankStatementService.export_statements_csv)(str(self.tenant.id))
+        self.assertIn("BNK/2026/001", csv)
+

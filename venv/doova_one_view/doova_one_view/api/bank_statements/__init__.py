@@ -1,0 +1,3 @@
+"""
+Bank Statements API module.
+"""

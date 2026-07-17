@@ -48,7 +48,7 @@ def generate_report_tool(
     try:
         sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency)
         health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency)
-        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"), base_currency=base_currency)
+        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
         
         # Get specific company name if only one is selected
         if len(resolved_company_ids) == 1:

@@ -37,3 +37,5 @@ from odoo_app.models.tenant_financial_mapping import *
 from odoo_app.models.chart_of_accounts import *
 from odoo_app.models.currency import *
 from odoo_app.models.currency_rate import *
+from odoo_app.models.bank_statement import *
+from odoo_app.models.bank_statement_line import *

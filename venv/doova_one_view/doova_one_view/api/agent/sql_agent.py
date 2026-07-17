@@ -30,136 +30,336 @@ BLOCKED_SQL_WORDS = [
     "analyze",
 ]
 
-# Semantic annotations for known tables — injected alongside the raw schema so
-# the SQL agent knows which columns to use for dates, tenant isolation, and joins.
+# ──────────────────────────────────────────────────────────────────────────────
+# Semantic annotations for every table in the data warehouse.
+# Injected alongside the raw information_schema so the SQL agent can
+# resolve column names, FK join paths, valid enum values, and
+# date/amount conventions without guessing.
+#
+# CONVENTIONS used below:
+#   PK   = primary key column
+#   FK   = foreign-key column (Django stores Many2one as <field>_id in the DB)
+#   DATE = the column the agent should use for date-range filtering
+#   $$   = the column the agent should use for monetary amounts
+# ──────────────────────────────────────────────────────────────────────────────
 _TABLE_SEMANTIC_NOTES: dict[str, str] = {
+
+    # ── FACT TABLES ──────────────────────────────────────────────────────────
+
     "fact_sales_orders": (
-        "Sales transaction records. "
-        "DATE column: date_order (YYYY-MM-DD). "
-        "Filter active orders with: state IN ('sale', 'done'). "
-        "Revenue column: amount_total. "
+        "Sales order headers (Odoo sale.order). "
+        "PK: id (bigint). FK: tenant_id (uuid→tenants), company_id (bigint→dim_companies.id), "
+        "partner_id (bigint→dim_partners.id), user_id (bigint→dim_users.id), "
+        "date_order_id (int→dim_time.date_id). "
+        "DATE column: date_order (timestamp). "
+        "$$: amount_untaxed, amount_tax, amount_total, margin. "
+        "currency_code: ISO currency string (e.g. 'USD'). "
+        "odoo_name: order reference (e.g. 'S00042'). "
+        "state values: 'draft' (Quotation), 'sent' (Quotation Sent), 'sale' (Confirmed), "
+        "'done' (Locked), 'cancel' (Cancelled). "
+        "To get confirmed revenue use: state IN ('sale','done'). "
+        "invoice_status values: 'to invoice', 'invoiced', 'no'. "
+        "Join lines: fact_sales_order_lines.sales_order_id = fact_sales_orders.id. "
+        "Join time dim: dim_time.date_id = fact_sales_orders.date_order_id. "
         "ALWAYS filter with tenant_id AND company_id."
     ),
+
+    "fact_sales_order_lines": (
+        "Sales order line items (Odoo sale.order.line). "
+        "PK: id. FK: tenant_id, sales_order_id (bigint→fact_sales_orders.id), "
+        "product_id (bigint→dim_products.id), company_id (bigint→dim_companies.id). "
+        "Ordered qty: product_uom_qty. Delivered qty: qty_delivered. Invoiced qty: qty_invoiced. "
+        "$$: price_unit (unit price), price_subtotal (excl. tax), price_total (incl. tax), "
+        "discount (percentage 0–100), margin, purchase_price (cost). "
+        "Margin % = margin / NULLIF(price_subtotal, 0). "
+        "Join header: fact_sales_orders.id = fact_sales_order_lines.sales_order_id. "
+        "Join product: dim_products.id = fact_sales_order_lines.product_id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_purchase_orders": (
+        "Purchase order headers (Odoo purchase.order). "
+        "PK: id. FK: tenant_id, company_id (→dim_companies.id), partner_id (→dim_partners.id), "
+        "user_id (→dim_users.id), date_order_id (→dim_time.date_id). "
+        "DATE column: date_order (timestamp). "
+        "$$: amount_untaxed, amount_tax, amount_total. "
+        "currency_code: ISO currency string. "
+        "odoo_name: PO reference (e.g. 'P00015'). "
+        "state values: 'draft' (RFQ), 'sent' (RFQ Sent), 'to approve', "
+        "'purchase' (Confirmed PO), 'done' (Locked), 'cancel'. "
+        "Confirmed spend: state IN ('purchase','done'). "
+        "invoice_status values: 'no', 'to invoice', 'invoiced'. "
+        "date_planned: expected receipt timestamp. date_approve: approval timestamp. "
+        "partner_ref: vendor's reference number. "
+        "Join lines: fact_purchase_order_lines.purchase_order_id = fact_purchase_orders.id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_purchase_order_lines": (
+        "Purchase order line items (Odoo purchase.order.line). "
+        "PK: id. FK: tenant_id, purchase_order_id (→fact_purchase_orders.id), "
+        "product_id (→dim_products.id), company_id (→dim_companies.id). "
+        "Ordered qty: product_qty. Received qty: qty_received. Billed qty: qty_invoiced. "
+        "$$: price_unit, price_subtotal (excl. tax), price_total (incl. tax). "
+        "date_planned: expected delivery (timestamp). name: line description. "
+        "Join header: fact_purchase_orders.id = purchase_order_id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_account_moves": (
+        "Accounting journal entries, invoices, bills, and credit notes (Odoo account.move). "
+        "PK: id. FK: tenant_id, company_id (→dim_companies.id), partner_id (→dim_partners.id), "
+        "date_id (→dim_time.date_id), invoice_date_id (→dim_time.date_id). "
+        "DATE column: date (date). Also: invoice_date (date), invoice_date_due (date). "
+        "$$: amount_untaxed, amount_tax, amount_total, amount_residual (outstanding balance). "
+        "currency_code: ISO currency string. "
+        "odoo_name: entry number (e.g. 'INV/2025/0001'). "
+        "move_type values: 'out_invoice' (Customer Invoice), 'in_invoice' (Vendor Bill), "
+        "'out_refund' (Customer Credit Note), 'in_refund' (Vendor Credit Note), "
+        "'entry' (Journal Entry). "
+        "state values: 'draft', 'posted', 'cancel'. Use state='posted' for confirmed entries. "
+        "payment_state values: 'not_paid', 'in_payment', 'paid', 'partial', 'reversed'. "
+        "invoice_origin: source document (e.g. SO number). ref: payment reference. "
+        "To get customer invoices: move_type = 'out_invoice' AND state = 'posted'. "
+        "To get vendor bills: move_type = 'in_invoice' AND state = 'posted'. "
+        "Overdue invoices: payment_state NOT IN ('paid','reversed') AND invoice_date_due < CURRENT_DATE. "
+        "Join lines: fact_account_move_lines.account_move_id = fact_account_moves.id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
     "fact_account_move_lines": (
-        "General Ledger journal entry line items. "
-        "DATE column: date. "
-        "Debit column: debit, Credit column: credit, Balance column: balance. "
-        "Links to chart of accounts via account_id. "
+        "General ledger journal-entry line items (Odoo account.move.line). "
+        "PK: id. FK: tenant_id, account_move_id (→fact_account_moves.id), "
+        "product_id (→dim_products.id), partner_id (→dim_partners.id), "
+        "company_id (→dim_companies.id). "
+        "Columns: debit, credit, balance (= debit − credit). "
+        "amount_currency: amount in the transaction currency. currency_code: ISO code. "
+        "account_code: chart-of-accounts code (e.g. '411000'). "
+        "account_name: account label. "
+        "account_type values: 'asset_current', 'asset_non_current', 'asset_receivable', "
+        "'asset_cash', 'asset_fixed', 'asset_prepayments', "
+        "'liability_current', 'liability_non_current', 'liability_payable', "
+        "'equity', 'equity_unaffected', "
+        "'income', 'income_other', "
+        "'expense', 'expense_direct_cost' (COGS), 'expense_depreciation', "
+        "'off_balance'. "
+        "quantity, price_unit, price_subtotal: for invoice lines. "
+        "name: line description. "
+        "Revenue queries: account_type = 'income'. "
+        "Expense queries: account_type LIKE 'expense%'. "
+        "COGS: account_type = 'expense_direct_cost'. "
+        "Receivables: account_type = 'asset_receivable'. "
+        "Payables: account_type = 'liability_payable'. "
+        "P&L = SUM(credit) − SUM(debit) WHERE account_type IN ('income','income_other','expense','expense_direct_cost','expense_depreciation'). "
+        "Trial Balance: GROUP BY account_code, account_name → SUM(debit), SUM(credit), SUM(balance). "
+        "Join chart: dim_chart_of_accounts.code = fact_account_move_lines.account_code "
+        "(AND same tenant_id) for reconcile flag or full account metadata. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_stock_pickings": (
+        "Warehouse transfer operations: receipts, deliveries, internal moves (Odoo stock.picking). "
+        "PK: id. FK: tenant_id, company_id (→dim_companies.id), partner_id (→dim_partners.id), "
+        "scheduled_date_id (→dim_time.date_id), date_done_id (→dim_time.date_id). "
+        "DATE columns: scheduled_date (planned), date_done (completed) — both timestamps. "
+        "odoo_name: transfer reference (e.g. 'WH/OUT/00042'). "
+        "picking_type values: 'incoming' (Receipt), 'outgoing' (Delivery), 'internal' (Transfer). "
+        "state values: 'draft', 'waiting', 'confirmed', 'assigned' (Ready), 'done', 'cancel'. "
+        "origin: source document (e.g. SO or PO name). "
+        "Completed deliveries: state = 'done' AND picking_type = 'outgoing'. "
+        "Completed receipts: state = 'done' AND picking_type = 'incoming'. "
+        "Join moves: fact_stock_moves.picking_id = fact_stock_pickings.id. "
         "ALWAYS filter with tenant_id AND company_id."
     ),
 
     "fact_stock_moves": (
-        "Inventory movement records (in/out/transfer). "
-        "DATE column: date. Quantity column: product_qty. "
-        "state: 'done' for completed moves. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "fact_stock_quants": (
-        "Current inventory on-hand quantities per product and location. "
-        "Quantity column: quantity. Reserved column: reserved_quantity. "
-        "Available = quantity - reserved_quantity. "
+        "Inventory movement records per product (Odoo stock.move). "
+        "PK: id. FK: tenant_id, picking_id (→fact_stock_pickings.id, nullable), "
+        "product_id (→dim_products.id), company_id (→dim_companies.id), "
+        "date_id (→dim_time.date_id). "
+        "DATE column: date (timestamp). "
+        "product_uom_qty: demanded qty. quantity_done: actually moved qty. "
+        "location_src / location_dest: warehouse location display names. "
+        "state values: 'draft', 'waiting', 'confirmed', 'assigned', 'done', 'cancel'. "
+        "Use state = 'done' for completed movements. "
+        "origin: source document. reference: transfer ref. name: move description. "
+        "date_deadline: expected completion date. "
+        "Join detail lines: fact_stock_move_lines.stock_move_id = fact_stock_moves.id. "
         "ALWAYS filter with tenant_id AND company_id."
     ),
 
-    "dim_companies": (
-        "Company master data dimension. "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "Use odoo_id to join against company_id columns in fact tables. "
-        "Currency column: currency_name. ALWAYS filter with tenant_id."
-    ),
-    "dim_products": (
-        "Product catalog dimension. "
-        "product_type: 'product' (physical/storable), 'service', 'consu' (consumable). "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "ALWAYS filter with tenant_id."
-    ),
-    "dim_partners": (
-        "Customer and vendor master data. "
-        "customer_rank > 0 identifies customers. supplier_rank > 0 identifies vendors. "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "ALWAYS filter with tenant_id."
-    ),
-    "dim_lots": (
-        "Inventory lot and serial number master data. "
-        "expiration_date column tracks lot expiry. "
-        "ALWAYS filter with tenant_id."
-    ),
-    "fact_purchase_orders": (
-        "Purchase transaction records (PO). "
-        "DATE column: date_order (YYYY-MM-DD). "
-        "state: 'purchase' or 'done' for active orders. "
-        "Total amount column: amount_total. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "fact_purchase_order_lines": (
-        "Line items for purchase orders. "
-        "Quantity column: product_qty. Price column: price_unit. Subtotal column: price_subtotal. "
-        "Links to fact_purchase_orders via purchase_order_id. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "fact_sales_order_lines": (
-        "Line items for sales orders. "
-        "Quantity column: product_uom_qty. Price column: price_unit. Subtotal column: price_subtotal. "
-        "Links to fact_sales_orders via sales_order_id. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "fact_stock_pickings": (
-        "Inventory transfers and operations (receipts, deliveries, internal moves). "
-        "DATE columns: scheduled_date, date_done. "
-        "state: 'done' for completed transfers. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "dim_product_categories": (
-        "Hierarchy of product categories. "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "ALWAYS filter with tenant_id."
-    ),
-    "dim_currencies": (
-        "Master data for currencies used in the system. "
-        "Currency code column: code. "
-        "ALWAYS filter with tenant_id."
-    ),
-    "dim_currency_rates": (
-        "Historical exchange rates for currencies. "
-        "Rate column: rate (relative to base currency). "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "fact_account_moves": (
-        "Base table for all accounting journal entries, invoices, and bills (often queried via fact_invoices view). "
-        "DATE column: date. "
-        "state: 'posted' for confirmed entries. "
-        "ALWAYS filter with tenant_id AND company_id."
-    ),
-    "dim_chart_of_accounts": (
-        "Chart of accounts dimension (physical table backing dim_accounts). "
-        "code column: account code (e.g. '411000'). name column: account label. "
-        "account_type classifies: 'asset_current', 'asset_non_current', "
-        "'liability_current', 'liability_non_current', 'equity', 'income', "
-        "'expense', 'expense_direct_cost' (COGS). "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "ALWAYS filter with tenant_id."
-    ),
-    "dim_time": (
-        "Date dimension for time-based analysis. "
-        "Primary key: date_id (integer). full_date column: actual date value. "
-        "Provides: year, quarter, month, month_name, week, day_of_month, "
-        "day_of_week, day_name, is_weekend, is_holiday, fiscal_year, fiscal_quarter. "
-        "Join fact tables via date_id foreign keys (e.g. date_order_id, date_done_id)."
-    ),
-    "dim_users": (
-        "User master data. "
-        "name column: user display name. email column: user email. "
-        "is_active: whether the user account is active. "
-        "Internal primary key: id. Odoo external ID: odoo_id. "
-        "ALWAYS filter with tenant_id."
-    ),
     "fact_stock_move_lines": (
-        "Detailed inventory move line items (serial/lot-level granularity). "
-        "DATE column: date. Quantity column: qty_done. "
-        "location_src: source warehouse location. location_dest: destination location. "
-        "Links to fact_stock_moves via stock_move_id and to dim_lots via lot_id. "
-        "state: 'done' for completed move lines. "
+        "Detailed move lines with serial/lot granularity (Odoo stock.move.line). "
+        "PK: id. FK: tenant_id, stock_move_id (→fact_stock_moves.id), "
+        "product_id (→dim_products.id), lot_id (→dim_lots.id, nullable), "
+        "company_id (→dim_companies.id). "
+        "qty_done: quantity actually processed. product_uom_qty: demanded qty. "
+        "location_src / location_dest: warehouse location names. "
+        "DATE column: date (timestamp). "
+        "state values: 'done' for completed. "
+        "Use this table for lot/serial traceability queries. "
         "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_stock_quants": (
+        "Current on-hand inventory snapshot per product + location (Odoo stock.quant). "
+        "PK: id. FK: tenant_id, product_id (→dim_products.id), "
+        "lot_id (→dim_lots.id, nullable), company_id (→dim_companies.id). "
+        "quantity: total on-hand. reserved_quantity: reserved for orders. "
+        "Available = quantity − reserved_quantity. "
+        "location_name: warehouse location display name. "
+        "in_date: date the stock entered the location. "
+        "This is a STATE table (not transactional) — it reflects the latest inventory position. "
+        "For stock valuation: JOIN dim_products ON product_id to get standard_price. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_bank_statements": (
+        "Bank statement headers (Odoo account.bank.statement). "
+        "PK: id. FK: tenant_id, company_id (→dim_companies.id), "
+        "date_id (→dim_time.date_id). "
+        "DATE column: date (date). "
+        "$$: balance_start (opening balance), balance_end_real (closing balance). "
+        "journal_name: bank journal display name (e.g. 'Bank', 'Cash'). "
+        "odoo_name: statement reference. "
+        "state values: 'open', 'confirm', 'posted'. "
+        "Net movement = balance_end_real − balance_start. "
+        "Join lines: fact_bank_statement_lines.statement_id = fact_bank_statements.id. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_bank_statement_lines": (
+        "Individual bank transactions (Odoo account.bank.statement.line). "
+        "PK: id. FK: tenant_id, statement_id (→fact_bank_statements.id), "
+        "partner_id (→dim_partners.id, nullable), company_id (→dim_companies.id), "
+        "date_id (→dim_time.date_id). "
+        "DATE column: date (date). "
+        "$$: amount (positive = deposit/inflow, negative = withdrawal/outflow). "
+        "name: transaction label/memo. ref: payment reference. "
+        "Total deposits: SUM(amount) FILTER (WHERE amount > 0). "
+        "Total withdrawals: SUM(amount) FILTER (WHERE amount < 0). "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    # ── DIMENSION TABLES ─────────────────────────────────────────────────────
+
+    "dim_companies": (
+        "Company master data (Odoo res.company). "
+        "PK: id (bigint). tenant_id (uuid→tenants). odoo_id: Odoo external ID. "
+        "Columns: name, display_name, currency_id (Odoo FK int), currency_name, currency_code, "
+        "country_id, country_name, country_code, is_active. "
+        "Fact tables reference this as company_id = dim_companies.id. "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_products": (
+        "Product catalog (Odoo product.product). "
+        "PK: id. tenant_id. odoo_id. "
+        "name: product display name. default_code: internal reference / SKU. barcode. "
+        "product_type values: 'product' (Storable), 'consu' (Consumable), 'service'. "
+        "category_id (→dim_product_categories.id): product category FK. "
+        "list_price: sales price. standard_price: cost price. "
+        "uom_name: unit of measure label. is_active: whether product is active. "
+        "Margin analysis: JOIN fact_sales_order_lines on product_id, "
+        "use purchase_price (cost) and price_subtotal (revenue). "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_product_categories": (
+        "Product category hierarchy (Odoo product.category). "
+        "PK: id. tenant_id. odoo_id. "
+        "name: category label. complete_name: full path (e.g. 'All / Saleable / Furniture'). "
+        "parent_id (→dim_product_categories.id, nullable): self-referencing parent FK. "
+        "Join products: dim_products.category_id = dim_product_categories.id. "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_partners": (
+        "Customer and vendor master data (Odoo res.partner). "
+        "PK: id. tenant_id. odoo_id. "
+        "name, email, phone, city, country_code. "
+        "customer_rank (int): > 0 means customer. supplier_rank (int): > 0 means vendor. "
+        "is_customer (bool), is_supplier (bool): convenience flags. "
+        "partner_type: contact classification. is_active. "
+        "Top customers: JOIN fact_sales_orders ON partner_id, GROUP BY partner, ORDER BY SUM(amount_total) DESC. "
+        "Top vendors: JOIN fact_purchase_orders ON partner_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_users": (
+        "Salesperson / user dimension (Odoo res.users). "
+        "PK: id. tenant_id. odoo_id. "
+        "name: display name. email. is_active. "
+        "Referenced by: fact_sales_orders.user_id, fact_purchase_orders.user_id. "
+        "Salesperson performance: JOIN fact_sales_orders ON user_id. "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_lots": (
+        "Inventory lot and serial number master data (Odoo stock.lot). "
+        "PK: id. FK: tenant_id, product_id (→dim_products.id), company_id (→dim_companies.id). "
+        "name: lot/serial number. ref: internal reference. "
+        "expiration_date, use_date, removal_date, alert_date: lifecycle dates. "
+        "Expiring lots: expiration_date < CURRENT_DATE + INTERVAL '30 days'. "
+        "Join quants: fact_stock_quants.lot_id = dim_lots.id. "
+        "Join move lines: fact_stock_move_lines.lot_id = dim_lots.id. "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_chart_of_accounts": (
+        "Chart of accounts (Odoo account.account). "
+        "PK: id. tenant_id. odoo_id. "
+        "code: account code (e.g. '411000'). name: account label (e.g. 'Revenue'). "
+        "account_type values: 'asset_current', 'asset_non_current', 'asset_receivable', "
+        "'asset_cash', 'asset_fixed', 'asset_prepayments', "
+        "'liability_current', 'liability_non_current', 'liability_payable', "
+        "'equity', 'equity_unaffected', "
+        "'income', 'income_other', "
+        "'expense', 'expense_direct_cost' (COGS), 'expense_depreciation', "
+        "'off_balance'. "
+        "reconcile: whether the account supports reconciliation. "
+        "deprecated: whether the account is deprecated. "
+        "Join to move lines: fact_account_move_lines.account_code = dim_chart_of_accounts.code "
+        "(AND same tenant_id). "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_currencies": (
+        "Currency master data (Odoo res.currency). "
+        "PK: id. tenant_id. odoo_id. "
+        "code: ISO 4217 code (e.g. 'USD', 'EUR'). symbol: display symbol (e.g. '$'). "
+        "symbol_position: 'before' or 'after'. rounding: decimal precision. "
+        "is_active. "
+        "Join rates: dim_currency_rates.currency_id = dim_currencies.id. "
+        "ALWAYS filter with tenant_id."
+    ),
+
+    "dim_currency_rates": (
+        "Historical daily exchange rates (Odoo res.currency.rate). "
+        "PK: id. FK: tenant_id, currency_id (→dim_currencies.id), company_id (→dim_companies.id). "
+        "name: rate date (date type — this is the DATE column). "
+        "rate: exchange rate relative to company base currency. "
+        "To convert amount: amount / rate (where rate is for the target currency). "
+        "Latest rate: ORDER BY name DESC LIMIT 1 per currency. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "dim_time": (
+        "Pre-populated calendar/date dimension for time-based analysis. "
+        "PK: date_id (integer, format YYYYMMDD). full_date: actual date value. "
+        "year, quarter (1–4), month (1–12), month_name (e.g. 'January'), "
+        "week (ISO week 1–53), day_of_month (1–31), day_of_week (0=Mon–6=Sun), "
+        "day_name (e.g. 'Monday'), is_weekend (bool), is_holiday (bool), "
+        "fiscal_year, fiscal_quarter. "
+        "FK columns in fact tables that join here: "
+        "fact_sales_orders.date_order_id, fact_purchase_orders.date_order_id, "
+        "fact_account_moves.date_id, fact_account_moves.invoice_date_id, "
+        "fact_stock_moves.date_id, fact_stock_pickings.scheduled_date_id, "
+        "fact_stock_pickings.date_done_id, fact_bank_statements.date_id, "
+        "fact_bank_statement_lines.date_id. "
+        "Monthly aggregation: GROUP BY t.year, t.month, t.month_name. "
+        "Quarterly aggregation: GROUP BY t.year, t.quarter. "
+        "No tenant_id filter needed — shared across tenants."
     ),
 }
 
