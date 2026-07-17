@@ -64,6 +64,8 @@ class ETLOrchestrator:
         self.account_move_sync = AccountMoveSynchronizer(self.odoo, self.db)
         self.chart_of_accounts_sync = ChartOfAccountsSynchronizer(self.odoo, self.db)
         self.currency_rate_sync = CurrencyRateSynchronizer(self.odoo, self.db)
+        from odoo_app.etl.syncs.journal_synchronizer import JournalSynchronizer
+        self.journal_sync = JournalSynchronizer(self.odoo, self.db)
         self.bank_statement_sync = BankStatementSynchronizer(self.odoo, self.db)
     
     def _acquire_lock(self, tenant_id: str) -> bool:
@@ -113,7 +115,8 @@ class ETLOrchestrator:
                 ('lots', 'stock.lot', self.lot_sync),
                 ('currencies', 'res.currency', self.currency_sync),
                 ('chart_of_accounts', 'account.account', self.chart_of_accounts_sync),
-                ('currency_rates', 'res.currency.rate', self.currency_rate_sync)
+                ('currency_rates', 'res.currency.rate', self.currency_rate_sync),
+                ('journals', 'account.journal', self.journal_sync)
             ]
             
             # Sync Time Dimension first (no odoo model)
@@ -197,7 +200,8 @@ class ETLOrchestrator:
                 ('lots', 'stock.lot', self.lot_sync),
                 ('currencies', 'res.currency', self.currency_sync),
                 ('chart_of_accounts', 'account.account', self.chart_of_accounts_sync),
-                ('currency_rates', 'res.currency.rate', self.currency_rate_sync)
+                ('currency_rates', 'res.currency.rate', self.currency_rate_sync),
+                ('journals', 'account.journal', self.journal_sync),
             ]
 
             logger.info("--- Phase 1: Dimension Delta ---")

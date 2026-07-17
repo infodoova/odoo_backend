@@ -18,6 +18,7 @@ class BankStatementLine(models.Model):
     partner = models.ForeignKey('odoo_app.Partner', on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_statement_lines')
 
     ref = models.CharField(max_length=255, null=True, blank=True)
+    is_reconciled = models.BooleanField(default=False)
 
     odoo_write_date = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)

@@ -13,7 +13,9 @@ class BankStatement(models.Model):
     date = models.DateField(null=True, blank=True)
     date_dimension = models.ForeignKey('odoo_app.TimeDimension', on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_statements', db_column='date_id')
 
+    journal = models.ForeignKey('odoo_app.AccountJournal', on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_statements')
     journal_name = models.CharField(max_length=255, null=True, blank=True)
+    currency_code = models.CharField(max_length=10, null=True, blank=True)
 
     balance_start = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     balance_end_real = models.DecimalField(max_digits=15, decimal_places=2, default=0)

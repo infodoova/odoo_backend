@@ -337,6 +337,54 @@ class AccountingDrillDownTestCase(TransactionTestCase):
             amount_residual=2500.00,
             currency_code="XAF"
         )
+        AccountMoveLine.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            account_move=self.bill,
+            odoo_id=2001,
+            odoo_move_id=1001,
+            partner=self.vendor,
+            account_type="liability_payable",
+            credit=1000.00,
+            debit=0.0,
+            price_subtotal=1000.00
+        )
+        AccountMoveLine.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            account_move=self.invoice,
+            odoo_id=2002,
+            odoo_move_id=1002,
+            partner=self.customer,
+            account_type="asset_receivable",
+            debit=2500.00,
+            credit=0.0,
+            price_subtotal=2500.00
+        )
+        AccountMoveLine.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            account_move=self.invoice,
+            odoo_id=2003,
+            odoo_move_id=1002,
+            partner=self.customer,
+            account_type="income",
+            credit=2500.00,
+            debit=0.0,
+            price_subtotal=2500.00
+        )
+        AccountMoveLine.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            account_move=self.bill,
+            odoo_id=2004,
+            odoo_move_id=1001,
+            partner=self.vendor,
+            account_type="expense",
+            debit=1000.00,
+            credit=0.0,
+            price_subtotal=1000.00
+        )
 
     def _verify_kpis(self, start_date=None, end_date=None):
         """Helper to assert overview dashboard metrics match metric-details totals."""

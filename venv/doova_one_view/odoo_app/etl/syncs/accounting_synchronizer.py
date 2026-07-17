@@ -24,6 +24,7 @@ class AccountMoveSynchronizer(BaseSynchronizer):
         self.prefetch_ids('dim_partners', tenant_id)
         self.prefetch_ids('dim_companies', tenant_id)
         self.prefetch_ids('dim_products', tenant_id)
+        self.prefetch_ids('dim_account_journals', tenant_id)
         
         domain = []
         if last_sync_date:
@@ -35,9 +36,10 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             line_fields = self.with_retry(self.odoo.get_fields, 'account.move.line').keys()
             
             req_move_fields = [
-                'id', 'name', 'partner_id', 'company_id', 'date', 'invoice_date',
+                'id', 'name', 'partner_id', 'company_id', 'journal_id', 'date', 'invoice_date',
                 'invoice_date_due', 'move_type', 'state', 'payment_state',
                 'amount_untaxed', 'amount_tax', 'amount_total', 'amount_residual',
+                'amount_total_signed', 'amount_residual_signed',
                 'currency_id', 'invoice_origin', 'ref', 'write_date'
             ]
             req_line_fields = [
@@ -95,13 +97,14 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             try:
                 partner_id = self.get_internal_id('dim_partners', tenant_id, self.transformer.parse_odoo_many2one(move.get('partner_id')))
                 company_id = self.get_internal_id('dim_companies', tenant_id, self.transformer.parse_odoo_many2one(move.get('company_id')))
+                journal_id = self.get_internal_id('dim_account_journals', tenant_id, self.transformer.parse_odoo_many2one(move.get('journal_id')))
                 
                 # Handle currency - Odoo returns [id, name] for Many2one
                 currency_data = move.get('currency_id')
                 currency_code = currency_data[1] if isinstance(currency_data, (list, tuple)) else None
 
                 move_params.append((
-                    tenant_id, move['id'], move.get('name'), company_id, partner_id,
+                    tenant_id, move['id'], move.get('name'), company_id, partner_id, journal_id,
                     self.transformer.parse_odoo_date(move.get('date')),
                     self.transformer.get_date_id(move.get('date')),
                     self.transformer.parse_odoo_date(move.get('invoice_date')),
@@ -112,6 +115,8 @@ class AccountMoveSynchronizer(BaseSynchronizer):
                     self.transformer.parse_odoo_decimal(move.get('amount_tax', 0)),
                     self.transformer.parse_odoo_decimal(move.get('amount_total', 0)),
                     self.transformer.parse_odoo_decimal(move.get('amount_residual', 0)),
+                    self.transformer.parse_odoo_decimal(move.get('amount_total_signed', 0)),
+                    self.transformer.parse_odoo_decimal(move.get('amount_residual_signed', 0)),
                     currency_code, move.get('invoice_origin'), move.get('ref'),
                     self.transformer.parse_odoo_datetime(move.get('write_date'))
                 ))
@@ -122,16 +127,18 @@ class AccountMoveSynchronizer(BaseSynchronizer):
         # 1. Batch Upsert Moves
         move_query = """
             INSERT INTO fact_account_moves (
-                tenant_id, odoo_id, odoo_name, company_id, partner_id,
+                tenant_id, odoo_id, odoo_name, company_id, partner_id, journal_id,
                 date, date_id, invoice_date, invoice_date_id, invoice_date_due,
                 move_type, state, payment_state, amount_untaxed, amount_tax,
-                amount_total, amount_residual, currency_code, invoice_origin,
-                ref, odoo_write_date, synced_at
+                amount_total, amount_residual, amount_total_signed, amount_residual_signed,
+                currency_code, invoice_origin, ref, odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET 
+                journal_id = EXCLUDED.journal_id, partner_id = EXCLUDED.partner_id, company_id = EXCLUDED.company_id,
                 state = EXCLUDED.state, payment_state = EXCLUDED.payment_state,
                 amount_total = EXCLUDED.amount_total, amount_residual = EXCLUDED.amount_residual,
+                amount_total_signed = EXCLUDED.amount_total_signed, amount_residual_signed = EXCLUDED.amount_residual_signed,
                 odoo_write_date = EXCLUDED.odoo_write_date, synced_at = NOW()
         """
         self.execute_upsert_batch(move_query, move_params)

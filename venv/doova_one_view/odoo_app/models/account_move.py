@@ -11,6 +11,7 @@ class AccountMove(models.Model):
     odoo_name = models.CharField(max_length=100, null=True, blank=True)
 
     partner = models.ForeignKey('odoo_app.Partner', on_delete=models.SET_NULL, null=True, blank=True, related_name='account_moves')
+    journal = models.ForeignKey('odoo_app.AccountJournal', on_delete=models.SET_NULL, null=True, blank=True, related_name='account_moves')
     date_dimension = models.ForeignKey('odoo_app.TimeDimension', on_delete=models.SET_NULL, null=True, blank=True, related_name='moves_by_date', db_column='date_id')
     invoice_date_dimension = models.ForeignKey('odoo_app.TimeDimension', on_delete=models.SET_NULL, null=True, blank=True, related_name='moves_by_invoice_date', db_column='invoice_date_id')
 
@@ -47,6 +48,8 @@ class AccountMove(models.Model):
     amount_tax = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     amount_total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     amount_residual = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    amount_total_signed = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    amount_residual_signed = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     currency_code = models.CharField(max_length=10, null=True, blank=True)
 
     invoice_origin = models.CharField(max_length=255, null=True, blank=True)

@@ -23,6 +23,7 @@ class BankStatementSynchronizer(BaseSynchronizer):
         # Pre-fetch dimensions for fast lookup
         self.prefetch_ids('dim_partners', tenant_id)
         self.prefetch_ids('dim_companies', tenant_id)
+        self.prefetch_ids('dim_account_journals', tenant_id)
 
         domain = []
         if last_sync_date:
@@ -39,7 +40,7 @@ class BankStatementSynchronizer(BaseSynchronizer):
             ]
             req_line_fields = [
                 'id', 'statement_id', 'date', 'name', 'amount',
-                'partner_id', 'company_id', 'ref', 'write_date'
+                'partner_id', 'company_id', 'ref', 'is_reconciled', 'write_date'
             ]
 
             stmt_fields_avail = [f for f in req_stmt_fields if f in stmt_fields]
@@ -89,13 +90,14 @@ class BankStatementSynchronizer(BaseSynchronizer):
         for stmt in statements:
             try:
                 company_id = self.get_internal_id('dim_companies', tenant_id, self.transformer.parse_odoo_many2one(stmt.get('company_id')))
+                journal_internal_id = self.get_internal_id('dim_account_journals', tenant_id, self.transformer.parse_odoo_many2one(stmt.get('journal_id')))
 
                 # Journal is a Many2one — store the display name
                 journal_data = stmt.get('journal_id')
                 journal_name = journal_data[1] if isinstance(journal_data, (list, tuple)) else None
 
                 stmt_params.append((
-                    tenant_id, stmt['id'], stmt.get('name'), company_id,
+                    tenant_id, stmt['id'], stmt.get('name'), company_id, journal_internal_id,
                     self.transformer.parse_odoo_date(stmt.get('date')),
                     self.transformer.get_date_id(stmt.get('date')),
                     journal_name,
@@ -111,13 +113,15 @@ class BankStatementSynchronizer(BaseSynchronizer):
         # 1. Batch Upsert Statements
         stmt_query = """
             INSERT INTO fact_bank_statements (
-                tenant_id, odoo_id, odoo_name, company_id,
+                tenant_id, odoo_id, odoo_name, company_id, journal_id,
                 date, date_id, journal_name,
                 balance_start, balance_end_real, state,
                 odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
+                company_id = EXCLUDED.company_id,
+                journal_id = EXCLUDED.journal_id,
                 balance_start = EXCLUDED.balance_start,
                 balance_end_real = EXCLUDED.balance_end_real,
                 state = EXCLUDED.state,
@@ -133,14 +137,16 @@ class BankStatementSynchronizer(BaseSynchronizer):
                 tenant_id, statement_id, odoo_id,
                 date, date_id, name, amount,
                 partner_id, company_id, ref,
+                is_reconciled,
                 odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
                 amount = EXCLUDED.amount,
                 name = EXCLUDED.name,
                 partner_id = EXCLUDED.partner_id,
                 ref = EXCLUDED.ref,
+                is_reconciled = EXCLUDED.is_reconciled,
                 odoo_write_date = EXCLUDED.odoo_write_date,
                 synced_at = NOW()
         """
@@ -168,6 +174,7 @@ class BankStatementSynchronizer(BaseSynchronizer):
                     self.transformer.parse_odoo_decimal(line.get('amount', 0)),
                     partner_id, company_id,
                     line.get('ref'),
+                    line.get('is_reconciled', False),
                     self.transformer.parse_odoo_datetime(line.get('write_date'))
                 ))
 

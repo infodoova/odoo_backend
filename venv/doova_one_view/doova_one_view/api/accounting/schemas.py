@@ -325,6 +325,43 @@ class DailyMovesResponse(BaseModel):
     offset: int
 
 
+class JournalCardMetrics(BaseModel):
+    # Common
+    balance: float = 0.0
+    # Bank / Cash specific
+    latest_statement_balance: float = 0.0
+    gl_balance: float = 0.0
+    outstanding_payments: float = 0.0
+    outstanding_receipts: float = 0.0
+    # Sales / Purchases specific
+    unpaid_count: int = 0
+    unpaid_amount: float = 0.0
+    draft_count: int = 0
+    draft_amount: float = 0.0
+    late_count: int = 0
+    late_amount: float = 0.0
+    # General specific
+    misc_operations_count: int = 0
+    misc_operations_amount: float = 0.0
+
+class JournalCard(BaseModel):
+    id: int
+    name: str
+    code: Optional[str] = None
+    type: Optional[str] = None
+    currency_code: Optional[str] = None
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    metrics: JournalCardMetrics
+
+class JournalCardsResponse(BaseModel):
+    items: List[JournalCard]
+    total: int
+    limit: int
+    offset: int
+    base_currency: str
+
+
 class MarketBreakdownResponse(BaseModel):
     section: str
     entity_id: int

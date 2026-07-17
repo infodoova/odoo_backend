@@ -341,3 +341,28 @@ async def get_aging_details(
         limit=limit,
         offset=offset
     )
+
+from doova_one_view.api.accounting.schemas import JournalCardsResponse
+
+@router.get("/{tenant_id}/dashboard/journals")
+async def get_dashboard_journals(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user)
+) -> JournalCardsResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = parse_company_ids(companies)
+    return await AccountingService.get_journal_cards(
+        tenant_id=tenant_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        limit=limit,
+        offset=offset
+    )
