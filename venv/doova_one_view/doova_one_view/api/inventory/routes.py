@@ -17,6 +17,8 @@ from doova_one_view.api.inventory.schemas import (
     MarketBreakdownResponse,
     EntityProfileResponse,
     ProductInventoryDetailResponse,
+    StockTopCardsResponse,
+    InventoryAlertsResponse,
 )
 from doova_one_view.api.inventory.service import InventoryService
 from doova_one_view.api.tenants.service import TenantService
@@ -64,6 +66,74 @@ async def get_inventory_dashboard(
         _company_ids(company_id, companies),
         base_currency,
     )
+
+
+@router.get("/{tenant_id}/dashboard/top-cards")
+async def get_inventory_top_cards(
+    tenant_id: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    low_stock_threshold: int = Query(10, ge=1, description="Quantity at or below which a product is considered low stock"),
+    limit: int = Query(25, ge=1, le=100, description="Max drill-down items per card"),
+    user: AppUser = Depends(get_current_user),
+) -> StockTopCardsResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_top_cards(
+        tenant_id,
+        company_ids=_company_ids(company_id, companies),
+        low_stock_threshold=low_stock_threshold,
+        limit=limit,
+    )
+
+
+@router.get("/{tenant_id}/dashboard/alerts")
+async def get_inventory_alerts(
+    tenant_id: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    low_stock_threshold: int = Query(10, ge=1),
+    limit: int = Query(10, ge=1, le=50, description="Max drill-down items per alert group"),
+    user: AppUser = Depends(get_current_user),
+) -> InventoryAlertsResponse:
+    """Return an aggregated list of inventory alerts."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_alerts(
+        tenant_id,
+        company_ids=_company_ids(company_id, companies),
+        low_stock_threshold=low_stock_threshold,
+        limit=limit,
+    )
+
+
+@router.get("/{tenant_id}/dashboard/stock-tables/{table_type}")
+async def get_stock_table(
+    tenant_id: str,
+    table_type: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    low_stock_threshold: int = Query(10, ge=1, description="Quantity at or below which a product is considered low stock"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: AppUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Get paginated tables for specific inventory categories:
+    table_type can be: low_stock, out_of_stock, negative_stock, expiring_soon, slow_moving
+    """
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_stock_table(
+        tenant_id,
+        table_type,
+        _company_ids(company_id, companies),
+        start_date,
+        end_date,
+        low_stock_threshold,
+        limit,
+        offset,
+    )
+
 
 
 # Pickings: static subpaths before /pickings/{picking_id}

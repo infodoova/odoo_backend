@@ -49,6 +49,33 @@ class InventorySummary(BaseModel):
     recent_moves_count: int
 
 
+class StockTopCardItem(BaseModel):
+    """A single product entry inside a top-card drill-down."""
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    product_sku: Optional[str] = None
+    location_name: Optional[str] = None
+    quantity: float = 0
+    reserved_quantity: float = 0
+    available_quantity: float = 0
+
+
+class StockTopCard(BaseModel):
+    """One top-level KPI card."""
+    key: str
+    label: str
+    value: float
+    unit: str = "qty"
+    items: List[StockTopCardItem] = Field(default_factory=list)
+    item_count: int = 0
+
+
+class StockTopCardsResponse(BaseModel):
+    """Response for the /dashboard/top-cards endpoint."""
+    cards: List[StockTopCard]
+    applied_filters: Optional[dict] = None
+
+
 class SearchFilter(BaseModel):
     """Filter criteria for advanced inventory search."""
     field: str
@@ -151,3 +178,20 @@ class ProductInventoryDetailResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AlertItem(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    date: Optional[str] = None
+
+class AlertGroup(BaseModel):
+    key: str
+    label: str
+    count: int
+    severity: str
+    items: List[AlertItem] = Field(default_factory=list)
+
+class InventoryAlertsResponse(BaseModel):
+    alerts: List[AlertGroup]

@@ -17,7 +17,7 @@ def get_inventory_alerts_tool(
     low_stock_rows = run_query(f"""
         SELECT p.name AS product_name, COALESCE(SUM(q.quantity), 0) AS available, q.location_name
         FROM fact_stock_quants q
-        JOIN dim_products p ON q.product_id = p.odoo_id AND q.tenant_id = p.tenant_id
+        JOIN dim_products p ON q.product_id = p.id AND q.tenant_id = p.tenant_id
         WHERE q.tenant_id = :tenant_id AND q.product_id IS NOT NULL {f_sql}
         GROUP BY p.name, q.location_name
         HAVING COALESCE(SUM(q.quantity), 0) > 0 AND COALESCE(SUM(q.quantity), 0) <= :threshold
@@ -27,7 +27,7 @@ def get_inventory_alerts_tool(
     expiring_rows = run_query(f"""
         SELECT l.name, p.name AS product_name, l.expiration_date
         FROM dim_lots l
-        JOIN dim_products p ON l.product_id = p.odoo_id AND l.tenant_id = p.tenant_id
+        JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
         WHERE l.tenant_id = :tenant_id AND l.expiration_date IS NOT NULL
           AND l.expiration_date >= CURRENT_DATE AND l.expiration_date < (CURRENT_DATE + (:expiring_days * INTERVAL '1 day'))
           {f_sql}
@@ -55,14 +55,14 @@ def get_inventory_efficiency_tool(
     inv_rows = run_query(f"""
         SELECT COALESCE(SUM(q.quantity * COALESCE(p.standard_price, 0)), 0) AS total_value, COUNT(DISTINCT q.product_id) AS sku_count
         FROM fact_stock_quants q
-        LEFT JOIN dim_products p ON p.tenant_id = q.tenant_id AND p.odoo_id = q.product_id
+        LEFT JOIN dim_products p ON p.tenant_id = q.tenant_id AND p.id = q.product_id
         WHERE q.tenant_id = :tenant_id AND q.quantity > 0 {q_sql}
     """, params)
 
     move_rows = run_query(f"""
         SELECT COALESCE(SUM(m.quantity_done * COALESCE(p.standard_price, 0)), 0) AS move_value
         FROM fact_stock_moves m
-        LEFT JOIN dim_products p ON p.tenant_id = m.tenant_id AND p.odoo_id = m.product_id
+        LEFT JOIN dim_products p ON p.tenant_id = m.tenant_id AND p.id = m.product_id
         WHERE m.tenant_id = :tenant_id AND m.state = 'done' AND m.date >= CURRENT_DATE - INTERVAL '12 months' {m_sql}
     """, params)
 

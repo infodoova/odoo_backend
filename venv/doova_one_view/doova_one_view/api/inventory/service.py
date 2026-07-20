@@ -286,6 +286,303 @@ class InventoryService:
         return await asyncio.to_thread(_summary)
 
     @staticmethod
+    async def get_alerts(
+        tenant_id: str,
+        company_ids: Optional[list[int]] = None,
+        low_stock_threshold: int = 10,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Return aggregated inventory alerts."""
+        def _build():
+            from django.utils import timezone
+            from datetime import timedelta
+
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id).select_related("product", "lot"),
+                company_ids
+            )
+            pickings = InventoryService._company_filter(
+                StockPicking.objects.filter(tenant_id=tenant_id).select_related("partner"),
+                company_ids
+            )
+            now = timezone.now()
+
+            # 1. Low Stock
+            low_qs = quants.filter(quantity__gt=0, quantity__lte=low_stock_threshold).order_by("quantity")
+            low_cnt = low_qs.count()
+            low_items = [
+                {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
+                for q in low_qs[:limit]
+            ]
+
+            # 2. Out of Stock
+            oos_qs = quants.filter(quantity=0).order_by("product__name")
+            oos_cnt = oos_qs.count()
+            oos_items = [
+                {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": "Qty: 0"}
+                for q in oos_qs[:limit]
+            ]
+
+            # 3. Negative Stock
+            neg_qs = quants.filter(quantity__lt=0).order_by("quantity")
+            neg_cnt = neg_qs.count()
+            neg_items = [
+                {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
+                for q in neg_qs[:limit]
+            ]
+
+            # 4. Expiring Soon
+            soon = now.date() + timedelta(days=30)
+            exp_qs = quants.filter(quantity__gt=0, lot__expiration_date__lte=soon).order_by("lot__expiration_date")
+            exp_cnt = exp_qs.count()
+            exp_items = [
+                {
+                    "id": q.id, 
+                    "title": q.product.name if q.product else "Unknown", 
+                    "description": f"Lot: {q.lot.name if q.lot else ''}",
+                    "date": _iso(q.lot.expiration_date) if q.lot else None
+                }
+                for q in exp_qs[:limit]
+            ]
+
+            # 5. Late Shipments
+            late_qs = pickings.filter(
+                picking_type='outgoing', 
+                scheduled_date__lt=now
+            ).exclude(state__in=['done', 'cancel']).order_by("scheduled_date")
+            late_cnt = late_qs.count()
+            late_items = [
+                {
+                    "id": p.id,
+                    "title": p.odoo_name or "Unknown",
+                    "description": f"State: {p.state}",
+                    "date": _iso(p.scheduled_date)
+                }
+                for p in late_qs[:limit]
+            ]
+
+            # 6. Backorders (pickings in waiting state)
+            back_qs = pickings.filter(picking_type='outgoing', state='waiting').order_by("-scheduled_date")
+            back_cnt = back_qs.count()
+            back_items = [
+                {
+                    "id": p.id,
+                    "title": p.odoo_name or "Unknown",
+                    "description": f"Partner: {p.partner.name if p.partner else 'None'}",
+                    "date": _iso(p.scheduled_date)
+                }
+                for p in back_qs[:limit]
+            ]
+
+            # 7. Valuation Issues (in stock but no standard price)
+            val_qs = quants.filter(
+                quantity__gt=0
+            ).filter(
+                Q(product__standard_price__lte=0) | Q(product__standard_price__isnull=True)
+            ).order_by("product__name")
+            val_cnt = val_qs.count()
+            val_items = [
+                {
+                    "id": q.id,
+                    "title": q.product.name if q.product else "Unknown",
+                    "description": f"Qty: {q.quantity}, Cost: {q.product.standard_price if q.product else 0}"
+                }
+                for q in val_qs[:limit]
+            ]
+
+            alerts = [
+                {"key": "low_stock", "label": "Low Stock", "count": low_cnt, "severity": "warning", "items": low_items},
+                {"key": "out_of_stock", "label": "Out of Stock", "count": oos_cnt, "severity": "danger", "items": oos_items},
+                {"key": "negative_stock", "label": "Negative Stock", "count": neg_cnt, "severity": "danger", "items": neg_items},
+                {"key": "expiring_soon", "label": "Expiring Soon", "count": exp_cnt, "severity": "warning", "items": exp_items},
+                {"key": "late_shipments", "label": "Late Shipments", "count": late_cnt, "severity": "danger", "items": late_items},
+                {"key": "backorders", "label": "Backorders", "count": back_cnt, "severity": "warning", "items": back_items},
+                {"key": "valuation_issues", "label": "Valuation Issues", "count": val_cnt, "severity": "warning", "items": val_items},
+            ]
+
+            return {"alerts": alerts}
+
+        return await asyncio.to_thread(_build)
+
+    @staticmethod
+    async def get_stock_table(
+        tenant_id: str,
+        table_type: str,
+        company_ids: Optional[list[int]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        low_stock_threshold: int = 10,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Return a paginated list of quants for specific stock tables."""
+        def _fetch():
+            from datetime import timedelta
+            from django.utils import timezone
+            from doova_one_view.api.inventory.schemas import StockQuantRead
+
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id).select_related("product", "lot", "company"),
+                company_ids
+            )
+
+            if start_date:
+                quants = quants.filter(in_date__gte=start_date)
+            if end_date:
+                quants = quants.filter(in_date__lte=end_date)
+
+            if table_type == "low_stock":
+                qs = quants.filter(quantity__gt=0, quantity__lte=low_stock_threshold).order_by("quantity")
+            elif table_type == "out_of_stock":
+                qs = quants.filter(quantity=0).order_by("product__name")
+            elif table_type == "negative_stock":
+                qs = quants.filter(quantity__lt=0).order_by("quantity")
+            elif table_type == "expiring_soon":
+                soon = timezone.now().date() + timedelta(days=30)
+                qs = quants.filter(quantity__gt=0, lot__expiration_date__lte=soon).order_by("lot__expiration_date")
+            elif table_type == "slow_moving":
+                # items in stock with in_date older than 90 days
+                old = timezone.now() - timedelta(days=90)
+                qs = quants.filter(quantity__gt=0, in_date__lt=old).order_by("in_date")
+            else:
+                qs = quants.none()
+
+            total = qs.count()
+            items = qs[offset : offset + limit]
+
+            return {
+                "items": [StockQuantRead.model_validate(q).model_dump() for q in items],
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "table_type": table_type
+            }
+
+        return await asyncio.to_thread(_fetch)
+
+    @staticmethod
+    async def get_top_cards(
+        tenant_id: str,
+        company_ids: Optional[list[int]] = None,
+        low_stock_threshold: int = 10,
+        limit: int = 25,
+    ) -> dict[str, Any]:
+        """Return the five inventory top-cards with drill-down items."""
+
+        def _build():
+            from django.db.models import Sum, Count, F, Q, Value
+            from django.db.models.functions import Coalesce
+
+            quants = InventoryService._company_filter(
+                StockQuant.objects.filter(tenant_id=tenant_id)
+                    .select_related("product"),
+                company_ids,
+            )
+
+            def _quant_items(qs, lim):
+                rows = []
+                for q in qs[:lim]:
+                    prod = q.product
+                    rows.append({
+                        "product_id": prod.id if prod else None,
+                        "product_name": prod.name if prod else "Unknown",
+                        "product_sku": prod.default_code if prod else None,
+                        "location_name": q.location_name,
+                        "quantity": _to_float(q.quantity),
+                        "reserved_quantity": _to_float(q.reserved_quantity),
+                        "available_quantity": _to_float(q.quantity) - _to_float(q.reserved_quantity),
+                    })
+                return rows
+
+            # 1. Available Stock — quants where available qty > 0
+            available_qs = quants.filter(quantity__gt=0).annotate(
+                avail=F("quantity") - F("reserved_quantity")
+            ).filter(avail__gt=0).order_by("-quantity")
+            available_agg = available_qs.aggregate(
+                total=Sum("quantity"),
+                cnt=Count("id"),
+            )
+
+            # 2. Reserved Stock — quants where reserved_quantity > 0
+            reserved_qs = quants.filter(reserved_quantity__gt=0).order_by("-reserved_quantity")
+            reserved_agg = reserved_qs.aggregate(
+                total=Sum("reserved_quantity"),
+                cnt=Count("id"),
+            )
+
+            # 3. Low Stock Items — quants where 0 < quantity <= threshold
+            low_qs = quants.filter(
+                quantity__gt=0,
+                quantity__lte=low_stock_threshold,
+            ).order_by("quantity")
+            low_agg = low_qs.aggregate(cnt=Count("id"))
+
+            # 4. Out of Stock Items — quants where quantity == 0
+            oos_qs = quants.filter(quantity=0).order_by("product__name")
+            oos_agg = oos_qs.aggregate(cnt=Count("id"))
+
+            # 5. Negative Stock Items — quants where quantity < 0
+            neg_qs = quants.filter(quantity__lt=0).order_by("quantity")
+            neg_agg = neg_qs.aggregate(
+                total=Sum("quantity"),
+                cnt=Count("id"),
+            )
+
+            cards = [
+                {
+                    "key": "available_stock",
+                    "label": "Available Stock",
+                    "value": int(_to_float(available_agg["total"])),
+                    "unit": "qty",
+                    "items": _quant_items(available_qs, limit),
+                    "item_count": available_agg["cnt"] or 0,
+                },
+                {
+                    "key": "reserved_stock",
+                    "label": "Reserved Stock",
+                    "value": int(_to_float(reserved_agg["total"])),
+                    "unit": "qty",
+                    "items": _quant_items(reserved_qs, limit),
+                    "item_count": reserved_agg["cnt"] or 0,
+                },
+                {
+                    "key": "low_stock_items",
+                    "label": "Low Stock Items",
+                    "value": low_agg["cnt"] or 0,
+                    "unit": "items",
+                    "items": _quant_items(low_qs, limit),
+                    "item_count": low_agg["cnt"] or 0,
+                },
+                {
+                    "key": "out_of_stock_items",
+                    "label": "Out of Stock Items",
+                    "value": oos_agg["cnt"] or 0,
+                    "unit": "items",
+                    "items": _quant_items(oos_qs, limit),
+                    "item_count": oos_agg["cnt"] or 0,
+                },
+                {
+                    "key": "negative_stock_items",
+                    "label": "Negative Stock Items",
+                    "value": neg_agg["cnt"] or 0,
+                    "unit": "items",
+                    "items": _quant_items(neg_qs, limit),
+                    "item_count": neg_agg["cnt"] or 0,
+                },
+            ]
+
+            return {
+                "cards": cards,
+                "applied_filters": {
+                    "tenant_id": tenant_id,
+                    "company_ids": company_ids,
+                    "low_stock_threshold": low_stock_threshold,
+                },
+            }
+
+        return await asyncio.to_thread(_build)
+
+    @staticmethod
     async def get_dashboard(
         tenant_id: str,
         start_date: Optional[str] = None,
@@ -308,7 +605,7 @@ class InventoryService:
                 trend_quants = trend_quants.filter(in_date__lte=end_date)
                 pickings = pickings.filter(scheduled_date__lte=end_date)
 
-            total_items = _to_float(quants.aggregate(total=Sum("quantity"))["total"])
+            total_items = int(quants.filter(quantity__gt=0).aggregate(total=Sum("quantity"))["total"] or 0)
             stock_status_distribution = {
                 "Available": quants.filter(quantity__gt=0, reserved_quantity__lt=F("quantity")).count(),
                 "Reserved": quants.filter(reserved_quantity__gt=0).count(),
@@ -362,10 +659,22 @@ class InventoryService:
                 "end_date": end_date,
                 "company_ids": company_ids,
             }
+            # --- Total Stock Value (quantity × standard_price) ---
+            from odoo_app.models.product import Product
+
+            stock_value_agg = quants.filter(quantity__gt=0).select_related("product").aggregate(
+                total_value=Sum(F("quantity") * F("product__standard_price"))
+            )
+            total_stock_value = _to_float(stock_value_agg["total_value"])
+
+            # Previous period stock value (simple: use moves from last 30 days to estimate change)
+            prev_total_stock_value = 0.0
+            stock_value_change_pct = 0.0
+
             return {
-                "total_stock_value": 0.0,
-                "prev_total_stock_value": 0.0,
-                "stock_value_change_pct": 0.0,
+                "total_stock_value": total_stock_value,
+                "prev_total_stock_value": prev_total_stock_value,
+                "stock_value_change_pct": stock_value_change_pct,
                 "total_items_in_stock": total_items,
                 "incoming_shipments_count": incoming,
                 "outgoing_shipments_count": outgoing,
@@ -608,7 +917,7 @@ class InventoryService:
             
             if metric in ["total_items_in_stock", "total_quantity", "total_items"]:
                 qs = quants
-                total_metric_value = _to_float(qs.aggregate(total=Sum("quantity"))["total"])
+                total_metric_value = int(qs.filter(quantity__gt=0).aggregate(total=Sum("quantity"))["total"] or 0)
             elif metric in ["incoming_shipments_count", "incoming"]:
                 is_picking_metric = True
                 if start_date:

@@ -449,11 +449,11 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, compan
 
     rows = run_query(
         f"""SELECT
-                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_receivable', 'asset_current', 'bank_and_cash')), 0) AS current_assets,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_receivable', 'asset_current', 'asset_cash', 'asset_prepayments')), 0) AS current_assets,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_non_current', 'asset_fixed')), 0) AS non_current_assets,
-                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_current', 'liability_payable')), 0) * -1 AS current_liabilities,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_current', 'liability_payable', 'liability_credit_card')), 0) * -1 AS current_liabilities,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_non_current')), 0) * -1 AS non_current_liabilities,
-                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('equity', 'equity_unaffected')), 0) * -1 AS total_equity
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('equity', 'equity_unaffected') OR l.account_type LIKE 'income%' OR l.account_type LIKE 'expense%'), 0) * -1 AS total_equity
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id

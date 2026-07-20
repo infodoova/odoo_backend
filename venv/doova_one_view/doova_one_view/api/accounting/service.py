@@ -2021,8 +2021,6 @@ class AccountingService:
                 
                 if j_type in ["bank", "cash"]:
                     stmt_qs = BankStatement.objects.filter(tenant_id=tenant_id, journal=j)
-                    if start_date:
-                        stmt_qs = stmt_qs.filter(date__gte=start_date)
                     if end_date:
                         stmt_qs = stmt_qs.filter(date__lte=end_date)
                     
@@ -2044,8 +2042,6 @@ class AccountingService:
                     else:
                         gl_qs = gl_qs.filter(account_move__journal=j)
                         
-                    if start_date:
-                        gl_qs = gl_qs.filter(account_move__date__gte=start_date)
                     if end_date:
                         gl_qs = gl_qs.filter(account_move__date__lte=end_date)
                         

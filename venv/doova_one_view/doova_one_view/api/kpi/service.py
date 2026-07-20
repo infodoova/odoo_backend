@@ -169,7 +169,7 @@ class KPIService:
             base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
             
             cash_value = _sum(AccountMoveLine.objects.filter(
-                account_type='bank_and_cash',
+                account_type='asset_cash',
                 account_move__state='posted'
             ), "balance") * base_multiplier
 
