@@ -11,6 +11,62 @@ from .prompts import AGENT_SYSTEM_PROMPT
 from .logger import log_agent_start, log_agent_complete, log_summarization, log_error, log_tool_call, log_chain_event
 
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import BaseMessage, AIMessage
+from typing import Any
+
+
+# ── Thinking-safe LLM wrapper ────────────────────────────────────────
+# When thinking mode is active, the AgentExecutor's multi-step loop sends
+# prior AI messages (including thinking blocks) back to the API. If a
+# thinking block is missing the required "thinking" text field (common
+# with streaming/adaptive mode), the API returns a 400 error.
+# This subclass intercepts every call and strips incomplete thinking
+# blocks before they ever reach the API, making multi-turn tool-calling
+# fully compatible with adaptive thinking.
+
+class ThinkingSafeChatAnthropic(ChatAnthropic):
+    """ChatAnthropic subclass that strips malformed thinking blocks
+    from messages before sending them to the Anthropic API.
+    This prevents 'thinking.thinking: Field required' errors in
+    multi-turn agent loops where thinking blocks from prior turns
+    are missing the required text content."""
+
+    @staticmethod
+    def _clean_messages(messages: list[BaseMessage]) -> list[BaseMessage]:
+        """Remove incomplete thinking blocks from message content."""
+        cleaned = []
+        for msg in messages:
+            if isinstance(msg, AIMessage) and isinstance(msg.content, list):
+                new_content = []
+                for block in msg.content:
+                    if isinstance(block, dict) and block.get("type") == "thinking":
+                        # Only keep thinking blocks that have the required "thinking" text field
+                        if block.get("thinking") and block.get("signature"):
+                            new_content.append(block)
+                        # Skip incomplete/malformed thinking blocks entirely
+                    elif isinstance(block, dict) and block.get("type") == "redacted_thinking":
+                        # Keep redacted thinking blocks only if they have "data"
+                        if block.get("data"):
+                            new_content.append(block)
+                    else:
+                        new_content.append(block)
+                # If we stripped everything and only had thinking blocks, use empty string
+                if not new_content:
+                    new_content = ""
+                msg = msg.copy(update={"content": new_content})
+            cleaned.append(msg)
+        return cleaned
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        messages = self._clean_messages(messages)
+        return super()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
+
+    def _stream(self, messages, stop=None, run_manager=None, **kwargs):
+        messages = self._clean_messages(messages)
+        yield from super()._stream(messages, stop=stop, run_manager=run_manager, **kwargs)
+
+
+# ── Agent Callback Handler ────────────────────────────────────────────
 
 class AgentCallbackHandler(BaseCallbackHandler):
     """Custom handler to bridge LangChain events with our specialized logger."""
@@ -26,17 +82,30 @@ class AgentCallbackHandler(BaseCallbackHandler):
     def on_agent_action(self, action, **kwargs):
         log_chain_event("ACTION", f"Agent selecting tool: {action.tool}")
 
+
+# ── Main Agent ────────────────────────────────────────────────────────
+
 class DoovaLangChainAgent:
     def __init__(self, model_name=None, max_tokens=None):
         self.summarizer = SummarizerNode()
-        self.llm = ChatAnthropic(
-            model=model_name or AgentConfig.FAST_MODEL,
-            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
-            max_tokens=max_tokens or AgentConfig.MAX_FAST_TOKENS,
-            model_kwargs={
+        llm_kwargs = {
+            "model": model_name or AgentConfig.FAST_MODEL,
+            "anthropic_api_key": AgentConfig.ANTHROPIC_API_KEY,
+            "max_tokens": max_tokens or AgentConfig.MAX_FAST_TOKENS,
+            "model_kwargs": {
                 "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
             }
-        )
+        }
+        
+        if getattr(AgentConfig, "ENABLE_THINKING", False):
+            model_name_used = model_name or AgentConfig.FAST_MODEL
+            if "sonnet-5" in model_name_used or "claude-3-7" in model_name_used:
+                llm_kwargs["thinking"] = {"type": "adaptive"}
+            else:
+                llm_kwargs["thinking"] = {"type": "enabled", "budget_tokens": getattr(AgentConfig, "THINKING_BUDGET", 1024)}
+                llm_kwargs["betas"] = ["output-128k-2024-02-29"]
+
+        self.llm = ThinkingSafeChatAnthropic(**llm_kwargs)
         
         self.prompt = AGENT_SYSTEM_PROMPT
         self.agent = create_tool_calling_agent(self.llm, agent_tools, self.prompt)
@@ -51,10 +120,22 @@ class DoovaLangChainAgent:
         from langchain_core.messages import HumanMessage, AIMessage
         formatted = []
         for msg in history:
+            content = msg.get("content", "")
+            
+            # Normalize content to string, stripping out complex blocks like 'thinking'
+            if isinstance(content, list):
+                text_parts = []
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text_parts.append(block.get("text", ""))
+                    elif isinstance(block, str):
+                        text_parts.append(block)
+                content = " ".join(text_parts).strip()
+                
             if msg.get("role") == "user":
-                formatted.append(HumanMessage(content=msg.get("content", "")))
+                formatted.append(HumanMessage(content=content))
             elif msg.get("role") == "assistant":
-                formatted.append(AIMessage(content=msg.get("content", "")))
+                formatted.append(AIMessage(content=content))
         return formatted
 
     def run(self, message: str, tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, chat_history: list = None, memory_summary: str = "", on_summary=None) -> str:

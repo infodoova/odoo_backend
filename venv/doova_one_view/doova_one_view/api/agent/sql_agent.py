@@ -145,12 +145,14 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
         "'off_balance'. "
         "quantity, price_unit, price_subtotal: for invoice lines. "
         "name: line description. "
-        "Revenue queries: account_type = 'income'. "
-        "Expense queries: account_type LIKE 'expense%'. "
+        "Revenue queries: account_type = 'income' AND account_code NOT IN ('60520003', '60510002'). "
+        "Expense queries: account_type LIKE 'expense%' AND account_code NOT IN ('60520003', '60510002'). "
         "COGS: account_type = 'expense_direct_cost'. "
+        "OPEX: account_type IN ('expense', 'expense_depreciation') AND account_code NOT LIKE '67%' AND account_code NOT LIKE '69%' AND account_code NOT IN ('60520003', '60510002'). "
+        "Taxes/Interest: account_code LIKE '67%' OR account_code LIKE '69%'. "
         "Receivables: account_type = 'asset_receivable'. "
         "Payables: account_type = 'liability_payable'. "
-        "P&L = SUM(credit) − SUM(debit) WHERE account_type IN ('income','income_other','expense','expense_direct_cost','expense_depreciation'). "
+        "P&L = SUM(credit) − SUM(debit) WHERE account_type IN ('income','income_other','expense','expense_direct_cost','expense_depreciation') AND account_code NOT IN ('60520003', '60510002'). "
         "Trial Balance: GROUP BY account_code, account_name → SUM(debit), SUM(credit), SUM(balance). "
         "Join chart: dim_chart_of_accounts.code = fact_account_move_lines.account_code "
         "(AND same tenant_id) for reconcile flag or full account metadata. "
@@ -361,6 +363,26 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
         "Quarterly aggregation: GROUP BY t.year, t.quarter. "
         "No tenant_id filter needed — shared across tenants."
     ),
+
+    "dim_account_journals": (
+        "Accounting journals for organizing entries (Odoo account.journal). "
+        "PK: id. FK: tenant_id, company_id (→dim_companies.id). "
+        "name: journal name (e.g. 'Bank', 'Vendor Bills'). "
+        "type values: 'sale', 'purchase', 'cash', 'bank', 'general'. "
+        "default_account_code: primary GL account for this journal. "
+        "ALWAYS filter with tenant_id AND company_id."
+    ),
+
+    "fact_account_partial_reconciles": (
+        "Reconciliation links matching payments to invoices (Odoo account.partial.reconcile). "
+        "PK: id. FK: tenant_id, company_id (→dim_companies.id), "
+        "debit_move_id (→fact_account_move_lines.id), "
+        "credit_move_id (→fact_account_move_lines.id). "
+        "$$: amount (in company currency). "
+        "max_date: the date the reconciliation happened. "
+        "Used for tracking exact payment allocations and aging calculations. "
+        "ALWAYS filter with tenant_id AND company_id."
+    )
 }
 
 

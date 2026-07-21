@@ -12,6 +12,9 @@ from .tools_refactored import (
     forecast_sales_tool,
     get_inventory_alerts_tool,
     get_inventory_efficiency_tool,
+    get_inventory_stock_table_tool,
+    get_inventory_dashboard_alerts_tool,
+    get_inventory_valuation_tool,
     get_receivables_analysis_tool,
     get_payables_analysis_tool,
     get_cash_flow_health_tool,
@@ -32,6 +35,9 @@ from .tools_refactored import (
     get_last_report_tool,
     send_alert_tool,
     send_email_tool,
+    get_bank_cash_summary_tool,
+    get_journal_cards_tool,
+    get_bank_statement_summary_tool,
     get_companies_tool,
     get_tenant_profile_tool,
 )
@@ -257,6 +263,44 @@ def inventory_efficiency(tenant_id: str, company_id: Optional[int] = None):
     Run alongside inventory_alerts for a complete inventory health picture."""
     return get_inventory_efficiency_tool(tenant_id, company_id)
 
+@tool
+def inventory_stock_table(tenant_id: str, table_type: str, company_id: Optional[int] = None, limit: int = 50, offset: int = 0):
+    """Get stock overview tables. table_type must be one of: 'low_stock', 'aging_stock', 'fast_moving'.
+    Use for: drill-down into specific inventory conditions after viewing dashboard alerts."""
+    return get_inventory_stock_table_tool(tenant_id, table_type, company_id=company_id, limit=limit, offset=offset)
+
+@tool
+def inventory_dashboard_alerts(tenant_id: str, company_id: Optional[int] = None):
+    """Get summarized dashboard counts of all 7 inventory alerts (low stock, expiring, slow moving, etc.).
+    Always use this as a first step for inventory investigations before diving into raw tables or sql queries."""
+    return get_inventory_dashboard_alerts_tool(tenant_id, company_id=company_id)
+
+@tool
+def inventory_valuation(tenant_id: str, company_id: Optional[int] = None):
+    """Get total inventory valuation and a count of products missing cost values.
+    Use for: inventory reconciliation, assessing balance sheet asset values."""
+    return get_inventory_valuation_tool(tenant_id, company_id=company_id)
+
+# ── Banking Domain ──
+
+@tool
+def bank_cash_summary(tenant_id: str, start_date: str = None, end_date: str = None, company_id: Optional[int] = None, base_currency: str = None):
+    """Get high-level bank balance, opening/closing cash balances, and cash flow breakdowns.
+    Use for: checking current liquidity, daily banking summaries, top-level cash movements."""
+    return get_bank_cash_summary_tool(tenant_id, start_date, end_date, company_id=company_id, base_currency=base_currency)
+
+@tool
+def journal_cards(tenant_id: str, start_date: str = None, end_date: str = None, company_id: Optional[int] = None, base_currency: str = None):
+    """Get performance cards broken down by Accounting Journal (Bank, Cash, Vendor Bills, etc).
+    Use for: journal-level reconciliation and viewing activity across different accounts."""
+    return get_journal_cards_tool(tenant_id, start_date, end_date, company_id=company_id, base_currency=base_currency)
+
+@tool
+def bank_statement_summary(tenant_id: str, company_id: Optional[int] = None):
+    """Get a list of the 20 most recent bank statements with opening and closing balances.
+    Use for: checking recent reconciliation activity, verifying bank feeds are up to date."""
+    return get_bank_statement_summary_tool(tenant_id, company_id=company_id)
+
 # ── Reporting Domain ─────────────────────────
 
 @tool
@@ -319,8 +363,10 @@ agent_tools = [
     tax_summary, detect_anomalies,
     # Finance — Intelligence
     period_comparison, business_health, customer_metrics,
+    # Banking
+    bank_cash_summary, journal_cards, bank_statement_summary,
     # Inventory
-    inventory_alerts, inventory_efficiency,
+    inventory_alerts, inventory_efficiency, inventory_stock_table, inventory_dashboard_alerts, inventory_valuation,
     # Reporting & Communication
     create_report, get_latest_report, send_alert, send_email,
 ]

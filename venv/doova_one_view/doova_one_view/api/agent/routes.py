@@ -106,7 +106,7 @@ async def background_retry_executor(
                     session_manager.save_summary(session_id, summary_text)
                     logger.info(f"BACKGROUND SUMMARY SAVED | Session: {session_id}")
                 
-                answer = await sync_to_async(fast_path_node.run)(
+                answer = await asyncio.to_thread(fast_path_node.run, 
                     message=user_message,
                     tenant_id=tenant_id,
                     company_id=company_id,
@@ -115,7 +115,7 @@ async def background_retry_executor(
                     on_summary=save_summary_to_db
                 )
             elif mode == "PLAN":
-                plan_result = await sync_to_async(reasoning_node.create_plan)(
+                plan_result = await asyncio.to_thread(reasoning_node.create_plan, 
                     message=user_message,
                     tenant_id=tenant_id,
                     company_id=company_id
@@ -141,7 +141,7 @@ async def background_retry_executor(
                     s.save()
                 await sync_to_async(_update_session_plan)()
             elif mode == "EXECUTE_PLAN":
-                answer = await sync_to_async(reasoning_node.execute_plan)(
+                answer = await asyncio.to_thread(reasoning_node.execute_plan, 
                     message=user_message,
                     plan=plan,
                     tenant_id=tenant_id,
@@ -248,13 +248,14 @@ async def chat_endpoint(request: Request):
     )
 
     # 2. Routing
-    decision = router_node.classify(user_message)
+    decision = await asyncio.to_thread(router_node.classify, user_message)
     
     # 2.1 Handle Plan Approval (CONFIRM path)
     if decision == "CONFIRM" and session.plan_state:
         try:
             logger.info(f"PLAN APPROVED: Executing strategic architecture for session {current_session_id}")
-            answer = reasoning_node.execute_plan(
+            answer = await asyncio.to_thread(
+                reasoning_node.execute_plan,
                 message=user_message,
                 plan=session.plan_state,
                 tenant_id=req_data.tenant_id,
@@ -322,14 +323,17 @@ async def chat_endpoint(request: Request):
                 session_manager.save_summary(current_session_id, summary_text)
                 logger.info(f"SUMMARY SAVED | Session: {current_session_id} | Length: {len(summary_text)} chars")
             
-            answer = fast_path_node.run(
-                message=user_message,
-                tenant_id=req_data.tenant_id,
-                company_id=req_data.company_id,
-                chat_history=chat_history_from_db,
-                memory_summary=db_summary,
-                on_summary=save_summary_to_db
-            )
+            def run_fast_path():
+                return fast_path_node.run(
+                    message=user_message,
+                    tenant_id=req_data.tenant_id,
+                    company_id=req_data.company_id,
+                    chat_history=chat_history_from_db,
+                    memory_summary=db_summary,
+                    on_summary=save_summary_to_db
+                )
+            
+            answer = await asyncio.to_thread(run_fast_path)
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             duration = (time.time() - request_start) * 1000
             logger.info(f"EXECUTE COMPLETE in {duration:.0f}ms | Response: \"{answer[:80]}...\"")
@@ -373,7 +377,8 @@ async def chat_endpoint(request: Request):
         # For planning, we also want to pass context if possible
         # Since create_plan doesn't take full history yet, we'll pass it via reasoning_node if updated, 
         # or just ensure the session title is used as context.
-        plan = reasoning_node.create_plan(
+        plan = await asyncio.to_thread(
+            reasoning_node.create_plan,
             message=user_message,
             tenant_id=req_data.tenant_id,
             company_id=req_data.company_id
@@ -571,7 +576,8 @@ async def run_analysis(request: Request):
     await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
 
     try:
-        answer = fast_path_node.run(
+        answer = await asyncio.to_thread(
+            fast_path_node.run,
             message=prompt,
             tenant_id=tenant_id,
             company_id=company_id,
@@ -811,7 +817,8 @@ async def approve_plan(request: ChatRequest, plan: dict):
     user_message = request.message or request.content or request.prompt or "Plan execution"
     logger.info(f"PLAN APPROVED | Session: {request.session_id}")
     try:
-        answer = reasoning_node.execute_plan(
+        answer = await asyncio.to_thread(
+            reasoning_node.execute_plan,
             message=user_message,
             plan=plan,
             tenant_id=request.tenant_id,

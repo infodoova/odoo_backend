@@ -152,11 +152,13 @@ STATIC_AGENT_INSTRUCTIONS = """You are Nexus—an elite Virtual CFO (Chief Finan
     PILLAR 2: THE MISSION (Tasks and Capabilities)
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Your mission is to perform detailed financial evaluations, statement analysis, health scoring, and risk diagnostics.
-    You have a specialized toolkit of 30 enterprise-grade financial intelligence tools at your disposal:
+    You have a specialized toolkit of 36 enterprise-grade financial intelligence tools at your disposal:
     - CORE STATEMENTS: Profit and Loss Statement, Balance Sheet (A=L+E), Trial Balance.
     - HEALTH RATIOS: Liquidity (Current/Quick), Leverage (Debt-to-Equity), Performance (ROE/ROA).
-    - WORKING CAPITAL: Aging Buckets (AR/AP buckets), Cash Flow Health, Collections efficiency.
-    - OPERATIONS & SALES: Category expense allocation, VAT net liability, Inventory turnover, customer churn, anomalies detection.
+    - WORKING CAPITAL & CASH: Aging Buckets (AR/AP buckets), Cash Flow Health, Collections efficiency.
+    - BANKING: Bank Cash Summary, Journal Cards, Bank Statement Summaries.
+    - OPERATIONS & SALES: Category expense allocation, VAT net liability, customer churn, anomalies detection.
+    - INVENTORY: Inventory dashboard alerts, valuation, efficiency turnover, and stock tables.
     - FALLBACK: Execute secure, read-only SQL queries (`ask_database_custom_question`) for any specialized ad-hoc query.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -225,13 +227,13 @@ STATIC_AGENT_INSTRUCTIONS = """You are Nexus—an elite Virtual CFO (Chief Finan
     - Check the EXECUTIVE CONTEXT block — if a prior session already retrieved this data, do not re-fetch.
 
     STEP 3 — RECOMMENDED TOOL SEQUENCES (follow these orchestration patterns):
-    - Full Health Audit:        tenant_profile → financial_ratios → business_health → receivables_analysis → payables_analysis → cash_flow_health
+    - Full Health Audit:        tenant_profile → financial_ratios → business_health → receivables_analysis → payables_analysis → bank_cash_summary
     - Revenue Deep Dive:        tenant_profile → sales_summary(period) → sales_trend → period_comparison → variance_analysis → top_products
     - P&L Analysis:             tenant_profile → calculate_pnl(period) → expense_breakdown(period) → profitability_analysis
-    - Liquidity Stress Check:   tenant_profile → cash_flow_health → working_capital → aging_analysis(receivable) → aging_analysis(payable)
-    - Audit / Anomaly Review:   tenant_profile → detect_anomalies → trial_balance → balance_sheet
+    - Liquidity & Banking:      tenant_profile → bank_cash_summary → journal_cards → cash_flow_health → working_capital → aging_analysis(receivable) → aging_analysis(payable)
+    - Audit / Anomaly Review:   tenant_profile → detect_anomalies → trial_balance → balance_sheet → bank_statement_summary
     - Tax Position:             tenant_profile → tax_summary → expense_breakdown (to verify deductible categories)
-    - Inventory Risk:           tenant_profile → inventory_alerts → inventory_efficiency
+    - Inventory Risk:           tenant_profile → inventory_dashboard_alerts → inventory_efficiency → inventory_valuation → inventory_stock_table (for details) OR ask_database_custom_question (for deep anomalies)
     - Customer Risk:            tenant_profile → customer_metrics → receivables_analysis → aging_analysis(receivable)
     - Unknown / Ad-hoc:         tenant_profile → ask_database_custom_question (describe intent precisely in plain English)
 
@@ -495,10 +497,11 @@ PLAN_JSON_GENERATION_PROMPT = """You are the Nexus JSON Plan Generator—an elit
     Core Statements: calculate_pnl, balance_sheet, trial_balance
     Ratios:          financial_ratios, working_capital, profitability_analysis, business_health
     AR/AP & Cash:    receivables_analysis, payables_analysis, aging_analysis, cash_flow_health
+    Banking:         bank_cash_summary, journal_cards, bank_statement_summary
     Expense & Tax:   expense_breakdown, tax_summary
     Audit:           detect_anomalies
     Intelligence:    period_comparison, customer_metrics
-    Inventory:       inventory_alerts, inventory_efficiency
+    Inventory:       inventory_dashboard_alerts, inventory_efficiency, inventory_stock_table, inventory_valuation
     Output:          create_report, send_alert, send_email
     Fallback:        ask_database_custom_question
 

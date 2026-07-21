@@ -12,6 +12,14 @@ from .sales import (
 from .inventory import (
     get_inventory_alerts_tool,
     get_inventory_efficiency_tool,
+    get_inventory_stock_table_tool,
+    get_inventory_dashboard_alerts_tool,
+    get_inventory_valuation_tool,
+)
+from .banking import (
+    get_bank_cash_summary_tool,
+    get_journal_cards_tool,
+    get_bank_statement_summary_tool,
 )
 from .finance import (
     get_receivables_analysis_tool,

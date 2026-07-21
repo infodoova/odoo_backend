@@ -46,8 +46,8 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
         params,
     )
 
-    total = float(summary["total_receivables"])
-    overdue = float(summary["overdue"])
+    total = float(summary.get('total_receivables'))
+    overdue = float(summary.get('overdue'))
     ratio = calculate_ratio(overdue, total)
 
     return {
@@ -57,7 +57,7 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
         "overdue_ratio": ratio,
         "risk_level": "High" if ratio >= 0.5 else "Medium" if ratio >= 0.2 else "Low",
         "top_overdue_customers": [
-            {"customer": r["partner_name"], "overdue_amount": float(r["overdue_amount"])}
+            {"customer": r.get('partner_name'), "overdue_amount": float(r.get('overdue_amount'))}
             for r in customer_rows
         ],
     }
@@ -103,8 +103,8 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, co
         params,
     )
 
-    total = float(summary["total_payables"])
-    overdue = float(summary["overdue"])
+    total = float(summary.get('total_payables'))
+    overdue = float(summary.get('overdue'))
 
     return {
         "tool_name": "get_payables_analysis_tool",
@@ -112,7 +112,7 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, co
         "overdue_payables": overdue,
         "overdue_ratio": calculate_ratio(overdue, total),
         "top_overdue_vendors": [
-            {"vendor": r["partner_name"], "overdue_amount": float(r["overdue_amount"])}
+            {"vendor": r.get('partner_name'), "overdue_amount": float(r.get('overdue_amount'))}
             for r in vendor_rows
         ],
     }
@@ -152,12 +152,12 @@ def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, co
         params,
     )
 
-    total = sum(float(r["amount"]) for r in rows)
+    total = sum(float(r.get('amount')) for r in rows)
     return {
         "tool_name": "get_expense_breakdown_tool",
         "total_expenses": total,
         "categories": [
-            {"category": r["category"], "amount": float(r["amount"]), "pct_of_total": round(calculate_ratio(float(r["amount"]), total) * 100, 1)}
+            {"category": r.get('category'), "amount": float(r.get('amount')), "pct_of_total": round(calculate_ratio(float(r.get('amount')), total) * 100, 1)}
             for r in rows
         ],
     }
@@ -244,11 +244,11 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, company
     return {
         "tool_name": "detect_anomalies_tool",
         "unbalanced_entries": [
-            {"entry": r["move_ref"], "debit": float(r["total_debit"]), "credit": float(r["total_credit"]), "variance": float(r["variance"])}
+            {"entry": r.get('move_ref'), "debit": float(r.get('total_debit')), "credit": float(r.get('total_credit')), "variance": float(r.get('variance'))}
             for r in unbalanced
         ],
         "statistical_outliers": [
-            {"entry": r["move_ref"], "account": r["account_name"], "amount": float(r["balance"]), "date": str(r["date"])}
+            {"entry": r.get('move_ref'), "account": r.get('account_name'), "amount": float(r.get('balance')), "date": str(r.get('date'))}
             for r in outliers
         ],
         "risk_level": "High" if len(unbalanced) > 3 or len(outliers) > 5 else "Medium" if unbalanced or outliers else "Low",
@@ -283,13 +283,13 @@ def get_period_comparison_tool(tenant_id: str, company_id: int | None = None, co
     periods = []
     for i, r in enumerate(rows):
         entry = {
-            "period": str(r["period"]),
-            "revenue": float(r["revenue"]),
-            "orders": int(r["orders"]),
+            "period": str(r.get('period')),
+            "revenue": float(r.get('revenue')),
+            "orders": int(r.get('orders')),
         }
         if i + 1 < len(rows):
             prev = float(rows[i + 1]["revenue"])
-            change = float(r["revenue"]) - prev
+            change = float(r.get('revenue')) - prev
             entry["change"] = change
             entry["change_pct"] = round(calculate_ratio(change, prev) * 100, 1)
         periods.append(entry)
@@ -311,10 +311,10 @@ def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, com
     ar = get_receivables_analysis_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     ap = get_payables_analysis_tool(tenant_id, company_id=company_id, company_ids=company_ids)
 
-    net_position = ar["total_receivables"] - ap["total_payables"]
-    overdue_exposure = ar["overdue_receivables"] + ap["overdue_payables"]
+    net_position = ar.get('total_receivables') - ap.get('total_payables')
+    overdue_exposure = ar.get('overdue_receivables') + ap.get('overdue_payables')
 
-    if net_position > 0 and ar["overdue_ratio"] < 0.2:
+    if net_position > 0 and ar.get('overdue_ratio') < 0.2:
         status = "Healthy"
     elif net_position > 0:
         status = "Stable"
@@ -323,8 +323,8 @@ def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, com
 
     return {
         "tool_name": "get_cash_flow_health_tool",
-        "accounts_receivable": ar["total_receivables"],
-        "accounts_payable": ap["total_payables"],
+        "accounts_receivable": ar.get('total_receivables'),
+        "accounts_payable": ap.get('total_payables'),
         "net_position": net_position,
         "total_overdue_exposure": overdue_exposure,
         "liquidity_status": status,
@@ -429,11 +429,11 @@ def analyze_profitability_tool(tenant_id: str, company_id: int | None = None, co
     pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     return {
         "tool_name": "analyze_profitability_tool",
-        "gross_profit": pnl["gross_profit"],
-        "net_profit": pnl["net_profit"],
-        "gross_margin_pct": pnl["gross_margin_pct"],
-        "net_margin_pct": pnl["net_margin_pct"],
-        "status": "Healthy" if pnl["net_profit"] > 0 else "Critical",
+        "gross_profit": pnl.get('gross_profit'),
+        "net_profit": pnl.get('net_profit'),
+        "gross_margin_pct": pnl.get('gross_margin_pct'),
+        "net_margin_pct": pnl.get('net_margin_pct'),
+        "status": "Healthy" if pnl.get('net_profit') > 0 else "Critical",
     }
 
 
@@ -524,11 +524,11 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, compan
         "tool_name": "get_trial_balance_tool",
         "accounts": [
             {
-                "code": r["account_code"],
-                "name": r["account_name"],
-                "debit": float(r["total_debit"]),
-                "credit": float(r["total_credit"]),
-                "balance": float(r["balance"]),
+                "code": r.get('account_code'),
+                "name": r.get('account_name'),
+                "debit": float(r.get('total_debit')),
+                "credit": float(r.get('total_credit')),
+                "balance": float(r.get('balance')),
             }
             for r in rows
         ],
@@ -550,12 +550,12 @@ def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, com
     bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
 
-    current_ratio = calculate_ratio(bs["current_assets"], bs["current_liabilities"])
+    current_ratio = calculate_ratio(bs.get('current_assets'), bs.get('current_liabilities'))
     # Quick ratio approximation: current assets minus inventory value
-    quick_ratio = calculate_ratio(bs["current_assets"] * 0.8, bs["current_liabilities"])
-    debt_to_equity = calculate_ratio(bs["total_liabilities"], bs["total_equity"])
-    roe = calculate_ratio(pnl["net_profit"], bs["total_equity"])
-    roa = calculate_ratio(pnl["net_profit"], bs["total_assets"])
+    quick_ratio = calculate_ratio(bs.get('current_assets') * 0.8, bs.get('current_liabilities'))
+    debt_to_equity = calculate_ratio(bs.get('total_liabilities'), bs.get('total_equity'))
+    roe = calculate_ratio(pnl.get('net_profit'), bs.get('total_equity'))
+    roa = calculate_ratio(pnl.get('net_profit'), bs.get('total_assets'))
 
     return {
         "tool_name": "get_financial_ratios_tool",
@@ -564,8 +564,8 @@ def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, com
         "debt_to_equity": round(debt_to_equity, 2),
         "return_on_equity_pct": round(roe * 100, 2),
         "return_on_assets_pct": round(roa * 100, 2),
-        "gross_margin_pct": pnl["gross_margin_pct"],
-        "net_margin_pct": pnl["net_margin_pct"],
+        "gross_margin_pct": pnl.get('gross_margin_pct'),
+        "net_margin_pct": pnl.get('net_margin_pct'),
         "assessment": _assess_ratios(current_ratio, debt_to_equity),
     }
 
@@ -586,13 +586,13 @@ def _assess_ratios(current_ratio: float, debt_to_equity: float) -> str:
 def get_working_capital_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
-    wc = bs["current_assets"] - bs["current_liabilities"]
-    wc_ratio = calculate_ratio(bs["current_assets"], bs["current_liabilities"])
+    wc = bs.get('current_assets') - bs.get('current_liabilities')
+    wc_ratio = calculate_ratio(bs.get('current_assets'), bs.get('current_liabilities'))
 
     return {
         "tool_name": "get_working_capital_tool",
-        "current_assets": bs["current_assets"],
-        "current_liabilities": bs["current_liabilities"],
+        "current_assets": bs.get('current_assets'),
+        "current_liabilities": bs.get('current_liabilities'),
         "working_capital": wc,
         "working_capital_ratio": round(wc_ratio, 2),
         "status": "Positive" if wc > 0 else "Negative — liquidity risk",
@@ -612,12 +612,12 @@ def get_business_health_score_tool(tenant_id: str, company_id: int | None = None
     bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
 
     # Weighted scoring: Profitability (35%), Liquidity (25%), Leverage (20%), Collections (20%)
-    profitability_score = min(35, max(0, pnl["net_margin_pct"] * 3.5))
-    current_ratio = calculate_ratio(bs["current_assets"], bs["current_liabilities"])
+    profitability_score = min(35, max(0, pnl.get('net_margin_pct') * 3.5))
+    current_ratio = calculate_ratio(bs.get('current_assets'), bs.get('current_liabilities'))
     liquidity_score = min(25, current_ratio * 12.5)
-    debt_to_equity = calculate_ratio(bs["total_liabilities"], bs["total_equity"])
+    debt_to_equity = calculate_ratio(bs.get('total_liabilities'), bs.get('total_equity'))
     leverage_score = max(0, 20 - (debt_to_equity * 10))
-    collection_score = max(0, 20 - (ar["overdue_ratio"] * 40))
+    collection_score = max(0, 20 - (ar.get('overdue_ratio') * 40))
 
     total = round(profitability_score + liquidity_score + leverage_score + collection_score, 1)
 
@@ -682,7 +682,7 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, com
         "retention_rate_pct": round(retention, 1),
         "churn_risk": "Low" if retention > 60 else "Medium" if retention > 30 else "High",
         "top_customers": [
-            {"name": r["partner_name"], "orders": int(r["orders"]), "revenue": float(r["revenue"])}
+            {"name": r.get('partner_name'), "orders": int(r.get('orders')), "revenue": float(r.get('revenue'))}
             for r in top
         ],
     }

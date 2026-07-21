@@ -40,7 +40,7 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
     if end_date: query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"; params["end_date"] = end_date
     query += " GROUP BY l.product_id, p.name ORDER BY revenue DESC LIMIT :limit"
     rows = run_query(query, params)
-    return {"tool_name": "get_top_products_tool", "products": [{"product": r["product_name"], "revenue": float(r["revenue"]), "quantity": float(r["quantity"])} for r in rows]}
+    return {"tool_name": "get_top_products_tool", "products": [{"product": r.get('product_name'), "revenue": float(r.get('revenue')), "quantity": float(r.get('quantity'))} for r in rows]}
 
 def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
@@ -50,11 +50,11 @@ def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, com
     query += f_sql + f" GROUP BY period ORDER BY period ASC"
     params.update(f_params)
     rows = run_query(query, params)
-    return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r["period"]), "revenue": float(r["revenue"]), "order_count": int(r["order_count"])} for r in rows]}
+    return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r.get('period')), "revenue": float(r.get('revenue')), "order_count": int(r.get('order_count'))} for r in rows]}
 
 def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None) -> dict:
     data = get_time_series_data_tool(tenant_id, company_id=company_id, company_ids=company_ids, granularity=granularity, base_currency=base_currency)
-    return {"tool_name": "get_sales_chart_data_tool", "chart": {"type": "line", "data": data["points"]}}
+    return {"tool_name": "get_sales_chart_data_tool", "chart": {"type": "line", "data": data.get('points')}}
 
 def analyze_variance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
@@ -62,8 +62,8 @@ def analyze_variance_tool(tenant_id: str, company_id: int | None = None, company
     rows = run_query(query, {"tenant_id": tenant_id})
     if len(rows) < 2: return {"status": "not_enough_data"}
     curr, prev = rows[0], rows[1]
-    change = float(curr["revenue"]) - float(prev["revenue"])
-    return {"tool_name": "analyze_variance_tool", "current": float(curr["revenue"]), "previous": float(prev["revenue"]), "change": change}
+    change = float(curr.get('revenue')) - float(prev.get('revenue'))
+    return {"tool_name": "analyze_variance_tool", "current": float(curr.get('revenue')), "previous": float(prev.get('revenue')), "change": change}
 
 def forecast_sales_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
     params = {"tenant_id": tenant_id}
@@ -87,14 +87,14 @@ def forecast_sales_tool(tenant_id: str, company_id: int | None = None, company_i
     if len(rows) < 2:
         return {"tool_name": "forecast_sales_tool", "status": "insufficient_data", "message": "Need at least 2 months of data to forecast."}
 
-    revenues = [float(r["revenue"]) for r in rows]
+    revenues = [float(r.get('revenue')) for r in rows]
     avg_3m = sum(revenues[-3:]) / min(3, len(revenues[-3:]))
     trend = revenues[-1] - revenues[-2] if len(revenues) >= 2 else 0
     forecast_next = round(avg_3m + (trend * 0.5), 2)
 
     return {
         "tool_name": "forecast_sales_tool",
-        "historical_months": [{"month": str(r["month"]), "revenue": float(r["revenue"])} for r in rows],
+        "historical_months": [{"month": str(r.get('month')), "revenue": float(r.get('revenue'))} for r in rows],
         "moving_average_3m": round(avg_3m, 2),
         "trend_direction": "Upward" if trend > 0 else "Downward" if trend < 0 else "Flat",
         "forecast_next_month": forecast_next,

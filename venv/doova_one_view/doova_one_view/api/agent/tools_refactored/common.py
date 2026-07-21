@@ -57,7 +57,7 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None) -> di
     return {
         "tool_name": "get_tenant_profile_tool",
         "companies": [
-            {"name": r["name"], "industry": r["industry"], "type": r["company_type"], "currency": r["currency"]}
+            {"name": r.get('name'), "industry": r.get('industry'), "type": r.get('company_type'), "currency": r.get('currency')}
             for r in rows
         ],
         "inferred_business_model": inferred_type,

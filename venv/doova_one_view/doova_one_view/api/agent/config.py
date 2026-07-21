@@ -26,15 +26,19 @@ class AgentConfig:
 
     # ── Claude models ─────────────────────────────────────────────────
     ROUTER_MODEL = "claude-haiku-4-5-20251001"
-    FAST_MODEL = "claude-sonnet-4-6"
+    FAST_MODEL = "claude-sonnet-5"
     REASONING_MODEL = "claude-opus-4-8"
     SUMMARIZER_MODEL = "claude-haiku-4-5-20251001"
     SQL_AGENT_MODEL = "claude-haiku-4-5-20251001"
 
+    # ── Extended Capabilities ─────────────────────────────────────────
+    ENABLE_THINKING = True
+    THINKING_BUDGET = 32000
+
     # ── Token budgets ─────────────────────────────────────────────────
     # 8192 supports the CFO INTERNAL THOUGHT PROCESS + STRATEGIC RECOMMENDATION
     # sections without truncation on compound multi-tool analyses.
-    MAX_FAST_TOKENS = 4096
+    MAX_FAST_TOKENS = 64000
     MAX_REASONING_TOKENS = 8000
     MAX_ROUTER_TOKENS = 20
     # 1024 ensures the summarizer captures exact KPI numbers and date ranges

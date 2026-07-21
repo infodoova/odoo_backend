@@ -36,8 +36,8 @@ def get_inventory_alerts_tool(
 
     return {
         "tool_name": "get_inventory_alerts_tool",
-        "low_stock_items": [{"product": r["product_name"], "available": float(r["available"]), "location": r["location_name"]} for r in low_stock_rows],
-        "expiring_soon": [{"lot": r["name"], "product": r["product_name"], "expiration_date": str(r["expiration_date"])} for r in expiring_rows]
+        "low_stock_items": [{"product": r.get('product_name'), "available": float(r.get('available')), "location": r.get('location_name')} for r in low_stock_rows],
+        "expiring_soon": [{"lot": r.get('name'), "product": r.get('product_name'), "expiration_date": str(r.get('expiration_date'))} for r in expiring_rows]
     }
 
 def get_inventory_efficiency_tool(
@@ -67,7 +67,7 @@ def get_inventory_efficiency_tool(
     """, params)
 
     inv = inv_rows[0]; move = move_rows[0]
-    total_val = float(inv["total_value"]); move_val = float(move["move_value"])
+    total_val = float(inv.get('total_value')); move_val = float(move.get('move_value'))
     turnover = calculate_ratio(move_val, total_val)
 
     return {
@@ -77,3 +77,40 @@ def get_inventory_efficiency_tool(
         "days_inventory_on_hand": 365 / turnover if turnover > 0 else None,
         "efficiency_rating": "High" if turnover > 6 else "Medium" if turnover >= 3 else "Low"
     }
+
+
+def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: int | None = None, limit: int = 25, offset: int = 0) -> dict:
+    from asgiref.sync import async_to_sync
+    from doova_one_view.api.inventory.service import InventoryService
+    from .common import normalize_company_ids
+    company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    res = async_to_sync(InventoryService.get_stock_table)(
+        tenant_id=tenant_id,
+        table_type=table_type,
+        company_ids=company_ids,
+        limit=limit,
+        offset=offset
+    )
+    return {"tool_name": "get_inventory_stock_table_tool", **res}
+
+def get_inventory_dashboard_alerts_tool(tenant_id: str, company_id: int | None = None) -> dict:
+    from asgiref.sync import async_to_sync
+    from doova_one_view.api.inventory.service import InventoryService
+    from .common import normalize_company_ids
+    company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    res = async_to_sync(InventoryService.get_alerts)(
+        tenant_id=tenant_id,
+        company_ids=company_ids
+    )
+    return {"tool_name": "get_inventory_dashboard_alerts_tool", **res}
+
+def get_inventory_valuation_tool(tenant_id: str, company_id: int | None = None) -> dict:
+    from asgiref.sync import async_to_sync
+    from doova_one_view.api.inventory.service import InventoryService
+    from .common import normalize_company_ids
+    company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    res = async_to_sync(InventoryService.get_inventory_summary)(
+        tenant_id=tenant_id,
+        company_ids=company_ids
+    )
+    return {"tool_name": "get_inventory_valuation_tool", **res}

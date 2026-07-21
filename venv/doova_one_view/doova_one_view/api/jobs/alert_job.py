@@ -153,12 +153,14 @@ logger = logging.getLogger(__name__)
 _CHECK_INTERVAL_SECONDS = 60  # 1 minute
 
 DEFAULT_ALERT_PROMPT = (
-    "Check ALL available business data (sales, purchases, inventory, finance, "
-    "receivables, payables) from the last 24 hours. Look for: unusual spikes or "
-    "drops in revenue (>20%), large unexpected expenses, overdue invoices past "
-    "30 days, abnormal inventory movements, sudden changes in order volumes, "
-    "duplicate or suspicious transactions, and any other anomaly a CFO should "
-    "know about immediately."
+    "<monitoring_criteria>\n"
+    "1. Check ALL available business data (sales, purchases, inventory, finance, receivables, payables) from the last 24 hours.\n"
+    "2. Look for unusual spikes or drops in revenue (>20%).\n"
+    "3. Identify large unexpected expenses or duplicate/suspicious transactions.\n"
+    "4. Highlight overdue invoices past 30 days.\n"
+    "5. Flag abnormal inventory movements or sudden changes in order volumes.\n"
+    "6. Report any other anomaly a CFO should know about immediately.\n"
+    "</monitoring_criteria>"
 )
 
 
@@ -413,18 +415,27 @@ class AlertJobManager:
         )
 
         full_prompt = (
-            f"You are a vigilance AI monitoring a business {company_ctx} "
-            f"for unusual or suspicious activity.\n\n"
-            f"Use all relevant tools (sales, finance, inventory, receivables, trial balance, "
-            f"detect_anomalies) before making your assessment.\n\n"
-            f"CRITICAL FORMAT RULE: The very first line of your STRATEGIC RECOMMENDATION "
-            f"section MUST be exactly one of:\n"
-            f"  ALERT: <one-line headline>   — if you found unusual or concerning activity\n"
-            f"  OK: <one-line headline>       — if everything looks normal\n"
-            f"Do not add any words before ALERT: or OK: on that line. "
-            f"Follow it with your full detailed findings.\n\n"
-            f"Only flag genuine data anomalies — not missing data or date range issues.\n\n"
-            f"What to check:\n{effective_prompt}"
+            f"<role>\n"
+            f"You are an elite vigilance AI and forensic auditor monitoring a business {company_ctx} for unusual, risky, or suspicious activity. "
+            f"Your expertise lies in identifying financial anomalies, inventory shrinkage, and operational risks.\n"
+            f"</role>\n\n"
+            f"<instructions>\n"
+            f"1. Use all relevant tools (sales, finance, inventory, receivables, trial balance, detect_anomalies) to gather complete context before making an assessment.\n"
+            f"2. Carefully analyze the data according to the criteria defined in the <user_request>.\n"
+            f"3. Only flag genuine data anomalies (e.g., sudden spikes, drastic drops, negative cash flows) — ignore missing data or date range issues.\n"
+            f"4. Before writing your final report, enclose your internal reasoning within <thinking> tags to plan your tool usage and analyze the data step-by-step.\n"
+            f"5. After thinking, output your final assessment matching the strict format defined in <output_format>.\n"
+            f"</instructions>\n\n"
+            f"<output_format>\n"
+            f"Your response must begin with a STRATEGIC RECOMMENDATION section. The very first line of this section MUST be exactly one of the following:\n"
+            f"  ALERT: <one-line headline>\n"
+            f"  OK: <one-line headline>\n\n"
+            f"Do not add any text, markdown, or greetings before the 'ALERT:' or 'OK:' line. "
+            f"Following the headline, provide your full detailed findings and analysis.\n"
+            f"</output_format>\n\n"
+            f"<user_request>\n"
+            f"{effective_prompt}\n"
+            f"</user_request>"
         )
 
         agent = DoovaLangChainAgent()
