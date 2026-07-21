@@ -64,3 +64,12 @@ from .communication import (
     send_alert_tool,
     send_email_tool,
 )
+
+from .sales_v2 import (
+    get_salesperson_performance_tool,
+    get_sales_pipeline_tool,
+    get_discount_leakage_tool,
+    get_customer_lifetime_value_tool,
+    get_order_to_cash_cycle_tool,
+    get_revenue_by_category_tool,
+)

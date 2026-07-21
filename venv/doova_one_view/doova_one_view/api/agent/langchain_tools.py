@@ -53,6 +53,12 @@ from .tools_refactored import (
     get_interest_coverage_tool,
     get_revenue_segmentation_tool,
     get_payment_reconciliation_tool,
+    get_salesperson_performance_tool,
+    get_sales_pipeline_tool,
+    get_discount_leakage_tool,
+    get_customer_lifetime_value_tool,
+    get_order_to_cash_cycle_tool,
+    get_revenue_by_category_tool,
 )
 
 # ── SQL Fallback ─────────────────────────────
@@ -125,6 +131,43 @@ def sales_forecast(tenant_id: str, company_id: Optional[int] = None, base_curren
     Use for: projected revenue, future planning, budget gap analysis.
     Always pair the forecast output with variance_analysis to show the historical baseline."""
     return forecast_sales_tool(tenant_id, company_id, base_currency=base_currency)
+
+@tool
+def salesperson_performance(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Rank sales representatives by total revenue, order count, and margin.
+    Use for: 'who is our best salesperson?', 'sales team performance review',
+    'revenue by user', 'sales rep commissions'."""
+    return get_salesperson_performance_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
+
+@tool
+def sales_pipeline(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Analyze the sales pipeline by counting open quotes vs won orders and calculating conversion rates.
+    Use for: 'how is our pipeline?', 'what is our close rate?', 'open quotations value'."""
+    return get_sales_pipeline_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
+
+@tool
+def discount_leakage(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Identify margin leakage through explicit discounts on sales orders.
+    Use for: 'are we discounting too much?', 'margin leakage', 'top discounted products'."""
+    return get_discount_leakage_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
+
+@tool
+def customer_lifetime_value(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
+    """Calculate the lifetime value (CLV) of top customers and group them into tiers (Platinum, Gold, Silver, Bronze).
+    Use for: 'who are our most valuable customers?', 'CLV analysis', 'top clients by lifetime revenue'."""
+    return get_customer_lifetime_value_tool(tenant_id, company_id, base_currency=base_currency)
+
+@tool
+def order_to_cash_cycle(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Measure the Order-to-Cash (O2C) cycle by calculating the average days between sales order confirmation and invoicing.
+    Use for: 'how long does it take to get paid?', 'O2C cycle time', 'order to invoice speed'."""
+    return get_order_to_cash_cycle_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
+
+@tool
+def revenue_by_category(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Break down total sales revenue by product category hierarchy.
+    Use for: 'which product categories drive our revenue?', 'sales by category'."""
+    return get_revenue_by_category_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
 
 # ── Finance Domain ───────────────────────────
 
@@ -462,6 +505,7 @@ agent_tools = [
     ask_database_custom_question, list_companies, tenant_profile,
     # Sales
     sales_summary, top_products, sales_trend, variance_analysis, sales_forecast,
+    salesperson_performance, sales_pipeline, discount_leakage, customer_lifetime_value, order_to_cash_cycle, revenue_by_category,
     # Finance — Core Statements
     calculate_pnl, balance_sheet, trial_balance, cash_flow_statement,
     # Finance — Analysis
