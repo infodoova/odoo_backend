@@ -73,3 +73,15 @@ from .sales_v2 import (
     get_order_to_cash_cycle_tool,
     get_revenue_by_category_tool,
 )
+
+# Phase 4: Inventory & Operations
+from .inventory_v2 import (
+    get_reorder_recommendations_tool,
+    get_abc_analysis_tool,
+    get_warehouse_utilization_tool,
+    get_fulfillment_rate_tool,
+    get_backorder_aging_tool,
+    get_supplier_lead_time_tool,
+)
+
+)

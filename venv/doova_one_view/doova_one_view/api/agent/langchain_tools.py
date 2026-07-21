@@ -498,6 +498,50 @@ def payment_reconciliation(tenant_id: str, company_id: Optional[int] = None, bas
     Use for: 'unapplied cash', 'payments not matched', 'AR reconciliation issues'."""
     return get_payment_reconciliation_tool(tenant_id, company_id, base_currency=base_currency)
 
+# ── Phase 4: Inventory & Operations ─────────────────
+from doova_one_view.api.agent.tools_refactored import (
+    get_reorder_recommendations_tool,
+    get_abc_analysis_tool,
+    get_warehouse_utilization_tool,
+    get_fulfillment_rate_tool,
+    get_backorder_aging_tool,
+    get_supplier_lead_time_tool,
+)
+
+@tool
+def reorder_recommendations(tenant_id: str, company_id: Optional[int] = None, days_history: int = 30):
+    """Recommend reorder quantities for products where current stock is too low compared to recent sales velocity.
+    Use for: 'what should we order?', 'low stock warnings', 'replenishment suggestions'."""
+    return get_reorder_recommendations_tool(tenant_id, company_id, days_history)
+
+@tool
+def abc_analysis(tenant_id: str, company_id: Optional[int] = None):
+    """Classify inventory into A (high value), B (medium), and C (low) categories based on revenue contribution.
+    Use for: 'inventory classification', 'what are our most important products?', 'ABC analysis'."""
+    return get_abc_analysis_tool(tenant_id, company_id)
+
+@tool
+def warehouse_utilization(tenant_id: str, company_id: Optional[int] = None):
+    """Analyze stock quantities and valuation grouped by physical warehouse location.
+    Use for: 'stock by location', 'warehouse value', 'where is our inventory?'."""
+    return get_warehouse_utilization_tool(tenant_id, company_id)
+
+@tool
+def fulfillment_rate(tenant_id: str, company_id: Optional[int] = None):
+    """Calculate the percentage of outgoing deliveries that were delivered on-time.
+    Use for: 'fulfillment rate', 'on time delivery', 'shipping performance'."""
+    return get_fulfillment_rate_tool(tenant_id, company_id)
+
+@tool
+def backorder_aging(tenant_id: str, company_id: Optional[int] = None):
+    """Identify the oldest unfulfilled stock moves (backorders) and their aging in days.
+    Use for: 'oldest backorders', 'pending shipments', 'what orders are delayed?'."""
+    return get_backorder_aging_tool(tenant_id, company_id)
+
+@tool
+def supplier_lead_time(tenant_id: str, company_id: Optional[int] = None):
+    """Calculate average actual lead time vs scheduled for incoming stock pickings by supplier.
+    Use for: 'which suppliers are late?', 'supplier delivery performance', 'average delay'."""
 # ── Consolidated Agent Tools ─────────────────
 
 agent_tools = [
@@ -524,6 +568,7 @@ agent_tools = [
     po_fulfillment, purchase_trend,
     # Inventory
     inventory_alerts, inventory_efficiency, inventory_stock_table, inventory_dashboard_alerts, inventory_valuation,
+    reorder_recommendations, abc_analysis, warehouse_utilization, fulfillment_rate, backorder_aging, supplier_lead_time,
     # Reporting & Communication
     create_report, get_latest_report, send_alert, send_email,
 ]
