@@ -34,7 +34,7 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
     customer_rows = run_query(
         f"""SELECT p.name AS partner_name, COALESCE(SUM({amount_m_col}), 0) AS overdue_amount
             FROM fact_account_moves m
-            JOIN dim_partners p ON m.partner_id = p.odoo_id AND m.tenant_id = p.tenant_id
+            JOIN dim_partners p ON m.partner_id = p.id AND m.tenant_id = p.tenant_id
             WHERE m.tenant_id = :tenant_id
               AND m.move_type = 'out_invoice'
               AND m.state = 'posted'
@@ -91,7 +91,7 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, co
     vendor_rows = run_query(
         f"""SELECT p.name AS partner_name, COALESCE(SUM({amount_m_col}), 0) AS overdue_amount
             FROM fact_account_moves m
-            JOIN dim_partners p ON m.partner_id = p.odoo_id AND m.tenant_id = p.tenant_id
+            JOIN dim_partners p ON m.partner_id = p.id AND m.tenant_id = p.tenant_id
             WHERE m.tenant_id = :tenant_id
               AND m.move_type = 'in_invoice'
               AND m.state = 'posted'
@@ -241,6 +241,38 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, company
         params,
     )
 
+    # 3. Duplicate invoices (same partner, same amount, same date)
+    f_sql_m, f_params_m = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="m.company_id")
+    params.update(f_params_m)
+    duplicates = run_query(
+        f"""SELECT m.date, p.name AS partner_name, m.amount_total AS amount, COUNT(*) AS occurrences
+            FROM fact_account_moves m
+            LEFT JOIN dim_partners p ON m.partner_id = p.id AND m.tenant_id = p.tenant_id
+            WHERE m.tenant_id = :tenant_id AND m.state = 'posted' AND m.move_type IN ('out_invoice', 'in_invoice') {f_sql_m}
+            GROUP BY m.date, p.name, m.amount_total
+            HAVING COUNT(*) > 1
+            LIMIT :limit""",
+        params,
+    )
+
+    # 4. Round numbers (amount % 1000 = 0)
+    round_numbers = run_query(
+        f"""SELECT m.odoo_name AS move_ref, m.amount_total, m.date
+            FROM fact_account_moves m
+            WHERE m.tenant_id = :tenant_id AND m.state = 'posted' AND m.amount_total >= 1000 AND MOD(m.amount_total::numeric, 1000) = 0 {f_sql_m}
+            LIMIT :limit""",
+        params,
+    )
+
+    # 5. Weekend postings
+    weekend_postings = run_query(
+        f"""SELECT m.odoo_name AS move_ref, m.amount_total, m.date
+            FROM fact_account_moves m
+            WHERE m.tenant_id = :tenant_id AND m.state = 'posted' AND EXTRACT(ISODOW FROM m.date) IN (6, 7) {f_sql_m}
+            LIMIT :limit""",
+        params,
+    )
+
     return {
         "tool_name": "detect_anomalies_tool",
         "unbalanced_entries": [
@@ -251,7 +283,19 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, company
             {"entry": r.get('move_ref'), "account": r.get('account_name'), "amount": float(r.get('balance')), "date": str(r.get('date'))}
             for r in outliers
         ],
-        "risk_level": "High" if len(unbalanced) > 3 or len(outliers) > 5 else "Medium" if unbalanced or outliers else "Low",
+        "duplicate_invoices": [
+            {"date": str(r.get('date')), "partner": r.get('partner_name'), "amount": float(r.get('amount')), "occurrences": int(r.get('occurrences'))}
+            for r in duplicates
+        ],
+        "round_number_entries": [
+            {"entry": r.get('move_ref'), "amount": float(r.get('amount_total')), "date": str(r.get('date'))}
+            for r in round_numbers
+        ],
+        "weekend_postings": [
+            {"entry": r.get('move_ref'), "amount": float(r.get('amount_total')), "date": str(r.get('date'))}
+            for r in weekend_postings
+        ],
+        "risk_level": "High" if len(unbalanced) > 3 or len(outliers) > 5 or duplicates else "Medium" if unbalanced or outliers or round_numbers else "Low",
     }
 
 
@@ -441,11 +485,16 @@ def analyze_profitability_tool(tenant_id: str, company_id: int | None = None, co
 # 6. BALANCE SHEET
 # ──────────────────────────────────────────────
 
-def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None) -> dict:
+def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, as_of_date: str | None = None, base_currency: str | None = None) -> dict:
     balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
     params = {"tenant_id": tenant_id}
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
+    
+    date_sql = ""
+    if as_of_date:
+        date_sql += " AND m.date <= :as_of_date"
+        params["as_of_date"] = as_of_date
 
     rows = run_query(
         f"""SELECT
@@ -458,7 +507,7 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, compan
             JOIN fact_account_moves m ON l.account_move_id = m.id
             WHERE l.tenant_id = :tenant_id
               AND m.state = 'posted'
-              {f_sql}""",
+              {f_sql} {date_sql}""",
         params,
     )
 
@@ -475,6 +524,7 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, compan
 
     return {
         "tool_name": "get_balance_sheet_tool",
+        "as_of_date": as_of_date or "Current",
         "current_assets": ca,
         "non_current_assets": nca,
         "total_assets": total_assets,
@@ -549,10 +599,11 @@ def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, com
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+    inv_data = get_inventory_efficiency_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+    inventory_value = inv_data.get("total_inventory_value", 0)
 
     current_ratio = calculate_ratio(bs.get('current_assets'), bs.get('current_liabilities'))
-    # Quick ratio approximation: current assets minus inventory value
-    quick_ratio = calculate_ratio(bs.get('current_assets') * 0.8, bs.get('current_liabilities'))
+    quick_ratio = calculate_ratio(bs.get('current_assets') - inventory_value, bs.get('current_liabilities'))
     debt_to_equity = calculate_ratio(bs.get('total_liabilities'), bs.get('total_equity'))
     roe = calculate_ratio(pnl.get('net_profit'), bs.get('total_equity'))
     roa = calculate_ratio(pnl.get('net_profit'), bs.get('total_assets'))
@@ -667,7 +718,7 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, com
     top = run_query(
         f"""SELECT p.name AS partner_name, COUNT(*) AS orders, COALESCE(SUM({amount_col}), 0) AS revenue
             FROM fact_sales_orders s
-            JOIN dim_partners p ON s.partner_id = p.odoo_id AND s.tenant_id = p.tenant_id
+            JOIN dim_partners p ON s.partner_id = p.id AND s.tenant_id = p.tenant_id
             WHERE s.tenant_id = :tenant_id AND s.state IN ('sale', 'done') {f_sql}
             GROUP BY p.name
             ORDER BY revenue DESC

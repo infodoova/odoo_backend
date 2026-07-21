@@ -40,6 +40,19 @@ from .tools_refactored import (
     get_bank_statement_summary_tool,
     get_companies_tool,
     get_tenant_profile_tool,
+    get_purchase_summary_tool,
+    get_top_vendors_tool,
+    get_vendor_performance_tool,
+    get_procurement_category_breakdown_tool,
+    get_purchase_vs_sales_margin_tool,
+    get_po_fulfillment_tool,
+    get_purchase_trend_tool,
+    get_cash_flow_statement_tool,
+    get_working_capital_efficiency_tool,
+    get_period_comparison_pnl_tool,
+    get_interest_coverage_tool,
+    get_revenue_segmentation_tool,
+    get_payment_reconciliation_tool,
 )
 
 # ── SQL Fallback ─────────────────────────────
@@ -301,6 +314,64 @@ def bank_statement_summary(tenant_id: str, company_id: Optional[int] = None):
     Use for: checking recent reconciliation activity, verifying bank feeds are up to date."""
     return get_bank_statement_summary_tool(tenant_id, company_id=company_id)
 
+# ── Purchasing Domain ────────────────────────
+
+@tool
+def purchase_summary(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Get total confirmed purchase spend, PO count, and average PO value for a given period.
+    Always pass explicit ISO start_date and end_date (YYYY-MM-DD) when a time period is mentioned.
+    Use for: total procurement spend, vendor payment totals, purchase volume metrics.
+    This is the procurement counterpart to sales_summary — use it whenever procurement questions arise."""
+    return get_purchase_summary_tool(tenant_id, company_id, start_date=start_date, end_date=end_date, base_currency=base_currency)
+
+@tool
+def top_vendors(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, limit: int = 10, base_currency: str = None):
+    """Rank vendors/suppliers by total confirmed purchase spend.
+    Returns: vendor name, total spend, PO count, average PO value.
+    Use for: 'who are our top suppliers?', 'biggest vendors', 'where are we spending most?',
+    vendor concentration risk analysis. Increase limit for broader lists."""
+    return get_top_vendors_tool(tenant_id, company_id, start_date=start_date, end_date=end_date, limit=limit, base_currency=base_currency)
+
+@tool
+def vendor_performance(tenant_id: str, company_id: Optional[int] = None, limit: int = 10, base_currency: str = None):
+    """Get vendor performance scorecard: on-time delivery rate and average lead time in days.
+    Uses purchase orders linked to incoming stock receipts for actual delivery data.
+    Use for: 'which suppliers deliver on time?', 'vendor reliability', 'supplier scorecard',
+    'who is always late?'. Run after top_vendors for context on which vendors to focus on."""
+    return get_vendor_performance_tool(tenant_id, company_id, limit=limit, base_currency=base_currency)
+
+@tool
+def procurement_spend_by_category(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, limit: int = 20, base_currency: str = None):
+    """Break down procurement spend by product category with % of total spend per category.
+    Use for: 'where is our purchase budget going?', 'procurement spend analysis',
+    'which categories cost the most?', cost structure review by procurement category.
+    The purchasing counterpart to expense_breakdown — shows spend by what we buy, not GL accounts."""
+    return get_procurement_category_breakdown_tool(tenant_id, company_id, start_date=start_date, end_date=end_date, limit=limit, base_currency=base_currency)
+
+@tool
+def purchase_vs_sales_margin(tenant_id: str, company_id: Optional[int] = None, limit: int = 20, base_currency: str = None):
+    """Compare average buy price vs average sell price per product to reveal true product margins.
+    Returns: product name, avg buy price, avg sell price, margin, margin %, qty bought vs qty sold.
+    Use for: 'are we buying too expensive?', 'product margin analysis', 'cost vs revenue per product',
+    identifying products with shrinking margins. Run after top_products for revenue-side context."""
+    return get_purchase_vs_sales_margin_tool(tenant_id, company_id, limit=limit, base_currency=base_currency)
+
+@tool
+def po_fulfillment(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
+    """Track PO fulfillment: overdue purchase orders and partial receipts.
+    Returns: overdue PO count and value, top late vendors, lines with qty_received < qty_ordered.
+    Use for: 'are our orders arriving on time?', 'late deliveries', 'pending receipts',
+    'backlog from vendors', supply chain disruption detection. Critical for procurement risk."""
+    return get_po_fulfillment_tool(tenant_id, company_id, base_currency=base_currency)
+
+@tool
+def purchase_trend(tenant_id: str, company_id: Optional[int] = None, granularity: str = "month", base_currency: str = None):
+    """Get procurement spend as a time series broken down by period.
+    granularity options: 'day', 'week', 'month' (default), 'quarter', 'year'.
+    Use for: procurement trend charts, spending trajectory, seasonal procurement patterns.
+    The purchasing counterpart to sales_trend — use when the user asks about spend over time."""
+    return get_purchase_trend_tool(tenant_id, company_id, granularity=granularity, base_currency=base_currency)
+
 # ── Reporting Domain ─────────────────────────
 
 @tool
@@ -346,6 +417,44 @@ def send_email(tenant_id: str, to_email: str, subject: str, body: str, company_i
     body should be professional, concise, and include the key findings from your analysis."""
     return send_email_tool(tenant_id, to_email, subject, body, company_id=company_id)
 
+@tool
+def cash_flow_statement(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Generate a standard Cash Flow Statement (Operating, Investing, Financing activities).
+    Use for: 'where is the cash going?', 'cash flow summary', 'liquidity analysis'.
+    Returns net cash from operations, investments, and financing, and the net change in cash."""
+    return get_cash_flow_statement_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
+
+@tool
+def working_capital_efficiency(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
+    """Calculate Cash Conversion Cycle (CCC), Days Sales Outstanding (DSO), Days Inventory Outstanding (DIO), and Days Payable Outstanding (DPO).
+    Use for: working capital analysis, cash cycle duration, how fast we turn inventory into cash."""
+    return get_working_capital_efficiency_tool(tenant_id, company_id, base_currency=base_currency)
+
+@tool
+def period_comparison_pnl(tenant_id: str, current_start: str, current_end: str, prior_start: str, prior_end: str, company_id: Optional[int] = None, base_currency: str = None):
+    """Perform a variance analysis comparing P&L across two distinct periods (e.g. this month vs last month, this year vs last year).
+    Returns detailed variances for Revenue, COGS, Gross Profit, Expenses, and Net Profit.
+    Requires explicit ISO dates for current and prior periods."""
+    return get_period_comparison_pnl_tool(tenant_id, current_start, current_end, prior_start, prior_end, company_id=company_id, base_currency=base_currency)
+
+@tool
+def interest_coverage(tenant_id: str, company_id: Optional[int] = None, start_date: str = None, end_date: str = None, base_currency: str = None):
+    """Calculate the Interest Coverage Ratio (EBIT / Interest Expense).
+    Use for: debt service capacity, risk of default, ability to pay interest."""
+    return get_interest_coverage_tool(tenant_id, company_id, start_date, end_date, base_currency=base_currency)
+
+@tool
+def revenue_segmentation(tenant_id: str, company_id: Optional[int] = None, segment_by: str = "customer", start_date: str = None, end_date: str = None, limit: int = 10, base_currency: str = None):
+    """Break down total revenue by 'customer' or 'journal'.
+    Use for: customer concentration risk, revenue streams, top clients by invoice revenue."""
+    return get_revenue_segmentation_tool(tenant_id, company_id, segment_by, start_date, end_date, limit, base_currency=base_currency)
+
+@tool
+def payment_reconciliation(tenant_id: str, company_id: Optional[int] = None, base_currency: str = None):
+    """Identify unreconciled customer payments (payments received but not applied to an invoice).
+    Use for: 'unapplied cash', 'payments not matched', 'AR reconciliation issues'."""
+    return get_payment_reconciliation_tool(tenant_id, company_id, base_currency=base_currency)
+
 # ── Consolidated Agent Tools ─────────────────
 
 agent_tools = [
@@ -354,17 +463,21 @@ agent_tools = [
     # Sales
     sales_summary, top_products, sales_trend, variance_analysis, sales_forecast,
     # Finance — Core Statements
-    calculate_pnl, balance_sheet, trial_balance,
+    calculate_pnl, balance_sheet, trial_balance, cash_flow_statement,
     # Finance — Analysis
-    financial_ratios, working_capital, profitability_analysis, expense_breakdown,
+    financial_ratios, working_capital, profitability_analysis, expense_breakdown, working_capital_efficiency, interest_coverage, period_comparison_pnl,
     # Finance — AR/AP & Cash
-    receivables_analysis, payables_analysis, aging_analysis, cash_flow_health,
+    receivables_analysis, payables_analysis, aging_analysis, cash_flow_health, payment_reconciliation,
     # Finance — Tax & Audit
     tax_summary, detect_anomalies,
     # Finance — Intelligence
-    period_comparison, business_health, customer_metrics,
+    period_comparison, business_health, customer_metrics, revenue_segmentation,
     # Banking
     bank_cash_summary, journal_cards, bank_statement_summary,
+    # Purchasing
+    purchase_summary, top_vendors, vendor_performance,
+    procurement_spend_by_category, purchase_vs_sales_margin,
+    po_fulfillment, purchase_trend,
     # Inventory
     inventory_alerts, inventory_efficiency, inventory_stock_table, inventory_dashboard_alerts, inventory_valuation,
     # Reporting & Communication

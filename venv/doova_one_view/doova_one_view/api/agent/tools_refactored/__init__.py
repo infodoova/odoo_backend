@@ -21,6 +21,15 @@ from .banking import (
     get_journal_cards_tool,
     get_bank_statement_summary_tool,
 )
+from .purchasing import (
+    get_purchase_summary_tool,
+    get_top_vendors_tool,
+    get_vendor_performance_tool,
+    get_procurement_category_breakdown_tool,
+    get_purchase_vs_sales_margin_tool,
+    get_po_fulfillment_tool,
+    get_purchase_trend_tool,
+)
 from .finance import (
     get_receivables_analysis_tool,
     get_payables_analysis_tool,
@@ -38,6 +47,14 @@ from .finance import (
     get_tax_summary_tool,
     detect_anomalies_tool,
     get_period_comparison_tool,
+)
+from .finance_v2 import (
+    get_cash_flow_statement_tool,
+    get_working_capital_efficiency_tool,
+    get_period_comparison_pnl_tool,
+    get_interest_coverage_tool,
+    get_revenue_segmentation_tool,
+    get_payment_reconciliation_tool,
 )
 from .reporting_v2 import (
     generate_report_tool,

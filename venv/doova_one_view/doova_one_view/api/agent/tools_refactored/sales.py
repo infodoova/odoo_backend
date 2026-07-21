@@ -27,7 +27,7 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
             COALESCE(SUM({price_col}), 0) AS revenue 
         FROM fact_sales_order_lines l 
         JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id 
-        JOIN dim_products p ON l.product_id = p.odoo_id AND l.tenant_id = p.tenant_id
+        JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
         WHERE l.tenant_id = :tenant_id 
           AND o.state IN ('sale', 'done') 
           AND l.product_id IS NOT NULL

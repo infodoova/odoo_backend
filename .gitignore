@@ -75,3 +75,8 @@ venv/Scripts/activate.fish
 venv/Scripts/idna.exe
 venv/Scripts/pip3.14.exe
 venv/Scripts/websockets.exe
+venv/doova_one_view/check_queries.py
+venv/doova_one_view/extract_schema.py
+venv/doova_one_view/schema.json
+venv/doova_one_view/doova_one_view/test_agent_tools.py
+venv/doova_one_view/doova_one_view/test_db.py
