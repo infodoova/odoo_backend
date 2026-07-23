@@ -1,8 +1,12 @@
+from doova_one_view.api.agent.query_context import build_tenant_filter_sql
+from typing import Optional
 # api/agent/tools_refactored/sales_v2.py
 
 from .common import run_query, normalize_company_ids, build_company_filter_sql, build_currency_case_sql
 
-def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None) -> dict:
+def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql('o.amount_total', tenant_id, base_currency)
     margin_col = build_currency_case_sql('o.margin', tenant_id, base_currency)
@@ -15,9 +19,10 @@ def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = No
             COALESCE(SUM({margin_col}), 0) AS total_margin
         FROM fact_sales_orders o
         JOIN dim_users u ON o.user_id = u.id AND o.tenant_id = u.tenant_id
-        WHERE o.tenant_id = :tenant_id AND o.state IN ('sale', 'done')
+        WHERE 1=1 {t_sql_o} AND o.state IN ('sale', 'done')
     """
     params = {"tenant_id": tenant_id}
+    params.update(t_params_o)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
@@ -53,7 +58,9 @@ def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = No
     }
 
 
-def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None) -> dict:
+def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     
@@ -63,9 +70,10 @@ def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, compa
             COUNT(id) AS order_count,
             COALESCE(SUM({amount_col}), 0) AS total_value
         FROM fact_sales_orders
-        WHERE tenant_id = :tenant_id
+        WHERE 1=1 {t_sql_def}
     """
     params = {"tenant_id": tenant_id}
+    params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids)
     query += f_sql
     params.update(f_params)
@@ -116,7 +124,9 @@ def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, compa
     }
 
 
-def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None) -> dict:
+def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     
     # discount value is price_unit * qty * discount / 100
@@ -129,9 +139,10 @@ def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, com
             MAX(COALESCE(l.discount, 0)) AS max_discount_pct
         FROM fact_sales_order_lines l
         JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id
-        WHERE l.tenant_id = :tenant_id AND o.state IN ('sale', 'done')
+        WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
     """
     params = {"tenant_id": tenant_id}
+    params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
@@ -154,7 +165,7 @@ def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, com
         FROM fact_sales_order_lines l
         JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id
         JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
-        WHERE l.tenant_id = :tenant_id AND o.state IN ('sale', 'done') AND COALESCE(l.discount, 0) > 0
+        WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done') AND COALESCE(l.discount, 0) > 0
     """
     top_query += f_sql
     if start_date: top_query += " AND o.date_order >= :start_date"
@@ -179,7 +190,9 @@ def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, com
     }
 
 
-def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, limit: int = 10) -> dict:
+def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, limit: int = 10, tenant_ids: Optional[list[str]] = None) -> dict:
+
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql('o.amount_total', tenant_id, base_currency)
     
@@ -192,9 +205,10 @@ def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = No
             MAX(o.date_order) AS last_order_date
         FROM fact_sales_orders o
         JOIN dim_partners p ON o.partner_id = p.id AND o.tenant_id = p.tenant_id
-        WHERE o.tenant_id = :tenant_id AND o.state IN ('sale', 'done')
+        WHERE 1=1 {t_sql_o} AND o.state IN ('sale', 'done')
     """
     params = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_o)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
@@ -232,21 +246,24 @@ def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = No
     }
 
 
-def get_order_to_cash_cycle_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None) -> dict:
+def get_order_to_cash_cycle_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     
-    query = """
+    query = f"""
         SELECT 
             AVG(EXTRACT(EPOCH FROM (am.invoice_date::timestamp - o.date_order::timestamp))/86400.0) AS avg_days_to_invoice,
             COUNT(o.id) AS matched_orders
         FROM fact_sales_orders o
         JOIN fact_account_moves am ON am.invoice_origin = o.odoo_name AND am.tenant_id = o.tenant_id
-        WHERE o.tenant_id = :tenant_id 
+        WHERE 1=1 {t_sql_o} 
           AND o.state IN ('sale', 'done')
           AND am.move_type = 'out_invoice'
           AND am.state = 'posted'
     """
     params = {"tenant_id": tenant_id}
+    params.update(t_params_o)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
@@ -269,7 +286,9 @@ def get_order_to_cash_cycle_tool(tenant_id: str, company_id: int | None = None, 
     }
 
 
-def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None) -> dict:
+def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     price_col = build_currency_case_sql('l.price_subtotal', tenant_id, base_currency, currency_column='o.currency_code')
     
@@ -282,10 +301,11 @@ def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, 
         JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id
         JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
         JOIN dim_product_categories c ON p.category_id = c.id AND p.tenant_id = c.tenant_id
-        WHERE l.tenant_id = :tenant_id 
+        WHERE 1=1 {t_sql_l} 
           AND o.state IN ('sale', 'done')
     """
     params = {"tenant_id": tenant_id}
+    params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
@@ -318,3 +338,5 @@ def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, 
         "total_revenue": total_rev,
         "categories": categories
     }
+
+

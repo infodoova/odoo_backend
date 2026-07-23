@@ -1,0 +1,3 @@
+"""
+Account Journals API Module
+"""

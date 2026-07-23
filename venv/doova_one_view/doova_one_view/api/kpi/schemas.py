@@ -97,7 +97,7 @@ class KPIOrder(BaseModel):
     date: Optional[str] = None
     time: Optional[str] = None
     state: str
-    invoice_status: str
+    invoice_status: Optional[str] = None
     currency_code: str
     type: str
     line_count: int

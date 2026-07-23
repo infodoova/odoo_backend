@@ -80,3 +80,7 @@ venv/doova_one_view/extract_schema.py
 venv/doova_one_view/schema.json
 venv/doova_one_view/doova_one_view/test_agent_tools.py
 venv/doova_one_view/doova_one_view/test_db.py
+venv/doova_one_view/odoo_app/management/commands/seed_demo_data.py
+venv/doova_one_view/scratch/check_all_dbs.py
+venv/doova_one_view/scratch/check_db.py
+venv/doova_one_view/scratch_test_all.py

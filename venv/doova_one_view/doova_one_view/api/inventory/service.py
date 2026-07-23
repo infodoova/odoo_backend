@@ -270,6 +270,11 @@ class InventoryService:
                 total_reserved=Sum("reserved_quantity"),
                 product_count=Count("product_id", distinct=True),
             )
+            
+            stock_value_agg = qs.filter(quantity__gt=0).select_related("product").aggregate(
+                total_value=Sum(F("quantity") * F("product__standard_price"))
+            )
+            
             recent_since = timezone.now() - timedelta(days=7)
             recent_moves = InventoryService._company_filter(
                 StockMove.objects.filter(tenant_id=tenant_id, date__gte=recent_since),
@@ -279,6 +284,7 @@ class InventoryService:
                 "total_products_in_stock": stats["product_count"] or 0,
                 "total_quantity": _to_float(stats["total_qty"]),
                 "total_reserved_quantity": _to_float(stats["total_reserved"]),
+                "total_value": _to_float(stock_value_agg["total_value"]),
                 "recent_moves_count": recent_moves,
                 "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids},
             }

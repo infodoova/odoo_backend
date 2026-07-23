@@ -1,16 +1,18 @@
+from doova_one_view.api.agent.query_context import build_tenant_filter_sql
+from typing import Optional
 # api/agent/tools_refactored/purchasing.py
 
 """
-Purchasing Intelligence Tools — 7 tools covering the entire procurement domain.
+Purchasing Intelligence Tools Ã¢â‚¬â€ 7 tools covering the entire procurement domain.
 
 Tools:
-  1. get_purchase_summary_tool        — total spend, PO count, avg PO value
-  2. get_top_vendors_tool             — vendors ranked by spend
-  3. get_vendor_performance_tool      — delivery metrics per vendor
-  4. get_procurement_category_breakdown_tool — spend by product category
-  5. get_purchase_vs_sales_margin_tool — buy vs sell price analysis
-  6. get_po_fulfillment_tool          — overdue/partial POs
-  7. get_purchase_trend_tool          — monthly spend time series
+  1. get_purchase_summary_tool        Ã¢â‚¬â€ total spend, PO count, avg PO value
+  2. get_top_vendors_tool             Ã¢â‚¬â€ vendors ranked by spend
+  3. get_vendor_performance_tool      Ã¢â‚¬â€ delivery metrics per vendor
+  4. get_procurement_category_breakdown_tool Ã¢â‚¬â€ spend by product category
+  5. get_purchase_vs_sales_margin_tool Ã¢â‚¬â€ buy vs sell price analysis
+  6. get_po_fulfillment_tool          Ã¢â‚¬â€ overdue/partial POs
+  7. get_purchase_trend_tool          Ã¢â‚¬â€ monthly spend time series
 """
 
 from .common import (
@@ -22,9 +24,9 @@ from .common import (
 )
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 1. PURCHASE SUMMARY
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_purchase_summary_tool(
     tenant_id: str,
@@ -32,12 +34,15 @@ def get_purchase_summary_tool(
     company_ids: list[int] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Total confirmed purchase spend, PO count, and average PO value."""
+
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     params: dict = {"tenant_id": tenant_id}
+    params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected)
     params.update(f_params)
 
@@ -57,7 +62,7 @@ def get_purchase_summary_tool(
                 COALESCE(MIN(date_order), NULL) AS first_po_date,
                 COALESCE(MAX(date_order), NULL) AS last_po_date
             FROM fact_purchase_orders
-            WHERE tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_def}
               AND state IN ('purchase', 'done')
               {f_sql} {date_sql}""",
         params,
@@ -74,9 +79,9 @@ def get_purchase_summary_tool(
     }
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 2. TOP VENDORS BY SPEND
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_top_vendors_tool(
     tenant_id: str,
@@ -85,14 +90,17 @@ def get_top_vendors_tool(
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int = 10,
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Rank vendors by total confirmed purchase spend."""
+
+    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_po")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql(
         'po.amount_total', tenant_id, base_currency, 'po.currency_code'
     )
     params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_po)
     f_sql, f_params = build_company_filter_sql(
         tenant_id, selected, column_name="po.company_id"
     )
@@ -115,7 +123,7 @@ def get_top_vendors_tool(
             FROM fact_purchase_orders po
             JOIN dim_partners p
               ON po.partner_id = p.id AND po.tenant_id = p.tenant_id
-            WHERE po.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_po}
               AND po.state IN ('purchase', 'done')
               {f_sql} {date_sql}
             GROUP BY p.name
@@ -138,23 +146,26 @@ def get_top_vendors_tool(
     }
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 3. VENDOR PERFORMANCE SCORECARD
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_vendor_performance_tool(
     tenant_id: str,
     company_id: int | None = None,
     company_ids: list[int] | None = None,
     limit: int = 10,
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Per-vendor on-time delivery rate and average lead time."""
+
+    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_po")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql(
         'po.amount_total', tenant_id, base_currency, 'po.currency_code'
     )
     params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_po)
     f_sql, f_params = build_company_filter_sql(
         tenant_id, selected, column_name="po.company_id"
     )
@@ -183,7 +194,7 @@ def get_vendor_performance_tool(
               ON sp.origin = po.odoo_name
               AND sp.tenant_id = po.tenant_id
               AND sp.picking_type = 'incoming'
-            WHERE po.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_po}
               AND po.state IN ('purchase', 'done')
               {f_sql}
             GROUP BY p.name
@@ -214,9 +225,9 @@ def get_vendor_performance_tool(
     }
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 4. PROCUREMENT SPEND BY CATEGORY
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_procurement_category_breakdown_tool(
     tenant_id: str,
@@ -225,14 +236,17 @@ def get_procurement_category_breakdown_tool(
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int = 20,
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Break down purchase spend by product category."""
+
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     price_col = build_currency_case_sql(
         'l.price_subtotal', tenant_id, base_currency, 'po.currency_code'
     )
     params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(
         tenant_id, selected, column_name="po.company_id"
     )
@@ -258,7 +272,7 @@ def get_procurement_category_breakdown_tool(
               ON l.product_id = p.id AND l.tenant_id = p.tenant_id
             LEFT JOIN dim_product_categories c
               ON p.category_id = c.id AND p.tenant_id = c.tenant_id
-            WHERE l.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_l}
               AND po.state IN ('purchase', 'done')
               {f_sql} {date_sql}
             GROUP BY COALESCE(c.complete_name, c.name, 'Uncategorized')
@@ -283,20 +297,27 @@ def get_procurement_category_breakdown_tool(
     }
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 5. PURCHASE vs SALES MARGIN ANALYSIS
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_purchase_vs_sales_margin_tool(
     tenant_id: str,
     company_id: int | None = None,
     company_ids: list[int] | None = None,
     limit: int = 20,
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Compare average buy price vs average sell price per product."""
+
+    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="p.tenant_id", prefix="t_p")
+    t_sql_sl, t_params_sl = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="sl.tenant_id", prefix="t_sl")
+    t_sql_pl, t_params_pl = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="pl.tenant_id", prefix="t_pl")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_p)
+    params.update(t_params_sl)
+    params.update(t_params_pl)
     f_sql_po, f_params_po = build_company_filter_sql(
         tenant_id, selected, column_name="po.company_id", prefix="po_co"
     )
@@ -315,7 +336,7 @@ def get_purchase_vs_sales_margin_tool(
                 FROM fact_purchase_order_lines pl
                 JOIN fact_purchase_orders po
                   ON pl.purchase_order_id = po.id AND pl.tenant_id = po.tenant_id
-                WHERE pl.tenant_id = :tenant_id
+                WHERE 1=1 {t_sql_pl}
                   AND po.state IN ('purchase', 'done')
                   AND pl.product_id IS NOT NULL
                   {f_sql_po}
@@ -329,7 +350,7 @@ def get_purchase_vs_sales_margin_tool(
                 FROM fact_sales_order_lines sl
                 JOIN fact_sales_orders so
                   ON sl.sales_order_id = so.id AND sl.tenant_id = so.tenant_id
-                WHERE sl.tenant_id = :tenant_id
+                WHERE 1=1 {t_sql_sl}
                   AND so.state IN ('sale', 'done')
                   AND sl.product_id IS NOT NULL
                   {f_sql_so}
@@ -343,7 +364,7 @@ def get_purchase_vs_sales_margin_tool(
                 s.total_qty_sold
             FROM buy b
             JOIN sell s ON b.product_id = s.product_id
-            JOIN dim_products p ON b.product_id = p.id AND p.tenant_id = :tenant_id
+            JOIN dim_products p ON b.product_id = p.id AND 1=1 {t_sql_p}
             ORDER BY (s.avg_sell_price - b.avg_buy_price) * LEAST(b.total_qty_bought, s.total_qty_sold) DESC
             LIMIT :limit""",
         params,
@@ -373,23 +394,28 @@ def get_purchase_vs_sales_margin_tool(
     }
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 6. PO FULFILLMENT & DELIVERY TRACKING
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_po_fulfillment_tool(
     tenant_id: str,
     company_id: int | None = None,
     company_ids: list[int] | None = None,
     limit: int = 15,
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Identify overdue POs and partial receipts."""
+
+    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_po")
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql(
         'po.amount_total', tenant_id, base_currency, 'po.currency_code'
     )
     params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_po)
+    params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(
         tenant_id, selected, column_name="po.company_id"
     )
@@ -406,7 +432,7 @@ def get_po_fulfillment_tool(
             FROM fact_purchase_orders po
             JOIN dim_partners p
               ON po.partner_id = p.id AND po.tenant_id = p.tenant_id
-            WHERE po.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_po}
               AND po.state IN ('purchase')
               AND po.date_planned < CURRENT_TIMESTAMP
               {f_sql}
@@ -431,7 +457,7 @@ def get_po_fulfillment_tool(
               ON po.partner_id = p.id AND po.tenant_id = p.tenant_id
             LEFT JOIN dim_products pr
               ON l.product_id = pr.id AND l.tenant_id = pr.tenant_id
-            WHERE l.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_l}
               AND po.state IN ('purchase', 'done')
               AND l.qty_received < l.product_qty
               AND l.product_qty > 0
@@ -448,7 +474,7 @@ def get_po_fulfillment_tool(
                 COALESCE(SUM({amount_col}) FILTER (WHERE po.state = 'purchase' AND po.date_planned < CURRENT_TIMESTAMP), 0) AS overdue_value,
                 COUNT(*) FILTER (WHERE po.state IN ('purchase', 'done')) AS active_count
             FROM fact_purchase_orders po
-            WHERE po.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_po}
               {f_sql}""",
         params,
     )
@@ -483,21 +509,24 @@ def get_po_fulfillment_tool(
     }
 
 
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # 7. PURCHASE TREND (TIME SERIES)
-# ──────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_purchase_trend_tool(
     tenant_id: str,
     company_id: int | None = None,
     company_ids: list[int] | None = None,
     granularity: str = "month",
-    base_currency: str | None = None,
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Purchase spend time series broken down by period."""
+
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
     params: dict = {"tenant_id": tenant_id}
+    params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(tenant_id, selected)
     params.update(f_params)
 
@@ -512,7 +541,7 @@ def get_purchase_trend_tool(
                 COALESCE(SUM({amount_col}), 0)         AS spend,
                 COUNT(*)                               AS po_count
             FROM fact_purchase_orders
-            WHERE tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_def}
               AND state IN ('purchase', 'done')
               AND date_order IS NOT NULL
               {f_sql}
@@ -533,3 +562,5 @@ def get_purchase_trend_tool(
             for r in rows
         ],
     }
+
+

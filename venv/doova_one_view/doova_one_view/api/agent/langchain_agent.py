@@ -98,12 +98,7 @@ class DoovaLangChainAgent:
         }
         
         if getattr(AgentConfig, "ENABLE_THINKING", False):
-            model_name_used = model_name or AgentConfig.FAST_MODEL
-            if "sonnet-5" in model_name_used or "claude-3-7" in model_name_used:
-                llm_kwargs["thinking"] = {"type": "adaptive"}
-            else:
-                llm_kwargs["thinking"] = {"type": "enabled", "budget_tokens": getattr(AgentConfig, "THINKING_BUDGET", 1024)}
-                llm_kwargs["betas"] = ["output-128k-2024-02-29"]
+            llm_kwargs["thinking"] = {"type": "adaptive"}
 
         self.llm = ThinkingSafeChatAnthropic(**llm_kwargs)
         

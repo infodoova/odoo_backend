@@ -54,3 +54,5 @@ def add_dynamic_table_widths(html_content: str) -> str:
     except Exception as e:
         print(f"Error adding dynamic table widths: {e}")
         return html_content
+
+

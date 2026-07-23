@@ -1,3 +1,4 @@
+from typing import Optional
 # api/agent/tools_refactored/common.py
 
 import re
@@ -6,18 +7,20 @@ from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from ..db import run_query
-from ..query_context import extract_date_range, normalize_company_ids, build_company_filter_sql
+from ..query_context import extract_date_range, normalize_company_ids, build_company_filter_sql, build_tenant_filter_sql
 from ..config import AgentConfig
 
-def get_companies_tool(tenant_id: str) -> dict:
-    rows = run_query("SELECT id, name FROM dim_companies WHERE tenant_id = :tenant_id", {"tenant_id": tenant_id})
+def get_companies_tool(tenant_id: str, tenant_ids: Optional[list[str]] = None) -> dict:
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
+    rows = run_query(f"SELECT id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
     return {"tool_name": "get_companies_tool", "companies": rows}
 
-def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
     """Fetches the company's industry, sector, and operational context from the database."""
     # dim_companies PK is "id", not "company_id"
-    company_f_sql, company_f_params = build_company_filter_sql(tenant_id, company_id, column_name="id")
-    company_params = {"tenant_id": tenant_id, **company_f_params}
+    company_f_sql, company_f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="id")
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
+    company_params = {**company_f_params, **t_params_def}
 
     # Try to get basic company info
     rows = run_query(
@@ -27,20 +30,20 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None) -> di
                 'Not Specified' AS company_type,
                 COALESCE(currency_name, currency_code, 'USD') AS currency
             FROM dim_companies
-            WHERE tenant_id = :tenant_id {company_f_sql}
+            WHERE 1=1 {t_sql_def} {company_f_sql}
             LIMIT 5""",
         company_params,
     )
 
     # Infer business type from product and transaction data (tenant-scoped only, no company filter)
     product_stats = run_query(
-        """SELECT
+        f"""SELECT
                 COUNT(DISTINCT CASE WHEN product_type = 'product' THEN id END) AS physical_products,
                 COUNT(DISTINCT CASE WHEN product_type = 'service' THEN id END) AS services,
                 COUNT(DISTINCT CASE WHEN product_type = 'consu' THEN id END) AS consumables
             FROM dim_products
-            WHERE tenant_id = :tenant_id""",
-        {"tenant_id": tenant_id},
+            WHERE 1=1 {t_sql_def}""",
+        t_params_def,
     )
 
     ps = product_stats[0] if product_stats else {}
@@ -125,7 +128,7 @@ def generate_pdf(text: str, filename: str = "output.pdf") -> str:
 def calculate_ratio(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator != 0 else 0.0
 
-def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | None, currency_column: str = "currency_code") -> str:
+def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | None, currency_column: str = "currency_code", tenant_ids: Optional[list[str]] = None) -> str:
     """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""
     if not base_currency:
         return column
@@ -173,3 +176,5 @@ def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | No
         import logging
         logging.error(f"Error building currency case sql: {e}")
         return column
+
+

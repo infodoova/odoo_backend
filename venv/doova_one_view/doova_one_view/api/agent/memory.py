@@ -147,7 +147,7 @@ class SessionMemory:
             )
             session.save()
         except Exception as e:
-            print(f"⚠️ Memory summarization failed: {e}")
+            print(f"Memory summarization failed: {e}")
 
     def set_plan(self, session_id: str, plan: Dict[str, Any]):
         session = self.get_or_create(session_id)

@@ -1,3 +1,5 @@
+from doova_one_view.api.agent.query_context import build_tenant_filter_sql
+from typing import Optional
 # api/agent/tools_refactored/reporting_v2.py
 
 import os
@@ -22,7 +24,7 @@ def generate_report_tool(
     custom_content: str = "", 
     company_id: int | None = None,
     company_ids: list[int] | None = None,
-    base_currency: str | None = None
+    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
 ) -> dict:
     from ..utils import get_tenant_currency
     from .common import normalize_company_ids
@@ -46,15 +48,16 @@ def generate_report_tool(
         company_name = "Financial Overview"
     
     try:
-        sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency)
-        health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency)
-        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"))
+        sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"), tenant_ids=tenant_ids)
         
         # Get specific company name if only one is selected
         if len(resolved_company_ids) == 1:
-            companies = get_companies_tool(tenant_id)
+            comp_res = get_companies_tool(tenant_id)
+            companies = comp_res.get("companies", []) if isinstance(comp_res, dict) else []
             for c in companies:
-                if c.get("id") == resolved_company_ids[0]:
+                if isinstance(c, dict) and c.get("id") == resolved_company_ids[0]:
                     company_name = c.get("name", company_name)
     except Exception as e:
         print(f"Error fetching KPI data: {e}")
@@ -78,7 +81,7 @@ The business is currently operating with a health score of **{score_val}/100** a
     # 2. Generate Matplotlib Chart (Sales Trend)
     chart_b64 = ""
     try:
-        ts_result = get_time_series_data_tool(tenant_id, company_ids=resolved_company_ids, granularity="month", base_currency=base_currency)
+        ts_result = get_time_series_data_tool(tenant_id, company_ids=resolved_company_ids, granularity="month", base_currency=base_currency, tenant_ids=tenant_ids)
         ts_data = ts_result.get("points", [])
         if ts_data and isinstance(ts_data, list) and len(ts_data) > 0:
             labels = [str(d.get("period", ""))[:7] for d in ts_data] # YYYY-MM
@@ -113,7 +116,7 @@ The business is currently operating with a health score of **{score_val}/100** a
     from .emoji_to_badges import normalize_status_emoji
     
     # Strip decorative emojis which crash standard PDF fonts
-    decorative_emojis = ["📊", "🏢", "💰", "🏆", "🏦", "📐", "💧", "📬", "📤", "👥", "📦", "🔍"]
+    decorative_emojis = ["Ã°Å¸â€œÅ ", "Ã°Å¸ÂÂ¢", "Ã°Å¸â€™Â°", "Ã°Å¸Ââ€ ", "Ã°Å¸ÂÂ¦", "Ã°Å¸â€œÂ", "Ã°Å¸â€™Â§", "Ã°Å¸â€œÂ¬", "Ã°Å¸â€œÂ¤", "Ã°Å¸â€˜Â¥", "Ã°Å¸â€œÂ¦", "Ã°Å¸â€Â"]
     for e in decorative_emojis:
         custom_content = custom_content.replace(e, "")
         
@@ -123,7 +126,7 @@ The business is currently operating with a health score of **{score_val}/100** a
     import re
     import json
 
-    # ── Generic chart renderer ────────────────────────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ Generic chart renderer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     def _render_chart(chart_type: str, title: str, labels: list, values: list) -> str:
         """
         Render any chart type to a base64 PNG string.
@@ -170,7 +173,7 @@ The business is currently operating with a health score of **{score_val}/100** a
 
                 # Legend with label + percentage (avoids text overlap on small slices)
                 legend_labels = [
-                    f"{lab}  —  {val / total * 100:.1f}%"
+                    f"{lab}  Ã¢â‚¬â€  {val / total * 100:.1f}%"
                     for lab, val in zip(labels, values)
                 ]
                 ax.legend(
@@ -228,7 +231,7 @@ The business is currently operating with a health score of **{score_val}/100** a
             print(f"Chart render error ({chart_type}): {exc}")
             return ""
 
-    # ── Parse ```chart blocks and replace with rendered images ─────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ Parse ```chart blocks and replace with rendered images Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     def _chart_block_replacer(match):
         json_str = match.group(1)
         try:
@@ -298,7 +301,7 @@ The business is currently operating with a health score of **{score_val}/100** a
         'filename': filename,
     }
 
-def get_last_report_tool(tenant_id: str, company_id: int | None = None) -> dict:
+def get_last_report_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
     reports_dir = Path('reports')
     files = list(reports_dir.glob(f'business_report_{tenant_id}_*_v2.pdf'))
     if not files:
@@ -316,3 +319,5 @@ def get_last_report_tool(tenant_id: str, company_id: int | None = None) -> dict:
         'download_url': make_report_url(filename),
         'path': relative_path,
     }
+
+

@@ -8,8 +8,13 @@ from fastapi.responses import Response
 
 from odoo_app.models import AppUser
 from doova_one_view.api.common.utils import parse_company_ids
+from doova_one_view.api.common.schemas import PaginatedResponse
 from doova_one_view.api.dependencies import get_current_user
-from doova_one_view.api.bank_statements.schemas import SearchRequest
+from doova_one_view.api.bank_statements.schemas import (
+    SearchRequest,
+    BankStatementRead,
+    BankStatementLineRead
+)
 from doova_one_view.api.bank_statements.service import BankStatementService
 from doova_one_view.api.tenants.service import TenantService
 
@@ -50,7 +55,7 @@ async def search_statements(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> PaginatedResponse[BankStatementRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = _company_ids(company_id, companies)
     if company_ids is None:
@@ -66,7 +71,7 @@ async def list_statements(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> PaginatedResponse[BankStatementRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await BankStatementService.get_statements(tenant_id, limit, offset, search, _company_ids(company_id, companies))
 
@@ -103,7 +108,7 @@ async def search_statement_lines(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> PaginatedResponse[BankStatementLineRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = _company_ids(company_id, companies)
     if company_ids is None:
@@ -114,10 +119,12 @@ async def search_statement_lines(
 async def get_statement_line(
     tenant_id: str,
     line_id: int,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> BankStatementLineRead:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await BankStatementService.get_statement_line(tenant_id, line_id)
+    return await BankStatementService.get_statement_line(tenant_id, line_id, _company_ids(company_id, companies))
 
 @router.get("/{tenant_id}/lines")
 async def list_statement_lines(
@@ -127,7 +134,7 @@ async def list_statement_lines(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> PaginatedResponse[BankStatementLineRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await BankStatementService.get_statement_lines(tenant_id, limit, offset, None, _company_ids(company_id, companies))
 
@@ -141,16 +148,19 @@ async def list_statement_lines_for_statement(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> PaginatedResponse[BankStatementLineRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await BankStatementService.get_statement_lines(tenant_id, limit, offset, statement_id, _company_ids(company_id, companies))
+    return await BankStatementService.get_lines_for_statement(tenant_id, statement_id, limit, offset, _company_ids(company_id, companies))
 
 # Detail endpoint last so it doesn't mask /lines, etc.
 @router.get("/{tenant_id}/{statement_id}")
 async def get_statement(
     tenant_id: str,
     statement_id: int,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> BankStatementRead:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await BankStatementService.get_statement(tenant_id, statement_id)
+    return await BankStatementService.get_statement(tenant_id, statement_id, _company_ids(company_id, companies))
+

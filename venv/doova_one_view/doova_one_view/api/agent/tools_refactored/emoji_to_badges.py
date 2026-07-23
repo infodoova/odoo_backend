@@ -3,20 +3,20 @@ import re
 # Ordered so multi-character / more specific patterns are checked first.
 # Each entry: (emoji_or_pattern, badge_class, badge_label)
 _EMOJI_MAP = [
-    ("🚨", "badge-urgent", "URGENT"),
-    ("🔴", "badge-critical", "CRITICAL"),
-    ("🟠", "badge-high", "HIGH"),
-    ("🟡", "badge-medium", "MEDIUM"),
-    ("🟢", "badge-good", "GOOD"),
-    ("⚠️", "badge-warning", "WARNING"),
-    ("⚠", "badge-warning", "WARNING"),
-    ("✅", "badge-good", "OK"),
-    ("❌", "badge-critical", "FAILED"),
+    ("ðŸš¨", "badge-urgent", "URGENT"),
+    ("ðŸ”´", "badge-critical", "CRITICAL"),
+    ("ðŸŸ ", "badge-high", "HIGH"),
+    ("ðŸŸ¡", "badge-medium", "MEDIUM"),
+    ("ðŸŸ¢", "badge-good", "GOOD"),
+    ("âš ï¸", "badge-warning", "WARNING"),
+    ("âš ", "badge-warning", "WARNING"),
+    ("âœ…", "badge-good", "OK"),
+    ("âŒ", "badge-critical", "FAILED"),
 ]
 
 # Matches an emoji immediately followed by an explicit label word, so we can
-# keep the AI's own word (e.g. "🔴 URGENT" -> keep "URGENT") instead of
-# forcing the generic default label above (e.g. "🔴 HIGH" -> "HIGH", not
+# keep the AI's own word (e.g. "ðŸ”´ URGENT" -> keep "URGENT") instead of
+# forcing the generic default label above (e.g. "ðŸ”´ HIGH" -> "HIGH", not
 # "CRITICAL"). Falls back to the default label if no word follows.
 _LABEL_AFTER = re.compile(
     r"(" + "|".join(re.escape(e) for e, _, _ in _EMOJI_MAP) + r")\s*"
@@ -63,7 +63,7 @@ def normalize_status_emoji(text: str) -> str:
     Replace status emoji (and any already-bracketed fallback text like
     '[Alert]') with styled <span class="badge ...">LABEL</span> tags.
 
-    Safe to run on raw markdown OR on already-converted HTML — it only
+    Safe to run on raw markdown OR on already-converted HTML â€” it only
     touches the emoji/bracket characters themselves, not surrounding markup.
     """
     if not text:
@@ -74,3 +74,5 @@ def normalize_status_emoji(text: str) -> str:
     for emoji, cls, label in _EMOJI_MAP:
         text = text.replace(emoji, f'<span class="badge {cls}">{label}</span>')
     return text
+
+

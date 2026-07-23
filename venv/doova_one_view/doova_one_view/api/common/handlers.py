@@ -39,8 +39,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle validation errors"""
     import logging
     logger = logging.getLogger("fastapi")
-    logger.error(f"❌ VALIDATION ERROR: {exc.errors()}")
-    logger.error(f"📦 BODY: {exc.body}")
+    logger.error(f"VALIDATION ERROR: {exc.errors()}")
+    logger.error(f"BODY: {exc.body}")
     
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

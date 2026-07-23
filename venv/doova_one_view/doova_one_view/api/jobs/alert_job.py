@@ -402,7 +402,16 @@ class AlertJobManager:
           'ALERT: <headline>'  — anomaly detected
           'OK: <headline>'     — all clear
         """
+        from doova_one_view.api.jobs.alert_prechecks import run_all_prechecks
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
+
+        # Tier 1: Deterministic SQL Pre-Checks (zero LLM cost)
+        precheck_res = await asyncio.to_thread(run_all_prechecks, tenant_id, company_ids)
+        if not precheck_res["any_triggered"]:
+            logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant={tenant_id} — skipping LLM inference.")
+            return "OK: All monitored financial, inventory, and operational metrics are within normal baseline ranges.", False
+
+        logger.info(f"AlertJobManager: Tier 1 pre-checks TRIGGERED ({precheck_res['triggered_checks']}) — proceeding to Tier 2 LLM analysis.")
 
         if company_ids and len(company_ids) > 0:
             company_ctx = f"for selected companies {company_ids}"
@@ -419,8 +428,12 @@ class AlertJobManager:
             f"You are an elite vigilance AI and forensic auditor monitoring a business {company_ctx} for unusual, risky, or suspicious activity. "
             f"Your expertise lies in identifying financial anomalies, inventory shrinkage, and operational risks.\n"
             f"</role>\n\n"
+            f"<deterministic_precheck_findings>\n"
+            f"Automated pre-checks flagged the following potential anomalies:\n"
+            f"{precheck_res['precheck_summary']}\n"
+            f"</deterministic_precheck_findings>\n\n"
             f"<instructions>\n"
-            f"1. Use all relevant tools (sales, finance, inventory, receivables, trial balance, detect_anomalies) to gather complete context before making an assessment.\n"
+            f"1. Use all relevant tools (sales, finance, inventory, receivables, trial balance, detect_anomalies) to gather complete context on the flagged issues before making an assessment.\n"
             f"2. Carefully analyze the data according to the criteria defined in the <user_request>.\n"
             f"3. Only flag genuine data anomalies (e.g., sudden spikes, drastic drops, negative cash flows) — ignore missing data or date range issues.\n"
             f"4. Before writing your final report, enclose your internal reasoning within <thinking> tags to plan your tool usage and analyze the data step-by-step.\n"

@@ -1,6 +1,8 @@
 """
 SQL Agent – converts natural language questions into safe PostgreSQL queries.
 Uses a multi-pass workflow to generate, execute, and explain results.
+Includes self-correcting retry logic: if a query fails, the error is fed
+back to the LLM to produce a corrected query (up to MAX_SQL_RETRIES attempts).
 """
 
 import os
@@ -9,9 +11,12 @@ from typing import Any
 import anthropic
 from .db import run_query
 from .config import AgentConfig
+from .logger import logger
+from .cache import ttl_cache
+from .query_context import resolve_tenant_id
 
 
-from .prompts import SQL_AGENT_SYSTEM_PROMPT, SQL_FINAL_RESPONSE_PROMPT
+from .prompts import SQL_AGENT_SYSTEM_PROMPT, SQL_FINAL_RESPONSE_PROMPT, SQL_RETRY_PROMPT
 
 BLOCKED_SQL_WORDS = [
     "insert",
@@ -386,6 +391,7 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
 }
 
 
+@ttl_cache(ttl_seconds=AgentConfig.CACHE_TTL_SCHEMA, name="schema")
 def get_database_schema() -> str:
     rows = run_query("""
         SELECT
@@ -473,11 +479,61 @@ def format_rows_for_prompt(rows: list[dict[str, Any]], limit: int = 30) -> str:
     return str(preview)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Self-correcting retry helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _build_retry_prompt(
+    user_question: str,
+    schema: str,
+    failed_sql: str,
+    error_message: str,
+    attempt_history: list[dict],
+) -> str:
+    """Build the retry prompt with accumulated error context."""
+    previous_attempts = ""
+    if len(attempt_history) > 1:
+        lines = ["PREVIOUS FAILED ATTEMPTS (do NOT repeat these mistakes):"]
+        for i, attempt in enumerate(attempt_history[:-1], 1):
+            lines.append(f"  Attempt {i}: {attempt['error']}")
+        previous_attempts = "\n".join(lines)
+
+    return SQL_RETRY_PROMPT.format(
+        user_question=user_question,
+        schema=schema,
+        failed_sql=failed_sql,
+        error_message=error_message,
+        previous_attempts=previous_attempts,
+    )
+
+
+def _attempt_sql_correction(
+    client: anthropic.Anthropic,
+    retry_prompt: str,
+    model: str,
+) -> str | None:
+    """Ask the LLM to produce a corrected SQL query. Returns the SQL or None."""
+    response = client.messages.create(
+        model=model,
+        max_tokens=1200,
+        temperature=0,
+        messages=[{"role": "user", "content": retry_prompt}],
+    )
+    return extract_sql_from_text(response.content[0].text)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Main SQL Agent
+# ──────────────────────────────────────────────────────────────────────────────
+
 def run_sql_agent(
     user_question: str,
     chat_history: str = "",
     tenant_id: str | None = None,
+    tenant_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids
+    tenants = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
     question_lower = (user_question or "").lower()
 
     # Refuse destructive requests before asking Claude to generate SQL.
@@ -493,23 +549,37 @@ def run_sql_agent(
     schema = get_database_schema()
 
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    model = getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001")
+    max_retries = getattr(AgentConfig, "MAX_SQL_RETRIES", 3)
 
     tenant_note = ""
-    if tenant_id:
-        tenant_note = (
-            f"\nImportant tenant rule:\n"
-            f"- The current tenant_id is `{tenant_id}`.\n"
-            f"- If a table has a tenant_id column, always filter with tenant_id = '{tenant_id}'.\n"
-        )
+    if tenants:
+        if len(tenants) == 1:
+            tenant_note = (
+                f"\nImportant tenant rule:\n"
+                f"- The current tenant_id is `{tenants[0]}`.\n"
+                f"- If a table has a tenant_id column, always filter with tenant_id = '{tenants[0]}'.\n"
+            )
+        else:
+            tenants_list_str = ", ".join(f"'{t}'" for t in tenants)
+            tenant_note = (
+                f"\nImportant tenant rule:\n"
+                f"- The current tenants are {tenants_list_str}.\n"
+                f"- If a table has a tenant_id column, always filter using IN: tenant_id IN ({tenants_list_str}).\n"
+            )
+
+    schema_with_tenant = schema + tenant_note
 
     prompt = SQL_AGENT_SYSTEM_PROMPT.format(
-        schema=schema + tenant_note,
+        schema=schema_with_tenant,
         chat_history=chat_history or "No prior conversation.",
         input=user_question,
     )
 
+    # ── Pass 1: Generate initial SQL ──────────────────────────────────────
+
     first_response = client.messages.create(
-        model=getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001"),
+        model=model,
         max_tokens=1200,
         temperature=0,
         messages=[
@@ -539,17 +609,88 @@ def run_sql_agent(
             "rows": [],
         }
 
-    try:
-        rows = run_query(sql)
-    except Exception as exc:
-        return {
-            "success": False,
-            "message": f"SQL execution failed: {exc}",
-            "sql": sql,
-            "rows": [],
-        }
+    # ── Pass 2: Execute with self-correcting retry loop ───────────────────
 
-    result_preview = format_rows_for_prompt(rows)
+    attempt_history: list[dict] = []
+    rows = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            rows = run_query(sql)
+            logger.info(
+                f"SQL AGENT SUCCESS\n"
+                f"   Attempt: {attempt}/{max_retries}\n"
+                f"   SQL: {sql[:200]}{'...' if len(sql) > 200 else ''}"
+            )
+            break  # Success — exit retry loop
+        except Exception as exc:
+            error_msg = str(exc)
+            attempt_history.append({"sql": sql, "error": error_msg})
+
+            logger.warning(
+                f"SQL AGENT RETRY\n"
+                f"   Attempt: {attempt}/{max_retries}\n"
+                f"   Error: {error_msg}\n"
+                f"   Failed SQL: {sql[:200]}{'...' if len(sql) > 200 else ''}"
+            )
+
+            if attempt >= max_retries:
+                # All retries exhausted
+                logger.error(
+                    f"SQL AGENT FAILED\n"
+                    f"   All {max_retries} attempts exhausted.\n"
+                    f"   Last error: {error_msg}"
+                )
+                return {
+                    "success": False,
+                    "message": (
+                        f"I attempted to query the database {max_retries} times but could not "
+                        f"produce a valid query. Last error: {error_msg}"
+                    ),
+                    "sql": sql,
+                    "rows": [],
+                    "attempts": attempt_history,
+                }
+
+            # Build retry prompt with error context and ask LLM to fix
+            retry_prompt = _build_retry_prompt(
+                user_question=user_question,
+                schema=schema_with_tenant,
+                failed_sql=sql,
+                error_message=error_msg,
+                attempt_history=attempt_history,
+            )
+
+            corrected_sql = _attempt_sql_correction(client, retry_prompt, model)
+
+            if not corrected_sql:
+                logger.error(
+                    f"SQL AGENT FAILED\n"
+                    f"   LLM could not produce corrected SQL on attempt {attempt}."
+                )
+                return {
+                    "success": False,
+                    "message": (
+                        f"Query failed and I could not generate a corrected version. "
+                        f"Error: {error_msg}"
+                    ),
+                    "sql": sql,
+                    "rows": [],
+                    "attempts": attempt_history,
+                }
+
+            if not is_safe_read_only_sql(corrected_sql):
+                return {
+                    "success": False,
+                    "message": "I can only run safe read-only SELECT queries.",
+                    "sql": corrected_sql,
+                    "rows": [],
+                }
+
+            # Use corrected SQL for the next attempt
+            sql = corrected_sql
+
+    # ── Pass 3: Synthesize results ────────────────────────────────────────
 
     result_preview = format_rows_for_prompt(rows)
     final_prompt = SQL_FINAL_RESPONSE_PROMPT.format(
@@ -559,7 +700,7 @@ def run_sql_agent(
     )
 
     final_response = client.messages.create(
-        model=getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001"),
+        model=model,
         max_tokens=1200,
         temperature=0,
         messages=[
@@ -572,9 +713,16 @@ def run_sql_agent(
 
     final_text = final_response.content[0].text
 
-    return {
+    result = {
         "success": True,
         "message": final_text,
         "sql": sql,
         "rows": rows[:50],
     }
+
+    # Include retry metadata if corrections were needed
+    if attempt_history:
+        result["self_corrections"] = len(attempt_history)
+        result["attempts"] = attempt_history
+
+    return result

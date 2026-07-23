@@ -16,6 +16,7 @@ from .utils import make_report_url
 from .logger import log_session_event, log_error, logger
 
 from .session_manager import SessionManager
+from .query_context import resolve_tenant_id
 from doova_one_view.api.auth.permissions import require_permissions
 
 # Initialize Nodes
@@ -121,7 +122,7 @@ async def background_retry_executor(
                     company_id=company_id
                 )
                 
-                plan_summary = f"### 🗺️ Strategic Architecture Plan (Completed in Background)\n\n"
+                plan_summary = f"### Strategic Architecture Plan (Completed in Background)\n\n"
                 plan_summary += f"**Objective:** {plan_result.get('objective', 'Strategic Audit')}\n\n"
                 phases = plan_result.get('phases', [])
                 if phases:
@@ -161,7 +162,7 @@ async def background_retry_executor(
                 delay *= 2.0  # exponential backoff
             else:
                 logger.error(f"BACKGROUND RETRY FAILED PERMANENTLY | Session: {session_id} | Error: {e}")
-                err_text = "❌ I attempted to process your request in the background but ran into persistent issues with the AI provider. Please try sending your message again shortly."
+                err_text = "I attempted to process your request in the background but ran into persistent issues with the AI provider. Please try sending your message again shortly."
                 await sync_to_async(session_manager.save_message)(session_id, "assistant", err_text)
                 return
 
@@ -186,9 +187,12 @@ async def chat_endpoint(request: Request):
     # Extract message from multiple potential sources
     user_message = req_data.query_alt or req_data.message or req_data.content or req_data.prompt or ""
     
+    # Resolve tenant_id to a valid UUID string (handling slugs like 'softquesarl-supernova-stage')
+    from asgiref.sync import sync_to_async
+    req_data.tenant_id = await sync_to_async(resolve_tenant_id)(req_data.tenant_id)
+
     # 1. Immediate Session Handling
     import uuid
-    from asgiref.sync import sync_to_async
     
     current_session_id = req_data.session_id
     if not current_session_id or current_session_id == "new" or current_session_id == "default_session":
@@ -384,7 +388,7 @@ async def chat_endpoint(request: Request):
             company_id=req_data.company_id
         )
         # Format the plan into a readable answer for the UI
-        plan_summary = f"### 🗺️ Strategic Architecture Plan\n\n"
+        plan_summary = f"### Strategic Architecture Plan\n\n"
         plan_summary += f"**Objective:** {plan.get('objective', 'Strategic Audit')}\n\n"
         
         phases = plan.get('phases', [])

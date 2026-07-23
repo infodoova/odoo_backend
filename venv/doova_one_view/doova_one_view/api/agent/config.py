@@ -48,6 +48,22 @@ class AgentConfig:
     # ── Memory ────────────────────────────────────────────────────────
     SUMMARIZE_EVERY_N = 4
 
+    # ── SQL Agent ─────────────────────────────────────────────────────
+    MAX_SQL_RETRIES = 3
+
+    # ── Cache TTLs (seconds) ──────────────────────────────────────────
+    CACHE_TTL_SCHEMA = 1800        # 30 min
+    CACHE_TTL_TENANT_PROFILE = 900 # 15 min
+    CACHE_TTL_FINANCIAL = 300      # 5 min
+    CACHE_MAX_SIZE = 128           # Max entries per cache
+
+    # ── Alert Pre-Check Thresholds ────────────────────────────────────
+    ALERT_CASH_DROP_PCT = 20.0        # Trigger if cash drops > 20%
+    ALERT_AR_OVERDUE_RATIO = 0.30     # Trigger if overdue > 30% of total AR
+    ALERT_REVENUE_DEVIATION_PCT = 30.0 # Trigger if revenue deviates > 30% from daily avg
+    ALERT_LOW_STOCK_THRESHOLD = 5      # Trigger if available qty < 5
+    ALERT_LARGE_TXN_MULTIPLIER = 3.0   # Trigger if single txn > 3x avg
+
     # ── Business thresholds ───────────────────────────────────────────
     LOW_MARGIN_THRESHOLD = 15.0
     HIGH_RECEIVABLES_DAYS = 60

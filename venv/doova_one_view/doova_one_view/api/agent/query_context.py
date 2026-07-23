@@ -1,12 +1,56 @@
 # api/agent/query_context.py
 
 import re
+import uuid
 from datetime import date, datetime, timedelta
 from typing import List, Tuple, Dict, Any, Optional, Union
+from django.db import models
 from .config import AgentConfig
 
 # Financial Period Constants
 DEFAULT_COMPANY_IDS = []  # Empty means all companies within the tenant context
+
+
+def resolve_tenant_id(tenant_id: Optional[str]) -> Optional[str]:
+    """
+    Ensures tenant_id is a valid UUID string compatible with PostgreSQL UUID columns.
+    If tenant_id is 'all', returns None (indicating cross-tenant aggregation).
+    If tenant_id is already a valid UUID string, returns it as-is.
+    If tenant_id is a slug/name/default, looks up the corresponding Tenant in DB or falls back safely.
+    """
+    clean_id = str(tenant_id or "").strip()
+    if clean_id.lower() == "all":
+        return None
+        
+    if not clean_id or clean_id.lower() in ("default", "none", "null", ""):
+        clean_id = ""
+
+    if clean_id:
+        try:
+            val = uuid.UUID(clean_id)
+            return str(val)
+        except ValueError:
+            pass
+
+    # Look up by name or odoo_database slug in Django Tenant table
+    try:
+        from odoo_app.models.tenant import Tenant
+        if clean_id:
+            tenant = Tenant.objects.filter(
+                models.Q(name__iexact=clean_id) | models.Q(odoo_database__iexact=clean_id)
+            ).first()
+            if tenant:
+                return str(tenant.id)
+
+        # Fallback to first available active tenant in database
+        first_tenant = Tenant.objects.filter(is_active=True).first() or Tenant.objects.first()
+        if first_tenant:
+            return str(first_tenant.id)
+    except Exception:
+        pass
+
+    # Fallback UUID if no tenant exists in DB
+    return "00000000-0000-0000-0000-000000000001"
 
 def normalize_company_ids(
     company_id: Optional[Union[int, str]] = None,
@@ -38,6 +82,32 @@ def normalize_company_ids(
     # Deduplicate while preserving order (if any)
     unique_ids = list(dict.fromkeys(processed_ids))
     return unique_ids if unique_ids else DEFAULT_COMPANY_IDS
+
+def normalize_tenant_ids(
+    tenant_id: Optional[str] = None,
+    tenant_ids: Optional[List[str]] = None,
+) -> List[str]:
+    """
+    Standardizes tenant identifiers into a unique list of valid UUID strings.
+    Handles single inputs and lists. Returns empty list if no valid tenants are provided
+    (meaning all tenants or cross-tenant query).
+    """
+    processed_ids: List[str] = []
+
+    if tenant_ids:
+        for val in tenant_ids:
+            clean = resolve_tenant_id(val)
+            if clean:
+                processed_ids.append(clean)
+
+    if tenant_id is not None:
+        clean = resolve_tenant_id(tenant_id)
+        if clean:
+            processed_ids.append(clean)
+
+    # Deduplicate while preserving order
+    unique_ids = list(dict.fromkeys(processed_ids))
+    return unique_ids
 
 def resolve_company_ids_to_local(tenant_id: str, odoo_ids: List[int]) -> List[int]:
     """
@@ -73,6 +143,26 @@ def build_company_filter_sql(
         
     placeholders = [f":{prefix}_{i}" for i in range(len(ids))]
     params = {f"{prefix}_{i}": cid for i, cid in enumerate(ids)}
+    
+    return f" AND {column_name} IN ({', '.join(placeholders)})", params
+
+def build_tenant_filter_sql(
+    tenant_id: Optional[str] = None, 
+    tenant_ids: Optional[List[str]] = None,
+    column_name: str = "tenant_id", 
+    prefix: str = "t"
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Generates a secure SQL filter for tenant_id using an IN clause if multiple are provided.
+    If no tenants are provided, returns no filter (allowing cross-tenant queries).
+    """
+    ids = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
+    
+    if not ids:
+        return "", {}
+        
+    placeholders = [f":{prefix}_tenant_id_{i}" for i in range(len(ids))]
+    params = {f"{prefix}_tenant_id_{i}": tid for i, tid in enumerate(ids)}
     
     return f" AND {column_name} IN ({', '.join(placeholders)})", params
 
