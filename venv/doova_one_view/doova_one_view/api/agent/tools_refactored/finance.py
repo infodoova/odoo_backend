@@ -447,7 +447,7 @@ def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, compa
 # 5. PROFIT & LOSS
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
 
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     params = {"tenant_id": tenant_id}

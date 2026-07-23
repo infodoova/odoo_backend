@@ -13,7 +13,11 @@ from xhtml2pdf import pisa
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+import logging
+import warnings
+logging.getLogger('matplotlib').setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
+warnings.filterwarnings("ignore", module="matplotlib")
 from ..utils import make_report_url
 from .sales import get_sales_summary_tool, get_time_series_data_tool
 from .finance import get_business_health_score_tool, calculate_pnl_tool
