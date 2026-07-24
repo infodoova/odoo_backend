@@ -7,7 +7,7 @@ import asyncio
 from asgiref.sync import sync_to_async
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from .router import RouterNode
 from .fast_path import FastPathNode
@@ -16,7 +16,7 @@ from .utils import make_report_url
 from .logger import log_session_event, log_error, logger
 
 from .session_manager import SessionManager
-from .query_context import resolve_tenant_id
+from .query_context import resolve_tenant_id, normalize_tenant_ids, normalize_company_ids
 from doova_one_view.api.auth.permissions import require_permissions
 
 # Initialize Nodes
@@ -35,15 +35,70 @@ class ChatRequest(BaseModel):
     query_alt: Optional[str] = Field(alias="query", default=None)
     content: Optional[str] = Field(alias="userInput", default=None)
     prompt: Optional[str] = Field(default=None)
-    tenant_id: Optional[str] = Field(alias="tenantId", default="default")
+
+    tenant_id: Optional[Union[str, List[str]]] = Field(alias="tenantId", default=None)
+    tenant_ids: Optional[List[str]] = Field(alias="tenantIds", default=None)
+    tenants: Optional[List[str]] = Field(default=None)
+
     session_id: str = Field(alias="sessionId", default="default_session")
-    company_id: Optional[int] = Field(alias="companyId", default=None)
+
+    company_id: Optional[Union[int, str, List[Union[int, str]]]] = Field(alias="companyId", default=None)
+    company_ids: Optional[List[Union[int, str]]] = Field(alias="companyIds", default=None)
+    companies: Optional[List[Union[int, str]]] = Field(default=None)
+
     chat_history: Optional[List[dict]] = Field(default=[])
 
     # Fallback for 'message' vs 'text'
     @property
     def query(self) -> str:
         return self.message
+
+def extract_context_ids(req_data: Union[ChatRequest, dict]):
+    """
+    Extracts and normalizes tenant and company parameters from a ChatRequest or dict.
+    Returns: (primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids)
+    """
+    raw_tenants = []
+    raw_companies = []
+
+    if isinstance(req_data, ChatRequest):
+        t_id = req_data.tenant_id
+        t_ids = req_data.tenant_ids
+        t_list = req_data.tenants
+
+        c_id = req_data.company_id
+        c_ids = req_data.company_ids
+        c_list = req_data.companies
+    else:
+        t_id = req_data.get("tenant_id") or req_data.get("tenantId")
+        t_ids = req_data.get("tenant_ids") or req_data.get("tenantIds")
+        t_list = req_data.get("tenants")
+
+        c_id = req_data.get("company_id") or req_data.get("companyId")
+        c_ids = req_data.get("company_ids") or req_data.get("companyIds")
+        c_list = req_data.get("companies")
+
+    for val in (t_id, t_ids, t_list):
+        if val is not None:
+            if isinstance(val, list):
+                raw_tenants.extend(val)
+            else:
+                raw_tenants.append(val)
+
+    for val in (c_id, c_ids, c_list):
+        if val is not None:
+            if isinstance(val, list):
+                raw_companies.extend(val)
+            else:
+                raw_companies.append(val)
+
+    resolved_tenant_ids = normalize_tenant_ids(tenant_ids=raw_tenants)
+    resolved_company_ids = normalize_company_ids(companies=raw_companies)
+
+    primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else None
+    primary_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
+
+    return primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids
 
 def make_chat_response(
     answer: str,
@@ -87,13 +142,15 @@ def make_chat_response(
 
 async def background_retry_executor(
     session_id: str,
-    tenant_id: str,
+    tenant_id: str | None,
     company_id: int | None,
     user_message: str,
     chat_history: list,
     db_summary: str,
     mode: str = "EXECUTE",
-    plan: dict = None
+    plan: dict = None,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
 ):
     max_retries = 5
     delay = 1.0  # initial delay in seconds
@@ -110,7 +167,9 @@ async def background_retry_executor(
                 answer = await asyncio.to_thread(fast_path_node.run, 
                     message=user_message,
                     tenant_id=tenant_id,
+                    tenant_ids=tenant_ids,
                     company_id=company_id,
+                    company_ids=company_ids,
                     chat_history=chat_history,
                     memory_summary=db_summary,
                     on_summary=save_summary_to_db
@@ -119,7 +178,9 @@ async def background_retry_executor(
                 plan_result = await asyncio.to_thread(reasoning_node.create_plan, 
                     message=user_message,
                     tenant_id=tenant_id,
-                    company_id=company_id
+                    tenant_ids=tenant_ids,
+                    company_id=company_id,
+                    company_ids=company_ids
                 )
                 
                 plan_summary = f"### Strategic Architecture Plan (Completed in Background)\n\n"
@@ -137,7 +198,7 @@ async def background_retry_executor(
                 answer = plan_summary
                 
                 def _update_session_plan():
-                    s = session_manager.get_or_create_session(session_id, tenant_id)
+                    s = session_manager.get_or_create_session(session_id, tenant_id or "default")
                     s.plan_state = plan_result
                     s.save()
                 await sync_to_async(_update_session_plan)()
@@ -146,7 +207,9 @@ async def background_retry_executor(
                     message=user_message,
                     plan=plan,
                     tenant_id=tenant_id,
-                    company_id=company_id
+                    tenant_ids=tenant_ids,
+                    company_id=company_id,
+                    company_ids=company_ids
                 )
             
             await sync_to_async(session_manager.save_message)(session_id, "assistant", answer)
@@ -187,9 +250,9 @@ async def chat_endpoint(request: Request):
     # Extract message from multiple potential sources
     user_message = req_data.query_alt or req_data.message or req_data.content or req_data.prompt or ""
     
-    # Resolve tenant_id to a valid UUID string (handling slugs like 'softquesarl-supernova-stage')
+    # Extract & normalize all tenant and company ids
     from asgiref.sync import sync_to_async
-    req_data.tenant_id = await sync_to_async(resolve_tenant_id)(req_data.tenant_id)
+    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = await sync_to_async(extract_context_ids)(req_data)
 
     # 1. Immediate Session Handling
     import uuid
@@ -199,8 +262,9 @@ async def chat_endpoint(request: Request):
         current_session_id = str(uuid.uuid4())
         logger.info(f"Generated new session ID: {current_session_id}")
 
+    session_tenant_id = primary_tenant_id or "default"
     # Load session and history BEFORE saving new message
-    session = await sync_to_async(session_manager.get_or_create_session)(current_session_id, req_data.tenant_id, user_message)
+    session = await sync_to_async(session_manager.get_or_create_session)(current_session_id, session_tenant_id, user_message)
     
     # Retrieve persisted summary (from last summarization cycle)
     db_summary = session.summary or ""
@@ -245,8 +309,8 @@ async def chat_endpoint(request: Request):
     logger.info(
         f"INCOMING REQUEST\n"
         f"   Session: {current_session_id}\n"
-        f"   Tenant: {req_data.tenant_id}\n"
-        f"   Company: {req_data.company_id or 'ALL'}\n"
+        f"   Tenants: {resolved_tenant_ids or 'ALL'}\n"
+        f"   Companies: {resolved_company_ids or 'ALL'}\n"
         f"   Message: \"{user_message[:100]}\"\n"
         f"   History Context: {len(chat_history_from_db)} messages"
     )
@@ -262,8 +326,10 @@ async def chat_endpoint(request: Request):
                 reasoning_node.execute_plan,
                 message=user_message,
                 plan=session.plan_state,
-                tenant_id=req_data.tenant_id,
-                company_id=req_data.company_id
+                tenant_id=primary_tenant_id,
+                tenant_ids=resolved_tenant_ids,
+                company_id=primary_company_id,
+                company_ids=resolved_company_ids
             )
             
             # Reset plan state after successful execution
@@ -287,8 +353,10 @@ async def chat_endpoint(request: Request):
                 asyncio.create_task(
                     background_retry_executor(
                         session_id=current_session_id,
-                        tenant_id=req_data.tenant_id,
-                        company_id=req_data.company_id,
+                        tenant_id=primary_tenant_id,
+                        tenant_ids=resolved_tenant_ids,
+                        company_id=primary_company_id,
+                        company_ids=resolved_company_ids,
                         user_message=user_message,
                         chat_history=chat_history_from_db,
                         db_summary=db_summary,
@@ -330,8 +398,10 @@ async def chat_endpoint(request: Request):
             def run_fast_path():
                 return fast_path_node.run(
                     message=user_message,
-                    tenant_id=req_data.tenant_id,
-                    company_id=req_data.company_id,
+                    tenant_id=primary_tenant_id,
+                    tenant_ids=resolved_tenant_ids,
+                    company_id=primary_company_id,
+                    company_ids=resolved_company_ids,
                     chat_history=chat_history_from_db,
                     memory_summary=db_summary,
                     on_summary=save_summary_to_db
@@ -357,8 +427,10 @@ async def chat_endpoint(request: Request):
                 asyncio.create_task(
                     background_retry_executor(
                         session_id=current_session_id,
-                        tenant_id=req_data.tenant_id,
-                        company_id=req_data.company_id,
+                        tenant_id=primary_tenant_id,
+                        tenant_ids=resolved_tenant_ids,
+                        company_id=primary_company_id,
+                        company_ids=resolved_company_ids,
                         user_message=user_message,
                         chat_history=chat_history_from_db,
                         db_summary=db_summary,
@@ -378,14 +450,13 @@ async def chat_endpoint(request: Request):
     
     # 4. Planning Path (High-Stakes Architecture)
     try:
-        # For planning, we also want to pass context if possible
-        # Since create_plan doesn't take full history yet, we'll pass it via reasoning_node if updated, 
-        # or just ensure the session title is used as context.
         plan = await asyncio.to_thread(
             reasoning_node.create_plan,
             message=user_message,
-            tenant_id=req_data.tenant_id,
-            company_id=req_data.company_id
+            tenant_id=primary_tenant_id,
+            tenant_ids=resolved_tenant_ids,
+            company_id=primary_company_id,
+            company_ids=resolved_company_ids
         )
         # Format the plan into a readable answer for the UI
         plan_summary = f"### Strategic Architecture Plan\n\n"
@@ -427,8 +498,10 @@ async def chat_endpoint(request: Request):
             asyncio.create_task(
                 background_retry_executor(
                     session_id=current_session_id,
-                    tenant_id=req_data.tenant_id,
-                    company_id=req_data.company_id,
+                    tenant_id=primary_tenant_id,
+                    tenant_ids=resolved_tenant_ids,
+                    company_id=primary_company_id,
+                    company_ids=resolved_company_ids,
                     user_message=user_message,
                     chat_history=chat_history_from_db,
                     db_summary=db_summary,
@@ -463,8 +536,7 @@ def _extract_json_block(text: str) -> dict | None:
 @router.post("/report", dependencies=[_use_agent])
 async def generate_ai_report(request: Request):
     body = await request.json()
-    tenant_id = body.get("tenant_id", "default")
-    company_id = body.get("company_id")
+    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
     report_type = body.get("type", "analysis")
     data = body.get("data", {})
 
@@ -522,13 +594,17 @@ async def generate_ai_report(request: Request):
                 lines += [f"**[{sev}] {f['title']}**", f["description"], ""]
 
     custom_content = "\n".join(lines)
+    logo_path = body.get("logo_path")
 
     try:
-        from .tools_refactored.reporting import generate_report_tool
+        from .tools_refactored.reporting_v2 import generate_report_tool
         result = await sync_to_async(generate_report_tool)(
-            tenant_id=tenant_id,
-            company_id=company_id,
-            custom_content=custom_content
+            tenant_id=primary_tenant_id,
+            tenant_ids=resolved_tenant_ids,
+            company_id=primary_company_id,
+            company_ids=resolved_company_ids,
+            custom_content=custom_content,
+            logo_path=logo_path,
         )
         return {"download_url": result.get("path", result["download_url"]), "filename": result["filename"]}
     except Exception as e:
@@ -540,8 +616,7 @@ async def generate_ai_report(request: Request):
 async def run_analysis(request: Request):
     import uuid
     body = await request.json()
-    tenant_id = body.get("tenant_id", "default")
-    company_id = body.get("company_id")
+    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
     focus_area = body.get("focus_area", "Sales & Revenue")
     dimension = body.get("dimension", "Overall Performance")
     session_id = body.get("session_id") or str(uuid.uuid4())
@@ -576,15 +651,18 @@ async def run_analysis(request: Request):
     )
 
     user_label = f"Analysis: {focus_area} — {dimension}"
-    await sync_to_async(session_manager.get_or_create_session)(session_id, tenant_id, user_label)
+    session_tenant_id = primary_tenant_id or "default"
+    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
     await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
 
     try:
         answer = await asyncio.to_thread(
             fast_path_node.run,
             message=prompt,
-            tenant_id=tenant_id,
-            company_id=company_id,
+            tenant_id=primary_tenant_id,
+            tenant_ids=resolved_tenant_ids,
+            company_id=primary_company_id,
+            company_ids=resolved_company_ids,
             chat_history=[],
             memory_summary=""
         )
@@ -608,8 +686,7 @@ async def run_analysis(request: Request):
 async def run_forecast(request: Request):
     import uuid
     body = await request.json()
-    tenant_id = body.get("tenant_id", "default")
-    company_id = body.get("company_id")
+    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
     scope = body.get("scope", "Next 30 Days")
     risk_profile = body.get("risk_profile", "Balanced (Standard)")
     session_id = body.get("session_id") or str(uuid.uuid4())
@@ -649,14 +726,17 @@ async def run_forecast(request: Request):
     )
 
     user_label = f"Forecast: {scope} ({risk_profile})"
-    await sync_to_async(session_manager.get_or_create_session)(session_id, tenant_id, user_label)
+    session_tenant_id = primary_tenant_id or "default"
+    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
     await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
 
     try:
         answer = fast_path_node.run(
             message=prompt,
-            tenant_id=tenant_id,
-            company_id=company_id,
+            tenant_id=primary_tenant_id,
+            tenant_ids=resolved_tenant_ids,
+            company_id=primary_company_id,
+            company_ids=resolved_company_ids,
             chat_history=[],
             memory_summary=""
         )
@@ -680,8 +760,7 @@ async def run_forecast(request: Request):
 async def run_audit(request: Request):
     import uuid
     body = await request.json()
-    tenant_id = body.get("tenant_id", "default")
-    company_id = body.get("company_id")
+    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
     priority = body.get("priority", "Duplicate Detection")
     depth = body.get("depth", "Full Depth (Last Quarter)")
     session_id = body.get("session_id") or str(uuid.uuid4())
@@ -726,14 +805,17 @@ async def run_audit(request: Request):
     )
 
     user_label = f"Audit: {priority} — {depth}"
-    await sync_to_async(session_manager.get_or_create_session)(session_id, tenant_id, user_label)
+    session_tenant_id = primary_tenant_id or "default"
+    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
     await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
 
     try:
         answer = fast_path_node.run(
             message=prompt,
-            tenant_id=tenant_id,
-            company_id=company_id,
+            tenant_id=primary_tenant_id,
+            tenant_ids=resolved_tenant_ids,
+            company_id=primary_company_id,
+            company_ids=resolved_company_ids,
             chat_history=[],
             memory_summary=""
         )

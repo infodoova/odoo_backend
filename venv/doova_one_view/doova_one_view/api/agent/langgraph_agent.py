@@ -10,8 +10,10 @@ from .langchain_agent import DoovaLangChainAgent
 
 class AgentState(TypedDict):
     messages: List[BaseMessage]
-    tenant_id: str
-    company_id: int
+    tenant_id: Union[str, None]
+    company_id: Union[int, None]
+    tenant_ids: List[str]
+    company_ids: List[int]
     plan: dict
     status: str  # 'IDLE', 'PLANNING', 'AWAITING_APPROVAL', 'EXECUTING', 'DONE'
     next_node: str
@@ -60,8 +62,10 @@ class DoovaLangGraphAgent:
     def fast_path_node(self, state: AgentState):
         response = self.fast_agent.run(
             message=state["messages"][-1].content,
-            tenant_id=state["tenant_id"],
-            company_id=state["company_id"]
+            tenant_id=state.get("tenant_id"),
+            tenant_ids=state.get("tenant_ids"),
+            company_id=state.get("company_id"),
+            company_ids=state.get("company_ids")
         )
         return {"messages": [AIMessage(content=response)], "status": "DONE"}
 
@@ -72,11 +76,20 @@ class DoovaLangGraphAgent:
         # ... (Call LLM to get JSON plan)
         return {"status": "AWAITING_APPROVAL", "plan": {"id": "123", "steps": ["Check sales"]}}
 
-    def run(self, message: str, tenant_id: str, company_id: int = None):
+    def run(
+        self,
+        message: str,
+        tenant_id: str | None = None,
+        company_id: int | None = None,
+        company_ids: list[int] | None = None,
+        tenant_ids: list[str] | None = None
+    ):
         inputs = {
             "messages": [HumanMessage(content=message)],
             "tenant_id": tenant_id,
             "company_id": company_id,
+            "tenant_ids": tenant_ids or [],
+            "company_ids": company_ids or [],
             "status": "IDLE"
         }
         final_state = self.app.invoke(inputs)

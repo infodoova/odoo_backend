@@ -11,43 +11,17 @@ class RoutingProtocol(str, Enum):
     CONFIRM = "CONFIRM"
 
 # 1. ROUTER PROMPT
-ROUTER_PROMPT = PromptTemplate.from_template("""You are the Nexus Strategic Intent Controller—an elite financial intelligence routing specialist.
+ROUTER_PROMPT = PromptTemplate.from_template("""CRITICAL DIRECTIVE: You are a strict intent router. Respond with ONLY ONE single token: REJECT, EXECUTE, PLAN, or CONFIRM. Do NOT write preambles, introductions, or explanations.
 
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 1: ROLE DEFINITION (Expert Router Role)
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    You operate as the gatekeeper and intent classifier for Nexus.
-    Your tone is extremely concise, logical, and binary.
+CLASSIFICATION RULES:
+- [EXECUTE]: Use for any financial/business request OR friendly greetings, hellos, and polite introductions (e.g., "hi", "hello", "good morning", "how are you"). Also use for P&L, health checks, ratios, revenue, sales, inventory, cash flow, aging.
+- [REJECT]: Use ONLY for non-business, off-topic queries (e.g., weather, sports, movies, trivia) or abuse. Friendly greetings are NOT rejected—classify greetings as EXECUTE.
+- [PLAN]: Use when the user explicitly requests a multi-phase, multi-week strategic roadmap or transformation program (e.g., "create a 4-phase strategic roadmap", "give me a phased execution plan").
+- [CONFIRM]: Use when the user is approving a prior plan (e.g., "yes", "proceed", "go ahead", "do it").
 
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 2: THE MISSION (Intent Classification)
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Your sole task is to classify incoming user queries into one of the four execution protocols:
-    - [REJECT]: Casual talk, weather, greetings, general off-topic content, or abuse. NOT related to business or finance in any way.
-    - [EXECUTE]: Any financial data request — single metric OR compound analysis. This includes: P&L, health checks, ratios, sales summaries, aging, cash flow, balance sheet, inventory, tax, anomalies, period comparisons, KPIs, top products, forecasts, customer metrics, expense breakdowns. When in doubt between EXECUTE and PLAN, always choose EXECUTE.
-    - [PLAN]: Explicitly requested multi-week/multi-phase organizational roadmaps, full company transformation programs, or structured audit engagement plans. The user must be asking for a phased strategic plan, not just an analysis.
-    - [CONFIRM]: The user is approving or endorsing a previously presented plan (e.g., "yes", "proceed", "go ahead", "execute it", "do it").
+User Query: "{message}"
 
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 3: SITUATIONAL CONTEXT (Classifier Directives)
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Analyze the incoming message without external bias:
-    - User Query: "{message}"
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 4: EXPLAIN THINKING (Classification Logic)
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Evaluate strictly in this order:
-    1. Is the message financially or business relevant? (If not → REJECT)
-    2. Is the user approving a prior plan with a short affirmative? (→ CONFIRM)
-    3. Is the user explicitly requesting a phased multi-week strategic roadmap or transformation program? (→ PLAN)
-    4. Everything else that is financial — single metric, compound analysis, multi-tool investigation, full health audit → EXECUTE
-
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    PILLAR 5: OUTPUT SPECIFICATION (Single-Word Token)
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    You must output exactly one single uppercase token. Do not include any explanations, punctuation, or spaces.
-    Return ONLY one word: REJECT, EXECUTE, PLAN, or CONFIRM.""")
+Classification Token:""")
 
 # 2. SUMMARIZER PROMPT
 SUMMARIZER_PROMPT = PromptTemplate.from_template("""You are the Nexus Executive Chief of Staff—an elite executive compiler summarizing complex financial consultations.

@@ -418,7 +418,14 @@ def purchase_trend(tenant_id: Optional[str], company_id: Optional[int] = None, c
 # ── Reporting Domain ─────────────────────────
 
 @tool
-def create_report(tenant_id: Optional[str], custom_content: str, company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None):
+def create_report(
+    tenant_id: Optional[str],
+    custom_content: str,
+    company_id: Optional[int] = None,
+    company_ids: Optional[list[int]] = None,
+    tenant_ids: Optional[list[str]] = None,
+    logo_path: Optional[str] = None,
+):
     """MANDATORY: When the user asks to 'generate a report' or 'create a report', you MUST call this tool.
     Generate a professional branded PDF executive report including vital signs and your analysis.
     You MUST pass your full markdown report analysis into the `custom_content` parameter. This parameter is REQUIRED.
@@ -426,7 +433,14 @@ def create_report(tenant_id: Optional[str], custom_content: str, company_id: Opt
     Do NOT call this before you have gathered the data — the report cannot be regenerated mid-session."""
     
     # Generate the report. If custom_content is missing, it will use the default automated summary.
-    result = generate_report_tool(tenant_id, custom_content=custom_content, company_id=company_id, company_ids=company_ids, tenant_ids=tenant_ids)
+    result = generate_report_tool(
+        tenant_id,
+        custom_content=custom_content,
+        company_id=company_id,
+        company_ids=company_ids,
+        tenant_ids=tenant_ids,
+        logo_path=logo_path,
+    )
     url = result.get("download_url", "")
     
     # Return a loud, explicit string to Claude so it stops looping and responds to the user!

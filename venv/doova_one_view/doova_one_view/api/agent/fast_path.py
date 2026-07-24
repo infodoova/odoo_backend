@@ -10,8 +10,10 @@ class FastPathNode:
     def run(
         self,
         message: str,
-        tenant_id: str,
+        tenant_id: str | None = None,
         company_id: int | None = None,
+        company_ids: list[int] | None = None,
+        tenant_ids: list[str] | None = None,
         chat_history: list = None,
         memory_summary: str = "",
         on_summary=None
@@ -20,6 +22,8 @@ class FastPathNode:
             message=message,
             tenant_id=tenant_id,
             company_id=company_id,
+            company_ids=company_ids,
+            tenant_ids=tenant_ids,
             chat_history=chat_history,
             memory_summary=memory_summary,
             on_summary=on_summary

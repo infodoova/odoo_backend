@@ -133,12 +133,12 @@ class DoovaLangChainAgent:
                 formatted.append(AIMessage(content=content))
         return formatted
 
-    def run(self, message: str, tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, chat_history: list = None, memory_summary: str = "", on_summary=None) -> str:
+    def run(self, message: str, tenant_id: str | None = None, company_id: int | None = None, company_ids: list[int] | None = None, tenant_ids: list[str] | None = None, chat_history: list = None, memory_summary: str = "", on_summary=None) -> str:
         start = time.time()
         formatted_history = self._format_history(chat_history or [])
         
         # Ensure we always pass the list representation for logging
-        log_agent_start(message, tenant_id, company_ids or company_id, len(formatted_history))
+        log_agent_start(message, tenant_id or (tenant_ids[0] if tenant_ids else "default"), company_ids or company_id, len(formatted_history))
         
         active_history = formatted_history
         new_summary_generated = None
@@ -165,16 +165,20 @@ class DoovaLangChainAgent:
 
         try:
             from .utils import get_tenant_currency, fix_currency_symbols
-            from .query_context import normalize_company_ids
+            from .query_context import normalize_company_ids, normalize_tenant_ids
             
+            resolved_tenant_ids = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
+            primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else (tenant_id or "default")
+
             resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
             resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
 
-            currency = get_tenant_currency(tenant_id, resolved_company_id)
+            currency = get_tenant_currency(primary_tenant_id, resolved_company_id)
 
             response = self.executor.invoke({
                 "input": message,
-                "tenant_id": tenant_id,
+                "tenant_id": primary_tenant_id,
+                "tenant_ids": resolved_tenant_ids,
                 "company_ids": resolved_company_ids,
                 "currency": currency,
                 "chat_history": active_history,

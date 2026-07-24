@@ -230,4 +230,51 @@ def fix_currency_symbols(text: str, currency: str) -> str:
     
     return text
 
+def get_project_logo_b64(custom_logo_path: str | None = None) -> tuple[str | None, str | None]:
+    """
+    Auto-discovers and encodes project logo image for report generation.
+    Checks explicit path, environment variables, and standard project asset locations.
+    Returns: (base64_string, mime_type) or (None, None) if no logo image is found yet.
+    """
+    import base64
+    import mimetypes
+    from pathlib import Path
+    
+    candidate_paths = []
+    
+    if custom_logo_path:
+        candidate_paths.append(Path(custom_logo_path))
+        
+    env_path = os.getenv("COMPANY_LOGO_PATH") or os.getenv("REPORT_LOGO_PATH")
+    if env_path:
+        candidate_paths.append(Path(env_path))
+        
+    # Standard project static/asset locations
+    agent_dir = Path(__file__).resolve().parent # doova_one_view/api/agent
+    app_dir = agent_dir.parent.parent # doova_one_view module
+    project_root = app_dir.parent # backend workspace root
+    
+    for ext in ["png", "jpg", "jpeg", "svg", "webp"]:
+        candidate_paths.extend([
+            app_dir / "static" / "images" / f"logo.{ext}",
+            app_dir / "static" / f"logo.{ext}",
+            project_root / "static" / "images" / f"logo.{ext}",
+            project_root / "static" / f"logo.{ext}",
+            project_root / "assets" / f"logo.{ext}",
+            project_root / "reports" / f"logo.{ext}",
+        ])
+        
+    for p in candidate_paths:
+        try:
+            if p and p.exists() and p.is_file():
+                mime, _ = mimetypes.guess_type(str(p))
+                mime = mime or "image/png"
+                with open(p, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode("utf-8")
+                    return encoded, mime
+        except Exception:
+            continue
+            
+    return None, None
+
 

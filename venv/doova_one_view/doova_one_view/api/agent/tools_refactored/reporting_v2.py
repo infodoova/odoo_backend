@@ -28,7 +28,11 @@ def generate_report_tool(
     custom_content: str = "", 
     company_id: int | None = None,
     company_ids: list[int] | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None, 
+    tenant_ids: Optional[list[str]] = None,
+    logo_path: str | None = None,
+    logo_b64: str | None = None,
+    logo_url: str | None = None,
 ) -> dict:
     from ..utils import get_tenant_currency
     from .common import normalize_company_ids
@@ -177,7 +181,7 @@ The business is currently operating with a health score of **{score_val}/100** a
 
                 # Legend with label + percentage (avoids text overlap on small slices)
                 legend_labels = [
-                    f"{lab}  Ã¢â‚¬â€  {val / total * 100:.1f}%"
+                    f"{lab} - {val / total * 100:.1f}%"
                     for lab, val in zip(labels, values)
                 ]
                 ax.legend(
@@ -268,6 +272,15 @@ The business is currently operating with a health score of **{score_val}/100** a
     template_dir.mkdir(exist_ok=True)
     template_path = template_dir / "report_template.html"
     
+    # Auto-discover project logo image if logo_b64 is not explicitly passed
+    logo_mime = "image/png"
+    if not logo_b64:
+        from ..utils import get_project_logo_b64
+        discovered_b64, discovered_mime = get_project_logo_b64(custom_logo_path=logo_path)
+        if discovered_b64:
+            logo_b64 = discovered_b64
+            logo_mime = discovered_mime or "image/png"
+
     if not template_path.exists():
         html_out = f"<html><body>{body_html}</body></html>"
     else:
@@ -281,7 +294,10 @@ The business is currently operating with a health score of **{score_val}/100** a
             revenue=fmt_revenue,
             margin=fmt_ebit,
             chart_b64=chart_b64,
-            body_html=body_html
+            body_html=body_html,
+            logo_url=logo_url,
+            logo_b64=logo_b64,
+            logo_mime=logo_mime,
         )
     
     # Create output directory and unique filename
