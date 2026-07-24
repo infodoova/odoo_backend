@@ -21,14 +21,27 @@ class RouterNode:
         )
         self.prompt = ROUTER_PROMPT
 
-    def classify(self, message: str) -> str:
+    def classify(self, message: str, chat_history: list | None = None) -> str:
         """
-        Classifies user intent with high precision.
+        Classifies user intent with high precision, using conversation history for context.
         """
         start = time.time()
         try:
+            history_str = "None (New Conversation)"
+            if chat_history and isinstance(chat_history, list) and len(chat_history) > 0:
+                recent = chat_history[-6:]  # Last ~3 turns
+                history_lines = []
+                for m in recent:
+                    if isinstance(m, dict):
+                        role = "User" if m.get("role") == "user" else "Assistant"
+                        content = str(m.get("content") or "").strip()
+                        if content:
+                            history_lines.append(f"{role}: {content[:150]}")
+                if history_lines:
+                    history_str = "\n".join(history_lines)
+
             chain = self.prompt | self.llm
-            response = chain.invoke({"message": message})
+            response = chain.invoke({"message": message, "chat_history": history_str})
             raw_content = response.content.strip()
             logger.debug(f"ROUTER RAW RESPONSE: {raw_content}")
             # Extract clean tokens from response

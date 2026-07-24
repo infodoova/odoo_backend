@@ -315,8 +315,8 @@ async def chat_endpoint(request: Request):
         f"   History Context: {len(chat_history_from_db)} messages"
     )
 
-    # 2. Routing
-    decision = await asyncio.to_thread(router_node.classify, user_message)
+    # 2. Routing (pass recent chat history for context-aware intent resolution)
+    decision = await asyncio.to_thread(router_node.classify, user_message, chat_history_from_db)
     
     # 2.1 Handle Plan Approval (CONFIRM path)
     if decision == "CONFIRM" and session.plan_state:
@@ -376,6 +376,14 @@ async def chat_endpoint(request: Request):
                     user_message
                 )
             raise HTTPException(status_code=500, detail=str(e))
+
+    # Guard against accidental rejections on short follow-up phrases in active sessions
+    if decision == "REJECT" and chat_history_from_db:
+        words = user_message.strip().split()
+        timeframe_keywords = {"today", "yesterday", "year", "month", "quarter", "ytd", "week", "now", "company"}
+        if len(words) <= 6 or any(w.lower().strip("!?.,") in timeframe_keywords for w in words):
+            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for follow-up prompt: '{user_message}'")
+            decision = "EXECUTE"
 
     if decision == "REJECT":
         answer = "I'm sorry, I can only assist with business and financial questions related to your Odoo data."
