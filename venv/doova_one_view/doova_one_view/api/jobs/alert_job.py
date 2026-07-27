@@ -247,13 +247,15 @@ class AlertJobManager:
                             f"AlertJobManager: cron check failed schedule={schedule.id} tenant={tid}"
                         )
             else:
-                if schedule.tenant_id:
+                if schedule.tenant_id or schedule.tenants:
                     try:
+                        tenant_ids = schedule.tenants if schedule.tenants else None
                         await AlertJobManager.run_check(
                             schedule=schedule,
-                            tenant_id=str(schedule.tenant_id),
+                            tenant_id=str(schedule.tenant_id) if schedule.tenant_id else None,
                             send_email=True,
                             is_instant=False,
+                            tenant_ids=tenant_ids,
                         )
                     except Exception:
                         logger.error(
@@ -281,24 +283,16 @@ class AlertJobManager:
         tenant_id: str,
         send_email: bool,
         is_instant: bool,
+        tenant_ids: list | None = None,
     ) -> dict:
         """
         Run the AI anomaly check for one (schedule, tenant) pair.
-
-        Returns:
-            { has_anomalies, summary, alert_sent, log_id }
-
-        On failure, logs the error, writes a failed AlertLog, and
-        re-raises so callers can decide how to surface the error.
         """
         from asgiref.sync import sync_to_async
 
         now = datetime.now(tz.utc)
         company_ids = schedule.companies if schedule.companies else None
 
-        # ── Claim immediately (scheduled runs only) ──────────────────────────
-        # Advance next_check_at BEFORE the AI runs so a restart or concurrent
-        # process cannot re-pick this schedule and send duplicate alerts.
         if not is_instant:
             @sync_to_async
             def _claim():
@@ -321,6 +315,7 @@ class AlertJobManager:
                 tenant_id=tenant_id,
                 company_ids=company_ids,
                 user_prompt=schedule.prompt,
+                tenant_ids=tenant_ids,
             )
 
             alert_sent = False
@@ -394,19 +389,16 @@ class AlertJobManager:
         tenant_id: str,
         company_ids: list | None,
         user_prompt: str,
+        tenant_ids: list | None = None,
     ) -> tuple:
         """
         Returns (summary: str, has_anomalies: bool).
-
-        The LangChain agent must start its response with:
-          'ALERT: <headline>'  — anomaly detected
-          'OK: <headline>'     — all clear
         """
         from doova_one_view.api.jobs.alert_prechecks import run_all_prechecks
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
 
         # Tier 1: Deterministic SQL Pre-Checks (zero LLM cost)
-        precheck_res = await asyncio.to_thread(run_all_prechecks, tenant_id, company_ids)
+        precheck_res = await asyncio.to_thread(run_all_prechecks, tenant_id, company_ids, tenant_ids=tenant_ids)
         if not precheck_res["any_triggered"]:
             logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant={tenant_id} — skipping LLM inference.")
             return "OK: All monitored financial, inventory, and operational metrics are within normal baseline ranges.", False
@@ -452,7 +444,7 @@ class AlertJobManager:
         )
 
         agent = DoovaLangChainAgent()
-        result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids)
+        result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids, tenant_ids=tenant_ids)
         result = result.strip()
 
         # The agent sometimes wraps ALERT:/OK: in bold (**ALERT:**) or places it
@@ -489,11 +481,16 @@ class AlertJobManager:
     # Alert email
     # ------------------------------------------------------------------
 
-    @staticmethod
-    async def _send_alert_email(schedule, tenant_id: str, summary: str):
-        from doova_one_view.api.email.service import EmailService
-
         tenant_name = schedule.tenant.name if schedule.tenant else "Your Business"
+        if schedule.tenants and len(schedule.tenants) > 0:
+            try:
+                from odoo_app.models.tenant import Tenant
+                t_objs = list(Tenant.objects.filter(id__in=schedule.tenants))
+                if t_objs:
+                    tenant_name = ", ".join(t.name for t in t_objs)
+            except Exception:
+                pass
+
         subject = f"ALERT: Unusual Activity Detected — {tenant_name}"
         company_note = (
             "all companies"

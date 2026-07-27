@@ -9,15 +9,16 @@ import logging
 from typing import Dict, List, Tuple, Optional
 from doova_one_view.api.agent.db import run_query
 from doova_one_view.api.agent.config import AgentConfig
-from doova_one_view.api.agent.query_context import build_company_filter_sql, normalize_company_ids
+from doova_one_view.api.agent.query_context import build_company_filter_sql, build_tenant_filter_sql, normalize_company_ids
 
 logger = logging.getLogger(__name__)
 
 
-def check_cash_drop(tenant_id: str, company_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
+def check_cash_drop(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Tuple[bool, str]:
     """Check if current cash balance dropped > ALERT_CASH_DROP_PCT vs 7-day average."""
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(companies=company_ids), column_name="l.company_id")
-    params = {"tenant_id": tenant_id, **f_params}
+    params = {**t_params_l, **f_params}
 
     query = f"""
         WITH cash_moves AS (
@@ -26,7 +27,7 @@ def check_cash_drop(tenant_id: str, company_ids: Optional[List[int]] = None) -> 
                 SUM(l.balance) as daily_net
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
-            WHERE l.tenant_id = :tenant_id
+            WHERE 1=1 {t_sql_l}
               AND l.account_type = 'asset_cash'
               AND m.state = 'posted'
               {f_sql}
@@ -60,17 +61,18 @@ def check_cash_drop(tenant_id: str, company_ids: Optional[List[int]] = None) -> 
     return False, ""
 
 
-def check_overdue_ar(tenant_id: str, company_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
+def check_overdue_ar(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Tuple[bool, str]:
     """Check if overdue receivables exceed ALERT_AR_OVERDUE_RATIO threshold."""
+    t_sql, t_params = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_ar")
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(companies=company_ids))
-    params = {"tenant_id": tenant_id, **f_params}
+    params = {**t_params, **f_params}
 
     query = f"""
         SELECT 
             COALESCE(SUM(amount_residual), 0) AS total_ar,
             COALESCE(SUM(CASE WHEN invoice_date_due < CURRENT_DATE THEN amount_residual ELSE 0 END), 0) AS overdue_ar
         FROM fact_account_moves
-        WHERE tenant_id = :tenant_id
+        WHERE 1=1 {t_sql}
           AND move_type = 'out_invoice'
           AND state = 'posted'
           AND payment_state IN ('not_paid', 'partial')
@@ -97,10 +99,11 @@ def check_overdue_ar(tenant_id: str, company_ids: Optional[List[int]] = None) ->
     return False, ""
 
 
-def check_revenue_anomaly(tenant_id: str, company_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
+def check_revenue_anomaly(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Tuple[bool, str]:
     """Check if revenue in last 24h deviates by > ALERT_REVENUE_DEVIATION_PCT from 30-day daily avg."""
+    t_sql, t_params = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_rev")
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(companies=company_ids))
-    params = {"tenant_id": tenant_id, **f_params}
+    params = {**t_params, **f_params}
 
     query = f"""
         WITH daily_rev AS (
@@ -108,7 +111,7 @@ def check_revenue_anomaly(tenant_id: str, company_ids: Optional[List[int]] = Non
                 date,
                 SUM(amount_untaxed) as rev
             FROM fact_account_moves
-            WHERE tenant_id = :tenant_id
+            WHERE 1=1 {t_sql}
               AND move_type = 'out_invoice'
               AND state = 'posted'
               AND date >= CURRENT_DATE - INTERVAL '30 days'
@@ -141,15 +144,16 @@ def check_revenue_anomaly(tenant_id: str, company_ids: Optional[List[int]] = Non
     return False, ""
 
 
-def check_duplicate_invoices(tenant_id: str, company_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
+def check_duplicate_invoices(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Tuple[bool, str]:
     """Check for suspicious duplicate vendor bills (same partner + amount + date within 7 days)."""
+    t_sql, t_params = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_dup")
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(companies=company_ids))
-    params = {"tenant_id": tenant_id, **f_params}
+    params = {**t_params, **f_params}
 
     query = f"""
         SELECT partner_id, amount_total, date, COUNT(*) as cnt
         FROM fact_account_moves
-        WHERE tenant_id = :tenant_id
+        WHERE 1=1 {t_sql}
           AND move_type = 'in_invoice'
           AND state = 'posted'
           AND date >= CURRENT_DATE - INTERVAL '7 days'
@@ -169,10 +173,11 @@ def check_duplicate_invoices(tenant_id: str, company_ids: Optional[List[int]] = 
     return False, ""
 
 
-def check_low_inventory(tenant_id: str, company_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
+def check_low_inventory(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Tuple[bool, str]:
     """Check for products with available stock < ALERT_LOW_STOCK_THRESHOLD."""
+    t_sql, t_params = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_inv")
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(companies=company_ids))
-    params = {"tenant_id": tenant_id, **f_params}
+    params = {**t_params, **f_params}
 
     threshold = getattr(AgentConfig, "ALERT_LOW_STOCK_THRESHOLD", 5)
     params["threshold"] = threshold
@@ -180,7 +185,7 @@ def check_low_inventory(tenant_id: str, company_ids: Optional[List[int]] = None)
     query = f"""
         SELECT COUNT(DISTINCT product_id) as low_stock_cnt
         FROM fact_stock_quants
-        WHERE tenant_id = :tenant_id
+        WHERE 1=1 {t_sql}
           AND (quantity - reserved_quantity) < :threshold
           {f_sql}
     """
@@ -197,10 +202,11 @@ def check_low_inventory(tenant_id: str, company_ids: Optional[List[int]] = None)
     return False, ""
 
 
-def check_large_transactions(tenant_id: str, company_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
+def check_large_transactions(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Tuple[bool, str]:
     """Check for unusually large single journal entry lines (> 3x average balance for account type in last 24h)."""
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(companies=company_ids), column_name="l.company_id")
-    params = {"tenant_id": tenant_id, **f_params}
+    params = {**t_params_l, **f_params}
 
     multiplier = getattr(AgentConfig, "ALERT_LARGE_TXN_MULTIPLIER", 3.0)
     params["multiplier"] = multiplier
@@ -208,15 +214,15 @@ def check_large_transactions(tenant_id: str, company_ids: Optional[List[int]] = 
     query = f"""
         WITH avg_by_type AS (
             SELECT account_type, AVG(ABS(balance)) as avg_bal
-            FROM fact_account_move_lines
-            WHERE tenant_id = :tenant_id
+            FROM fact_account_move_lines l
+            WHERE 1=1 {t_sql_l}
             GROUP BY account_type
         )
         SELECT COUNT(*) as large_cnt
         FROM fact_account_move_lines l
         JOIN fact_account_moves m ON l.account_move_id = m.id
         JOIN avg_by_type a ON l.account_type = a.account_type
-        WHERE l.tenant_id = :tenant_id
+        WHERE 1=1 {t_sql_l}
           AND m.state = 'posted'
           AND m.date >= CURRENT_DATE - INTERVAL '1 day'
           AND ABS(l.balance) > (a.avg_bal * :multiplier)
@@ -236,16 +242,9 @@ def check_large_transactions(tenant_id: str, company_ids: Optional[List[int]] = 
     return False, ""
 
 
-def run_all_prechecks(tenant_id: str, company_ids: Optional[List[int]] = None) -> Dict[str, any]:
+def run_all_prechecks(tenant_id: str, company_ids: Optional[List[int]] = None, tenant_ids: Optional[List[str]] = None) -> Dict[str, any]:
     """
     Executes all deterministic SQL pre-checks for a tenant.
-    
-    Returns:
-        {
-            "any_triggered": bool,
-            "triggered_checks": List[str],
-            "precheck_summary": str
-        }
     """
     checks = [
         ("cash_drop", check_cash_drop),
@@ -260,7 +259,7 @@ def run_all_prechecks(tenant_id: str, company_ids: Optional[List[int]] = None) -
     summaries: List[str] = []
 
     for name, check_fn in checks:
-        triggered, msg = check_fn(tenant_id, company_ids)
+        triggered, msg = check_fn(tenant_id, company_ids, tenant_ids=tenant_ids)
         if triggered:
             triggered_checks.append(name)
             summaries.append(f"• {msg}")
