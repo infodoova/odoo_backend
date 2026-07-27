@@ -11,7 +11,8 @@ class ReportScheduleCreate(BaseModel):
     recipients:  List[EmailStr]
     frequency:   str
     timezone:    str = 'UTC'
-    companies:   List[int] = []
+    companyIds:  List[int] = []
+    tenantIds:   List[str] = []
     report_type: str = 'analysis'
     prompt:      str = ''
     is_enabled:  bool = True
@@ -36,7 +37,8 @@ class ReportScheduleUpdate(BaseModel):
     recipients:  Optional[List[EmailStr]] = None
     frequency:   Optional[str] = None
     timezone:    Optional[str] = None
-    companies:   Optional[List[int]] = None
+    companyIds:  Optional[List[int]] = None
+    tenantIds:   Optional[List[str]] = None
     report_type: Optional[str] = None
     prompt:      Optional[str] = None
     is_enabled:  Optional[bool] = None
@@ -52,11 +54,12 @@ class ReportScheduleUpdate(BaseModel):
 
 class ReportScheduleResponse(BaseModel):
     id:           str
-    tenant_id:    str
+    tenant_id:    Optional[str] = None
+    tenantIds:    List[str] = []
     recipients:   List[str]
     frequency:    str
     timezone:     str
-    companies:    List[int]
+    companyIds:   List[int] = []
     report_type:  str
     prompt:       str
     is_enabled:   bool

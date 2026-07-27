@@ -140,6 +140,10 @@ def make_chat_response(
     return res
 
 
+def _is_credit_balance_error(e: Exception) -> bool:
+    error_msg = str(e).lower()
+    return any(k in error_msg for k in ["credit balance", "insufficient credits", "billing", "plans & billing", "balance is too low", "purchase credits"])
+
 async def background_retry_executor(
     session_id: str,
     tenant_id: str | None,
@@ -217,6 +221,11 @@ async def background_retry_executor(
             return
             
         except Exception as e:
+            if _is_credit_balance_error(e):
+                err_text = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+                await sync_to_async(session_manager.save_message)(session_id, "assistant", err_text)
+                return
+
             error_msg = str(e).lower()
             is_temporary = any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"])
             if is_temporary and attempt < max_retries:
@@ -348,6 +357,16 @@ async def chat_endpoint(request: Request):
             )
         except Exception as e:
             log_error("chat_endpoint.CONFIRM_EXECUTE", e)
+            if _is_credit_balance_error(e):
+                answer = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+                await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+                return make_chat_response(
+                    answer,
+                    "ERROR",
+                    current_session_id,
+                    session.title,
+                    user_message
+                )
             error_msg = str(e).lower()
             if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):
                 asyncio.create_task(
@@ -428,6 +447,16 @@ async def chat_endpoint(request: Request):
             )
         except Exception as e:
             log_error("chat_endpoint.EXECUTE", e)
+            if _is_credit_balance_error(e):
+                answer = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+                await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+                return make_chat_response(
+                    answer,
+                    "ERROR",
+                    current_session_id,
+                    session.title,
+                    user_message
+                )
             
             # Friendly message for API quota/limit/overloaded issues
             error_msg = str(e).lower()
@@ -500,6 +529,16 @@ async def chat_endpoint(request: Request):
         )
     except Exception as e:
         log_error("chat_endpoint.PLAN", e)
+        if _is_credit_balance_error(e):
+            answer = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+            return make_chat_response(
+                answer,
+                "ERROR",
+                current_session_id,
+                session.title,
+                user_message
+            )
         # Friendly message for API quota/limit/overloaded issues
         error_msg = str(e).lower()
         if any(k in error_msg for k in ["usage limits", "quota", "429", "overloaded", "529", "service unavailable", "temp"]):

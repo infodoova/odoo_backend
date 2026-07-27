@@ -52,19 +52,34 @@ def _sum(qs, field: str) -> float:
     return _to_float(qs.aggregate(value=Coalesce(Sum(field), Decimal("0")))["value"])
 
 
-def _get_rate_map() -> dict:
+def _get_rate_map(tenant_id: Optional[str] = None) -> dict:
+    from doova_one_view.api.agent.query_context import resolve_tenant_id
+    clean_tenant_id = resolve_tenant_id(tenant_id)
+
     from django.db import connection
     with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT DISTINCT ON (c.code) c.code, cr.rate
-            FROM dim_currency_rates cr
-            JOIN dim_currencies c ON cr.currency_id = c.id AND cr.tenant_id = c.tenant_id
-            ORDER BY c.code, cr.name DESC
-        """)
-        all_rate_rows = cursor.fetchall()
-    
+        rows = []
+        if clean_tenant_id:
+            cursor.execute("""
+                SELECT DISTINCT ON (c.code) c.code, cr.rate
+                FROM dim_currency_rates cr
+                JOIN dim_currencies c ON cr.currency_id = c.id
+                WHERE cr.tenant_id = %s OR c.tenant_id = %s
+                ORDER BY c.code, cr.name DESC
+            """, [clean_tenant_id, clean_tenant_id])
+            rows = cursor.fetchall()
+            
+        if not rows:
+            cursor.execute("""
+                SELECT DISTINCT ON (c.code) c.code, cr.rate
+                FROM dim_currency_rates cr
+                JOIN dim_currencies c ON cr.currency_id = c.id
+                ORDER BY c.code, cr.name DESC
+            """)
+            rows = cursor.fetchall()
+            
     rate_map = {}
-    for code, rate in all_rate_rows:
+    for code, rate in rows:
         rate_map[code] = float(rate) if rate else 1.0
     return rate_map
 

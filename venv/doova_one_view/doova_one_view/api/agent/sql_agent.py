@@ -692,7 +692,30 @@ def run_sql_agent(
 
     # ── Pass 3: Synthesize results ────────────────────────────────────────
 
-    result_preview = format_rows_for_prompt(rows)
+    from doova_one_view.api.agent.utils import get_tenant_currency
+    from doova_one_view.api.kpi.service import _get_rate_map
+    from doova_one_view.api.agent.tools_refactored.common import get_per_tenant_exchange_rates
+    
+    tenant_curr = get_tenant_currency(tenant_id)
+    rate_map = _get_rate_map(tenant_id=tenant_id)
+    per_tenant_rates = get_per_tenant_exchange_rates(tenant_ids=tenants)
+    
+    currency_context = (
+        f"\n\nTENANT & COMPANY MULTI-CURRENCY CONTEXT:\n"
+        f"- Tenant Base Currency: {tenant_curr}\n"
+        f"- System Active Exchange Rates Map: {rate_map}\n"
+        f"- Per-Tenant Exchange Rates Breakdown: {per_tenant_rates}\n"
+        f"CRITICAL MULTI-CURRENCY RULE:\n"
+        f"If (and ONLY IF) the user query asks for revenue/spend/amounts in 'all currencies', 'multi-currency', or converted currencies:\n"
+        f"1. State the Tenant Base Currency for each tenant.\n"
+        f"2. Display the exact tenant exchange rates from above (e.g. 1 {tenant_curr} = X target currency).\n"
+        f"3. Apply these exchange rates to convert the SQL query result numbers into every target currency.\n"
+        f"4. Output a clear Multi-Currency Breakdown Table displaying: Target Currency, Converted Amount, Exchange Rate Applied.\n"
+        f"CRITICAL TABLE FORMATTING RULE: Map each target rate key to its exact currency code (XAF, EUR, USD). NEVER repeat the base currency code for converted currency rows (e.g. write 'XAF → USD 0.001639' for USD; NEVER write 'XAF → XAF 0.001639' for USD).\n"
+        f"Otherwise, if the user did NOT request multi-currency, answer normally using the native base currency ({tenant_curr}) without adding a multi-currency conversion table.\n"
+    )
+
+    result_preview = format_rows_for_prompt(rows) + currency_context
     final_prompt = SQL_FINAL_RESPONSE_PROMPT.format(
         user_question=user_question,
         sql=sql,

@@ -21,6 +21,7 @@ from .common import (
     build_company_filter_sql,
     calculate_ratio,
     build_currency_case_sql,
+    get_multi_currency_conversions,
 )
 
 
@@ -69,13 +70,16 @@ def get_purchase_summary_tool(
     )
 
     row = rows[0] if rows else {}
+    spend = float(row.get("total_spend") or 0)
+    cid_single = selected[0] if len(selected) == 1 else None
     return {
         "tool_name": "get_purchase_summary_tool",
-        "total_spend": float(row.get("total_spend") or 0),
+        "total_spend": spend,
         "po_count": int(row.get("po_count") or 0),
         "avg_po_value": round(float(row.get("avg_po_value") or 0), 2),
         "first_po_date": str(row.get("first_po_date") or ""),
         "last_po_date": str(row.get("last_po_date") or ""),
+        "currency_conversions": get_multi_currency_conversions(spend, tenant_id, company_id=company_id, company_ids=company_ids, base_currency=base_currency, tenant_ids=tenant_ids, start_date=start_date, end_date=end_date, domain="purchasing"),
     }
 
 

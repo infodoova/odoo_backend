@@ -43,11 +43,12 @@ _manage = Depends(require_permissions("view_kpi"))
 def _serialize_schedule(s) -> dict:
     return {
         "id":           str(s.id),
-        "tenant_id":    str(s.tenant_id),
+        "tenant_id":    str(s.tenant_id) if s.tenant_id else None,
+        "tenantIds":    getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else []),
         "recipients":   s.recipients,
         "frequency":    s.frequency,
         "timezone":     s.timezone,
-        "companies":    s.companies,
+        "companyIds":   getattr(s, "companies", []),
         "report_type":  s.report_type,
         "prompt":       s.prompt,
         "is_enabled":   s.is_enabled,
@@ -105,13 +106,15 @@ async def create_schedule(
     def _create():
         from odoo_app.models.report_schedule import ReportSchedule
         from odoo_app.models.tenant import Tenant
-        tenant = Tenant.objects.get(id=tenant_id)
+        tenant = Tenant.objects.filter(id=tenant_id).first()
+        tenant_ids = payload.tenantIds if payload.tenantIds else ([tenant_id] if tenant_id else [])
         return ReportSchedule.objects.create(
             tenant=tenant,
+            tenants=tenant_ids,
             recipients=payload.recipients,
             frequency=payload.frequency,
             timezone=payload.timezone,
-            companies=payload.companies,
+            companies=payload.companyIds,
             report_type=payload.report_type,
             prompt=payload.prompt,
             is_enabled=payload.is_enabled,
@@ -141,7 +144,10 @@ async def list_schedules(
 
     def _fetch():
         from odoo_app.models.report_schedule import ReportSchedule
-        qs = ReportSchedule.objects.filter(tenant_id=tenant_id).order_by('-created_at')
+        from django.db.models import Q
+        qs = ReportSchedule.objects.filter(
+            Q(tenant_id=tenant_id) | Q(tenants__contains=tenant_id)
+        ).order_by('-created_at')
         return list(qs[offset: offset + limit])
 
     schedules = await asyncio.to_thread(_fetch)
@@ -173,11 +179,19 @@ async def update_schedule(
             return None
 
         update_fields = []
-        for field in ('recipients', 'frequency', 'timezone', 'companies', 'report_type', 'prompt', 'is_enabled', 'next_send_at'):
+        for field in ('recipients', 'frequency', 'timezone', 'report_type', 'prompt', 'is_enabled', 'next_send_at'):
             val = getattr(payload, field, None)
             if val is not None:
                 setattr(s, field, val)
                 update_fields.append(field)
+
+        if payload.companyIds is not None:
+            s.companies = payload.companyIds
+            update_fields.append('companies')
+
+        if payload.tenantIds is not None:
+            s.tenants = payload.tenantIds
+            update_fields.append('tenants')
 
         if update_fields:
             update_fields.append('updated_at')

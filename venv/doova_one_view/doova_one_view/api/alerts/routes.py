@@ -46,10 +46,11 @@ def _serialize_schedule(s) -> dict:
     return {
         "id":               str(s.id),
         "tenant_id":        str(s.tenant_id) if s.tenant_id else None,
+        "tenantIds":        getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else []),
         "name":             s.name,
         "prompt":           s.prompt,
         "recipients":       s.recipients,
-        "companies":        s.companies,
+        "companyIds":       getattr(s, "companies", []),
         "timezone":         s.timezone,
         "is_enabled":       s.is_enabled,
         "is_system_default": s.is_system_default,
@@ -109,13 +110,15 @@ async def create_alert_schedule(
     def _create():
         from odoo_app.models.alert_schedule import AlertSchedule
         from odoo_app.models.tenant import Tenant
-        tenant = Tenant.objects.get(id=tenant_id)
+        tenant = Tenant.objects.filter(id=tenant_id).first()
+        tenant_ids = payload.tenantIds if payload.tenantIds else ([tenant_id] if tenant_id else [])
         return AlertSchedule.objects.create(
             tenant=tenant,
+            tenants=tenant_ids,
             name=payload.name,
             prompt=payload.prompt,
             recipients=payload.recipients,
-            companies=payload.companies,
+            companies=payload.companyIds,
             timezone=payload.timezone,
             is_enabled=payload.is_enabled,
             is_system_default=payload.is_system_default,
@@ -145,10 +148,10 @@ async def list_alert_schedules(
 
     def _fetch():
         from odoo_app.models.alert_schedule import AlertSchedule
-        # Return this tenant's schedules AND system-wide ones
+        # Return this tenant's schedules AND system-wide ones AND multi-tenant matching ones
         from django.db.models import Q
         qs = AlertSchedule.objects.filter(
-            Q(tenant_id=tenant_id) | Q(is_system_default=True)
+            Q(tenant_id=tenant_id) | Q(tenants__contains=tenant_id) | Q(is_system_default=True)
         ).order_by('-created_at')
         return list(qs[offset: offset + limit])
 
@@ -185,12 +188,20 @@ async def update_alert_schedule(
             return None
 
         update_fields = []
-        for field in ('name', 'prompt', 'recipients', 'companies', 'timezone',
+        for field in ('name', 'prompt', 'recipients', 'timezone',
                        'is_enabled', 'is_system_default', 'next_check_at'):
             val = getattr(payload, field, None)
             if val is not None:
                 setattr(s, field, val)
                 update_fields.append(field)
+
+        if payload.companyIds is not None:
+            s.companies = payload.companyIds
+            update_fields.append('companies')
+
+        if payload.tenantIds is not None:
+            s.tenants = payload.tenantIds
+            update_fields.append('tenants')
 
         if update_fields:
             update_fields.append('updated_at')

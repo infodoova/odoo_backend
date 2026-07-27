@@ -14,11 +14,12 @@ class ReportSchedule(models.Model):
     ]
 
     id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    tenant       = models.ForeignKey('odoo_app.Tenant', on_delete=models.CASCADE, related_name='report_schedules')
+    tenant       = models.ForeignKey('odoo_app.Tenant', on_delete=models.CASCADE, null=True, blank=True, related_name='report_schedules')
     recipients   = models.JSONField()           # ["a@x.com", "b@x.com"]
     frequency    = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     timezone     = models.CharField(max_length=60, default='UTC')
     companies    = models.JSONField(default=list)  # [] = all, [1, 3] = specific company IDs
+    tenants      = models.JSONField(default=list)  # [] = creator tenant, ["uuid1", "uuid2"] = specific tenant IDs
     report_type  = models.CharField(max_length=30, default='analysis')
     prompt       = models.TextField(default='', blank=True)
     is_enabled   = models.BooleanField(default=True)

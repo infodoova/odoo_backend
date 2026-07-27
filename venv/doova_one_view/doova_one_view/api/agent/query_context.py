@@ -14,43 +14,32 @@ DEFAULT_COMPANY_IDS = []  # Empty means all companies within the tenant context
 def resolve_tenant_id(tenant_id: Optional[str]) -> Optional[str]:
     """
     Ensures tenant_id is a valid UUID string compatible with PostgreSQL UUID columns.
-    If tenant_id is 'all', returns None (indicating cross-tenant aggregation).
+    If tenant_id is 'all', None, 'default', or empty, returns None (indicating cross-tenant aggregation).
     If tenant_id is already a valid UUID string, returns it as-is.
-    If tenant_id is a slug/name/default, looks up the corresponding Tenant in DB or falls back safely.
+    If tenant_id is a slug/name, looks up the corresponding Tenant in DB.
     """
     clean_id = str(tenant_id or "").strip()
-    if clean_id.lower() == "all":
+    if not clean_id or clean_id.lower() in ("all", "all_tenants", "default", "none", "null", ""):
         return None
-        
-    if not clean_id or clean_id.lower() in ("default", "none", "null", ""):
-        clean_id = ""
 
-    if clean_id:
-        try:
-            val = uuid.UUID(clean_id)
-            return str(val)
-        except ValueError:
-            pass
+    try:
+        val = uuid.UUID(clean_id)
+        return str(val)
+    except ValueError:
+        pass
 
     # Look up by name or odoo_database slug in Django Tenant table
     try:
         from odoo_app.models.tenant import Tenant
-        if clean_id:
-            tenant = Tenant.objects.filter(
-                models.Q(name__iexact=clean_id) | models.Q(odoo_database__iexact=clean_id)
-            ).first()
-            if tenant:
-                return str(tenant.id)
-
-        # Fallback to first available active tenant in database
-        first_tenant = Tenant.objects.filter(is_active=True).first() or Tenant.objects.first()
-        if first_tenant:
-            return str(first_tenant.id)
+        tenant = Tenant.objects.filter(
+            models.Q(name__iexact=clean_id) | models.Q(odoo_database__iexact=clean_id)
+        ).first()
+        if tenant:
+            return str(tenant.id)
     except Exception:
         pass
 
-    # Fallback UUID if no tenant exists in DB
-    return "00000000-0000-0000-0000-000000000001"
+    return None
 
 def normalize_company_ids(
     company_id: Optional[Union[int, str]] = None,

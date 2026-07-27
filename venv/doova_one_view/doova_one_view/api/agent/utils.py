@@ -196,38 +196,52 @@ def strip_visual_charts_from_text(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
-def get_tenant_currency(tenant_id: str, company_id: int | None = None) -> str:
+def get_tenant_currency(tenant_id: str | None, company_id: int | None = None, company_ids: list[int] | None = None) -> str:
     """
-    Fetch the correct currency name (e.g. XAF, USD, EUR) for the tenant from dim_companies.
+    Fetch the primary native currency name (e.g. XAF, USD, EUR) for the tenant/companies from dim_companies.
     """
     from .db import run_query
-    from .query_context import build_company_filter_sql
+    from .query_context import build_company_filter_sql, build_tenant_filter_sql, normalize_company_ids
     
-    params = {"tenant_id": tenant_id}
-    f_sql, f_params = build_company_filter_sql(tenant_id, company_id)
-    params.update(f_params)
+    selected_cids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    t_sql, t_params = build_tenant_filter_sql(tenant_id, column_name="tenant_id")
+    f_sql, f_params = build_company_filter_sql(tenant_id, selected_cids, column_name="id")
+    params = {**t_params, **f_params}
     
-    query = f"SELECT currency_name FROM dim_companies WHERE tenant_id = :tenant_id {f_sql} LIMIT 1"
+    query = f"""
+        SELECT COALESCE(currency_name, currency_code) AS currency, COUNT(*) AS cnt
+        FROM dim_companies
+        WHERE 1=1 {t_sql} {f_sql} AND COALESCE(currency_name, currency_code) IS NOT NULL
+        GROUP BY COALESCE(currency_name, currency_code)
+        ORDER BY cnt DESC, currency DESC
+        LIMIT 1
+    """
     try:
         rows = run_query(query, params)
-        if rows and rows[0].get("currency_name"):
-            return rows[0]["currency_name"]
+        if rows and rows[0].get("currency"):
+            return rows[0]["currency"]
     except Exception:
         pass
-    return "USD"
+    return "XAF"
 
 def fix_currency_symbols(text: str, currency: str) -> str:
     """
-    Ensure all financial figures use the correct currency instead of stray '$' or 'USD'.
+    Ensure stray dollar signs (e.g. $100) use the tenant's base currency code when appropriate,
+    without overwriting legitimate currency codes (like USD, EUR) in multi-currency contexts.
     """
-    if not text or not currency or currency.upper() == "USD":
+    if not text or not currency:
         return text
+
+    # Do NOT perform currency code replacement if multi-currency context is present
+    if any(kw in text.lower() for kw in ["multi-currency", "exchange rate", "base currency", "conversions"]):
+        if currency.upper() != "USD":
+            text = re.sub(r"\$\s*(\d+)", f"{currency} \\1", text)
+        return text
+
+    if currency.upper() != "USD":
+        text = re.sub(r"\$\s*(\d+)", f"{currency} \\1", text)
+        text = re.sub(r"(\d+)\s*\$", f"\\1 {currency}", text)
         
-    # Replace stray "$" or "USD" in monetary contexts (e.g., "$100" -> "XAF 100")
-    text = re.sub(r"\$\s*(\d+)", f"{currency} \\1", text)
-    text = re.sub(r"(\d+)\s*\$", f"\\1 {currency}", text)
-    text = re.sub(r"\bUSD\b", currency, text)
-    
     return text
 
 def get_project_logo_b64(custom_logo_path: str | None = None) -> tuple[str | None, str | None]:

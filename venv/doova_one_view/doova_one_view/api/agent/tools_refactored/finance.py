@@ -487,6 +487,7 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, company_id
     ebit = gross - opex
     net = income - expenses
 
+    from doova_one_view.api.agent.tools_refactored.common import get_multi_currency_conversions
     return {
         "tool_name": "calculate_pnl_tool",
         "total_income": income,
@@ -498,6 +499,7 @@ def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, company_id
         "net_profit": net,
         "gross_margin_pct": round(calculate_ratio(gross, income) * 100, 2),
         "net_margin_pct": round(calculate_ratio(net, income) * 100, 2),
+        "currency_conversions": get_multi_currency_conversions(income, tenant_id, company_id=company_id, company_ids=company_ids, base_currency=base_currency, tenant_ids=tenant_ids, start_date=start_date, end_date=end_date, domain="finance"),
     }
 
 

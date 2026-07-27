@@ -19,7 +19,21 @@ def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, compan
     if end_date: query += " AND date_order <= :end_date"; params["end_date"] = end_date
     rows = run_query(query, params)
     row = rows[0] if rows else {}
-    return {"tool_name": "get_sales_summary_tool", "total_revenue": float(row.get("total_revenue") or 0), "order_count": int(row.get("order_count") or 0), "average_order_value": float(row.get("average_order_value") or 0)}
+    rev = float(row.get("total_revenue") or 0)
+    
+    from doova_one_view.api.agent.utils import get_tenant_currency
+    from doova_one_view.api.agent.tools_refactored.common import get_multi_currency_conversions
+    
+    native_curr = base_currency or get_tenant_currency(tenant_id, company_id=selected_company_ids[0] if len(selected_company_ids) == 1 else None)
+
+    return {
+        "tool_name": "get_sales_summary_tool", 
+        "total_revenue": rev, 
+        "order_count": int(row.get("order_count") or 0), 
+        "average_order_value": float(row.get("average_order_value") or 0),
+        "currency": native_curr,
+        "currency_conversions": get_multi_currency_conversions(rev, tenant_id, company_id=company_id, company_ids=company_ids, base_currency=base_currency, tenant_ids=tenant_ids, start_date=start_date, end_date=end_date),
+    }
 
 def get_top_products_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 10, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
 

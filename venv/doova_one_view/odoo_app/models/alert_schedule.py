@@ -18,6 +18,7 @@ class AlertSchedule(models.Model):
     prompt = models.TextField(default='', blank=True)
     recipients = models.JSONField()                  # ["admin@co.com"]
     companies = models.JSONField(default=list)        # [] = all, [1, 3] = specific
+    tenants = models.JSONField(default=list)          # [] = creator tenant, ["uuid1", "uuid2"] = specific tenant IDs
     timezone = models.CharField(max_length=60, default='UTC')
     is_enabled = models.BooleanField(default=True)
     is_system_default = models.BooleanField(default=False)  # True = runs for all tenants
