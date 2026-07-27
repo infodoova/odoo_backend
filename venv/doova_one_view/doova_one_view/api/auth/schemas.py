@@ -38,6 +38,10 @@ class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
 
 
+class UserStatusUpdateRequest(BaseModel):
+    is_active: bool
+
+
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str = Field(..., min_length=8)

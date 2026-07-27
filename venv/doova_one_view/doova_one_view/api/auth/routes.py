@@ -11,6 +11,7 @@ from doova_one_view.api.auth.schemas import (
     TokenResponse,
     UserResponse,
     ProfileUpdateRequest,
+    UserStatusUpdateRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -198,6 +199,72 @@ async def reset_password(payload: ResetPasswordRequest):
     """
     try:
         return await AuthService.reset_password_with_otp(payload)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.patch(
+    "/users/{user_id}/status",
+    response_model=UserResponse,
+    summary="Update user active status (activate/deactivate)"
+)
+async def update_user_status(
+    user_id: str,
+    payload: UserStatusUpdateRequest,
+    _: AppUser = Depends(require_permissions("manage_users")),
+):
+    """
+    Update active status for a specific user.
+
+    - **is_active**: true to activate, false to deactivate
+    """
+    try:
+        return await AuthService.update_user_status(user_id, payload.is_active)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/users/{user_id}/deactivate",
+    response_model=UserResponse,
+    summary="Deactivate a user account"
+)
+async def deactivate_user(
+    user_id: str,
+    _: AppUser = Depends(require_permissions("manage_users")),
+):
+    """
+    Deactivate a user account. Deactivated users cannot log in.
+    """
+    try:
+        return await AuthService.update_user_status(user_id, is_active=False)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/users/{user_id}/activate",
+    response_model=UserResponse,
+    summary="Activate a user account"
+)
+async def activate_user(
+    user_id: str,
+    _: AppUser = Depends(require_permissions("manage_users")),
+):
+    """
+    Re-activate a user account.
+    """
+    try:
+        return await AuthService.update_user_status(user_id, is_active=True)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

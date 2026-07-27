@@ -82,7 +82,7 @@ class AuthService:
                 raise AuthenticationError("Invalid credentials")
 
             if not user.is_active:
-                raise AuthenticationError("User account is inactive")
+                raise AuthenticationError("User account is inactive. Please contact support or your administrator.")
 
             if not user.check_password(request.password):
                 logger.warning(f"Failed login attempt for: {request.email}")
@@ -144,6 +144,21 @@ class AuthService:
         updated_user = await asyncio.to_thread(_update)
         logger.info(f"User profile updated: {user.email}")
         return await _build_user_response(updated_user)
+
+    @staticmethod
+    async def update_user_status(user_id: str, is_active: bool) -> UserResponse:
+        def _update():
+            try:
+                user = AppUser.objects.get(id=user_id)
+            except AppUser.DoesNotExist:
+                raise ValidationError("User not found")
+            user.is_active = is_active
+            user.save(update_fields=['is_active'])
+            return user
+
+        user = await asyncio.to_thread(_update)
+        logger.info(f"User {user_id} active status updated to {is_active}")
+        return await _build_user_response(user)
 
     @staticmethod
     async def change_user_password(user: AppUser, request: ChangePasswordRequest) -> dict:
