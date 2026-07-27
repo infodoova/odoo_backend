@@ -89,8 +89,9 @@ class ReportJobManager:
         from doova_one_view.api.reports.utils import calculate_next_send
         from doova_one_view.api.agent.tools_refactored.reporting_v2 import generate_report_tool
 
-        tenant_id = str(schedule.tenant.id)
+        tenant_id = str(schedule.tenant.id) if schedule.tenant else None
         company_ids = schedule.companies if schedule.companies else None
+        tenant_ids = schedule.tenants if schedule.tenants else None
         next_dt = calculate_next_send(schedule.frequency, now)
 
         # ── Claim immediately ────────────────────────────────────────────────
@@ -128,7 +129,7 @@ class ReportJobManager:
 
             # 1. Build AI-generated report content using the user's prompt
             custom_content = await ReportJobManager._build_analysis(
-                tenant_id, schedule.report_type, company_ids, schedule.prompt
+                tenant_id, schedule.report_type, company_ids, schedule.prompt, tenant_ids=tenant_ids
             )
 
             # 2. Generate PDF
@@ -136,6 +137,7 @@ class ReportJobManager:
                 tenant_id=tenant_id,
                 company_ids=company_ids,
                 custom_content=custom_content,
+                tenant_ids=tenant_ids,
             )
             filename = result['filename']
 
@@ -193,6 +195,7 @@ class ReportJobManager:
         report_type: str,
         company_ids: list | None,
         user_prompt: str,
+        tenant_ids: list | None = None,
     ) -> str:
         """
         Call the LangChain AI agent with the user's prompt to generate detailed
@@ -246,7 +249,7 @@ class ReportJobManager:
 
         try:
             agent = DoovaLangChainAgent()
-            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids)
+            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids, tenant_ids=tenant_ids)
             return result
         except Exception as e:
             logger.exception(f"AI agent failed for schedule — using fallback content")
@@ -255,6 +258,18 @@ class ReportJobManager:
                 f"The AI agent encountered an error generating this report: {e}\n\n"
                 f"Please check server logs for details."
             )
+
+
+def _get_schedule_tenant_name(schedule) -> str:
+    if schedule.tenants and len(schedule.tenants) > 0:
+        try:
+            from odoo_app.models.tenant import Tenant
+            tenants = list(Tenant.objects.filter(id__in=schedule.tenants))
+            if tenants:
+                return ", ".join(t.name for t in tenants)
+        except Exception:
+            pass
+    return schedule.tenant.name if schedule.tenant else "Your Business"
 
 
 def _build_subject(schedule) -> str:
@@ -268,7 +283,8 @@ def _build_subject(schedule) -> str:
         'annual':      'Annual',
     }
     label = freq_labels.get(schedule.frequency, schedule.frequency.capitalize())
-    return f"Your {label} Business Report — {schedule.tenant.name}"
+    tname = _get_schedule_tenant_name(schedule)
+    return f"Your {label} Business Report — {tname}"
 
 
 def _build_email_body(schedule) -> str:
@@ -286,13 +302,14 @@ def _build_email_body(schedule) -> str:
         "all companies" if not schedule.companies
         else f"{len(schedule.companies)} selected company/ies"
     )
+    tname = _get_schedule_tenant_name(schedule)
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
         <h2 style="color: #1a3d5c;">Your Scheduled Business Report</h2>
         <p>Hi,</p>
         <p>
             Please find attached your <strong>{label}</strong> business report
-            for <strong>{schedule.tenant.name}</strong> ({company_note}).
+            for <strong>{tname}</strong> ({company_note}).
         </p>
         <p>This report was automatically generated and sent by <strong>Nexus</strong>.</p>
         <hr style="border-color: #eee;" />

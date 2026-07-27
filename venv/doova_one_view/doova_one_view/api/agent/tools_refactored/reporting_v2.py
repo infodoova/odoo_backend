@@ -281,13 +281,34 @@ The business is currently operating with a health score of **{score_val}/100** a
             logo_b64 = discovered_b64
             logo_mime = discovered_mime or "image/png"
 
+    # Resolve display tenant name/ID for cover page
+    display_tenant_label = tenant_id or "—"
+    if tenant_ids and len(tenant_ids) > 0:
+        try:
+            from odoo_app.models.tenant import Tenant
+            t_objs = list(Tenant.objects.filter(id__in=tenant_ids))
+            if t_objs:
+                display_tenant_label = ", ".join(t.name for t in t_objs)
+            else:
+                display_tenant_label = ", ".join(str(tid) for tid in tenant_ids)
+        except Exception:
+            display_tenant_label = ", ".join(str(tid) for tid in tenant_ids)
+    elif tenant_id:
+        try:
+            from odoo_app.models.tenant import Tenant
+            t_obj = Tenant.objects.filter(id=tenant_id).first()
+            if t_obj:
+                display_tenant_label = t_obj.name
+        except Exception:
+            pass
+
     if not template_path.exists():
         html_out = f"<html><body>{body_html}</body></html>"
     else:
         env = Environment(loader=FileSystemLoader(str(template_dir)))
         template = env.get_template("report_template.html")
         html_out = template.render(
-            tenant_id=tenant_id,
+            tenant_id=display_tenant_label,
             company_name=company_name,
             date=datetime.now().strftime('%B %d, %Y'),
             health_score=score_val,
