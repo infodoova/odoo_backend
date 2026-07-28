@@ -373,6 +373,101 @@ class TenantService:
             return True
         
         return await asyncio.to_thread(_delete)
+
+    @staticmethod
+    async def deactivate_tenant(tenant_id: str, user_id: Optional[str] = None) -> TenantRead:
+        """
+        Deactivate a tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            user_id: Optional user ID for access check
+            
+        Returns:
+            TenantRead: Updated tenant data with is_active=False
+            
+        Raises:
+            NotFoundError: If tenant not found
+            PermissionError: If user doesn't have access
+        """
+        def _deactivate():
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            if user_id:
+                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
+                    raise PermissionError("User does not have access to this tenant")
+            
+            tenant.is_active = False
+            tenant.save(update_fields=['is_active', 'updated_at'])
+            logger.info(f"Tenant deactivated: {tenant.name} (ID: {tenant.id})")
+            return tenant
+        
+        tenant = await asyncio.to_thread(_deactivate)
+        user_count = await TenantService.get_tenant_user_count(str(tenant.id))
+        
+        return TenantRead(
+            id=str(tenant.id),
+            name=tenant.name,
+            odoo_url=tenant.odoo_url,
+            odoo_database=tenant.odoo_database,
+            is_active=tenant.is_active,
+            sync_status=tenant.sync_status,
+            last_sync_at=tenant.last_sync_at,
+            created_at=tenant.created_at,
+            updated_at=tenant.updated_at,
+            user_count=user_count
+        )
+
+    @staticmethod
+    async def activate_tenant(tenant_id: str, user_id: Optional[str] = None) -> TenantRead:
+        """
+        Activate a tenant
+        
+        Args:
+            tenant_id: Tenant UUID
+            user_id: Optional user ID for access check
+            
+        Returns:
+            TenantRead: Updated tenant data with is_active=True
+            
+        Raises:
+            NotFoundError: If tenant not found
+            PermissionError: If user doesn't have access
+        """
+        def _activate():
+            try:
+                tenant = Tenant.objects.get(id=tenant_id)
+            except Tenant.DoesNotExist:
+                raise NotFoundError("Tenant", tenant_id)
+            
+            if user_id:
+                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
+                    raise PermissionError("User does not have access to this tenant")
+            
+            tenant.is_active = True
+            tenant.save(update_fields=['is_active', 'updated_at'])
+            logger.info(f"Tenant activated: {tenant.name} (ID: {tenant.id})")
+            return tenant
+        
+        tenant = await asyncio.to_thread(_activate)
+        user_count = await TenantService.get_tenant_user_count(str(tenant.id))
+        
+        return TenantRead(
+            id=str(tenant.id),
+            name=tenant.name,
+            odoo_url=tenant.odoo_url,
+            odoo_database=tenant.odoo_database,
+            is_active=tenant.is_active,
+            sync_status=tenant.sync_status,
+            last_sync_at=tenant.last_sync_at,
+            created_at=tenant.created_at,
+            updated_at=tenant.updated_at,
+            user_count=user_count
+        )
+
     
     @staticmethod
     async def get_tenant_user_count(tenant_id: str) -> int:

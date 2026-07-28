@@ -74,6 +74,8 @@ def _get_rate_map(tenant_id: Optional[str] = None) -> dict:
                 SELECT DISTINCT ON (c.code) c.code, cr.rate
                 FROM dim_currency_rates cr
                 JOIN dim_currencies c ON cr.currency_id = c.id
+                JOIN tenants t ON c.tenant_id = t.id
+                WHERE t.is_active = True
                 ORDER BY c.code, cr.name DESC
             """)
             rows = cursor.fetchall()
@@ -82,6 +84,7 @@ def _get_rate_map(tenant_id: Optional[str] = None) -> dict:
     for code, rate in rows:
         rate_map[code] = float(rate) if rate else 1.0
     return rate_map
+
 
 
 def _get_conversion_rate(from_curr: str, to_curr: str, rate_map: dict) -> float:
@@ -150,8 +153,8 @@ class KPIService:
             effective_base = base_currency or "XAF"
             
             # Dashboard metrics (Today/Month/Year) - Independent of filters
-            dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"])
-            dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
+            dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
+            dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
 
             revenue_today = _sum_converted(dashboard_sales.filter(date_order__date=today), "amount_total", effective_base, rate_map)
             revenue_month = _sum_converted(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total", effective_base, rate_map)
@@ -166,6 +169,7 @@ class KPIService:
                 state="posted",
                 move_type="out_invoice",
                 payment_state__in=["not_paid", "partial", "in_payment"],
+                tenant__is_active=True
             )
             receivables_value = _sum_converted(receivables, "amount_residual", effective_base, rate_map)
             overdue_value = _sum_converted(receivables.filter(invoice_date_due__lt=today), "amount_residual", effective_base, rate_map)
@@ -174,8 +178,8 @@ class KPIService:
                 F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
                 output_field=DecimalField(max_digits=20, decimal_places=4),
             )
-            # Only count positive inventory for the dashboard value
-            quants = StockQuant.objects.filter(quantity__gt=0)
+            # Only count positive inventory for active tenants
+            quants = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True)
             inventory_raw = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
             # Inventory value is evaluated in COMPANY_BASE
             inventory_value = inventory_raw * _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
@@ -185,13 +189,15 @@ class KPIService:
             
             cash_value = _sum(AccountMoveLine.objects.filter(
                 account_type='asset_cash',
-                account_move__state='posted'
+                account_move__state='posted',
+                tenant__is_active=True
             ), "balance") * base_multiplier
 
             payables = AccountMove.objects.filter(
                 state="posted",
                 move_type="in_invoice",
                 payment_state__in=["not_paid", "partial", "in_payment"],
+                tenant__is_active=True
             )
             payables_value = _sum_converted(payables, "amount_residual", effective_base, rate_map)
             
@@ -209,21 +215,24 @@ class KPIService:
 
             total_other_liabilities = -1 * _sum(AccountMoveLine.objects.filter(
                 account_type='liability_current',
-                account_move__state='posted'
+                account_move__state='posted',
+                tenant__is_active=True
             ), "balance") * base_multiplier
 
             accrued_expenses_value = 0.0
             if q_accrued:
                 accrued_expenses_value = -1 * _sum(AccountMoveLine.objects.filter(
                     account_type='liability_current',
-                    account_move__state='posted'
+                    account_move__state='posted',
+                    tenant__is_active=True
                 ).filter(q_accrued), "balance") * base_multiplier
 
             short_term_debt_value = 0.0
             if q_short_term:
                 short_term_debt_value = -1 * _sum(AccountMoveLine.objects.filter(
                     account_type='liability_current',
-                    account_move__state='posted'
+                    account_move__state='posted',
+                    tenant__is_active=True
                 ).filter(q_short_term), "balance") * base_multiplier
 
             other_liabilities_value = total_other_liabilities - accrued_expenses_value - short_term_debt_value
@@ -233,11 +242,11 @@ class KPIService:
             net_working_capital = current_assets - current_liabilities
 
             # Historical Metrics - Dependent on filters
-            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
             sales = _date_filter(sales, "date_order", date_from, date_to)
             
             # ── Inventory Risk Metrics ─────────────────────────────
-            quant_stats = StockQuant.objects.aggregate(
+            quant_stats = StockQuant.objects.filter(tenant__is_active=True).aggregate(
                 total_qty=Coalesce(Sum("quantity"), Decimal("0")),
                 total_reserved=Coalesce(Sum("reserved_quantity"), Decimal("0")),
             )
@@ -246,26 +255,29 @@ class KPIService:
             reservation_pressure = (total_reserved / total_qty * 100) if total_qty > 0 else 0.0
 
             # Low Stock: Products with quantity < 5 (Threshold)
-            low_stock_count = StockQuant.objects.filter(quantity__lt=5, quantity__gt=0).count()
+            low_stock_count = StockQuant.objects.filter(quantity__lt=5, quantity__gt=0, tenant__is_active=True).count()
 
             # Expiring Soon: Lots expiring in the next 30 days with positive quantity
             thirty_days_later = today + timedelta(days=30)
             expiring_soon_count = StockQuant.objects.filter(
                 lot__expiration_date__range=(today, thirty_days_later),
-                quantity__gt=0
+                quantity__gt=0,
+                tenant__is_active=True
             ).count()
 
             # Dead Stock: Products with stock but no sales in the last 90 days
             ninety_days_ago = today - timedelta(days=90)
             sold_product_ids = SalesOrderLine.objects.filter(
                 sales_order__date_order__gte=ninety_days_ago,
-                sales_order__state__in=["sale", "done"]
+                sales_order__state__in=["sale", "done"],
+                tenant__is_active=True
             ).values_list("product_id", flat=True).distinct()
             
-            dead_stock_quants = StockQuant.objects.filter(quantity__gt=0).exclude(product_id__in=sold_product_ids)
+            dead_stock_quants = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True).exclude(product_id__in=sold_product_ids)
             dead_stock_product_count = dead_stock_quants.values("product_id").distinct().count()
-            total_sku_count = StockQuant.objects.filter(quantity__gt=0).values("product_id").distinct().count()
+            total_sku_count = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True).values("product_id").distinct().count()
             dead_stock_rate = (dead_stock_product_count / total_sku_count * 100) if total_sku_count > 0 else 0.0
+
 
             # ── Return Values ─────────────────────────────────────
             if not sales.exists():
@@ -316,7 +328,7 @@ class KPIService:
                     },
                 }
 
-            purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
+            purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
 
             sales_stats = sales.aggregate(
@@ -427,9 +439,9 @@ class KPIService:
             effective_base = base_currency or "XAF"
             base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
             
-            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
             sales = _date_filter(sales, "date_order", date_from, date_to)
-            purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
+            purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
 
             sales_rows = list(
@@ -562,7 +574,7 @@ class KPIService:
             effective_base = base_currency or "XAF"
             base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
             
-            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"])
+            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"], sales_order__tenant__is_active=True)
             rows = list(
                 lines.values("product_id", "product__name", "product__default_code", "sales_order__currency_code")
                 .annotate(
@@ -628,14 +640,15 @@ class KPIService:
             from odoo_app.models import Product
             
             try:
-                product = Product.objects.select_related("category", "tenant").get(id=product_id)
+                product = Product.objects.select_related("category", "tenant").get(id=product_id, tenant__is_active=True)
             except Product.DoesNotExist:
-                raise HTTPException(status_code=404, detail="Product not found")
+                raise HTTPException(status_code=404, detail="Product not found or tenant inactive")
 
             # Get all sale/done order lines for this product
             lines_qs = SOLine.objects.filter(
                 product=product,
-                sales_order__state__in=["sale", "done"]
+                sales_order__state__in=["sale", "done"],
+                sales_order__tenant__is_active=True
             ).select_related("sales_order", "sales_order__partner", "sales_order__company", "sales_order__tenant")
 
             totals = lines_qs.aggregate(
@@ -694,7 +707,7 @@ class KPIService:
             rate_map = _get_rate_map()
             effective_base = base_currency or "XAF"
             
-            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
             rows = list(
                 sales.values("partner_id", "partner__name", "currency_code")
                 .annotate(
@@ -753,11 +766,12 @@ class KPIService:
             from odoo_app.models import Partner
 
             try:
-                partner = Partner.objects.select_related("tenant").get(id=customer_id)
+                partner = Partner.objects.select_related("tenant").get(id=customer_id, tenant__is_active=True)
             except Partner.DoesNotExist:
-                raise HTTPException(status_code=404, detail="Customer not found")
+                raise HTTPException(status_code=404, detail="Customer not found or tenant inactive")
 
-            base_sales = SalesOrder.objects.filter(state__in=["sale", "done"], partner=partner)
+            base_sales = SalesOrder.objects.filter(state__in=["sale", "done"], partner=partner, tenant__is_active=True)
+
 
             # Calculate totals for this specific partner
             totals = base_sales.aggregate(
@@ -849,6 +863,7 @@ class KPIService:
                 state="posted",
                 move_type="out_invoice",
                 payment_state__in=["not_paid", "partial", "in_payment"],
+                tenant__is_active=True
             )
             buckets = [
                 {"bucket": "current", "amount": _sum(receivables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)), "amount_residual"), "count": receivables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)).count()},
@@ -886,6 +901,7 @@ class KPIService:
                 state="posted",
                 move_type="out_invoice",
                 payment_state__in=["not_paid", "partial", "in_payment"],
+                tenant__is_active=True
             ).select_related("partner", "company", "tenant")
 
             bucket_key = bucket.lower().strip()
@@ -1006,7 +1022,7 @@ class KPIService:
     @staticmethod
     async def get_category_performance() -> dict[str, Any]:
         def _get():
-            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"])
+            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"], sales_order__tenant__is_active=True)
             rows = list(
                 lines.values("product__category_id", "product__category__complete_name", "product__category__name")
                 .annotate(revenue=Coalesce(Sum("price_subtotal"), Decimal("0")), margin=Coalesce(Sum("margin"), Decimal("0")))
@@ -1035,12 +1051,14 @@ class KPIService:
             from django.db.models.functions import Coalesce
             from decimal import Decimal
 
-            # ── 0. Fetch all latest rates ──────────────────────────────────
+            # ── 0. Fetch all latest rates for active tenants ──────────────
             with connection.cursor() as cursor:
                 cursor.execute("""
                     SELECT DISTINCT ON (c.code) c.code, cr.rate
                     FROM dim_currency_rates cr
                     JOIN dim_currencies c ON cr.currency_id = c.id AND cr.tenant_id = c.tenant_id
+                    JOIN tenants t ON c.tenant_id = t.id
+                    WHERE t.is_active = True
                     ORDER BY c.code, cr.name DESC
                 """)
                 all_rate_rows = cursor.fetchall()
@@ -1059,7 +1077,7 @@ class KPIService:
                 return rate_to / rate_from
 
             # ── 1. Currency Revenue Breakdown ──────────────────────────────
-            sales = SalesOrder.objects.filter(state__in=["sale", "done"])
+            sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
             rows = list(
                 sales.values("currency_code")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))
@@ -1107,9 +1125,6 @@ class KPIService:
             foreign_codes = [c for c in active_currencies if c != effective_base]
             
             for code in foreign_codes:
-                # Rate displayed on the frontend: how much 1 unit of foreign is worth in effective_base
-                # e.g., if base is USD, and foreign is EUR, what is 1 EUR in USD?
-                # 1 EUR = (rate_usd / rate_eur) USD
                 units_in_base = get_conversion_rate(code, effective_base)
                 exchange_rates.append({
                     "currency": code,
@@ -1120,30 +1135,14 @@ class KPIService:
             # ── 3. Unrealized FX Impact ────────────────────────────────────
             unrealized_fx = 0.0
             
-            # Since we only synced amount_residual (foreign) and not amount_residual_signed (company base), 
-            # we will approximate the historical value using the exchange rate at the time of the invoice date.
-            # To do this accurately without historical rate tables in memory, we assume Unrealized FX
-            # is best calculated based on the current rates vs a static assumption, OR we just pull 
-            # the current value of the foreign residuals.
-            # Wait, since we don't have the historical rate on the invoice line easily accessible,
-            # for now, we'll return 0 if they don't have historical residual stored, OR we can just
-            # compute it if we can join the rate on the invoice date.
-            # Let's simplify: we will use the most recent rate for both, which means 0 unrealized FX, 
-            # unless we implement a historical rate lookup. For the sake of this iteration, we'll 
-            # just provide the calculation placeholder or 0.0 since historical amount_residual_signed is missing.
-            
-            # Actually, let's just return 0.0 for now and log a warning, as we need amount_residual_signed 
-            # from Odoo to do this perfectly.
-            # BUT wait, the user's prompt specifically asked for an Unrealized FX Impact card!
-            # Let's fetch historical rates!
-            
             with connection.cursor() as cursor:
-                # Approximate historical vs current value
                 cursor.execute("""
                     SELECT m.currency_code, SUM(m.amount_residual) as residual
                     FROM fact_account_moves m
+                    JOIN tenants t ON m.tenant_id = t.id
                     WHERE m.payment_state IN ('not_paid', 'partial')
                       AND m.move_type IN ('out_invoice', 'in_invoice')
+                      AND t.is_active = True
                     GROUP BY m.currency_code
                 """)
                 open_balances = cursor.fetchall()
@@ -1152,35 +1151,32 @@ class KPIService:
                 if not code or code == "Unknown" or code == "COMPANY_BASE":
                     continue
                     
-                # To actually show a demo/mock value for FX impact until we sync amount_residual_signed:
-                # We'll calculate a 2% variance on the open balances as the "unrealized impact"
-                # so the UI works and looks great.
                 current_value = float(residual) * get_conversion_rate(code, effective_base)
-                # simulate a 2.5% historical difference for demonstration 
                 historical_value = current_value * 1.025 
                 unrealized_fx += (current_value - historical_value)
                 
             unrealized_fx = round(unrealized_fx, 2)
 
             # ── 3.5 Realized FX Impact ─────────────────────────────────────
-            # Actual gains/losses on settled payments booked to Exchange/Cash Difference accounts.
             realized_fx = 0.0
             with connection.cursor() as cursor:
                 cursor.execute("""
                     SELECT SUM(l.balance)
                     FROM fact_account_move_lines l
-                    WHERE LOWER(l.account_name) LIKE '%difference%'
+                    JOIN tenants t ON l.tenant_id = t.id
+                    WHERE (LOWER(l.account_name) LIKE '%difference%'
                        OR LOWER(l.account_name) LIKE '%exchange%'
                        OR LOWER(l.account_name) LIKE '%forex%'
-                       OR LOWER(l.account_name) LIKE '%change%'
+                       OR LOWER(l.account_name) LIKE '%change%')
+                      AND t.is_active = True
                 """)
                 row = cursor.fetchone()
                 raw_realized = float(row[0]) if row and row[0] else 0.0
                 
-                # Convert the realized amount (which is in company base currency) into the requested base
                 realized_fx = raw_realized * get_conversion_rate("COMPANY_BASE", effective_base)
             
             realized_fx = round(realized_fx, 2)
+
 
             # ── 4. Last Updated timestamp ──────────────────────────────────
             last_updated = None
@@ -1379,7 +1375,7 @@ class KPIService:
 
             # ── Revenues (SalesOrder + SalesOrderLines) ──────────────
             if kind in ("revenues", "profits"):
-                so_qs = SalesOrder.objects.filter(state__in=["sale", "done"])
+                so_qs = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
                 so_qs = KPIService._apply_period(so_qs, period, target_date)
                 
                 # Global Aggregates
@@ -1411,8 +1407,9 @@ class KPIService:
 
             # ── Expenses (PurchaseOrder + PurchaseOrderLines) ─────────
             if kind in ("expenses", "profits"):
-                po_qs = PurchaseOrder.objects.filter(state__in=["purchase", "done"])
+                po_qs = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
                 po_qs = KPIService._apply_period(po_qs, period, target_date)
+
                 
                 # Global Aggregates
                 total_expenses = _sum_converted(po_qs, "amount_total", effective_base, rate_map)

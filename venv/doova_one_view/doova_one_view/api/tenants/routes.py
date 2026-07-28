@@ -173,6 +173,61 @@ async def delete_tenant(
 
 
 @router.post(
+    "/{tenant_id}/deactivate",
+    response_model=TenantRead,
+    summary="Deactivate tenant",
+    dependencies=[_manage],
+)
+async def deactivate_tenant(
+    tenant_id: str,
+    user: AppUser = Depends(get_current_user)
+):
+    """
+    Deactivate a tenant (sets is_active to False)
+    """
+    try:
+        return await TenantService.deactivate_tenant(tenant_id, str(user.id))
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/{tenant_id}/activate",
+    response_model=TenantRead,
+    summary="Activate tenant",
+    dependencies=[_manage],
+)
+async def activate_tenant(
+    tenant_id: str,
+    user: AppUser = Depends(get_current_user)
+):
+    """
+    Activate a tenant (sets is_active to True)
+    """
+    try:
+        return await TenantService.activate_tenant(tenant_id, str(user.id))
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+
+
+
+@router.post(
     "/{tenant_id}/sync",
     response_model=SyncResponse,
     summary="Trigger Smart/Incremental sync",
