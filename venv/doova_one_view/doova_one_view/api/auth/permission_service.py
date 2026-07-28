@@ -12,9 +12,15 @@ class PermissionService:
 
     @staticmethod
     async def get_user_permissions(user_id) -> set[str]:
-        """Return the flat set of permission codenames for the given user across all their roles."""
+        """Return the flat set of permission codenames for the given user across all their roles (or all permissions if superuser)."""
         def _fetch():
-            from odoo_app.models.rbac import UserRole
+            from odoo_app.models.app_user import AppUser
+            from odoo_app.models.rbac import UserRole, Permission
+
+            user = AppUser.objects.filter(id=user_id).first()
+            if user and user.is_superuser:
+                return set(Permission.objects.values_list('codename', flat=True))
+
             user_roles = (
                 UserRole.objects
                 .filter(user_id=user_id)

@@ -17,6 +17,11 @@ from doova_one_view.api.accounting.schemas import SearchRequest, ProfitAndLossSu
 from doova_one_view.api.accounting.service import AccountingService
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
+
+_view_accounting_overview = Depends(require_permissions("view_accounting_overview"))
+_view_accounting_moves    = Depends(require_permissions("view_accounting_moves"))
+_export_accounting_moves  = Depends(require_permissions("export_accounting_moves"))
 from doova_one_view.api.tenants.service import TenantService
 
 router = APIRouter(prefix="/accounting", tags=["Accounting"])
@@ -61,7 +66,7 @@ async def get_accounting_summary(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_summary(
@@ -85,7 +90,7 @@ async def get_accounting_dashboard(
     includeCompanies: Optional[str] = Query(None),
     include_companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_dashboard(
@@ -108,7 +113,7 @@ async def get_bank_cash_summary(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_overview,
 ) -> BankCashSummaryResponse:
     """Dedicated endpoint for the Bank & Cash Balance vs Cash Flow dashboard card."""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -138,7 +143,7 @@ async def get_profit_and_loss(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_overview,
 ) -> ProfitAndLossSummary:
     """Retrieve a structured Profit & Loss breakdown."""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -162,7 +167,7 @@ async def get_expense_breakdown(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_overview,
 ) -> ExpenseBreakdownResponse:
     """Expense breakdown by category (Rent, Salaries, Purchases, etc.)."""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -188,7 +193,7 @@ async def get_accounting_kpis(
     includeCompanies: Optional[str] = Query(None),
     include_companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_dashboard(
@@ -233,7 +238,7 @@ async def list_accounting_moves(
     move_type: Optional[str] = Query(None, description="out_invoice, in_invoice, entry, etc."),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_moves(
@@ -247,7 +252,7 @@ async def get_accounting_move(
     move_id: int,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_move(
@@ -258,7 +263,7 @@ async def get_accounting_move(
 @router.get("/{tenant_id}/filters")
 async def get_accounting_filters(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_filters(tenant_id)
@@ -268,7 +273,7 @@ async def get_accounting_filters(
 async def search_accounting_moves(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_accounting_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(
@@ -284,7 +289,7 @@ async def export_accounting_moves(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_accounting_moves,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await AccountingService.export_moves_csv(
@@ -314,7 +319,7 @@ async def get_dashboard_metric_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> MetricDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
@@ -337,7 +342,7 @@ async def get_daily_moves(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> DailyMovesResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
@@ -361,7 +366,7 @@ async def get_market_breakdown_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> MarketBreakdownResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
@@ -382,7 +387,7 @@ async def get_entity_profile(
     tenant_id: str,
     entity_type: str = Query(..., description="'customer' or 'vendor'/'supplier'"),
     entity_id: int = Query(..., description="The entity's Django pk"),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> EntityProfileResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_entity_profile(
@@ -401,7 +406,7 @@ async def get_product_moves_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> ProductMovesDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
@@ -428,7 +433,7 @@ async def get_aging_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> AgingDetailsResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)
@@ -455,7 +460,7 @@ async def get_dashboard_journals(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_accounting_overview,
 ) -> JournalCardsResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(companies)

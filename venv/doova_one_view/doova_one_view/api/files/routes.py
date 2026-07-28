@@ -10,8 +10,11 @@ from fastapi.responses import FileResponse, Response
 
 from odoo_app.models import AppUser
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
 from doova_one_view.api.files.service import MAX_FILE_BYTES, FilesService
 from doova_one_view.api.tenants.service import TenantService
+
+_manage_storage = Depends(require_permissions("manage_storage"))
 
 router = APIRouter(prefix="/files", tags=["Files"])
 
@@ -25,7 +28,7 @@ async def list_files(
     tenant_id: str,
     company_id: int,
     request: Request,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage_storage,
 ) -> list[dict[str, Any]]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await asyncio.to_thread(FilesService.list_files, tenant_id, company_id, _base_url(request))
@@ -38,7 +41,7 @@ async def upload_file(
     request: Request,
     file: UploadFile = File(...),
     description: Optional[str] = Form(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage_storage,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
 
@@ -71,7 +74,7 @@ async def delete_file(
     tenant_id: str,
     company_id: int,
     file_id: int,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage_storage,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     await asyncio.to_thread(FilesService.delete_file, tenant_id, company_id, file_id)
@@ -83,7 +86,7 @@ async def download_file(
     tenant_id: str,
     company_id: int,
     file_id: int,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage_storage,
 ) -> FileResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     storage_path, file_name = await asyncio.to_thread(

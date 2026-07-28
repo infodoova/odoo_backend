@@ -8,6 +8,11 @@ from typing import Any, List, Optional
 from datetime import date
 from odoo_app.models import AppUser
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
+
+_view_sales_overview = Depends(require_permissions("view_sales_overview"))
+_view_sales_orders   = Depends(require_permissions("view_sales_orders"))
+_export_sales_orders = Depends(require_permissions("export_sales_orders"))
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.common.schemas import PaginatedResponse
 from doova_one_view.api.sales.schemas import (
@@ -36,7 +41,7 @@ async def get_sales_dashboard(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> SalesDashboard:
     """Get comprehensive sales dashboard metrics for a tenant"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -53,7 +58,7 @@ async def get_dashboard_metric_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> MetricDetailResponse:
     """Get detailed order breakdown for a specific dashboard metric"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -77,7 +82,7 @@ async def get_daily_orders(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> DailyOrdersResponse:
     """Get all confirmed orders placed on a specific calendar day (Daily Performance drill-down)"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -102,7 +107,7 @@ async def get_market_breakdown_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> MarketBreakdownResponse:
     """Drill into a market-breakdown entity to see confirmed orders for a specific customer, product, or salesperson"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -124,7 +129,7 @@ async def get_entity_profile(
     tenant_id: str,
     entity_type: str = Query(..., description="'salesperson' or 'customer'"),
     entity_id: int = Query(..., description="The entity's Django pk (same ID from dashboard rankings)"),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> EntityProfileResponse:
     """Get profile details for a salesperson or customer (name, phone, email, etc.)"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -144,7 +149,7 @@ async def get_product_sales_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> ProductSalesDetailResponse:
     """Get every sale-line for a specific product — when sold, how many pieces, price, customer, etc."""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -167,7 +172,7 @@ async def get_customer_metrics(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
     partner_id: Optional[int] = Query(None, description="Filter by a specific customer"),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> CustomerMetricsResponse:
     """Calculate and return Purchase Frequency and Customer Lifespan."""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -189,7 +194,7 @@ async def get_sales_kpis(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_overview
 ) -> SalesDashboard:
     """Alias for dashboard"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -203,7 +208,7 @@ async def list_sales_orders(
     offset: int = Query(0, ge=0),
     partner_id: Optional[int] = None,
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_orders
 ) -> PaginatedResponse[SalesOrderRead]:
     """List sales orders for a tenant"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -213,7 +218,7 @@ async def list_sales_orders(
 @router.get("/{tenant_id}/filters")
 async def get_sales_filters(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_orders
 ) -> dict[str, Any]:
     """Get distinct values for filtering sales orders"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -224,7 +229,7 @@ async def get_sales_order(
     tenant_id: str,
     order_id: int,
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_orders
 ) -> SalesOrderWithLinesRead:
     """Get a specific sales order with its lines"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -235,7 +240,7 @@ async def get_sales_order(
 async def export_sales_orders(
     tenant_id: str,
     companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _export_sales_orders
 ) -> Response:
     """Export sales orders to CSV"""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -252,7 +257,7 @@ async def export_sales_orders(
 async def search_sales_orders(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user)
+    user: AppUser = _view_sales_orders
 ) -> PaginatedResponse[SalesOrderRead]:
     """Advanced search for sales orders with complex filters"""
     await TenantService.get_tenant(tenant_id, str(user.id))

@@ -18,7 +18,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from doova_one_view.api.dependencies import get_current_user
-from doova_one_view.api.auth.permissions import require_permissions
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
 from doova_one_view.api.reports.schemas import (
     ReportScheduleCreate,
     ReportScheduleUpdate,
@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
-_view   = Depends(require_permissions("view_kpi"))
-_manage = Depends(require_permissions("view_kpi"))
+_view   = Depends(require_any_permission("view_reports"))
+_manage = Depends(require_permissions("manage_reports"))
 
 
 # ---------------------------------------------------------------------------

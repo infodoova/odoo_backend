@@ -19,7 +19,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from doova_one_view.api.dependencies import get_current_user
-from doova_one_view.api.auth.permissions import require_permissions
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
 from doova_one_view.api.alerts.schemas import (
     AlertScheduleCreate,
     AlertScheduleUpdate,
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
-_view   = Depends(require_permissions("view_kpi"))
-_manage = Depends(require_permissions("view_kpi"))
+_view   = Depends(require_any_permission("view_alerts"))
+_manage = Depends(require_permissions("manage_alerts"))
 
 
 # ---------------------------------------------------------------------------
@@ -95,11 +95,10 @@ async def _get_tenant_id_for_user(user: AppUser) -> str:
     response_model=AlertScheduleResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create an alert schedule",
-    dependencies=[_manage],
 )
 async def create_alert_schedule(
     payload: AlertScheduleCreate,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage,
 ):
     tenant_id = await _get_tenant_id_for_user(user)
 
@@ -137,10 +136,9 @@ async def create_alert_schedule(
     "/schedules",
     response_model=List[AlertScheduleResponse],
     summary="List alert schedules for the current tenant",
-    dependencies=[_view],
 )
 async def list_alert_schedules(
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -167,12 +165,11 @@ async def list_alert_schedules(
     "/schedules/{schedule_id}",
     response_model=AlertScheduleResponse,
     summary="Update an alert schedule",
-    dependencies=[_manage],
 )
 async def update_alert_schedule(
     schedule_id: UUID,
     payload: AlertScheduleUpdate,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage,
 ):
     tenant_id = await _get_tenant_id_for_user(user)
 
@@ -222,11 +219,10 @@ async def update_alert_schedule(
     "/schedules/{schedule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete an alert schedule",
-    dependencies=[_manage],
 )
 async def delete_alert_schedule(
     schedule_id: UUID,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage,
 ):
     tenant_id = await _get_tenant_id_for_user(user)
 
@@ -253,12 +249,11 @@ async def delete_alert_schedule(
     "/schedules/{schedule_id}/run-now",
     response_model=RunAlertResponse,
     summary="Instantly run an alert check and return results (optionally send email)",
-    dependencies=[_manage],
 )
 async def run_alert_now(
     schedule_id: UUID,
     payload: RunAlertRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _manage,
 ):
     tenant_id = await _get_tenant_id_for_user(user)
 
@@ -298,10 +293,9 @@ async def run_alert_now(
     "/history",
     response_model=List[AlertLogResponse],
     summary="List alert check history for the current tenant",
-    dependencies=[_view],
 )
 async def list_alert_history(
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):

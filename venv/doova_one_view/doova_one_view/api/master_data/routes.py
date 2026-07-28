@@ -10,6 +10,17 @@ from fastapi.responses import Response
 from odoo_app.models import AppUser
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
+
+_view_partners   = Depends(require_permissions("view_partners"))
+_view_products   = Depends(require_permissions("view_products"))
+_view_lots       = Depends(require_permissions("view_lots"))
+_view_categories = Depends(require_permissions("view_categories"))
+_view_chart      = Depends(require_permissions("view_chart_of_accounts"))
+_export_partners   = Depends(require_permissions("export_partners"))
+_export_products   = Depends(require_permissions("export_products"))
+_export_lots       = Depends(require_permissions("export_lots"))
+_export_chart      = Depends(require_permissions("export_chart_of_accounts"))
 from doova_one_view.api.master_data.schemas import SearchRequest, ChartOfAccountsRead
 from doova_one_view.api.master_data.service import MasterDataService
 from doova_one_view.api.tenants.service import TenantService
@@ -72,7 +83,7 @@ async def get_filters(
 @router.get("/{tenant_id}/partners/filters")
 async def get_partners_filters(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_partners_filters(tenant_id)
@@ -82,7 +93,7 @@ async def get_partners_filters(
 async def search_partners(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_partners(
@@ -93,7 +104,7 @@ async def search_partners(
 @router.get("/{tenant_id}/partners/export")
 async def export_partners(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_partners,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await MasterDataService.export_partners_csv(tenant_id)
@@ -112,7 +123,7 @@ async def list_partners(
     is_customer: Optional[str] = Query(None),
     is_supplier: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_partners(
@@ -131,7 +142,7 @@ async def get_products_filters(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_products,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_products_filters(tenant_id, _company_ids(company_id, companies))
@@ -143,7 +154,7 @@ async def search_products(
     request: SearchRequest,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_products,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_products(
@@ -160,7 +171,7 @@ async def export_products(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_products,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await MasterDataService.export_products_csv(
@@ -181,7 +192,7 @@ async def list_products(
     search: Optional[str] = Query(None),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_products,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_products(
@@ -193,7 +204,7 @@ async def list_products(
 @router.get("/{tenant_id}/categories/tree")
 async def get_categories_tree(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_categories,
 ) -> list[dict[str, Any]]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_categories_tree(tenant_id)
@@ -204,7 +215,7 @@ async def get_category(
     tenant_id: str,
     category_id: int,
     include_products: bool = Query(False),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_categories,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_category(tenant_id, category_id, include_products)
@@ -217,7 +228,7 @@ async def search_lots(
     request: SearchRequest,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_lots,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = _company_ids(company_id, companies)
@@ -235,7 +246,7 @@ async def export_lots(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_lots,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await MasterDataService.export_lots_csv(
@@ -253,7 +264,7 @@ async def get_lots_filters(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_lots,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_lots_filters(
@@ -268,7 +279,7 @@ async def list_lots(
     offset: int = Query(0, ge=0),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_lots,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_lots(
@@ -293,7 +304,7 @@ async def list_currencies(
 async def search_chart_of_accounts(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_chart_of_accounts(
@@ -304,7 +315,7 @@ async def search_chart_of_accounts(
 @router.get("/{tenant_id}/chart-of-accounts/export")
 async def export_chart_of_accounts(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_chart,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await MasterDataService.export_chart_of_accounts_csv(tenant_id)
@@ -318,7 +329,7 @@ async def export_chart_of_accounts(
 @router.get("/{tenant_id}/chart-of-accounts/filters")
 async def get_chart_of_accounts_filters(
     tenant_id: str,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_chart_of_accounts_filters(tenant_id)
@@ -330,7 +341,7 @@ async def list_chart_of_accounts(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     search: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_chart_of_accounts(

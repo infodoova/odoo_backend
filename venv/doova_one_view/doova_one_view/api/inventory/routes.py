@@ -10,6 +10,15 @@ from fastapi.responses import Response
 from odoo_app.models import AppUser
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
+from doova_one_view.api.auth.permissions import require_permissions, require_any_permission
+
+_view_inventory_overview   = Depends(require_permissions("view_inventory_overview"))
+_view_inventory_moves      = Depends(require_permissions("view_inventory_moves"))
+_view_inventory_pickings   = Depends(require_permissions("view_inventory_pickings"))
+_view_inventory_quants     = Depends(require_permissions("view_inventory_quants"))
+_export_inventory_moves    = Depends(require_permissions("export_inventory_moves"))
+_export_inventory_pickings = Depends(require_permissions("export_inventory_pickings"))
+_export_inventory_quants   = Depends(require_permissions("export_inventory_quants"))
 from doova_one_view.api.inventory.schemas import (
     SearchRequest,
     MetricDetailResponse,
@@ -36,7 +45,7 @@ async def get_inventory_summary(
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_inventory_summary(
@@ -56,7 +65,7 @@ async def get_inventory_dashboard(
     includeCompanies: Optional[str] = Query(None),
     include_companies: Optional[str] = Query(None),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_dashboard(
@@ -75,7 +84,7 @@ async def get_inventory_top_cards(
     companies: Optional[str] = Query(None),
     low_stock_threshold: int = Query(10, ge=1, description="Quantity at or below which a product is considered low stock"),
     limit: int = Query(25, ge=1, le=100, description="Max drill-down items per card"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> StockTopCardsResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_top_cards(
@@ -93,7 +102,7 @@ async def get_inventory_alerts(
     companies: Optional[str] = Query(None),
     low_stock_threshold: int = Query(10, ge=1),
     limit: int = Query(10, ge=1, le=50, description="Max drill-down items per alert group"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> InventoryAlertsResponse:
     """Return an aggregated list of inventory alerts."""
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -116,7 +125,7 @@ async def get_stock_table(
     low_stock_threshold: int = Query(10, ge=1, description="Quantity at or below which a product is considered low stock"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> dict[str, Any]:
     """
     Get paginated tables for specific inventory categories:
@@ -142,7 +151,7 @@ async def export_pickings(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_inventory_pickings,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await InventoryService.export_pickings_csv(
@@ -159,7 +168,7 @@ async def export_pickings(
 async def search_pickings(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_pickings,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(
@@ -177,7 +186,7 @@ async def list_pickings(
     offset: int = Query(0, ge=0),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_pickings,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_pickings(
@@ -191,7 +200,7 @@ async def get_picking(
     picking_id: int,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_pickings,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_picking(
@@ -205,7 +214,7 @@ async def export_moves(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_inventory_moves,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await InventoryService.export_moves_csv(
@@ -222,7 +231,7 @@ async def export_moves(
 async def search_moves(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(
@@ -241,7 +250,7 @@ async def list_stock_moves(
     picking_id: Optional[int] = Query(None),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_moves(
@@ -255,7 +264,7 @@ async def get_stock_move(
     move_id: int,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_move(
@@ -268,7 +277,7 @@ async def export_inventory_default(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_inventory_moves,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await InventoryService.export_moves_csv(
@@ -287,7 +296,7 @@ async def export_quants(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _export_inventory_quants,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await InventoryService.export_quants_csv(
@@ -304,7 +313,7 @@ async def export_quants(
 async def search_quants(
     tenant_id: str,
     request: SearchRequest,
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_quants,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     company_ids = parse_company_ids(
@@ -323,7 +332,7 @@ async def list_stock_quants(
     product_id: Optional[int] = Query(None),
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_quants,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_quants(
@@ -336,7 +345,7 @@ async def get_filters(
     tenant_id: str,
     company_id: Optional[int] = Query(None),
     companies: Optional[str] = Query(None),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_filters(
@@ -355,7 +364,7 @@ async def get_dashboard_metric_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> MetricDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_dashboard_metric_details(
@@ -379,7 +388,7 @@ async def get_daily_moves(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> DailyMovesResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_daily_moves(
@@ -404,7 +413,7 @@ async def get_market_breakdown_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> MarketBreakdownResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     parsed_entity_id: Any = entity_id
@@ -431,7 +440,7 @@ async def get_entity_profile(
     tenant_id: str,
     entity_type: str = Query(..., description="Entity type: customer, vendor, supplier"),
     entity_id: int = Query(..., description="Partner ID"),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> EntityProfileResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_entity_profile(tenant_id, entity_type, entity_id)
@@ -448,7 +457,7 @@ async def get_product_inventory_details(
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: AppUser = Depends(get_current_user),
+    user: AppUser = _view_inventory_overview,
 ) -> ProductInventoryDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await InventoryService.get_product_inventory_details(

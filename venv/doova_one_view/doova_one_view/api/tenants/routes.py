@@ -57,7 +57,6 @@ async def create_tenant(
     "/",
     response_model=List[TenantRead],
     summary="List tenants",
-    dependencies=[_view],
 )
 async def list_tenants(
     limit: int = Query(10, ge=1, le=100, description="Number of results per page"),
@@ -83,7 +82,6 @@ async def list_tenants(
     "/{tenant_id}",
     response_model=TenantRead,
     summary="Get tenant details",
-    dependencies=[_view],
 )
 async def get_tenant(
     tenant_id: str,
