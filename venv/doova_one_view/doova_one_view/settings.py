@@ -25,7 +25,7 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8rsyz^fj+df@co42p500@rvx5ujuu!m52wi6=%sliid8!kx5e7')
+SECRET_KEY = os.environ.get('SECRET_KEY') or os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8rsyz^fj+df@co42p500@rvx5ujuu!m52wi6=%sliid8!kx5e7')
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'EuNTvs5NWKnh2r_nV-WpFWHvJihTUpKjhf60EDeck6U=')
 
 # SMTP Gateway settings
@@ -33,15 +33,21 @@ SMTP_GATEWAY_URL = os.environ.get('SMTP_GATEWAY_URL', '')
 SMTP_GATEWAY_TOKEN = os.environ.get('SMTP_GATEWAY_TOKEN', '')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = [
-    'kristan-prickliest-ezekiel.ngrok-free.dev',
-    'zeppelin-reproach-twitter.ngrok-free.dev',
-    'localhost',
-    '127.0.0.1',
-    '[::1]',
-]
+raw_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '*')
+if raw_allowed_hosts == '*':
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
+
+raw_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '*')
+if raw_cors_origins == '*':
+    API_CORS_ORIGINS = ['*']
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    API_CORS_ORIGINS = [c.strip() for c in raw_cors_origins.split(',') if c.strip()]
+
 
 
 
@@ -103,9 +109,9 @@ if db_url:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': url.path[1:],
-            'USER': url.username,
-            'PASSWORD': url.password,
+            'NAME': url.path[1:] if url.path else '',
+            'USER': urllib.parse.unquote(url.username) if url.username else '',
+            'PASSWORD': urllib.parse.unquote(url.password) if url.password else '',
             'HOST': url.hostname,
             'PORT': url.port or 5432,
         }
@@ -190,10 +196,6 @@ LOGGING = {
         },
     },
 }
-
-# Odoo Configuration
-ODOO_USERNAME = 'ali.chamas@odoo.com'  # Set via environment variable in production
-ODOO_API_KEY = 'your_api_key_here'  # Set via environment variable in production
 
 # API Sync Settings
 SYNC_INTERVAL_MINUTES = int(os.environ.get('SYNC_INTERVAL_MINUTES', 30))
