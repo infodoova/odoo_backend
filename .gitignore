@@ -84,3 +84,5 @@ venv/doova_one_view/odoo_app/management/commands/seed_demo_data.py
 venv/doova_one_view/scratch/check_all_dbs.py
 venv/doova_one_view/scratch/check_db.py
 venv/doova_one_view/scratch_test_all.py
+venv/doova_one_view/.env
+venv/doova_one_view/.env
