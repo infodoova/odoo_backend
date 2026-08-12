@@ -1,93 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
+    <title>{{ company_name|default("Financial Overview") }}</title>
     <style>
+        /* -------------------------------------------------------------------------
+           1. PAGE SETUP (CSS Paged Media)
+           ------------------------------------------------------------------------- */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
         @page {
             size: letter;
-            margin: 0.5cm 0 2cm 0;
+            margin: 0.8cm 1cm 1.8cm 1cm;
 
-            /* xhtml2pdf proprietary frame directive for running footers */
             @frame footer {
                 -pdf-frame-content: footerContent;
                 bottom: 0.4cm;
                 height: 0.8cm;
-                left: 50px;
-                right: 50px;
+                left: 40px;
+                right: 40px;
             }
         }
 
-
-
+        /* -------------------------------------------------------------------------
+           2. BASE TYPOGRAPHY
+           ------------------------------------------------------------------------- */
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
             color: #334155;
             line-height: 1.6;
-            font-size: 11pt;
+            font-size: 10.5pt;
+            margin: 0;
+            padding: 0;
+            orphans: 3;
+            widows: 3;
         }
 
         .page-break {
-            pdf-pagebreak-before: always;
+            page-break-before: always;
         }
 
-        /* Cover Page */
-        .cover-page {
-            border-top: 10px solid #1e3a8a;
-            border-bottom: 10px solid #1e3a8a;
+        .avoid-break {
+            page-break-inside: avoid;
         }
 
-        .cover-body {
-            padding: 45px 50px 25px 50px;
+        /* -------------------------------------------------------------------------
+           3. COVER PAGE DESIGN
+           ------------------------------------------------------------------------- */
+        .cover-header {
+            background-color: #263C8F;
+            color: #ffffff;
+            padding: 90mm 20mm 40mm 20mm;
             text-align: center;
         }
 
         .cover-eyebrow {
-            display: inline-block;
-            font-size: 9pt;
-            color: #1e3a8a;
-            background-color: #eaf1fc;
+            color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
+            font-size: 9.5pt;
             font-weight: bold;
-            padding: 5px 16px;
-            margin-bottom: 16px;
-            border: 1px solid #cbd5e1;
+            margin-bottom: 24px;
         }
 
         .cover-title {
-            font-size: 28pt;
-            color: #0f172a;
+            color: #ffffff;
+            font-size: 34pt;
             font-weight: bold;
-            letter-spacing: 0.5px;
-            line-height: 1.25;
-            margin-bottom: 14px;
-            overflow-wrap: break-word;
-            word-break: break-word;
-        }
-
-        .cover-rule {
-            width: 90px;
-            height: 4px;
-            background-color: #3b82f6;
-            margin: 0 auto 16px auto;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            padding: 0 20px;
         }
 
         .cover-tagline {
-            font-size: 10.5pt;
-            color: #64748b;
-            max-width: 420px;
-            margin: 0 auto 24px auto;
+            color: #94a3b8;
+            font-size: 11pt;
+            max-width: 450px;
+            margin: 0 auto;
             line-height: 1.5;
         }
 
+        .cover-body {
+            padding: 30mm 20mm;
+            text-align: center;
+        }
+
         .cover-info-card {
-            background-color: #f8fafc;
+            background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            border-top: 3px solid #3b82f6;
-            width: 78%;
-            margin: 0 auto 20px auto;
-            padding: 6px 10px;
+            border-top: 4px solid #263C8F;
+            width: 85%;
+            margin: -60mm auto 30px auto;
+            padding: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .cover-meta-table {
@@ -96,11 +106,11 @@
         }
 
         .cover-meta-col {
-            width: 33.33%;
+            width: 25%;
             text-align: center;
             vertical-align: middle;
-            padding: 14px 10px;
-            border-right: 1px solid #e2e8f0;
+            padding: 20px 10px;
+            border-right: 1px solid #f1f5f9;
         }
 
         .cover-meta-col-last {
@@ -108,501 +118,684 @@
         }
 
         .cover-meta-label {
-            text-align: center;
-            color: #94a3b8;
+            color: #64748b;
             font-size: 8pt;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
 
         .cover-meta-value {
-            text-align: center;
-            color: #0f172a;
+            color: #263C8F;
             font-weight: bold;
-            font-size: 10.5pt;
-            overflow-wrap: break-word;
-            word-break: break-word;
+            font-size: 11pt;
         }
 
         .cover-stamp {
             display: inline-block;
             color: #64748b;
-            font-size: 7.5pt;
+            font-size: 8pt;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             font-weight: bold;
             border: 1px solid #cbd5e1;
-            padding: 5px 16px;
-            margin-bottom: 14px;
+            padding: 6px 18px;
+            margin-bottom: 16px;
+            border-radius: 4px;
         }
 
-        .cover-footnote {
-            font-size: 8pt;
+        .cover-footer-note {
             color: #94a3b8;
-            max-width: 380px;
+            font-size: 8.5pt;
+            max-width: 400px;
             margin: 0 auto;
-            line-height: 1.5;
+            text-align: center;
         }
 
-        /* Inner Page Styles */
-        .content-wrapper {
-            padding: 14px 50px 24px 50px;
+        /* -------------------------------------------------------------------------
+           4. TABLE OF CONTENTS
+           ------------------------------------------------------------------------- */
+        .toc-page h1 {
+            margin-top: 0;
         }
 
+        .toc-subtitle {
+            color: #64748b;
+            font-size: 9.5pt;
+            margin-top: -6px;
+            margin-bottom: 28px;
+        }
+
+        .toc-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .toc-row {
+            width: 100%;
+        }
+
+        .toc-row td {
+            padding: 11px 0;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+
+        .toc-row.toc-row-last td {
+            border-bottom: none;
+        }
+
+        .toc-num-cell {
+            width: 34px;
+        }
+
+        .toc-num {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            text-align: center;
+            border-radius: 50%;
+            background-color: #263C8F;
+            color: #ffffff;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .toc-num-plain {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 11pt;
+        }
+
+        .toc-title-cell {
+            padding-left: 6px;
+            padding-right: 16px;
+        }
+
+        .toc-title {
+            display: block;
+            color: #263C8F;
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 2px;
+        }
+
+        .toc-desc {
+            display: block;
+            color: #64748b;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+
+        .toc-page-cell {
+            width: 44px;
+            text-align: right;
+            color: #475569;
+            font-size: 10pt;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        a.toc-pageref {
+            text-decoration: none;
+        }
+
+        /* -------------------------------------------------------------------------
+           5. SECTION HEADINGS
+           ------------------------------------------------------------------------- */
         h1,
         h2,
         h3,
-        h4,
-        h5,
-        h6 {
-            -pdf-keep-with-next: true;
+        h4 {
+            page-break-after: avoid;
+            margin-top: 24px;
+            margin-bottom: 12px;
         }
 
         h1 {
-            color: #0f172a;
-            font-size: 18pt;
-            border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 5px;
-            margin-top: 6px;
-            margin-bottom: 10px;
-        }
-
-        .content-wrapper>h1:first-child {
+            color: #263C8F;
+            font-size: 20pt;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
             margin-top: 0;
         }
 
         h2 {
-            color: #1e3a8a;
-            font-size: 14pt;
-            margin-top: 14px;
-            margin-bottom: 7px;
+            color: #263C8F;
+            font-size: 15pt;
         }
 
         h3 {
             color: #334155;
-            font-size: 11.5pt;
-            margin-top: 10px;
-            margin-bottom: 5px;
+            font-size: 12.5pt;
         }
 
-        h4,
-        h5,
-        h6 {
-            color: #334155;
+        h4 {
+            color: #475569;
             font-size: 10.5pt;
-            margin-top: 8px;
-            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         p {
-            margin-bottom: 8px;
-            text-align: justify;
+            margin-bottom: 12px;
+            text-align: left;
         }
 
-        a {
-            color: #1d4ed8;
+        .section-intro {
+            color: #475569;
         }
 
-        hr {
-            border: none;
-            border-top: 1px solid #e2e8f0;
-            margin: 10px 0;
+        .content-section ul,
+        .content-section ol {
+            margin: 0 0 14px 0;
+            padding-left: 22px;
         }
 
-        blockquote {
-            margin: 10px 0;
-            padding: 8px 15px;
-            background-color: #f8fafc;
-            border-left: 4px solid #3b82f6;
-            color: #334155;
+        .content-section li {
+            margin-bottom: 6px;
+        }
+
+        .content-section a {
+            color: #263C8F;
+            text-decoration: none;
+            border-bottom: 1px solid #cbd5e1;
+        }
+
+        .content-section blockquote {
+            margin: 16px 0;
+            padding: 10px 18px;
+            border-left: 3px solid #cbd5e1;
+            color: #475569;
             font-style: italic;
-            -pdf-keep-with-next: false;
         }
 
-        /* KPI Cards using Tables */
+        /* -------------------------------------------------------------------------
+           6. KPI DASHBOARD
+           ------------------------------------------------------------------------- */
         .kpi-container {
             width: 100%;
-            margin-bottom: 16px;
-            margin-top: 8px;
+            margin: 16px 0 24px 0;
             table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 12px 0;
         }
 
         .kpi-card {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-top: 3px solid #3b82f6;
-            padding: 12px;
+            padding: 16px;
             text-align: center;
+            border-radius: 6px;
+        }
+
+        .kpi-title {
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 18pt;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+
+        .kpi-trend {
+            font-size: 8.5pt;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+
+        .kpi-trend-up {
+            color: #16a34a;
+        }
+
+        .kpi-trend-down {
+            color: #dc2626;
         }
 
         .kpi-card-good {
             background-color: #f0fdf4;
             border: 1px solid #bbf7d0;
             border-top: 4px solid #16a34a;
-            padding: 12px;
-            text-align: center;
+        }
+
+        .kpi-card-good .kpi-title {
+            color: #166534;
+        }
+
+        .kpi-card-good .kpi-value {
+            color: #14532d;
         }
 
         .kpi-card-warning {
             background-color: #fffbeb;
             border: 1px solid #fde68a;
             border-top: 4px solid #d97706;
-            padding: 12px;
-            text-align: center;
+        }
+
+        .kpi-card-warning .kpi-title {
+            color: #92400e;
+        }
+
+        .kpi-card-warning .kpi-value {
+            color: #78350f;
         }
 
         .kpi-card-critical {
             background-color: #fef2f2;
             border: 1px solid #fecaca;
             border-top: 4px solid #dc2626;
-            padding: 12px;
-            text-align: center;
+        }
+
+        .kpi-card-critical .kpi-title {
+            color: #991b1b;
+        }
+
+        .kpi-card-critical .kpi-value {
+            color: #7f1d1d;
         }
 
         .kpi-card-neutral {
-            background-color: #f8fafc;
+            background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            border-top: 4px solid #3b82f6;
-            padding: 12px;
-            text-align: center;
+            border-top: 4px solid #263C8F;
         }
 
-
-        .kpi-title {
+        .kpi-card-neutral .kpi-title {
             color: #64748b;
+        }
+
+        .kpi-card-neutral .kpi-value {
+            color: #263C8F;
+        }
+
+        /* -------------------------------------------------------------------------
+           7. DATA TABLES
+           ------------------------------------------------------------------------- */
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            page-break-inside: avoid;
+        }
+
+        table.data-table th {
+            background-color: #263C8F;
+            color: #ffffff;
+            text-align: left;
+            padding: 10px 12px;
             font-size: 9pt;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #1a2a6b;
         }
 
-        .kpi-value {
-            color: #0f172a;
-            font-size: 16pt;
+        table.data-table td {
+            padding: 8px 12px;
+            font-size: 10pt;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        table.data-table tbody tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+
+        table.data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-caption {
+            font-size: 9pt;
+            color: #64748b;
+            margin: -8px 0 16px 0;
             font-weight: bold;
-            line-height: 1.2;
-            overflow-wrap: break-word;
-            word-break: break-word;
         }
 
-        /* Charts */
+        /* -------------------------------------------------------------------------
+           8. CALLOUT / INSIGHT BOXES
+           ------------------------------------------------------------------------- */
+        .callout {
+            margin: 18px 0;
+            padding: 14px 18px;
+            border-radius: 4px;
+            border-left: 4px solid;
+            page-break-inside: avoid;
+        }
+
+        .callout-label {
+            display: block;
+            font-size: 8pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .callout p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Brand Info Box */
+        .callout-insight {
+            background-color: #f1f5f9;
+            border-left-color: #263C8F;
+        }
+
+        .callout-insight .callout-label {
+            color: #263C8F;
+        }
+
+        .callout-risk {
+            background-color: #fffbeb;
+            border-left-color: #d97706;
+        }
+
+        .callout-risk .callout-label {
+            color: #92400e;
+        }
+
+        .callout-critical {
+            background-color: #fef2f2;
+            border-left-color: #dc2626;
+        }
+
+        .callout-critical .callout-label {
+            color: #991b1b;
+        }
+
+        .callout-positive {
+            background-color: #f0fdf4;
+            border-left-color: #16a34a;
+        }
+
+        .callout-positive .callout-label {
+            color: #166534;
+        }
+
+        /* -------------------------------------------------------------------------
+           9. FIGURES, CHARTS & CAPTIONS
+           ------------------------------------------------------------------------- */
         .chart-container {
             text-align: center;
-            margin-top: 8px;
-            margin-bottom: 12px;
-            width: 100%;
+            margin: 24px 0;
+            padding: 16px;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            page-break-inside: avoid;
         }
 
         .chart-image {
-            width: 700px;
+            width: 100%;
+            max-width: 700px;
             height: auto;
-            max-height: 320px;
         }
 
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 16px;
-            margin-top: 8px;
-            -pdf-keep-with-next: false;
-            table-layout: fixed;
-            border: 1px solid #cbd5e1;
-        }
-
-        .kpi-container {
-            border: none;
-        }
-
-        /*
-      FIX: tables whose first column is a short row label (or, worse, has
-      NO header text at all -- e.g. a markdown table like
-      "| | Accounts Receivable | Accounts Payable | Net |" with a blank
-      first <th>) were getting squeezed almost to zero width by
-      table-layout:auto, since the browser/renderer distributes width based
-      on the OTHER columns' longer content. That's what forced labels like
-      "Total Outstanding" to wrap into a vertical stack ("Total" / "Outstanding")
-      instead of sitting on one line.
-      This is the standard "shrink-to-fit" trick: width:1% tells the layout
-      engine "give this column the least width possible", and
-      white-space:nowrap stops it from wrapping once shrunk -- so it ends up
-      exactly as wide as its longest label, no matter how blank/short its
-    */
-
-        thead {
-            display: table-header-group;
-        }
-
-        th {
-            background-color: #eaf1fc;
-            color: #1e3a8a;
-            text-align: left;
-            padding: 6px 10px;
-            font-size: 8.5pt;
+        .figure-caption {
+            font-size: 9pt;
+            color: #64748b;
+            margin-top: 10px;
             font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid #1e3a8a;
-            line-height: 1.15;
         }
 
-        td {
-            padding: 5px 10px;
-            font-size: 9.5pt;
-            line-height: 1.15;
-            vertical-align: top;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            color: #334155;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        th p,
-        td p {
-            margin: 0;
-            padding: 0;
-            text-align: inherit;
-        }
-
-        th.num,
-        td.num,
-        th.number,
-        td.number {
-            text-align: right;
-        }
-
-        tbody tr:nth-child(even) td {
-            background-color: #f8fafc;
-        }
-
-        tbody tr:last-child td,
-        tr.total-row td {
-            border-top: 2px solid #1e3a8a;
-            border-bottom: none;
-            background-color: #eaf1fc;
-            font-weight: bold;
-            color: #0f172a;
-        }
-
-        /* Lists */
-        ul,
-        ol {
-            margin-bottom: 12px;
-            padding-left: 20px;
-        }
-
-        li {
-            margin-bottom: 4px;
-        }
-
-        .analysis-content img {
-            width: 100%;
-            max-height: 320px;
-        }
-
-        b,
-        strong {
-            color: #0f172a;
-        }
-
-        /*
-      STATUS BADGES -- replaces emoji (🔴 🟠 🟡 🟢 ⚠️ 🚨) in AI-generated
-      body_html. Helvetica/Arial (what xhtml2pdf renders with) has no emoji
-      glyphs, so those characters were either being swapped for literal
-      bracket text ("[Alert]", "[Note]", "[Good]", "[Watch]") by an
-      incomplete fallback step, or -- for emoji that fallback didn't cover,
-      like 🟠 -- falling straight through to reportlab and rendering as a
-      "missing glyph" box ("■"). Run body_html through
-      emoji_to_badges.normalize_status_emoji() BEFORE it reaches this
-      template so every status emoji becomes one of the spans below instead.
-    */
+        /* -------------------------------------------------------------------------
+           10. BADGES
+           ------------------------------------------------------------------------- */
         .badge {
             display: inline-block;
             font-size: 7.5pt;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            padding: 2px 8px;
-            border-radius: 2px;
+            padding: 3px 8px;
+            border-radius: 4px;
             border: 1px solid transparent;
-        }
-
-        .badge-urgent {
-            color: #ffffff;
-            background-color: #dc2626;
-            border-color: #b91c1c;
+            vertical-align: middle;
         }
 
         .badge-critical {
-            color: #b91c1c;
+            color: #991b1b;
             background-color: #fee2e2;
             border-color: #fca5a5;
         }
 
         .badge-high {
-            color: #c2410c;
+            color: #9a3412;
             background-color: #ffedd5;
             border-color: #fdba74;
         }
 
-        .badge-medium {
-            color: #a16207;
-            background-color: #fef9c3;
-            border-color: #fde68a;
-        }
-
         .badge-warning {
-            color: #92400e;
-            background-color: #fef3c7;
-            border-color: #fcd34d;
+            color: #854d0e;
+            background-color: #fef9c3;
+            border-color: #fde047;
         }
 
         .badge-good {
-            color: #15803d;
+            color: #166534;
             background-color: #dcfce7;
             border-color: #86efac;
         }
 
         .badge-note {
-            color: #1e3a8a;
-            background-color: #eaf1fc;
-            border-color: #93c5fd;
+            color: #263C8F;
+            background-color: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+
+        .badge-neutral {
+            color: #475569;
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        /* -------------------------------------------------------------------------
+           11. NUMBERED ACTION / RECOMMENDATION LISTS
+           ------------------------------------------------------------------------- */
+        .action-list {
+            margin: 16px 0;
+            padding-left: 20px;
+        }
+
+        .action-list li {
+            padding: 2px 0 8px 0;
+            margin-bottom: 4px;
+        }
+
+        .action-list .action-title {
+            font-weight: bold;
+            color: #263C8F;
+            display: block;
+        }
+
+        /* -------------------------------------------------------------------------
+           13. DISCLAIMER / METHODOLOGY
+           ------------------------------------------------------------------------- */
+        .disclaimer-page h1 {
+            margin-top: 0;
+        }
+
+        .disclaimer-block {
+            margin-bottom: 20px;
+        }
+
+        .disclaimer-block h4 {
+            margin-bottom: 6px;
+        }
+
+        .disclaimer-block p {
+            color: #475569;
+            font-size: 9.5pt;
+        }
+
+        .prepared-by {
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 9pt;
+            color: #64748b;
         }
     </style>
 </head>
 
 <body>
-    <!-- Cover Page -->
-    <div class="cover-page">
-        <div class="cover-body">
-            {% if logo_b64 %}
-            <div style="text-align: center; margin-bottom: 22px;">
-                <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}"
-                    style="max-height: 60px; max-width: 220px;" />
-            </div>
-            {% elif logo_url %}
-            <div style="text-align: center; margin-bottom: 22px;">
-                <img src="{{ logo_url }}" style="max-height: 60px; max-width: 220px;" />
-            </div>
-            {% endif %}
-            <div class="cover-eyebrow">Executive Financial Report</div>
-            <div class="cover-title">{{ company_name|default("Financial Overview") }}</div>
-            <div class="cover-rule"></div>
-            <div class="cover-tagline">A confidential summary of financial performance and business health, prepared for
-                tenant leadership.</div>
-
-            <div class="cover-info-card">
-                <table class="cover-meta-table">
-                    <tr>
-                        <td class="cover-meta-col">
-                            <div class="cover-meta-label">Tenant ID</div>
-                            <div class="cover-meta-value">{{ tenant_id|default("—") }}</div>
-                        </td>
-                        <td class="cover-meta-col">
-                            <div class="cover-meta-label">Prepared On</div>
-                            <div class="cover-meta-value">{{ date|default("—") }}</div>
-                        </td>
-                        <td class="cover-meta-col cover-meta-col-last">
-                            <div class="cover-meta-label">Generated By</div>
-                            <div class="cover-meta-value">Nexus</div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="cover-stamp">Confidential &middot; Internal Use Only</div>
-            <div class="cover-footnote">This document contains confidential and proprietary financial information.
-                Distribution is limited to authorized recipients.</div>
-        </div>
-    </div>
-
-    <!-- Running Footer Frame for xhtml2pdf -->
     <div id="footerContent">
         <table style="width: 100%; border: none; margin: 0; padding: 0;">
             <tr>
-                <td
-                    style="text-align: left; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
+                <td style="text-align: left; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
                     Confidential &middot; {{ company_name|default("Financial Overview") }}
                 </td>
-                <td
-                    style="text-align: right; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
-                    Page
-                    <pdf:pagenumber /> of
-                    <pdf:pagecount />
+                <td style="text-align: right; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
+                    Page <pdf:pagenumber /> of <pdf:pagecount />
                 </td>
             </tr>
         </table>
     </div>
 
-    <div class="content-wrapper page-break">
-        {% set health_num = health_score|default(0)|float %}
-        {% if health_num >= 70 %}
-        {% set health_card_class = "kpi-card-good" %}
-        {% elif health_num >= 40 %}
-        {% set health_card_class = "kpi-card-warning" %}
-        {% elif health_num > 0 %}
-        {% set health_card_class = "kpi-card-critical" %}
-        {% else %}
-        {% set health_card_class = "kpi-card-neutral" %}
-        {% endif %}
+    <div class="cover-header">
+        <div class="cover-eyebrow">Executive Financial Report</div>
+        <div class="cover-title">{{ company_name|default("Financial Overview") }}</div>
+        <div class="cover-tagline">{{ report_tagline|default("A confidential summary of financial performance and
+            business health, prepared for tenant leadership.") }}</div>
+    </div>
 
-        {% if margin and '-' in margin|string %}
-        {% set ebit_card_class = "kpi-card-critical" %}
-        {% else %}
-        {% set ebit_card_class = "kpi-card-good" %}
-        {% endif %}
+    <div class="cover-body">
+        <div class="cover-info-card">
+            <table class="cover-meta-table">
+                <tr>
+                    <td class="cover-meta-col">
+                        <div class="cover-meta-label">Tenant ID</div>
+                        <div class="cover-meta-value">{{ tenant_id|default("—") }}</div>
+                    </td>
+                    <td class="cover-meta-col">
+                        <div class="cover-meta-label">Reporting Period</div>
+                        <div class="cover-meta-value">{{ reporting_period|default("—") }}</div>
+                    </td>
+                    <td class="cover-meta-col">
+                        <div class="cover-meta-label">Prepared On</div>
+                        <div class="cover-meta-value">{{ date|default("—") }}</div>
+                    </td>
+                    <td class="cover-meta-col cover-meta-col-last">
+                        <div class="cover-meta-label">Generated By</div>
+                        <div class="cover-meta-value">Nexus</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
-        <!-- KPI Dashboard -->
+        <div class="cover-stamp">Strictly Confidential &middot; Internal Use Only</div>
+        <p class="cover-footer-note">This document contains confidential and proprietary financial information.
+            Distribution is limited to authorized recipients.</p>
+    </div>
+
+    {% if toc_entries %}
+    <div class="page-break toc-page">
+        <h1>Table of Contents</h1>
+        <div class="toc-subtitle">{{ company_name|default("Financial Overview") }} &middot; {{
+            reporting_period|default(date|default("")) }}</div>
+        <table class="toc-list">
+            {% set ns = namespace(n=0) %}
+            {% for entry in toc_entries %}
+            {% set is_map = entry is mapping %}
+            {% set title = entry.title if is_map else entry %}
+            {% set numbered = entry.numbered if (is_map and entry.numbered is defined) else true %}
+            {% if numbered %}{% set ns.n = ns.n + 1 %}{% endif %}
+            <tr class="toc-row{% if loop.last %} toc-row-last{% endif %}">
+                <td class="toc-num-cell">
+                    {% if numbered %}
+                    <span class="toc-num">{{ ns.n }}</span>
+                    {% else %}
+                    <span class="toc-num-plain">&middot;</span>
+                    {% endif %}
+                </td>
+                <td class="toc-title-cell">
+                    <span class="toc-title">{{ title }}</span>
+                    {% if is_map and entry.description %}<span class="toc-desc">{{ entry.description }}</span>{% endif
+                    %}
+                </td>
+                <td class="toc-page-cell">
+                    {% if is_map and entry.page %}{{ entry.page }}
+                    {% elif is_map and entry.id %}<a class="toc-pageref" href="#{{ entry.id }}"></a>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="page-break" id="vital-signs">
         <h1>Business Vital Signs</h1>
+        <p class="section-intro">A snapshot of the core financial indicators for the current reporting period.</p>
+
         <table class="kpi-container">
             <tr>
-                <td class="{{ health_card_class }}" style="width: 32%;">
+                <td class="kpi-card kpi-card-critical">
                     <div class="kpi-title">Health Score</div>
-                    <div class="kpi-value">{% if health_score is defined and health_score is not none %}{{ health_score
-                        }}/100{% else %}N/A{% endif %}</div>
+                    <div class="kpi-value">{{ health_score }}/100</div>
+                    <div class="kpi-trend kpi-trend-down">▼ {{ health_trend }} pts</div>
                 </td>
-                <td style="width: 2%; padding: 0; border: none;"></td>
-                <td class="kpi-card-neutral" style="width: 32%;">
+                <td class="kpi-card kpi-card-neutral">
                     <div class="kpi-title">Total Revenue</div>
-                    <div class="kpi-value">{{ revenue|default("N/A") }}</div>
+                    <div class="kpi-value">{{ revenue }}</div>
+                    <div class="kpi-trend kpi-trend-up">▲ {{ revenue_trend }} MoM</div>
                 </td>
-                <td style="width: 2%; padding: 0; border: none;"></td>
-                <td class="{{ ebit_card_class }}" style="width: 32%;">
+                <td class="kpi-card kpi-card-critical">
                     <div class="kpi-title">EBIT</div>
-                    <div class="kpi-value">{{ margin|default("N/A") }}</div>
+                    <div class="kpi-value">{{ margin }}</div>
+                    <div class="kpi-trend kpi-trend-down">▼ {{ margin_trend }} YoY</div>
                 </td>
             </tr>
         </table>
 
-        {% if toc_entries and toc_entries|length > 0 %}
-        <div
-            style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #1e3a8a; padding: 12px 18px; margin-bottom: 20px;">
-            <div
-                style="font-weight: bold; font-size: 9.5pt; color: #1e3a8a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
-                Report Structure &amp; Table of Contents</div>
-            <ul style="margin: 0; padding-left: 18px; color: #334155; font-size: 9pt;">
-                {% for entry in toc_entries %}
-                <li style="margin-bottom: 3px;">{{ entry }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-
         {% if chart_b64 %}
-        <div class="chart-container">
-            <img class="chart-image" width="700" src="data:image/png;base64,{{ chart_b64 }}" />
+        <div class="chart-container avoid-break">
+            <img class="chart-image" src="data:image/png;base64,{{ chart_b64 }}" />
+            <div class="figure-caption">{{ chart_caption }}</div>
         </div>
         {% endif %}
+    </div>
 
-        <div class="analysis-content">
-            {% if body_html %}
-            {{ body_html|safe }}
-            {% else %}
-            <p><em>Analysis content is not yet available for this reporting period.</em></p>
-            {% endif %}
+    <div class="content-section page-break">
+        {{ body_html|safe }}
+    </div>
+
+    <div class="page-break disclaimer-page" id="methodology">
+        <h1>Methodology &amp; Disclaimer</h1>
+        <div class="disclaimer-block">
+            <h4>Data Sources</h4>
+            <p>Figures in this report are drawn from the tenant's connected accounting, billing, and operating systems
+                as of the reporting date. Where source data was incomplete, affected figures are noted inline.</p>
+        </div>
+        <div class="disclaimer-block">
+            <h4>Health Score Methodology</h4>
+            <p>The Health Score is a composite indicator (0–100) derived from revenue trend, profitability, liquidity,
+                and account activity signals. It is intended as a directional gauge, not an audited or certified rating.
+            </p>
+        </div>
+        <div class="disclaimer-block">
+            <h4>Disclaimer</h4>
+            <p>This report is provided for informational purposes only and does not constitute financial, legal, tax, or
+                investment advice. Nexus makes no representation as to the completeness or accuracy of underlying source
+                data supplied by third-party systems. Recipients should verify material figures against their own
+                records before relying on them for decision-making.</p>
+        </div>
+        <div class="prepared-by">
+            Prepared by {{ prepared_by|default("the Nexus Team") }} &middot; Questions:
         </div>
     </div>
 </body>
 
-</html>
+</html>"""
