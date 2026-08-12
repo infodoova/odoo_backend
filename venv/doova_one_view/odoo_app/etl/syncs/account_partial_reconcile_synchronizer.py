@@ -23,8 +23,11 @@ class AccountPartialReconcileSynchronizer(BaseSynchronizer):
 
         try:
             model_fields = self.with_retry(self.odoo.get_fields, 'account.partial.reconcile').keys()
-            requested_fields = ['id', 'debit_move_id', 'credit_move_id', 'amount', 'max_date']
+            requested_fields = ['id', 'debit_move_id', 'credit_move_id', 'amount', 'company_id', 'max_date']
             available_fields = [f for f in requested_fields if f in model_fields]
+
+            # Pre-fetch companies and move lines for fast lookup
+            self.prefetch_ids('dim_companies', tenant_id)
 
             synced, failed = 0, 0
             batch_size = 1000
@@ -56,14 +59,15 @@ class AccountPartialReconcileSynchronizer(BaseSynchronizer):
 
         query = """
             INSERT INTO fact_account_partial_reconciles (
-                tenant_id, odoo_id, debit_move_line_id, credit_move_line_id, amount, max_date, synced_at
+                tenant_id, odoo_id, debit_move_line_id, credit_move_line_id, amount, company_id, max_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id)
             DO UPDATE SET
                 debit_move_line_id = EXCLUDED.debit_move_line_id,
                 credit_move_line_id = EXCLUDED.credit_move_line_id,
                 amount = EXCLUDED.amount,
+                company_id = EXCLUDED.company_id,
                 max_date = EXCLUDED.max_date,
                 synced_at = NOW()
         """
@@ -87,6 +91,10 @@ class AccountPartialReconcileSynchronizer(BaseSynchronizer):
                     debit_internal_id,
                     credit_internal_id,
                     self.transformer.parse_odoo_decimal(rec.get('amount', 0)),
+                    self.get_internal_id(
+                        'dim_companies', tenant_id,
+                        self.transformer.parse_odoo_many2one(rec.get('company_id'))
+                    ),
                     self.transformer.parse_odoo_date(rec.get('max_date'))
                 ))
                 synced += 1

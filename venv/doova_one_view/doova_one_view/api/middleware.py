@@ -1,13 +1,81 @@
 """
-Custom middleware for FastAPI
+Custom middleware for FastAPI including logging and Rate Limiting for Financial Advisor Agent
 """
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 import logging
 import time
+from collections import defaultdict
+from threading import Lock
 
 logger = logging.getLogger(__name__)
+
+
+class RateLimiter:
+    """Sliding-window rate limiter per client IP / tenant."""
+    def __init__(self, requests_per_minute: int = 30):
+        self.rpm = requests_per_minute
+        self.requests = defaultdict(list)
+        self.lock = Lock()
+
+    def is_allowed(self, key: str) -> tuple[bool, int, int]:
+        """
+        Returns (allowed: bool, remaining_requests: int, reset_seconds: int)
+        """
+        now = time.time()
+        window_start = now - 60.0
+        with self.lock:
+            # Clean up timestamps older than 60 seconds
+            timestamps = [t for t in self.requests[key] if t > window_start]
+            self.requests[key] = timestamps
+            
+            if len(timestamps) < self.rpm:
+                timestamps.append(now)
+                remaining = self.rpm - len(timestamps)
+                reset_seconds = int(60 - (now - timestamps[0])) if timestamps else 60
+                return True, remaining, max(1, reset_seconds)
+            else:
+                remaining = 0
+                reset_seconds = int(60 - (now - timestamps[0])) if timestamps else 60
+                return False, remaining, max(1, reset_seconds)
+
+    def reset(self):
+        """Reset all rate limiter counters (useful for unit testing)."""
+        with self.lock:
+            self.requests.clear()
+
+
+agent_rate_limiter = RateLimiter(requests_per_minute=30)
+
+
+async def rate_limit_middleware(request: Request, call_next):
+    """Rate-limiting middleware for /financial-advisor agent endpoints."""
+    path = request.url.path
+    if "/financial-advisor" in path:
+        client_key = request.client.host if request.client else "unknown_client"
+        allowed, remaining, reset_sec = agent_rate_limiter.is_allowed(client_key)
+        
+        if not allowed:
+            logger.warning(f"Rate limit exceeded for client {client_key} on {path}")
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"detail": "Rate limit exceeded for Financial Advisor Agent. Please wait before sending more requests."},
+                headers={
+                    "X-RateLimit-Limit": str(agent_rate_limiter.rpm),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(reset_sec),
+                    "Retry-After": str(reset_sec)
+                }
+            )
+            
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(agent_rate_limiter.rpm)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Reset"] = str(reset_sec)
+        return response
+
+    return await call_next(request)
 
 
 async def logging_middleware(request: Request, call_next):

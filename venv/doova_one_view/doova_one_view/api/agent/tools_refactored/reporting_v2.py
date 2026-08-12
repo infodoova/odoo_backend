@@ -18,10 +18,21 @@ import warnings
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 warnings.filterwarnings("ignore", module="matplotlib")
+logger = logging.getLogger(__name__)
+
+
+
+def _get_reports_dir() -> Path:
+    from django.conf import settings
+    reports_dir = Path(getattr(settings, "REPORTS_DIR", Path("reports")))
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    return reports_dir
+
 from ..utils import make_report_url
 from .sales import get_sales_summary_tool, get_time_series_data_tool
 from .finance import get_business_health_score_tool, calculate_pnl_tool
 from .common import get_companies_tool
+
 
 def generate_report_tool(
     tenant_id: str, 
@@ -58,7 +69,7 @@ def generate_report_tool(
     try:
         sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
         health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
-        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date="2026-01-01", end_date=datetime.now().strftime("%Y-%m-%d"), tenant_ids=tenant_ids)
+        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date=f"{datetime.now().year}-01-01", end_date=datetime.now().strftime("%Y-%m-%d"), tenant_ids=tenant_ids)
         
         # Get specific company name if only one is selected
         if len(resolved_company_ids) == 1:
@@ -68,8 +79,9 @@ def generate_report_tool(
                 if isinstance(c, dict) and c.get("id") == resolved_company_ids[0]:
                     company_name = c.get("name", company_name)
     except Exception as e:
-        print(f"Error fetching KPI data: {e}")
+        logger.warning(f"Error fetching KPI data: {e}")
         pass
+
         
     revenue_val = sales.get('total_revenue', 0)
     score_val = health.get('business_health_score', 0)
@@ -108,6 +120,10 @@ The business is currently operating with a health score of **{score_val}/100** a
             ax.yaxis.grid(True, linestyle=':', color='#e2e8f0', alpha=0.8)
             ax.xaxis.grid(False)
             
+            import matplotlib.ticker as ticker
+            ax.ticklabel_format(style='plain', useOffset=False, axis='y')
+            ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f"{x*1e-6:,.0f}M" if abs(x) >= 1e6 else (f"{x*1e-3:,.0f}K" if abs(x) >= 1e3 else f"{x:,.0f}")))
+
             plt.title('Revenue Trend', fontsize=14, color='#0f172a', fontweight='bold', pad=20)
             plt.xticks(rotation=45, ha='right')
             plt.tight_layout()
@@ -118,8 +134,9 @@ The business is currently operating with a health score of **{score_val}/100** a
             chart_b64 = base64.b64encode(buf.read()).decode('utf-8')
             plt.close()
     except Exception as e:
-        print(f"Chart generation failed: {e}")
+        logger.warning(f"Chart generation failed: {e}")
         pass
+
             
     from .emoji_to_badges import normalize_status_emoji
     
@@ -134,7 +151,7 @@ The business is currently operating with a health score of **{score_val}/100** a
     import re
     import json
 
-    # Ã¢â€â‚¬Ã¢â€â‚¬ Generic chart renderer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    # --- Generic chart renderer ---
     def _render_chart(chart_type: str, title: str, labels: list, values: list) -> str:
         """
         Render any chart type to a base64 PNG string.
@@ -214,6 +231,9 @@ The business is currently operating with a health score of **{score_val}/100** a
                 ax.tick_params(colors='#64748b', labelsize=8)
                 ax.yaxis.grid(True, linestyle=':', color='#e2e8f0', alpha=0.8)
                 ax.xaxis.grid(False)
+                import matplotlib.ticker as ticker
+                ax.ticklabel_format(style='plain', useOffset=False, axis='y')
+                ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f"{x*1e-6:,.0f}M" if abs(x) >= 1e6 else (f"{x*1e-3:,.0f}K" if abs(x) >= 1e3 else f"{x:,.0f}")))
                 # Auto-rotate labels when there are many items or long text
                 if n > 5 or any(len(l) > 10 for l in display_labels):
                     plt.xticks(rotation=45, ha='right')
@@ -236,8 +256,9 @@ The business is currently operating with a health score of **{score_val}/100** a
             )
         except Exception as exc:
             plt.close('all')
-            print(f"Chart render error ({chart_type}): {exc}")
+            logger.error(f"Chart render error ({chart_type}): {exc}")
             return ""
+
 
     # Ã¢â€â‚¬Ã¢â€â‚¬ Parse ```chart blocks and replace with rendered images Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     def _chart_block_replacer(match):
@@ -259,6 +280,15 @@ The business is currently operating with a health score of **{score_val}/100** a
         custom_content,
         flags=re.DOTALL | re.IGNORECASE,
     )
+
+    # 2.5 Extract section headings for Table of Contents
+    toc_entries = []
+    for match in re.finditer(r'^##\s+(.+)$', custom_content, re.MULTILINE):
+        sec_title = match.group(1).strip()
+        if sec_title and not sec_title.startswith('```'):
+            clean_sec_title = re.sub(r'<[^>]+>', '', sec_title).strip()
+            if clean_sec_title:
+                toc_entries.append(clean_sec_title)
 
     # 3. Convert dynamic Markdown to HTML
     md = markdown.Markdown(extensions=['tables', 'fenced_code', 'sane_lists'])
@@ -316,14 +346,15 @@ The business is currently operating with a health score of **{score_val}/100** a
             margin=fmt_ebit,
             chart_b64=chart_b64,
             body_html=body_html,
+            toc_entries=toc_entries,
             logo_url=logo_url,
             logo_b64=logo_b64,
             logo_mime=logo_mime,
         )
+
     
     # Create output directory and unique filename
-    reports_dir = Path('reports')
-    reports_dir.mkdir(exist_ok=True)
+    reports_dir = _get_reports_dir()
     filename = f"business_report_{tenant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_v2.pdf"
     output_path = reports_dir / filename
     
@@ -343,7 +374,7 @@ The business is currently operating with a health score of **{score_val}/100** a
     }
 
 def get_last_report_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    reports_dir = Path('reports')
+    reports_dir = _get_reports_dir()
     files = list(reports_dir.glob(f'business_report_{tenant_id}_*_v2.pdf'))
     if not files:
         # Fallback to older reports if v2 doesn't exist
@@ -360,5 +391,6 @@ def get_last_report_tool(tenant_id: str, company_id: int | None = None, company_
         'download_url': make_report_url(filename),
         'path': relative_path,
     }
+
 
 

@@ -5,6 +5,7 @@ class Product(models.Model):
     """Product dimension from product.product"""
     id = models.BigAutoField(primary_key=True)
     tenant = models.ForeignKey('odoo_app.Tenant', on_delete=models.CASCADE, related_name='products')
+    company = models.ForeignKey('odoo_app.Company', on_delete=models.SET_NULL, null=True, blank=True)
     odoo_id = models.IntegerField()
     odoo_template_id = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=500)

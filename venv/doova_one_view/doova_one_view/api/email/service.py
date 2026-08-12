@@ -29,14 +29,18 @@ class EmailService:
         text_body: Optional[str] = None,
         priority: str = "NORMAL",
         attachments: Optional[list] = None,
+        max_retries: int = 3,
+        backoff_seconds: float = 1.0,
     ) -> dict:
         """
-        Low-level send. Returns the gateway response dict { jobId, status }.
-        Raises EmailServiceError on any failure.
+        Low-level send with automatic exponential backoff retries on transient SMTP errors.
+        Returns response dict { status: "sent", attempts: N }.
+        Raises EmailServiceError on failure after max_retries attempts.
         """
         from django.core.mail import EmailMultiAlternatives
         from asgiref.sync import sync_to_async
         import base64
+        import asyncio
 
         to_address = f"{to_name} <{to}>" if to_name else to
         text_content = text_body or "Please view this email in an HTML-compatible client."
@@ -55,15 +59,23 @@ class EmailService:
                 file_content = base64.b64decode(att["content"])
                 msg.attach(att["filename"], file_content, att["contentType"])
 
-        try:
-            # send() returns the number of successfully delivered messages (1 or 0)
-            sent = await sync_to_async(msg.send)(fail_silently=False)
-            if sent == 0:
-                raise EmailServiceError("Email backend returned 0 messages sent.")
-            return {"status": "sent"}
-        except Exception as exc:
-            logger.error("SMTP sending error: %s", exc)
-            raise EmailServiceError(f"Could not send email: {exc}") from exc
+        last_error = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                sent = await sync_to_async(msg.send)(fail_silently=False)
+                if sent == 0:
+                    raise EmailServiceError("Email backend returned 0 messages sent.")
+                return {"status": "sent", "attempts": attempt}
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    f"SMTP send attempt {attempt}/{max_retries} failed for recipient {to}: {exc}"
+                )
+                if attempt < max_retries:
+                    await asyncio.sleep(backoff_seconds * (2 ** (attempt - 1)))
+
+        logger.error(f"SMTP sending failed permanently for {to} after {max_retries} retries: {last_error}")
+        raise EmailServiceError(f"Could not send email after {max_retries} attempts: {last_error}") from last_error
 
     @staticmethod
     async def send_otp_email(to: str, to_name: Optional[str], otp_code: str) -> dict:
@@ -94,6 +106,7 @@ class EmailService:
             to_name=to_name,
             text_body=text_body,
             priority="CRITICAL",
+            max_retries=3,
         )
 
     @staticmethod
@@ -105,12 +118,10 @@ class EmailService:
         text_body: Optional[str] = None,
         attachments: Optional[list] = None,
         priority: str = "LOW",
+        max_retries: int = 3,
     ) -> dict:
         """
-        Send a report email, optionally with file attachments.
-
-        Each attachment must be:
-            { "filename": "report.pdf", "content": "<base64>", "contentType": "application/pdf" }
+        Send a report email with retry support, optionally with file attachments.
         """
         return await EmailService.send(
             to=to,
@@ -120,4 +131,6 @@ class EmailService:
             text_body=text_body,
             priority=priority,
             attachments=attachments,
+            max_retries=max_retries,
         )
+

@@ -13,7 +13,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone as tz
 from datetime import timedelta
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -28,6 +28,8 @@ from doova_one_view.api.alerts.schemas import (
     RunAlertRequest,
     RunAlertResponse,
 )
+
+
 from odoo_app.models import AppUser
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,8 @@ def _serialize_schedule(s) -> dict:
         "prompt":           s.prompt,
         "recipients":       s.recipients,
         "companyIds":       getattr(s, "companies", []),
+        "thresholds":       getattr(s, "thresholds", {}) or {},
+        "webhook_url":       getattr(s, "webhook_url", None),
         "timezone":         s.timezone,
         "is_enabled":       s.is_enabled,
         "is_system_default": s.is_system_default,
@@ -62,15 +66,15 @@ def _serialize_schedule(s) -> dict:
 
 def _serialize_log(lg) -> dict:
     return {
-        "id":            lg.id,
-        "schedule_id":   str(lg.schedule_id) if lg.schedule_id else None,
-        "tenant_id":     str(lg.tenant_id) if lg.tenant_id else None,
-        "status":        lg.status,
-        "has_anomalies": lg.has_anomalies,
-        "summary":       lg.summary,
-        "alert_sent":    lg.alert_sent,
-        "error_message": lg.error_message,
-        "checked_at":    lg.checked_at,
+        "id":                  lg.id,
+        "schedule_id":         str(lg.schedule_id) if lg.schedule_id else None,
+        "tenant_id":           str(lg.tenant_id) if lg.tenant_id else None,
+        "status":              lg.status,
+        "condition_triggered": lg.condition_triggered,
+        "summary":             lg.summary,
+        "alert_sent":          lg.alert_sent,
+        "error_message":       lg.error_message,
+        "checked_at":          lg.checked_at,
     }
 
 
@@ -118,6 +122,8 @@ async def create_alert_schedule(
             prompt=payload.prompt,
             recipients=payload.recipients,
             companies=payload.companyIds,
+            thresholds=payload.thresholds or {},
+            webhook_url=payload.webhook_url,
             timezone=payload.timezone,
             is_enabled=payload.is_enabled,
             is_system_default=payload.is_system_default,
@@ -186,7 +192,7 @@ async def update_alert_schedule(
 
         update_fields = []
         for field in ('name', 'prompt', 'recipients', 'timezone',
-                       'is_enabled', 'is_system_default', 'next_check_at'):
+                       'is_enabled', 'is_system_default', 'next_check_at', 'webhook_url'):
             val = getattr(payload, field, None)
             if val is not None:
                 setattr(s, field, val)
@@ -199,6 +205,10 @@ async def update_alert_schedule(
         if payload.tenantIds is not None:
             s.tenants = payload.tenantIds
             update_fields.append('tenants')
+
+        if payload.thresholds is not None:
+            s.thresholds = payload.thresholds
+            update_fields.append('thresholds')
 
         if update_fields:
             update_fields.append('updated_at')
@@ -252,10 +262,11 @@ async def delete_alert_schedule(
 )
 async def run_alert_now(
     schedule_id: UUID,
-    payload: RunAlertRequest,
+    payload: Optional[RunAlertRequest] = None,
     user: AppUser = _manage,
 ):
     tenant_id = await _get_tenant_id_for_user(user)
+    send_email_flag = payload.send_email if payload is not None else True
 
     def _get():
         from odoo_app.models.alert_schedule import AlertSchedule
@@ -272,17 +283,94 @@ async def run_alert_now(
     if schedule is None:
         raise HTTPException(status_code=404, detail="Alert schedule not found")
 
+    # Rate limit cooldown check (prevents rapid run-now spamming for the same schedule)
+    def _check_cooldown():
+        import math
+        from odoo_app.models.alert_schedule import AlertLog
+        from django.utils import timezone
+        from doova_one_view.api.agent.config import AgentConfig
+        cooldown = getattr(AgentConfig, "RUN_NOW_COOLDOWN_SECONDS", 60)
+
+        if schedule.last_checked_at:
+            elapsed = (timezone.now() - schedule.last_checked_at).total_seconds()
+            if elapsed < cooldown:
+                rem = math.ceil(cooldown - elapsed)
+                if rem > 0:
+                    return rem
+
+        last_log = AlertLog.objects.filter(schedule=schedule).order_by('-checked_at').first()
+        if last_log and last_log.checked_at:
+            elapsed = (timezone.now() - last_log.checked_at).total_seconds()
+            if elapsed < cooldown:
+                rem = math.ceil(cooldown - elapsed)
+                if rem > 0:
+                    return rem
+        return None
+
+    remaining_cooldown = await asyncio.to_thread(_check_cooldown)
+    if remaining_cooldown is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit: Please wait {remaining_cooldown} seconds before triggering run-now again for this schedule."
+        )
+
     from doova_one_view.api.jobs.alert_job import AlertJobManager
+
     try:
-        result = await AlertJobManager.run_check(
+        raw_res = await AlertJobManager.run_check(
             schedule=schedule,
             tenant_id=tenant_id,
-            send_email=payload.send_email,
+            send_email=send_email_flag,
             is_instant=True,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    return result
+
+    condition_triggered = raw_res.get("condition_triggered", False)
+    alert_sent = raw_res.get("alert_sent", False)
+    log_id = raw_res.get("log_id", 0)
+    summary_text = raw_res.get("summary", "")
+
+    if "AI Advisor Service" in summary_text or "AI Advisor Execution Exception" in summary_text:
+        err_msg = (
+            "AI Advisor Service Temporarily Unavailable: Upstream LLM provider credit balance exhausted. Please check billing settings."
+            if ("credit limits" in summary_text or "credit balance" in summary_text)
+            else summary_text
+        )
+        err_status = (
+            status.HTTP_503_SERVICE_UNAVAILABLE
+            if ("credit limits" in summary_text or "credit balance" in summary_text or "Unavailable" in summary_text)
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        raise HTTPException(
+            status_code=err_status,
+            detail=err_msg
+        )
+
+
+    clean_msg = (
+        "Alert check completed successfully. Email notification dispatched directly to recipients."
+        if alert_sent
+        else "Alert check completed. Baseline normal — no email required."
+    )
+
+    return RunAlertResponse(
+        condition_triggered=condition_triggered,
+        alert_sent=alert_sent,
+        log_id=log_id,
+        message=clean_msg,
+    )
+
+
+
+
+
+
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -317,3 +405,24 @@ async def list_alert_history(
 
     logs = await asyncio.to_thread(_fetch)
     return [_serialize_log(lg) for lg in logs]
+
+
+# ---------------------------------------------------------------------------
+# GET /alerts/ops/metrics
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/ops/metrics",
+    summary="Get operational metrics for alert and report health (JSON or Prometheus)",
+)
+async def get_ops_metrics(
+    format: Optional[str] = Query("json", description="Output format: 'json' or 'prometheus'"),
+    user: AppUser = _view,
+):
+    from doova_one_view.api.agent.metrics import metrics_registry
+    from fastapi.responses import PlainTextResponse
+
+    if format == "prometheus":
+        return PlainTextResponse(metrics_registry.get_prometheus_metrics(), media_type="text/plain; version=0.0.4")
+
+    return metrics_registry.get_ops_summary()

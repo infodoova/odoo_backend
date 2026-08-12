@@ -30,9 +30,12 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
         try:
             model_fields = self.with_retry(self.odoo.get_fields, 'account.account').keys()
             requested_fields = [
-                'id', 'code', 'name', 'account_type', 'reconcile', 'deprecated', 'write_date'
+                'id', 'code', 'name', 'account_type', 'reconcile', 'deprecated', 'company_id', 'write_date'
             ]
             available_fields = [f for f in requested_fields if f in model_fields]
+
+            # Pre-fetch companies for fast lookup
+            self.prefetch_ids('dim_companies', tenant_id)
 
             synced, failed = 0, 0
             params_list = []
@@ -47,6 +50,10 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
                         account.get('account_type'),
                         account.get('reconcile', False),
                         account.get('deprecated', False),
+                        self.get_internal_id(
+                            'dim_companies', tenant_id,
+                            self.transformer.parse_odoo_many2one(account.get('company_id'))
+                        ),
                         self.transformer.parse_odoo_datetime(account.get('write_date')),
                     ))
                     synced += 1
@@ -58,15 +65,16 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
             query = """
                 INSERT INTO dim_chart_of_accounts (
                     tenant_id, odoo_id, code, name, account_type,
-                    reconcile, deprecated, odoo_write_date, synced_at
+                    reconcile, deprecated, company_id, odoo_write_date, synced_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
                     code = EXCLUDED.code,
                     name = EXCLUDED.name,
                     account_type = EXCLUDED.account_type,
                     reconcile = EXCLUDED.reconcile,
                     deprecated = EXCLUDED.deprecated,
+                    company_id = EXCLUDED.company_id,
                     odoo_write_date = EXCLUDED.odoo_write_date,
                     synced_at = NOW()
             """

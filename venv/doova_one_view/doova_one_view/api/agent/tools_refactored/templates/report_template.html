@@ -6,8 +6,19 @@
     <style>
         @page {
             size: letter;
-            margin: 0.5cm 0 1.5cm 0;
+            margin: 0.5cm 0 2cm 0;
+
+            /* xhtml2pdf proprietary frame directive for running footers */
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 0.4cm;
+                height: 0.8cm;
+                left: 50px;
+                right: 50px;
+            }
         }
+
+
 
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
@@ -224,6 +235,39 @@
             padding: 12px;
             text-align: center;
         }
+
+        .kpi-card-good {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-top: 4px solid #16a34a;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .kpi-card-warning {
+            background-color: #fffbeb;
+            border: 1px solid #fde68a;
+            border-top: 4px solid #d97706;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .kpi-card-critical {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-top: 4px solid #dc2626;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .kpi-card-neutral {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-top: 4px solid #3b82f6;
+            padding: 12px;
+            text-align: center;
+        }
+
 
         .kpi-title {
             color: #64748b;
@@ -473,28 +517,77 @@
         </div>
     </div>
 
+    <!-- Running Footer Frame for xhtml2pdf -->
+    <div id="footerContent">
+        <table style="width: 100%; border: none; margin: 0; padding: 0;">
+            <tr>
+                <td
+                    style="text-align: left; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
+                    Confidential &middot; {{ company_name|default("Financial Overview") }}
+                </td>
+                <td
+                    style="text-align: right; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
+                    Page
+                    <pdf:pagenumber /> of
+                    <pdf:pagecount />
+                </td>
+            </tr>
+        </table>
+    </div>
+
     <div class="content-wrapper page-break">
+        {% set health_num = health_score|default(0)|float %}
+        {% if health_num >= 70 %}
+        {% set health_card_class = "kpi-card-good" %}
+        {% elif health_num >= 40 %}
+        {% set health_card_class = "kpi-card-warning" %}
+        {% elif health_num > 0 %}
+        {% set health_card_class = "kpi-card-critical" %}
+        {% else %}
+        {% set health_card_class = "kpi-card-neutral" %}
+        {% endif %}
+
+        {% if margin and '-' in margin|string %}
+        {% set ebit_card_class = "kpi-card-critical" %}
+        {% else %}
+        {% set ebit_card_class = "kpi-card-good" %}
+        {% endif %}
+
         <!-- KPI Dashboard -->
         <h1>Business Vital Signs</h1>
         <table class="kpi-container">
             <tr>
-                <td class="kpi-card" style="width: 32%;">
+                <td class="{{ health_card_class }}" style="width: 32%;">
                     <div class="kpi-title">Health Score</div>
                     <div class="kpi-value">{% if health_score is defined and health_score is not none %}{{ health_score
                         }}/100{% else %}N/A{% endif %}</div>
                 </td>
                 <td style="width: 2%; padding: 0; border: none;"></td>
-                <td class="kpi-card" style="width: 32%;">
+                <td class="kpi-card-neutral" style="width: 32%;">
                     <div class="kpi-title">Total Revenue</div>
                     <div class="kpi-value">{{ revenue|default("N/A") }}</div>
                 </td>
                 <td style="width: 2%; padding: 0; border: none;"></td>
-                <td class="kpi-card" style="width: 32%;">
+                <td class="{{ ebit_card_class }}" style="width: 32%;">
                     <div class="kpi-title">EBIT</div>
                     <div class="kpi-value">{{ margin|default("N/A") }}</div>
                 </td>
             </tr>
         </table>
+
+        {% if toc_entries and toc_entries|length > 0 %}
+        <div
+            style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #1e3a8a; padding: 12px 18px; margin-bottom: 20px;">
+            <div
+                style="font-weight: bold; font-size: 9.5pt; color: #1e3a8a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+                Report Structure &amp; Table of Contents</div>
+            <ul style="margin: 0; padding-left: 18px; color: #334155; font-size: 9pt;">
+                {% for entry in toc_entries %}
+                <li style="margin-bottom: 3px;">{{ entry }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
 
         {% if chart_b64 %}
         <div class="chart-container">

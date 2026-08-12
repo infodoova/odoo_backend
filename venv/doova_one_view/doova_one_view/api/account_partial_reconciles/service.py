@@ -78,6 +78,14 @@ class AccountPartialReconcileService:
                 qs = qs.filter(**{f"{orm_field}__iendswith": value})
             elif op in ("equals", "eq", "="):
                 qs = qs.filter(**{orm_field: value})
+            elif op in ("in",):
+                if isinstance(value, list):
+                    qs = qs.filter(**{f"{orm_field}__in": value})
+                elif isinstance(value, (str, int)):
+                    from doova_one_view.api.common.utils import parse_company_ids
+                    c_ids = parse_company_ids(value)
+                    if c_ids:
+                        qs = qs.filter(**{f"{orm_field}__in": c_ids})
             elif op in ("gt", "after"):
                 qs = qs.filter(**{f"{orm_field}__gt": value})
             elif op in ("lt", "before"):
@@ -90,11 +98,13 @@ class AccountPartialReconcileService:
         return qs
 
     @staticmethod
-    async def get_reconciles(tenant_id: str, limit: int = 50, offset: int = 0) -> PaginatedResponse[AccountPartialReconcileRead]:
+    async def get_reconciles(tenant_id: str, limit: int = 50, offset: int = 0, company_ids: Optional[list[int]] = None) -> PaginatedResponse[AccountPartialReconcileRead]:
         def _search():
-            qs = AccountPartialReconcile.objects.filter(tenant_id=tenant_id).select_related(
+            from doova_one_view.api.master_data.service import _company_filter
+            qs = _company_filter(AccountPartialReconcile.objects.filter(tenant_id=tenant_id), company_ids).select_related(
                 'debit_move_line', 'debit_move_line__product',
-                'credit_move_line', 'credit_move_line__product'
+                'credit_move_line', 'credit_move_line__product',
+                'company'
             )
             total = qs.count()
             items = list(qs.order_by("-id")[offset : offset + limit])
@@ -108,11 +118,13 @@ class AccountPartialReconcileService:
         )
 
     @staticmethod
-    async def search_reconciles(tenant_id: str, filters: list[Any], limit: int = 50, offset: int = 0) -> PaginatedResponse[AccountPartialReconcileRead]:
+    async def search_reconciles(tenant_id: str, filters: list[Any], limit: int = 50, offset: int = 0, company_ids: Optional[list[int]] = None) -> PaginatedResponse[AccountPartialReconcileRead]:
         def _search():
+            from doova_one_view.api.master_data.service import _company_filter
             field_map = {
                 "id": "odoo_id", "odoo_id": "odoo_id",
                 "amount": "amount", "max_date": "max_date",
+                "company_id": "company_id", "company_name": "company__name",
                 "debit_move_line_id": "debit_move_line_id",
                 "credit_move_line_id": "credit_move_line_id",
                 "debit_move_line": "debit_move_line_id",
@@ -124,9 +136,10 @@ class AccountPartialReconcileService:
                 "credit_move_line.account_name": "credit_move_line__account_name",
                 "credit_move_line.account_code": "credit_move_line__account_code",
             }
-            qs = AccountPartialReconcile.objects.filter(tenant_id=tenant_id).select_related(
+            qs = _company_filter(AccountPartialReconcile.objects.filter(tenant_id=tenant_id), company_ids).select_related(
                 'debit_move_line', 'debit_move_line__product',
-                'credit_move_line', 'credit_move_line__product'
+                'credit_move_line', 'credit_move_line__product',
+                'company'
             )
             qs = AccountPartialReconcileService._apply_search(qs, filters, field_map)
             total = qs.count()
@@ -143,16 +156,15 @@ class AccountPartialReconcileService:
     @staticmethod
     async def get_reconciles_filters(tenant_id: str) -> dict[str, Any]:
         def _filters():
-            # AccountPartialReconcile doesn't have many categorical fields (like type/state/company)
-            # so we'll just return an empty dict or basic schema for now.
             return {}
         return await asyncio.to_thread(_filters)
 
     @staticmethod
-    async def export_reconciles_csv(tenant_id: str) -> str:
+    async def export_reconciles_csv(tenant_id: str, company_ids: Optional[list[int]] = None) -> str:
         def _export():
-            qs = AccountPartialReconcile.objects.filter(tenant_id=tenant_id).select_related(
-                'debit_move_line', 'credit_move_line'
+            from doova_one_view.api.master_data.service import _company_filter
+            qs = _company_filter(AccountPartialReconcile.objects.filter(tenant_id=tenant_id), company_ids).select_related(
+                'debit_move_line', 'credit_move_line', 'company'
             ).order_by("-id")
             lines = ["Odoo ID,Amount,Max Date,Debit Line Name,Debit Account,Credit Line Name,Credit Account"]
             for r in qs:

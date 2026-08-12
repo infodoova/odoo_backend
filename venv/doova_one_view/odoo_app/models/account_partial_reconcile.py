@@ -5,6 +5,7 @@ class AccountPartialReconcile(models.Model):
     """Reconciliation links between account move lines (e.g. payment to invoice)"""
     id = models.BigAutoField(primary_key=True)
     tenant = models.ForeignKey('odoo_app.Tenant', on_delete=models.CASCADE, related_name='partial_reconciles')
+    company = models.ForeignKey('odoo_app.Company', on_delete=models.SET_NULL, null=True, blank=True)
     
     odoo_id = models.IntegerField()
     

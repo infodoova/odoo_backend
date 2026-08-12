@@ -6,6 +6,7 @@ class ChatSession(models.Model):
     title = models.CharField(max_length=255, default="New Chat")
     summary = models.TextField(blank=True, default="")
     plan_state = models.JSONField(null=True, blank=True)
+    plan_created_at = models.DateTimeField(null=True, blank=True)
     turn_count = models.IntegerField(default=0)
     tenant_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

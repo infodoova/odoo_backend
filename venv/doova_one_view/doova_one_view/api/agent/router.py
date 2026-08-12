@@ -48,14 +48,20 @@ class RouterNode:
             raw_upper = raw_content.upper()
             tokens = [t.strip(".,:;!\"'") for t in raw_upper.split()]
 
-            if RoutingProtocol.CONFIRM.value in tokens or "CONFIRM" in tokens:
-                result = RoutingProtocol.CONFIRM
+            confirm_tokens = {
+                RoutingProtocol.CONFIRM.value, "CONFIRM", "YES", "YE", "YEAH", "YEP", "YUP", "YA", "YESS", "YESSS",
+                "PROCEED", "APPROVE", "ACCEPTED", "AGREED", "SURE", "OK", "OKAY", "K", "KK", "CORRECT",
+                "RIGHT", "FINE", "ALRIGHT", "PERFECT", "AWESOME", "GREAT",
+                "NICE", "GOOD", "SUPER", "COOL", "SI", "OUI", "CLARO", "VALE"
+            }
+            if RoutingProtocol.EXECUTE.value in tokens or "EXECUTE" in tokens:
+                result = RoutingProtocol.EXECUTE
             elif RoutingProtocol.PLAN.value in tokens or "PLAN" in tokens:
                 result = RoutingProtocol.PLAN
             elif RoutingProtocol.REJECT.value in tokens or "REJECT" in tokens:
                 result = RoutingProtocol.REJECT
-            elif RoutingProtocol.EXECUTE.value in tokens or "EXECUTE" in tokens:
-                result = RoutingProtocol.EXECUTE
+            elif any(t in confirm_tokens for t in tokens) or RoutingProtocol.CONFIRM.value in tokens or "CONFIRM" in tokens:
+                result = RoutingProtocol.CONFIRM
             else:
                 result = RoutingProtocol.EXECUTE
 

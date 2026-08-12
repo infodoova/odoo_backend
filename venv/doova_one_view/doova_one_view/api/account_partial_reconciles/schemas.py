@@ -16,6 +16,7 @@ class AccountPartialReconcileRead(BaseModel):
     debit_move_line: Optional[AccountMoveLineRead] = None
     credit_move_line: Optional[AccountMoveLineRead] = None
     amount: float
+    company_id: Optional[int] = None
     max_date: Optional[date] = None
     synced_at: Optional[datetime] = None
 

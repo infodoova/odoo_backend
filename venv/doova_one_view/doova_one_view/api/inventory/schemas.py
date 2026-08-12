@@ -116,6 +116,65 @@ class StockPickingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ArrivingProductItem(BaseModel):
+    product_id: Optional[int] = None
+    product_name: str
+    product_code: Optional[str] = None
+    uom_name: Optional[str] = None
+    expected_qty: float = 0.0
+    received_qty: float = 0.0
+    remaining_qty: float = 0.0
+    date_deadline: Optional[str] = None
+    state: Optional[str] = None
+
+
+class ShipmentTimelineStep(BaseModel):
+    stage: str
+    label: str
+    is_current: bool = False
+    is_completed: bool = False
+    timestamp: Optional[str] = None
+
+
+class UpcomingShipmentItem(BaseModel):
+    id: int
+    odoo_id: int
+    name: str
+    odoo_name: Optional[str] = None
+    origin: Optional[str] = None
+    partner_id: Optional[int] = None
+    partner_name: Optional[str] = None
+    scheduled_date: Optional[str] = None
+    date_done: Optional[str] = None
+    picking_type: str
+    picking_type_code: Optional[str] = None
+    state: str
+    eta_status: str  # "overdue", "arriving_today", "on_time", "delayed"
+    total_expected_qty: float = 0.0
+    total_received_qty: float = 0.0
+    progress_pct: float = 0.0
+    arriving_products: List[ArrivingProductItem] = Field(default_factory=list)
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    synced_at: Optional[str] = None
+
+
+class UpcomingShipmentsResponse(BaseModel):
+    items: List[UpcomingShipmentItem]
+    total: int
+    limit: int
+    offset: int
+    summary_stats: Optional[dict] = None
+    applied_filters: Optional[dict] = None
+
+
+class ShipmentTrackingDetailResponse(BaseModel):
+    shipment: UpcomingShipmentItem
+    timeline: List[ShipmentTimelineStep]
+    arriving_products: List[ArrivingProductItem]
+    stock_moves: List[dict] = Field(default_factory=list)
+
+
 class MetricDetailCompanyGroup(BaseModel):
     company_id: Optional[int] = None
     company_name: str
@@ -126,7 +185,7 @@ class MetricDetailResponse(BaseModel):
     metric_name: str
     total_metric_value: float
     company_groups: List[MetricDetailCompanyGroup]
-    items: List[Union[StockQuantRead, StockPickingRead]]
+    items: List[Union[UpcomingShipmentItem, StockQuantRead, StockPickingRead, dict, Any]]
     total: int
     limit: int
     offset: int

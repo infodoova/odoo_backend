@@ -43,7 +43,12 @@ class ProductPerformance(BaseModel):
     name: str
     revenue: float
     quantity: float
+    gross_profit: float = 0.0
+    cogs: float = 0.0
     margin_pct: float
+    last_sold_on: Optional[str] = None
+
+
 
 
 class CustomerPerformance(BaseModel):
@@ -131,6 +136,8 @@ class KPIPeriodDetailResponse(BaseModel):
     revenues: list[KPIOrder] = Field(default_factory=list)
     expenses: list[KPIOrder] = Field(default_factory=list)
     tenants: list[KPITenantSummary] = Field(default_factory=list)
+    applied_filters: dict[str, Any] = Field(default_factory=dict)
+
 
 
 # ── Receivables Aging Detail ───────────────────────────────────────────────────

@@ -33,7 +33,7 @@ asyncio.to_thread = _patched_to_thread
 # ----------------------------------------------------------------------
 
 from doova_one_view.api.config import settings
-from doova_one_view.api.middleware import logging_middleware
+from doova_one_view.api.middleware import logging_middleware, rate_limit_middleware
 from doova_one_view.api.auth.routes import router as auth_router
 from doova_one_view.api.tenants.routes import router as tenant_router
 from doova_one_view.api.sales.routes import router as sales_router
@@ -85,6 +85,7 @@ def create_app() -> FastAPI:
         allow_methods=settings.cors_allow_methods,
         allow_headers=settings.cors_allow_headers,
     )
+    app.middleware("http")(rate_limit_middleware)
     app.middleware("http")(logging_middleware)
     
     # Register exception handlers

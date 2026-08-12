@@ -26,9 +26,12 @@ class PartnerSynchronizer(BaseSynchronizer):
             model_fields = self.with_retry(self.odoo.get_fields, 'res.partner').keys()
             requested_fields = [
                 'id', 'name', 'type', 'customer_rank', 'supplier_rank',
-                'email', 'phone', 'country_id', 'city', 'write_date'
+                'email', 'phone', 'country_id', 'city', 'company_id', 'write_date'
             ]
             available_fields = [f for f in requested_fields if f in model_fields]
+
+            # Pre-fetch companies for fast lookup
+            self.prefetch_ids('dim_companies', tenant_id)
 
             synced, failed = 0, 0
             batch_params = []
@@ -39,14 +42,14 @@ class PartnerSynchronizer(BaseSynchronizer):
                     is_customer, is_supplier,
                     email, phone, country_code, city,
                     customer_rank, supplier_rank, is_active,
-                    created_at
+                    company_id, created_at
                 )
                 VALUES (
                     %s, %s, %s, %s,
                     %s, %s,
                     %s, %s, %s, %s,
                     %s, %s, %s,
-                    NOW()
+                    %s, NOW()
                 )
                 ON CONFLICT (tenant_id, odoo_id)
                 DO UPDATE SET
@@ -54,7 +57,8 @@ class PartnerSynchronizer(BaseSynchronizer):
                     email = EXCLUDED.email,
                     phone = EXCLUDED.phone,
                     customer_rank = EXCLUDED.customer_rank,
-                    supplier_rank = EXCLUDED.supplier_rank
+                    supplier_rank = EXCLUDED.supplier_rank,
+                    company_id = EXCLUDED.company_id
             """
 
             # Use paginated fetcher
@@ -76,7 +80,11 @@ class PartnerSynchronizer(BaseSynchronizer):
                         partner.get('city'),
                         customer_rank,
                         supplier_rank,
-                        True
+                        True,
+                        self.get_internal_id(
+                            'dim_companies', tenant_id,
+                            self.transformer.parse_odoo_many2one(partner.get('company_id'))
+                        ),
                     ))
 
                     if len(batch_params) >= 500:

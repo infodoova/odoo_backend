@@ -97,15 +97,16 @@ class ProductSynchronizer(BaseSynchronizer):
             domain.append(['write_date', '>', last_sync_date])
 
         try:
-            # Pre-fetch categories for fast lookup
+            # Pre-fetch categories and companies for fast lookup
             self.prefetch_ids('dim_product_categories', tenant_id)
+            self.prefetch_ids('dim_companies', tenant_id)
             
             # Dynamically check for available fields (retriable)
             model_fields = self.with_retry(self.odoo.get_fields, 'product.product').keys()
             requested_fields = [
                 'id', 'name', 'default_code', 'barcode', 'type',
                 'categ_id', 'list_price', 'standard_price',
-                'uom_id', 'active', 'product_tmpl_id', 'write_date'
+                'uom_id', 'active', 'product_tmpl_id', 'company_id', 'write_date'
             ]
             available_fields = [f for f in requested_fields if f in model_fields]
 
@@ -116,7 +117,7 @@ class ProductSynchronizer(BaseSynchronizer):
                 INSERT INTO dim_products (
                     tenant_id, odoo_id, odoo_template_id,
                     name, default_code, barcode,
-                    product_type, category_id,
+                    product_type, category_id, company_id,
                     list_price, standard_price,
                     uom_name, is_active,
                     created_at
@@ -124,7 +125,7 @@ class ProductSynchronizer(BaseSynchronizer):
                 VALUES (
                     %s, %s, %s,
                     %s, %s, %s,
-                    %s, %s,
+                    %s, %s, %s,
                     %s, %s,
                     %s, %s,
                     NOW()
@@ -134,6 +135,7 @@ class ProductSynchronizer(BaseSynchronizer):
                     name = EXCLUDED.name,
                     default_code = EXCLUDED.default_code,
                     barcode = EXCLUDED.barcode,
+                    company_id = EXCLUDED.company_id,
                     list_price = EXCLUDED.list_price,
                     standard_price = EXCLUDED.standard_price,
                     is_active = EXCLUDED.is_active
@@ -145,6 +147,11 @@ class ProductSynchronizer(BaseSynchronizer):
                     category_odoo_id = self.transformer.parse_odoo_many2one(product.get('categ_id'))
                     category_id = self.get_internal_id('dim_product_categories', tenant_id, category_odoo_id)
 
+                    company_id = self.get_internal_id(
+                        'dim_companies', tenant_id,
+                        self.transformer.parse_odoo_many2one(product.get('company_id'))
+                    )
+
                     batch_params.append((
                         tenant_id,
                         product['id'],
@@ -154,6 +161,7 @@ class ProductSynchronizer(BaseSynchronizer):
                         product.get('barcode'),
                         product.get('type', 'consu'),
                         category_id,
+                        company_id,
                         self.transformer.parse_odoo_decimal(product.get('list_price', 0)),
                         self.transformer.parse_odoo_decimal(product.get('standard_price', 0)),
                         None,

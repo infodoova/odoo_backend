@@ -8,6 +8,7 @@ class SummarizerNode:
     def __init__(self):
         self.llm = ChatAnthropic(
             model=AgentConfig.SUMMARIZER_MODEL,
+            temperature=0.0,
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
             model_kwargs={
                 "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}

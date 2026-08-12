@@ -9,6 +9,7 @@ advances next_send_at to the next occurrence.
 import asyncio
 import base64
 import logging
+import time
 from datetime import datetime, timezone as tz
 from pathlib import Path
 
@@ -17,9 +18,42 @@ logger = logging.getLogger(__name__)
 _CHECK_INTERVAL_SECONDS = 60  # 1 minute
 
 
+def cleanup_old_reports(retention_days: int = 90, reports_dir: str | None = None) -> int:
+    """
+    Automated PDF retention cleanup.
+    Deletes report PDF files modified older than retention_days.
+    Returns the count of deleted files.
+    """
+    if reports_dir is None or reports_dir == "reports":
+        from django.conf import settings
+        dir_path = Path(getattr(settings, "REPORTS_DIR", Path("reports")))
+    else:
+        dir_path = Path(reports_dir)
+
+    if not dir_path.exists() or not dir_path.is_dir():
+        return 0
+
+
+    now_ts = time.time()
+    cutoff_ts = now_ts - (retention_days * 86400)
+    deleted_cnt = 0
+
+    for file_path in dir_path.glob("*.pdf"):
+        try:
+            if file_path.stat().st_mtime < cutoff_ts:
+                file_path.unlink()
+                deleted_cnt += 1
+                logger.info(f"PDF Retention Cleanup: deleted old report {file_path.name}")
+        except Exception as e:
+            logger.warning(f"Failed to delete old report file {file_path}: {e}")
+
+    return deleted_cnt
+
+
 class ReportJobManager:
     _task: asyncio.Task = None
     _running: bool = False
+    _last_cleanup_ts: float = 0.0
 
     @classmethod
     async def start(cls):
@@ -46,6 +80,12 @@ class ReportJobManager:
         while cls._running:
             try:
                 await cls._process_due_schedules()
+
+                # Run PDF retention cleanup every 24 hours (86400 seconds)
+                now_ts = time.time()
+                if now_ts - cls._last_cleanup_ts >= 86400:
+                    cls._last_cleanup_ts = now_ts
+                    await asyncio.to_thread(cleanup_old_reports, retention_days=90)
             except Exception:
                 logger.exception("ReportJobManager loop error")
 
@@ -77,9 +117,17 @@ class ReportJobManager:
             logger.info("ReportJobManager: no due schedules found")
             return
 
-        logger.info(f"ReportJobManager: {len(schedules)} schedule(s) due — firing now")
-        for schedule in schedules:
-            await ReportJobManager._fire_schedule(schedule, now)
+        logger.info(f"ReportJobManager: {len(schedules)} schedule(s) due — firing concurrently")
+        sem = asyncio.Semaphore(5)
+
+        async def _run_bounded(sched):
+            async with sem:
+                try:
+                    await ReportJobManager._fire_schedule(sched, now)
+                except Exception as err:
+                    logger.exception(f"ReportJobManager: error firing schedule {sched.id}: {err}")
+
+        await asyncio.gather(*[_run_bounded(s) for s in schedules], return_exceptions=True)
 
     @staticmethod
     async def _fire_schedule(schedule, now: datetime):
@@ -112,47 +160,80 @@ class ReportJobManager:
             logger.warning(f"ReportJobManager: schedule {schedule.id} already claimed — skipping")
             return
 
+        start_time = time.time()
+        error_category = "unknown"
+
         try:
             # 0. Fast-fail check: If there are recipients, ensure email is configured
             if schedule.recipients:
                 from django.conf import settings
                 if not getattr(settings, 'EMAIL_HOST_USER', None):
                     logger.error(f"ReportJobManager: EMAIL_HOST_USER is missing. Aborting schedule {schedule.id} to save AI credits.")
-                    # Log failure early
-                    from asgiref.sync import sync_to_async
-                    from odoo_app.models.report_schedule import ReportLog
+                    error_msg = "SMTP credentials not configured"
+                    duration_sec = round(time.time() - start_time, 2)
+                    
                     @sync_to_async
                     def _save_early_failure():
-                        ReportLog.objects.create(schedule=schedule, status='failed', error_message='SMTP credentials not configured')
+                        schedule.consecutive_failures += 1
+                        schedule.last_error = error_msg
+                        if schedule.consecutive_failures >= 3:
+                            schedule.is_enabled = False
+                            schedule.paused_reason = f"Auto-disabled after {schedule.consecutive_failures} consecutive failures: {error_msg}"
+                            logger.critical(f"ReportJobManager: Circuit breaker tripped for schedule {schedule.id} — auto-disabled")
+                        schedule.save(update_fields=['consecutive_failures', 'last_error', 'is_enabled', 'paused_reason', 'updated_at'])
+
+                        ReportLog.objects.create(
+                            schedule=schedule,
+                            status='failed',
+                            error_message=error_msg,
+                            error_category='smtp_missing',
+                            duration_seconds=duration_sec,
+                        )
                     await _save_early_failure()
                     return
 
             # 1. Build AI-generated report content using the user's prompt
-            custom_content = await ReportJobManager._build_analysis(
-                tenant_id, schedule.report_type, company_ids, schedule.prompt, tenant_ids=tenant_ids
-            )
+            try:
+                custom_content = await ReportJobManager._build_analysis(
+                    tenant_id, schedule.report_type, company_ids, schedule.prompt, tenant_ids=tenant_ids
+                )
+            except Exception as ai_err:
+                error_category = "ai_failure"
+                raise ai_err
 
             # 2. Generate PDF
-            result = await sync_to_async(generate_report_tool)(
-                tenant_id=tenant_id,
-                company_ids=company_ids,
-                custom_content=custom_content,
-                tenant_ids=tenant_ids,
-            )
-            filename = result['filename']
+            try:
+                result = await sync_to_async(generate_report_tool)(
+                    tenant_id=tenant_id,
+                    company_ids=company_ids,
+                    custom_content=custom_content,
+                    tenant_ids=tenant_ids,
+                )
+                filename = result['filename']
+            except Exception as pdf_err:
+                error_category = "pdf_failure"
+                raise pdf_err
 
-            # 3. Encode PDF
-            pdf_path = Path('reports') / filename
-            pdf_b64 = base64.b64encode(pdf_path.read_bytes()).decode()
+            # 3. Encode PDF & measure size
+            from django.conf import settings
+            reports_dir = Path(getattr(settings, "REPORTS_DIR", Path("reports")))
+            pdf_path = reports_dir / filename
+            pdf_bytes = pdf_path.read_bytes()
+            pdf_size_bytes = len(pdf_bytes)
+            pdf_b64 = base64.b64encode(pdf_bytes).decode()
+
             attachment = {
                 "filename": filename,
                 "content": pdf_b64,
                 "contentType": "application/pdf",
             }
 
-            # 4. Email each recipient
+            # 4. Email each recipient with backoff retry
             subject = _build_subject(schedule)
             html_body = _build_email_body(schedule)
+            sent_count = 0
+            email_errors = []
+
             for email in schedule.recipients:
                 try:
                     await EmailService.send_report_email(
@@ -160,34 +241,66 @@ class ReportJobManager:
                         subject=subject,
                         html_body=html_body,
                         attachments=[attachment],
+                        max_retries=3,
                     )
+                    sent_count += 1
                 except Exception as email_err:
-                    logger.warning(f"Could not send email to {email}: {email_err}")
+                    logger.error(f"Failed to send report email to {email}: {email_err}")
+                    email_errors.append(f"{email}: {email_err}")
 
-            # 5. Record last_sent_at — next_send_at was already advanced in _claim
+            if sent_count == 0 and schedule.recipients:
+                error_category = "email_failure"
+                raise Exception(f"Failed to deliver report email to any recipient after retries: {'; '.join(email_errors)}")
+
+            duration_sec = round(time.time() - start_time, 2)
+
+            # 5. Success reset & log record
             @sync_to_async
             def _save_success():
                 schedule.last_sent_at = now
-                schedule.save(update_fields=['last_sent_at'])
-                ReportLog.objects.create(schedule=schedule, status='sent', filename=filename)
+                schedule.consecutive_failures = 0
+                schedule.last_error = None
+                schedule.paused_reason = None
+                schedule.save(update_fields=['last_sent_at', 'consecutive_failures', 'last_error', 'paused_reason', 'updated_at'])
+
+                ReportLog.objects.create(
+                    schedule=schedule,
+                    status='sent',
+                    filename=filename,
+                    duration_seconds=duration_sec,
+                    pdf_size_bytes=pdf_size_bytes,
+                )
 
             await _save_success()
-            logger.info(f"Report sent for schedule {schedule.id}. Next: {next_dt}")
+            logger.info(f"Report sent for schedule {schedule.id} in {duration_sec}s ({pdf_size_bytes} bytes). Next: {next_dt}")
 
         except Exception as e:
             error_msg = str(e)
-            logger.exception(f"Failed to fire schedule {schedule.id}")
+            duration_sec = round(time.time() - start_time, 2)
+            logger.exception(f"Failed to fire schedule {schedule.id} ({error_category}) after {duration_sec}s")
 
-            # next_send_at already advanced — just log the failure
+            # Increment consecutive failures & check circuit breaker
             @sync_to_async
             def _save_failure():
+                schedule.consecutive_failures += 1
+                schedule.last_error = error_msg[:1000]
+                if schedule.consecutive_failures >= 3:
+                    schedule.is_enabled = False
+                    schedule.paused_reason = f"Auto-disabled after {schedule.consecutive_failures} consecutive failures: {error_msg[:150]}"
+                    logger.critical(f"ReportJobManager: Circuit breaker tripped for schedule {schedule.id} — auto-disabled after 3 consecutive failures")
+
+                schedule.save(update_fields=['consecutive_failures', 'last_error', 'is_enabled', 'paused_reason', 'updated_at'])
+
                 ReportLog.objects.create(
                     schedule=schedule,
                     status='failed',
                     error_message=error_msg,
+                    error_category=error_category,
+                    duration_seconds=duration_sec,
                 )
 
             await _save_failure()
+
 
     @staticmethod
     async def _build_analysis(

@@ -380,7 +380,10 @@ class AccountingService:
             
             cumulative_aggs = AccountMoveLine.objects.filter(
                 account_move__in=cumulative_qs,
-                account_type__in=["asset_receivable", "liability_payable", "liability_current", "asset_cash"]
+                account_type__in=[
+                    "asset_receivable", "liability_payable", "liability_current", "asset_cash",
+                    "asset_current", "asset_fixed", "asset_non_current", "asset_prepayments"
+                ]
             ).values("account_type", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
@@ -389,17 +392,41 @@ class AccountingService:
             receivable_balance = 0.0
             payable_balance = 0.0
             bank_balance = 0.0
+            total_assets = 0.0
+            asset_breakdown = {
+                "cash_and_equivalents": 0.0,
+                "accounts_receivable": 0.0,
+                "current_assets": 0.0,
+                "fixed_assets": 0.0,
+                "non_current_assets": 0.0,
+                "prepayments": 0.0,
+            }
             
             for agg in cumulative_aggs:
                 company_currency = agg["company__currency_code"] or "COMPANY_BASE"
                 rate = _get_conversion_rate(company_currency, effective_base, rate_map)
+                atype = agg["account_type"]
                 net = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
-                if agg["account_type"] == "asset_receivable":
+                
+                if atype.startswith("asset"):
+                    total_assets += net
+
+                if atype == "asset_receivable":
                     receivable_balance += net
-                elif agg["account_type"] in ("liability_payable", "liability_current"):
-                    payable_balance -= net # payables are credit normal
-                elif agg["account_type"] == "asset_cash":
+                    asset_breakdown["accounts_receivable"] += net
+                elif atype == "asset_cash":
                     bank_balance += net
+                    asset_breakdown["cash_and_equivalents"] += net
+                elif atype == "asset_current":
+                    asset_breakdown["current_assets"] += net
+                elif atype == "asset_fixed":
+                    asset_breakdown["fixed_assets"] += net
+                elif atype == "asset_non_current":
+                    asset_breakdown["non_current_assets"] += net
+                elif atype == "asset_prepayments":
+                    asset_breakdown["prepayments"] += net
+                elif atype in ("liability_payable", "liability_current"):
+                    payable_balance -= net # payables are credit normal
 
             # --- Bank & Cash Balances Details ---
             opening_cash_balance = 0.0
@@ -826,6 +853,9 @@ class AccountingService:
                 "gross_profit": _metric(gross_profit),
                 "ebit": _metric(ebit),
                 "net_profit_margin_pct": net_profit_margin_pct,
+                "total_assets": _metric(total_assets),
+                "total_assets_value": total_assets,
+                "asset_breakdown": asset_breakdown,
                 "bank_balance": bank_balance,
                 "opening_cash_balance": opening_cash_balance,
                 "cash_in": cash_in,

@@ -14,12 +14,23 @@ DEFAULT_COMPANY_IDS = []  # Empty means all companies within the tenant context
 def resolve_tenant_id(tenant_id: Optional[str]) -> Optional[str]:
     """
     Ensures tenant_id is a valid UUID string compatible with PostgreSQL UUID columns.
-    If tenant_id is 'all', None, 'default', or empty, returns None (indicating cross-tenant aggregation).
+    If tenant_id is 'all', 'all_tenants', None, or empty, returns None (indicating cross-tenant aggregation).
+    If tenant_id is 'default', resolves to the first Tenant's UUID in the database.
     If tenant_id is already a valid UUID string, returns it as-is.
     If tenant_id is a slug/name, looks up the corresponding Tenant in DB.
     """
     clean_id = str(tenant_id or "").strip()
-    if not clean_id or clean_id.lower() in ("all", "all_tenants", "default", "none", "null", ""):
+    if not clean_id or clean_id.lower() in ("all", "all_tenants", "none", "null", ""):
+        return None
+
+    if clean_id.lower() == "default":
+        try:
+            from odoo_app.models.tenant import Tenant
+            tenant = Tenant.objects.first()
+            if tenant:
+                return str(tenant.id)
+        except Exception:
+            pass
         return None
 
     try:

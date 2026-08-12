@@ -17,6 +17,10 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Reports directory (absolute path)
+REPORTS_DIR = Path(os.environ.get('REPORTS_DIR', str(BASE_DIR / 'reports'))).resolve()
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Load .env file
 load_dotenv(BASE_DIR / '.env')
 

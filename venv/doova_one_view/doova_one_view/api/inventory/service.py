@@ -128,6 +128,118 @@ def _picking_to_item(picking: StockPicking) -> dict[str, Any]:
     }
 
 
+def _upcoming_shipment_item(picking: StockPicking) -> dict[str, Any]:
+    partner = _partner_obj(picking)
+    company = _company_obj(picking)
+    name = picking.odoo_name or ""
+    
+    arriving_products = []
+    total_expected = 0.0
+    total_received = 0.0
+    
+    moves = getattr(picking, "_prefetched_moves", None)
+    if moves is None:
+        moves = list(picking.moves.select_related("product").all())
+        
+    for m in moves:
+        product = _product_obj(m)
+        prod_name = product["name"] if product else (m.name or "")
+        exp_qty = _to_float(m.product_uom_qty)
+        rec_qty = _to_float(m.quantity_done)
+        rem_qty = max(0.0, exp_qty - rec_qty)
+        total_expected += exp_qty
+        total_received += rec_qty
+        arriving_products.append({
+            "product_id": getattr(m, "product_id", None),
+            "product_name": prod_name,
+            "product_code": product.get("default_code") if product else "",
+            "uom_name": product.get("uom_name") if product else "",
+            "expected_qty": exp_qty,
+            "received_qty": rec_qty,
+            "remaining_qty": rem_qty,
+            "date_deadline": _iso(m.date_deadline),
+            "state": m.state,
+        })
+        
+    if total_expected > 0:
+        progress_pct = round(min(100.0, (total_received / total_expected) * 100), 1)
+    else:
+        progress_pct = 100.0 if picking.state == "done" else 0.0
+
+    today = timezone.now().date()
+    if picking.state == "done":
+        eta_status = "received"
+    elif picking.state == "cancel":
+        eta_status = "cancelled"
+    elif picking.scheduled_date:
+        sched_date = picking.scheduled_date.date()
+        if sched_date < today:
+            eta_status = "overdue"
+        elif sched_date == today:
+            eta_status = "arriving_today"
+        else:
+            eta_status = "on_time"
+    else:
+        eta_status = "on_time"
+
+    return {
+        "id": picking.id,
+        "odoo_id": picking.odoo_id,
+        "name": name,
+        "odoo_name": name,
+        "origin": picking.origin or "",
+        "partner": partner,
+        "partner_id": getattr(picking, "partner_id", None),
+        "partner_name": partner["name"] if partner else "",
+        "picking_type": picking.picking_type or "",
+        "picking_type_code": picking.picking_type or "",
+        "scheduled_date": _iso(picking.scheduled_date),
+        "date_done": _iso(picking.date_done),
+        "state": picking.state,
+        "eta_status": eta_status,
+        "total_expected_qty": total_expected,
+        "total_received_qty": total_received,
+        "progress_pct": progress_pct,
+        "arriving_products": arriving_products,
+        "company": company,
+        "company_id": getattr(picking, "company_id", None),
+        "company_name": company["name"] if company else "",
+        "synced_at": _iso(picking.synced_at),
+    }
+
+
+def _build_shipment_timeline(picking: StockPicking) -> list[dict[str, Any]]:
+    stages = [
+        ("draft", "Draft / Order Confirmed"),
+        ("waiting", "Waiting Availability"),
+        ("assigned", "Ready for Receipt"),
+        ("done", "Received & Done"),
+    ]
+    state_order = {"draft": 0, "waiting": 1, "confirmed": 1, "assigned": 2, "done": 3}
+    current_idx = state_order.get(picking.state, 0)
+    
+    timeline = []
+    for idx, (stage_key, label) in enumerate(stages):
+        is_completed = idx < current_idx or picking.state == "done"
+        is_current = idx == current_idx and picking.state != "done"
+        timestamp = None
+        if stage_key == "done" and picking.date_done:
+            timestamp = _iso(picking.date_done)
+        elif stage_key == "draft" and picking.synced_at:
+            timestamp = _iso(picking.synced_at)
+        elif stage_key == "assigned" and picking.scheduled_date:
+            timestamp = _iso(picking.scheduled_date)
+            
+        timeline.append({
+            "stage": stage_key,
+            "label": label,
+            "is_current": is_current,
+            "is_completed": is_completed,
+            "timestamp": timestamp,
+        })
+    return timeline
+
+
 def _move_to_item(move: StockMove) -> dict[str, Any]:
     product = _product_obj(move)
     company = _company_obj(move)
@@ -257,39 +369,160 @@ class InventoryService:
         return qs
 
     @staticmethod
+    def get_inventory_summary_sync(
+        tenant_id: str,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
+        qs = InventoryService._company_filter(
+            StockQuant.objects.filter(tenant_id=tenant_id), company_ids
+        )
+        stats = qs.aggregate(
+            total_qty=Sum("quantity"),
+            total_reserved=Sum("reserved_quantity"),
+            product_count=Count("product_id", distinct=True),
+        )
+        
+        stock_value_agg = qs.filter(quantity__gt=0).select_related("product").aggregate(
+            total_value=Sum(F("quantity") * F("product__standard_price"))
+        )
+        
+        recent_since = timezone.now() - timedelta(days=7)
+        recent_moves = InventoryService._company_filter(
+            StockMove.objects.filter(tenant_id=tenant_id, date__gte=recent_since),
+            company_ids,
+        ).count()
+        return {
+            "total_products_in_stock": stats["product_count"] or 0,
+            "total_quantity": _to_float(stats["total_qty"]),
+            "total_reserved_quantity": _to_float(stats["total_reserved"]),
+            "total_value": _to_float(stock_value_agg["total_value"]),
+            "recent_moves_count": recent_moves,
+            "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids},
+        }
+
+    @staticmethod
     async def get_inventory_summary(
         tenant_id: str,
         company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
-        def _summary():
-            qs = InventoryService._company_filter(
-                StockQuant.objects.filter(tenant_id=tenant_id), company_ids
-            )
-            stats = qs.aggregate(
-                total_qty=Sum("quantity"),
-                total_reserved=Sum("reserved_quantity"),
-                product_count=Count("product_id", distinct=True),
-            )
-            
-            stock_value_agg = qs.filter(quantity__gt=0).select_related("product").aggregate(
-                total_value=Sum(F("quantity") * F("product__standard_price"))
-            )
-            
-            recent_since = timezone.now() - timedelta(days=7)
-            recent_moves = InventoryService._company_filter(
-                StockMove.objects.filter(tenant_id=tenant_id, date__gte=recent_since),
-                company_ids,
-            ).count()
-            return {
-                "total_products_in_stock": stats["product_count"] or 0,
-                "total_quantity": _to_float(stats["total_qty"]),
-                "total_reserved_quantity": _to_float(stats["total_reserved"]),
-                "total_value": _to_float(stock_value_agg["total_value"]),
-                "recent_moves_count": recent_moves,
-                "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids},
-            }
+        return await asyncio.to_thread(InventoryService.get_inventory_summary_sync, tenant_id, company_ids)
 
-        return await asyncio.to_thread(_summary)
+    @staticmethod
+    def get_alerts_sync(
+        tenant_id: str,
+        company_ids: Optional[list[int]] = None,
+        low_stock_threshold: int = 10,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Return aggregated inventory alerts synchronously."""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        quants = InventoryService._company_filter(
+            StockQuant.objects.filter(tenant_id=tenant_id).select_related("product", "lot"),
+            company_ids
+        )
+        pickings = InventoryService._company_filter(
+            StockPicking.objects.filter(tenant_id=tenant_id).select_related("partner"),
+            company_ids
+        )
+        now = timezone.now()
+
+        # 1. Low Stock
+        low_qs = quants.filter(quantity__gt=0, quantity__lte=low_stock_threshold).order_by("quantity")
+        low_cnt = low_qs.count()
+        low_items = [
+            {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
+            for q in low_qs[:limit]
+        ]
+
+        # 2. Out of Stock
+        oos_qs = quants.filter(quantity=0).order_by("product__name")
+        oos_cnt = oos_qs.count()
+        oos_items = [
+            {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": "Qty: 0"}
+            for q in oos_qs[:limit]
+        ]
+
+        # 3. Negative Stock
+        neg_qs = quants.filter(quantity__lt=0).order_by("quantity")
+        neg_cnt = neg_qs.count()
+        neg_items = [
+            {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
+            for q in neg_qs[:limit]
+        ]
+
+        # 4. Expiring Soon (lot expiration in 30 days)
+        exp_qs = quants.filter(
+            lot__expiration_date__gte=now.date(),
+            lot__expiration_date__lte=(now + timedelta(days=30)).date()
+        ).order_by("lot__expiration_date")
+        exp_cnt = exp_qs.count()
+        exp_items = [
+            {
+                "id": q.id,
+                "title": q.product.name if q.product else "Unknown",
+                "description": f"Lot: {q.lot.name if q.lot else ''}, Exp: {_iso(q.lot.expiration_date) if q.lot else ''}"
+            }
+            for q in exp_qs[:limit]
+        ]
+
+        # 5. Late Shipments (outgoing pickings scheduled before today, not done/cancelled)
+        late_qs = pickings.filter(
+            scheduled_date__lt=now,
+            state__in=["assigned", "confirmed", "waiting"]
+        ).order_by("scheduled_date")
+        late_cnt = late_qs.count()
+        late_items = [
+            {
+                "id": p.id,
+                "title": f"Picking #{p.odoo_id or p.id}",
+                "description": f"Partner: {p.partner.name if p.partner else 'N/A'}, Scheduled: {_iso(p.scheduled_date)}"
+            }
+            for p in late_qs[:limit]
+        ]
+
+        # 6. Backorders (pickings in waiting state)
+        back_qs = pickings.filter(
+            state="waiting"
+        ).order_by("-scheduled_date")
+        back_cnt = back_qs.count()
+        back_items = [
+            {
+                "id": p.id,
+                "title": f"Backorder #{p.odoo_id or p.id}",
+                "description": f"State: {p.state}, Partner: {p.partner.name if p.partner else 'N/A'}"
+            }
+            for p in back_qs[:limit]
+        ]
+
+        # 7. Valuation Issues (in stock but no standard price)
+        val_qs = quants.filter(
+            quantity__gt=0
+        ).filter(
+            Q(product__standard_price__lte=0) | Q(product__standard_price__isnull=True)
+        ).order_by("product__name")
+        val_cnt = val_qs.count()
+        val_items = [
+            {
+                "id": q.id,
+                "title": q.product.name if q.product else "Unknown",
+                "description": f"Qty: {q.quantity}, Cost: {q.product.standard_price if q.product else 0}"
+            }
+            for q in val_qs[:limit]
+        ]
+
+        alerts = [
+            {"key": "low_stock", "label": "Low Stock", "count": low_cnt, "severity": "warning", "items": low_items},
+            {"key": "out_of_stock", "label": "Out of Stock", "count": oos_cnt, "severity": "danger", "items": oos_items},
+            {"key": "negative_stock", "label": "Negative Stock", "count": neg_cnt, "severity": "danger", "items": neg_items},
+            {"key": "expiring_soon", "label": "Expiring Soon", "count": exp_cnt, "severity": "warning", "items": exp_items},
+            {"key": "late_shipments", "label": "Late Shipments", "count": late_cnt, "severity": "danger", "items": late_items},
+            {"key": "backorders", "label": "Backorders", "count": back_cnt, "severity": "warning", "items": back_items},
+            {"key": "valuation_issues", "label": "Valuation Issues", "count": val_cnt, "severity": "warning", "items": val_items},
+        ]
+
+        return {"alerts": alerts}
 
     @staticmethod
     async def get_alerts(
@@ -299,116 +532,7 @@ class InventoryService:
         limit: int = 10,
     ) -> dict[str, Any]:
         """Return aggregated inventory alerts."""
-        def _build():
-            from django.utils import timezone
-            from datetime import timedelta
-
-            quants = InventoryService._company_filter(
-                StockQuant.objects.filter(tenant_id=tenant_id).select_related("product", "lot"),
-                company_ids
-            )
-            pickings = InventoryService._company_filter(
-                StockPicking.objects.filter(tenant_id=tenant_id).select_related("partner"),
-                company_ids
-            )
-            now = timezone.now()
-
-            # 1. Low Stock
-            low_qs = quants.filter(quantity__gt=0, quantity__lte=low_stock_threshold).order_by("quantity")
-            low_cnt = low_qs.count()
-            low_items = [
-                {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
-                for q in low_qs[:limit]
-            ]
-
-            # 2. Out of Stock
-            oos_qs = quants.filter(quantity=0).order_by("product__name")
-            oos_cnt = oos_qs.count()
-            oos_items = [
-                {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": "Qty: 0"}
-                for q in oos_qs[:limit]
-            ]
-
-            # 3. Negative Stock
-            neg_qs = quants.filter(quantity__lt=0).order_by("quantity")
-            neg_cnt = neg_qs.count()
-            neg_items = [
-                {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
-                for q in neg_qs[:limit]
-            ]
-
-            # 4. Expiring Soon
-            soon = now.date() + timedelta(days=30)
-            exp_qs = quants.filter(quantity__gt=0, lot__expiration_date__lte=soon).order_by("lot__expiration_date")
-            exp_cnt = exp_qs.count()
-            exp_items = [
-                {
-                    "id": q.id, 
-                    "title": q.product.name if q.product else "Unknown", 
-                    "description": f"Lot: {q.lot.name if q.lot else ''}",
-                    "date": _iso(q.lot.expiration_date) if q.lot else None
-                }
-                for q in exp_qs[:limit]
-            ]
-
-            # 5. Late Shipments
-            late_qs = pickings.filter(
-                picking_type='outgoing', 
-                scheduled_date__lt=now
-            ).exclude(state__in=['done', 'cancel']).order_by("scheduled_date")
-            late_cnt = late_qs.count()
-            late_items = [
-                {
-                    "id": p.id,
-                    "title": p.odoo_name or "Unknown",
-                    "description": f"State: {p.state}",
-                    "date": _iso(p.scheduled_date)
-                }
-                for p in late_qs[:limit]
-            ]
-
-            # 6. Backorders (pickings in waiting state)
-            back_qs = pickings.filter(picking_type='outgoing', state='waiting').order_by("-scheduled_date")
-            back_cnt = back_qs.count()
-            back_items = [
-                {
-                    "id": p.id,
-                    "title": p.odoo_name or "Unknown",
-                    "description": f"Partner: {p.partner.name if p.partner else 'None'}",
-                    "date": _iso(p.scheduled_date)
-                }
-                for p in back_qs[:limit]
-            ]
-
-            # 7. Valuation Issues (in stock but no standard price)
-            val_qs = quants.filter(
-                quantity__gt=0
-            ).filter(
-                Q(product__standard_price__lte=0) | Q(product__standard_price__isnull=True)
-            ).order_by("product__name")
-            val_cnt = val_qs.count()
-            val_items = [
-                {
-                    "id": q.id,
-                    "title": q.product.name if q.product else "Unknown",
-                    "description": f"Qty: {q.quantity}, Cost: {q.product.standard_price if q.product else 0}"
-                }
-                for q in val_qs[:limit]
-            ]
-
-            alerts = [
-                {"key": "low_stock", "label": "Low Stock", "count": low_cnt, "severity": "warning", "items": low_items},
-                {"key": "out_of_stock", "label": "Out of Stock", "count": oos_cnt, "severity": "danger", "items": oos_items},
-                {"key": "negative_stock", "label": "Negative Stock", "count": neg_cnt, "severity": "danger", "items": neg_items},
-                {"key": "expiring_soon", "label": "Expiring Soon", "count": exp_cnt, "severity": "warning", "items": exp_items},
-                {"key": "late_shipments", "label": "Late Shipments", "count": late_cnt, "severity": "danger", "items": late_items},
-                {"key": "backorders", "label": "Backorders", "count": back_cnt, "severity": "warning", "items": back_items},
-                {"key": "valuation_issues", "label": "Valuation Issues", "count": val_cnt, "severity": "warning", "items": val_items},
-            ]
-
-            return {"alerts": alerts}
-
-        return await asyncio.to_thread(_build)
+        return await asyncio.to_thread(InventoryService.get_alerts_sync, tenant_id, company_ids, low_stock_threshold, limit)
 
     @staticmethod
     async def get_stock_table(
@@ -955,7 +1079,7 @@ class InventoryService:
             flat_items = []
 
             if is_picking_metric:
-                pickings_list = list(qs.select_related("partner", "company").order_by("-scheduled_date", "-id"))
+                pickings_list = list(qs.select_related("partner", "company").prefetch_related("moves__product").order_by("-scheduled_date", "-id"))
                 total_items = len(pickings_list)
                 paginated = pickings_list[offset:offset + limit]
                 
@@ -972,7 +1096,10 @@ class InventoryService:
                     groups[cid]["metric_value"] += 1.0
 
                 for p in paginated:
-                    flat_items.append(_picking_to_item(p))
+                    if metric in ["incoming_shipments_count", "incoming"]:
+                        flat_items.append(_upcoming_shipment_item(p))
+                    else:
+                        flat_items.append(_picking_to_item(p))
             else:
                 quants_list = list(qs.select_related("product", "lot", "company").order_by("-quantity", "-id"))
                 total_items = len(quants_list)
@@ -1252,5 +1379,121 @@ class InventoryService:
                 limit=limit,
                 offset=offset
             ).model_dump()
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_upcoming_shipments(
+        tenant_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        partner_id: Optional[int] = None,
+        product_id: Optional[int] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        eta_status: Optional[str] = None,
+        search: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
+        def _get():
+            qs = InventoryService._company_filter(
+                StockPicking.objects.filter(tenant_id=tenant_id), company_ids
+            ).exclude(state__in=["done", "cancel"]).filter(
+                Q(picking_type="incoming") | Q(picking_type__icontains="receipt")
+            )
+
+            if partner_id is not None:
+                qs = qs.filter(partner_id=partner_id)
+
+            if product_id is not None:
+                qs = qs.filter(moves__product_id=product_id).distinct()
+
+            if start_date:
+                qs = qs.filter(scheduled_date__gte=start_date)
+            if end_date:
+                qs = qs.filter(scheduled_date__lte=end_date)
+
+            today = timezone.now().date()
+            if eta_status == "overdue":
+                qs = qs.filter(scheduled_date__lt=today)
+            elif eta_status == "arriving_today":
+                qs = qs.filter(scheduled_date__date=today)
+            elif eta_status == "on_time":
+                qs = qs.filter(scheduled_date__gte=today)
+
+            if search:
+                qs = qs.filter(
+                    Q(odoo_name__icontains=search)
+                    | Q(origin__icontains=search)
+                    | Q(partner__name__icontains=search)
+                    | Q(moves__product__name__icontains=search)
+                    | Q(moves__product__default_code__icontains=search)
+                ).distinct()
+
+            total = qs.count()
+            items_qs = list(
+                qs.select_related("partner", "company")
+                .prefetch_related("moves__product")
+                .order_by("scheduled_date", "-id")[offset : offset + limit]
+            )
+
+            formatted = [_upcoming_shipment_item(p) for p in items_qs]
+
+            overdue_cnt = sum(1 for item in formatted if item["eta_status"] == "overdue")
+            today_cnt = sum(1 for item in formatted if item["eta_status"] == "arriving_today")
+            total_arriving_products = sum(len(item["arriving_products"]) for item in formatted)
+
+            return {
+                "items": formatted,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "summary_stats": {
+                    "total_upcoming_shipments": total,
+                    "overdue_count": overdue_cnt,
+                    "arriving_today_count": today_cnt,
+                    "total_arriving_products_count": total_arriving_products,
+                },
+                "applied_filters": {
+                    "tenant_id": tenant_id,
+                    "partner_id": partner_id,
+                    "product_id": product_id,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "eta_status": eta_status,
+                    "search": search,
+                    "company_ids": company_ids,
+                },
+            }
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_shipment_tracking(
+        tenant_id: str,
+        picking_id: int,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
+        def _get():
+            qs = InventoryService._company_filter(
+                StockPicking.objects.filter(tenant_id=tenant_id), company_ids
+            )
+            try:
+                base = qs.select_related("partner", "company").prefetch_related("moves__product")
+                local = base.filter(id=picking_id).first()
+                picking = local if local is not None else base.get(odoo_id=picking_id)
+            except StockPicking.DoesNotExist:
+                raise NotFoundError("StockPicking", str(picking_id))
+
+            shipment_item = _upcoming_shipment_item(picking)
+            timeline = _build_shipment_timeline(picking)
+            moves_list = [_move_to_item(m) for m in picking.moves.select_related("product", "company").all()]
+
+            return {
+                "shipment": shipment_item,
+                "timeline": timeline,
+                "arriving_products": shipment_item["arriving_products"],
+                "stock_moves": moves_list,
+            }
 
         return await asyncio.to_thread(_get)

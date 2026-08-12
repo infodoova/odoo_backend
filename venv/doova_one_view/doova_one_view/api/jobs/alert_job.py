@@ -9,144 +9,14 @@ System-default schedules (is_system_default=True) run for every tenant.
 """
 
 import asyncio
+import json
 import logging
 import re
 from datetime import datetime, timezone as tz, timedelta
 
 
-def _md_to_html(text: str) -> str:
-    """Convert the AI-generated markdown summary to email-safe HTML."""
+from doova_one_view.api.email.email_utils import md_to_html as _md_to_html
 
-    def inline(s: str) -> str:
-        s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        s = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', s)
-        s = re.sub(r'__(.*?)__',     r'<strong>\1</strong>', s)
-        s = re.sub(r'\*(.*?)\*',     r'<em>\1</em>', s)
-        s = re.sub(r'`(.*?)`',       r'<code style="background:#f1f5f9;padding:1px 4px;border-radius:3px;font-size:12px;">\1</code>', s)
-        return s
-
-    def is_sep(cells):
-        return all(re.match(r'^:?-+:?$', c.strip()) for c in cells if c.strip())
-
-    TH  = 'style="text-align:left;padding:8px 12px;background:#1e3a5f;color:#fff;font-size:12px;font-weight:700;"'
-    TD  = 'style="padding:7px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#374151;vertical-align:top;"'
-    TDa = 'style="padding:7px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#374151;vertical-align:top;background:#f8fafc;"'
-
-    lines  = text.splitlines()
-    out    = []
-    i      = 0
-    in_ul  = False
-    in_ol  = False
-
-    def close_lists():
-        nonlocal in_ul, in_ol
-        if in_ul:
-            out.append('</ul>')
-            in_ul = False
-        if in_ol:
-            out.append('</ol>')
-            in_ol = False
-
-    while i < len(lines):
-        raw  = lines[i]
-        line = raw.strip()
-
-        # blank line
-        if not line:
-            close_lists()
-            i += 1
-            continue
-
-        # H1
-        if re.match(r'^# [^#]', line):
-            close_lists()
-            out.append(f'<h2 style="font-size:17px;font-weight:700;color:#1e3a5f;margin:18px 0 6px;padding-bottom:6px;border-bottom:2px solid #e5e7eb;">{inline(line[2:])}</h2>')
-            i += 1; continue
-
-        # H2
-        if re.match(r'^## [^#]', line):
-            close_lists()
-            out.append(f'<h3 style="font-size:15px;font-weight:700;color:#1e3a5f;margin:16px 0 5px;padding-bottom:4px;border-bottom:1.5px solid #dbeafe;">{inline(line[3:])}</h3>')
-            i += 1; continue
-
-        # H3
-        if re.match(r'^### [^#]', line):
-            close_lists()
-            out.append(f'<h4 style="font-size:13px;font-weight:700;color:#1d4ed8;margin:12px 0 4px;">{inline(line[4:])}</h4>')
-            i += 1; continue
-
-        # H4
-        if re.match(r'^#### ', line):
-            close_lists()
-            out.append(f'<h5 style="font-size:12px;font-weight:700;color:#374151;margin:10px 0 3px;">{inline(line[5:])}</h5>')
-            i += 1; continue
-
-        # HR
-        if re.match(r'^[-*]{3,}$', line):
-            close_lists()
-            out.append('<hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0;"/>')
-            i += 1; continue
-
-        # Blockquote — collect consecutive lines
-        if line.startswith('> '):
-            close_lists()
-            bq = []
-            while i < len(lines) and lines[i].strip().startswith('> '):
-                bq.append(inline(lines[i].strip()[2:]))
-                i += 1
-            content = ' '.join(bq)
-            out.append(
-                f'<div style="border-left:4px solid #f59e0b;background:#fffbeb;'
-                f'padding:10px 14px;margin:10px 0;border-radius:0 6px 6px 0;">'
-                f'<p style="margin:0;font-size:13px;color:#92400e;font-style:italic;">{content}</p></div>'
-            )
-            continue
-
-        # Table
-        if line.startswith('|') and line.endswith('|'):
-            close_lists()
-            table_lines = []
-            while i < len(lines) and lines[i].strip().startswith('|') and lines[i].strip().endswith('|'):
-                table_lines.append(lines[i].strip())
-                i += 1
-            # separate header / separator / body
-            rows = [row for row in table_lines if not is_sep([c for c in row[1:-1].split('|')])]
-            if rows:
-                out.append('<table style="border-collapse:collapse;width:100%;margin:10px 0 14px;font-size:12px;">')
-                for ridx, row in enumerate(rows):
-                    cells = [c.strip() for c in row[1:-1].split('|')]
-                    tag = 'th' if ridx == 0 else 'td'
-                    attr = TH if ridx == 0 else (TD if ridx % 2 == 1 else TDa)
-                    out.append('<tr>' + ''.join(f'<{tag} {attr}>{inline(c)}</{tag}>' for c in cells) + '</tr>')
-                out.append('</table>')
-            continue
-
-        # Unordered list
-        if re.match(r'^[-*+] ', line):
-            if not in_ul:
-                close_lists()
-                out.append('<ul style="margin:6px 0 10px 18px;padding:0;">')
-                in_ul = True
-            out.append(f'<li style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:3px;">{inline(line[2:])}</li>')
-            i += 1; continue
-
-        # Ordered list
-        m = re.match(r'^(\d+)\.\s+(.*)', line)
-        if m:
-            if not in_ol:
-                close_lists()
-                out.append('<ol style="margin:6px 0 10px 18px;padding:0;">')
-                in_ol = True
-            out.append(f'<li style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:3px;">{inline(m.group(2))}</li>')
-            i += 1; continue
-
-        # Regular paragraph
-        close_lists()
-        out.append(f'<p style="font-size:13.5px;color:#374151;line-height:1.65;margin:0 0 8px;">{inline(line)}</p>')
-        i += 1
-
-    close_lists()
-    return '\n'.join(out)
 
 logger = logging.getLogger(__name__)
 
@@ -229,38 +99,42 @@ class AlertJobManager:
             logger.info("AlertJobManager: no due schedules")
             return
 
-        logger.info(f"AlertJobManager: {len(schedules)} schedule(s) due")
-        for schedule in schedules:
-            if schedule.is_system_default:
-                tenant_ids = await AlertJobManager._get_all_tenant_ids()
-                for tid in tenant_ids:
-                    try:
-                        await AlertJobManager.run_check(
-                            schedule=schedule,
-                            tenant_id=tid,
-                            send_email=True,
-                            is_instant=False,
-                        )
-                    except Exception:
-                        # already logged + AlertLog written inside run_check
-                        logger.error(
-                            f"AlertJobManager: cron check failed schedule={schedule.id} tenant={tid}"
-                        )
-            else:
-                if schedule.tenant_id or schedule.tenants:
-                    try:
-                        tenant_ids = schedule.tenants if schedule.tenants else None
-                        await AlertJobManager.run_check(
-                            schedule=schedule,
-                            tenant_id=str(schedule.tenant_id) if schedule.tenant_id else None,
-                            send_email=True,
-                            is_instant=False,
-                            tenant_ids=tenant_ids,
-                        )
-                    except Exception:
-                        logger.error(
-                            f"AlertJobManager: cron check failed schedule={schedule.id} tenant={schedule.tenant_id}"
-                        )
+        logger.info(f"AlertJobManager: {len(schedules)} schedule(s) due — processing concurrently")
+        sem = asyncio.Semaphore(5)
+
+        async def _process_single(schedule):
+            async with sem:
+                if schedule.is_system_default:
+                    tenant_ids = await AlertJobManager._get_all_tenant_ids()
+                    for tid in tenant_ids:
+                        try:
+                            await AlertJobManager.run_check(
+                                schedule=schedule,
+                                tenant_id=tid,
+                                send_email=True,
+                                is_instant=False,
+                            )
+                        except Exception:
+                            logger.error(
+                                f"AlertJobManager: cron check failed schedule={schedule.id} tenant={tid}"
+                            )
+                else:
+                    if schedule.tenant_id or schedule.tenants:
+                        try:
+                            tenant_ids = schedule.tenants if schedule.tenants else None
+                            await AlertJobManager.run_check(
+                                schedule=schedule,
+                                tenant_id=str(schedule.tenant_id) if schedule.tenant_id else None,
+                                send_email=True,
+                                is_instant=False,
+                                tenant_ids=tenant_ids,
+                            )
+                        except Exception:
+                            logger.error(
+                                f"AlertJobManager: cron check failed schedule={schedule.id} tenant={schedule.tenant_id}"
+                            )
+
+        await asyncio.gather(*[_process_single(s) for s in schedules], return_exceptions=True)
 
     @staticmethod
     async def _get_all_tenant_ids() -> list:
@@ -272,6 +146,27 @@ class AlertJobManager:
             return [str(t.id) for t in Tenant.objects.all()]
 
         return await _fetch()
+
+    @staticmethod
+    async def _check_daily_rate_limit(tenant_id: str) -> bool:
+        from asgiref.sync import sync_to_async
+
+        @sync_to_async
+        def _check():
+            from odoo_app.models.alert_schedule import AlertLog
+            from doova_one_view.api.agent.config import AgentConfig
+            from datetime import timedelta
+            from django.utils import timezone
+
+            limit = getattr(AgentConfig, "MAX_DAILY_ALERT_CHECKS_PER_TENANT", 20)
+            cutoff = timezone.now() - timedelta(days=1)
+            count = AlertLog.objects.filter(
+                tenant_id=tenant_id,
+                checked_at__gte=cutoff,
+            ).count()
+            return count >= limit
+
+        return await _check()
 
     # ------------------------------------------------------------------
     # Core check — used by both the scheduled loop and the run-now route
@@ -293,6 +188,28 @@ class AlertJobManager:
         now = datetime.now(tz.utc)
         company_ids = schedule.companies if schedule.companies else None
 
+        # Rate limiting: Check if tenant exceeded 24-hour max AI alert checks
+        is_exceeded = await AlertJobManager._check_daily_rate_limit(tenant_id)
+        if is_exceeded:
+            if is_instant:
+                from fastapi import HTTPException
+                from doova_one_view.api.agent.config import AgentConfig
+                max_limit = getattr(AgentConfig, "MAX_DAILY_ALERT_CHECKS_PER_TENANT", 20)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Rate limit exceeded: Maximum daily AI alert checks ({max_limit}) reached for this tenant."
+                )
+
+
+            else:
+                logger.warning(f"AlertJobManager: daily rate limit reached for tenant={tenant_id} — skipping check.")
+                return {
+                    "condition_triggered": False,
+                    "summary": "RATE LIMIT: Daily alert check limit reached for this tenant.",
+                    "alert_sent": False,
+                    "log_id": None,
+                }
+
         if not is_instant:
             @sync_to_async
             def _claim():
@@ -311,21 +228,27 @@ class AlertJobManager:
                 return {"has_anomalies": False, "summary": "", "alert_sent": False, "log_id": None}
 
         try:
-            summary, has_anomalies = await AlertJobManager._detect_anomalies(
+            summary, condition_triggered, severity = await AlertJobManager._detect_anomalies(
                 tenant_id=tenant_id,
                 company_ids=company_ids,
                 user_prompt=schedule.prompt,
                 tenant_ids=tenant_ids,
+                thresholds=getattr(schedule, "thresholds", None),
             )
 
             alert_sent = False
-            if has_anomalies and send_email and schedule.recipients:
+            is_ai_error = "AI Advisor Service" in summary
+            should_send = (condition_triggered or (is_instant and not is_ai_error)) and send_email and schedule.recipients
+            if should_send:
                 await AlertJobManager._send_alert_email(
                     schedule=schedule,
                     tenant_id=tenant_id,
                     summary=summary,
+                    is_anomaly=condition_triggered,
+                    severity=severity,
                 )
                 alert_sent = True
+
 
             @sync_to_async
             def _log_success():
@@ -336,7 +259,7 @@ class AlertJobManager:
                     schedule=schedule,
                     tenant=tenant_obj,
                     status='completed',
-                    has_anomalies=has_anomalies,
+                    condition_triggered=condition_triggered,
                     summary=summary,
                     alert_sent=alert_sent,
                 ).id
@@ -344,10 +267,12 @@ class AlertJobManager:
             log_id = await _log_success()
             logger.info(
                 f"AlertJobManager: check done schedule={schedule.id} "
-                f"tenant={tenant_id} anomalies={has_anomalies}"
+                f"tenant={tenant_id} condition_triggered={condition_triggered}"
             )
+            from doova_one_view.api.agent.metrics import metrics_registry
+            metrics_registry.record_alert_check(condition_triggered=condition_triggered, alert_sent=alert_sent, skipped_llm=False, status="completed")
             return {
-                "has_anomalies": has_anomalies,
+                "condition_triggered": condition_triggered,
                 "summary": summary,
                 "alert_sent": alert_sent,
                 "log_id": log_id,
@@ -369,9 +294,10 @@ class AlertJobManager:
                     schedule=schedule,
                     tenant=tenant_obj,
                     status='failed',
-                    has_anomalies=False,
+                    condition_triggered=False,
                     error_message=error_msg,
                 ).id
+
 
             try:
                 await _log_failure()
@@ -390,6 +316,7 @@ class AlertJobManager:
         company_ids: list | None,
         user_prompt: str,
         tenant_ids: list | None = None,
+        thresholds: dict | None = None,
     ) -> tuple:
         """
         Returns (summary: str, has_anomalies: bool).
@@ -398,12 +325,23 @@ class AlertJobManager:
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
 
         # Tier 1: Deterministic SQL Pre-Checks (zero LLM cost)
-        precheck_res = await asyncio.to_thread(run_all_prechecks, tenant_id, company_ids, tenant_ids=tenant_ids)
-        if not precheck_res["any_triggered"]:
-            logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant={tenant_id} — skipping LLM inference.")
-            return "OK: All monitored financial, inventory, and operational metrics are within normal baseline ranges.", False
+        precheck_res = await asyncio.to_thread(
+            run_all_prechecks, tenant_id, company_ids, tenant_ids=tenant_ids, thresholds=thresholds
+        )
+        has_custom_prompt = bool(
+            user_prompt and user_prompt.strip() and user_prompt.strip() != DEFAULT_ALERT_PROMPT
+        )
 
-        logger.info(f"AlertJobManager: Tier 1 pre-checks TRIGGERED ({precheck_res['triggered_checks']}) — proceeding to Tier 2 LLM analysis.")
+        if not precheck_res["any_triggered"] and not has_custom_prompt:
+            logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant={tenant_id} and no custom prompt — skipping LLM inference.")
+            from doova_one_view.api.agent.metrics import metrics_registry
+            metrics_registry.record_alert_check(has_anomalies=False, alert_sent=False, skipped_llm=True, status="completed")
+            return "OK: All monitored financial, inventory, and operational metrics are within normal baseline ranges.", False, "success"
+
+        if has_custom_prompt:
+            logger.info(f"AlertJobManager: Custom user prompt provided ('{user_prompt[:40]}...') — proceeding to Tier 2 AI analysis.")
+        else:
+            logger.info(f"AlertJobManager: Tier 1 pre-checks TRIGGERED ({precheck_res['triggered_checks']}) — proceeding to Tier 2 AI analysis.")
 
         if company_ids and len(company_ids) > 0:
             company_ctx = f"for selected companies {company_ids}"
@@ -415,28 +353,48 @@ class AlertJobManager:
             else DEFAULT_ALERT_PROMPT
         )
 
+        from doova_one_view.api.agent.tools_refactored.communication import serialize_alert_context
+
+        context_json = serialize_alert_context(
+            tenant_id=tenant_id,
+            user_prompt=user_prompt,
+            thresholds=thresholds,
+            company_ids=company_ids,
+            precheck_summary=precheck_res.get("precheck_summary", ""),
+        )
+
         full_prompt = (
             f"<role>\n"
-            f"You are an elite vigilance AI and forensic auditor monitoring a business {company_ctx} for unusual, risky, or suspicious activity. "
-            f"Your expertise lies in identifying financial anomalies, inventory shrinkage, and operational risks.\n"
+            f"You are an executive business advisor reporting to a business owner {company_ctx}.\n"
+            f"Your expertise is translating complex data into simple, actionable executive findings.\n"
             f"</role>\n\n"
+            f"<alert_context_json>\n"
+            f"{context_json}\n"
+            f"</alert_context_json>\n\n"
             f"<deterministic_precheck_findings>\n"
             f"Automated pre-checks flagged the following potential anomalies:\n"
             f"{precheck_res['precheck_summary']}\n"
             f"</deterministic_precheck_findings>\n\n"
             f"<instructions>\n"
-            f"1. Use all relevant tools (sales, finance, inventory, receivables, trial balance, detect_anomalies) to gather complete context on the flagged issues before making an assessment.\n"
-            f"2. Carefully analyze the data according to the criteria defined in the <user_request>.\n"
-            f"3. Only flag genuine data anomalies (e.g., sudden spikes, drastic drops, negative cash flows) — ignore missing data or date range issues.\n"
-            f"4. Before writing your final report, enclose your internal reasoning within <thinking> tags to plan your tool usage and analyze the data step-by-step.\n"
-            f"5. After thinking, output your final assessment matching the strict format defined in <output_format>.\n"
+            f"1. Use relevant tools to gather context on the flagged issues before making your assessment.\n"
+            f"2. Write for a business owner/client. Omit raw internal database sequence numbers (e.g. #317916/#317917) and internal GL account IDs.\n"
+            f"3. Do NOT use technical statistical jargon like '>3σ from mean' — say 'Unusually Large Transaction'.\n"
+            f"4. Structure your response into 3 simple sections: What Happened, Business Impact, and Recommended Action.\n"
+            f"5. Before writing your final report, enclose your internal reasoning within <thinking> tags.\n"
+            f"6. After thinking, output your final assessment matching the strict format defined in <output_format>.\n"
             f"</instructions>\n\n"
             f"<output_format>\n"
-            f"Your response must begin with a STRATEGIC RECOMMENDATION section. The very first line of this section MUST be exactly one of the following:\n"
-            f"  ALERT: <one-line headline>\n"
+            f"Your response must begin with a STRATEGIC RECOMMENDATION section. The very first line of this section MUST state the exact severity, matching one of:\n"
+            f"  CRITICAL: <one-line headline>\n"
+            f"  WARNING: <one-line headline>\n"
+            f"  INFO: <one-line headline>\n"
             f"  OK: <one-line headline>\n\n"
-            f"Do not add any text, markdown, or greetings before the 'ALERT:' or 'OK:' line. "
-            f"Following the headline, provide your full detailed findings and analysis.\n"
+            f"Do not add any text, markdown, or greetings before the severity line. "
+            f"Following the headline, provide your simple, executive findings.\n"
+            f"You may also optionally include a JSON summary block at the end of your response:\n"
+            f"```json\n"
+            f'{{"condition_triggered": true|false, "severity": "critical|warning|info|success", "summary": "..."}}\n'
+            f"```\n"
             f"</output_format>\n\n"
             f"<user_request>\n"
             f"{effective_prompt}\n"
@@ -444,175 +402,185 @@ class AlertJobManager:
         )
 
         agent = DoovaLangChainAgent()
-        result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids, tenant_ids=tenant_ids)
-        result = result.strip()
+        try:
+            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids, tenant_ids=tenant_ids)
+            result = result.strip() if result else ""
+        except Exception as exc:
+            err_str = str(exc)
+            if any(k in err_str.lower() for k in ["credit balance", "insufficient_quota", "quota", "invalid_request_error", "payment_required"]):
+                logger.error(f"AlertJobManager: Upstream LLM provider quota/credit error for tenant={tenant_id}: {exc}")
+                return (
+                    "INFO: AI Advisor Service Temporarily Unavailable\n\n"
+                    "## Service Notice\n"
+                    "The AI analysis engine is temporarily paused due to upstream LLM provider credit limits. "
+                    "Please verify API key billing and credit balance in administrator settings.",
+                    False,
+                    "info",
+                )
+            logger.error(f"AlertJobManager: AI execution error for tenant={tenant_id}: {exc}")
+            return (
+                f"INFO: AI Advisor Execution Exception\n\n## Service Notice\n{err_str}",
+                False,
+                "info",
+            )
 
-        # The agent sometimes wraps ALERT:/OK: in bold (**ALERT:**) or places it
-        # after section headers. Use progressively looser patterns.
+        return AlertJobManager._parse_llm_response(result)
 
-        # Pass 1 — strict line-start, with optional bold markers
-        alert_match = re.search(r'^\*{0,2}ALERT:\*{0,2}\s*', result, re.IGNORECASE | re.MULTILINE)
-        ok_match    = re.search(r'^\*{0,2}OK:\*{0,2}\s*',    result, re.IGNORECASE | re.MULTILINE)
 
-        if alert_match:
-            return result[alert_match.end():].strip(), True
+    @staticmethod
+    def _parse_llm_response(result: str) -> tuple[str, bool, str]:
+        """
+        Parses LLM response string into (summary: str, condition_triggered: bool, severity: str).
+        Guarantees bulletproof parsing with multi-layered fallbacks:
+          Layer 1: Extract JSON snippet (```json { ... } ``` or raw JSON)
+          Layer 2: Extract explicit severity line prefix (CRITICAL:, WARNING:, INFO:, OK:)
+          Layer 3: Strategic Recommendation section search
+          Layer 4: Safe default fallback
+        """
+        if not result or not isinstance(result, str):
+            return "No response generated by AI advisor.", False, "info"
+
+        clean_res = result.strip()
+
+        # Layer 1: JSON block parsing via Pydantic LlmAlertResult schema
+        json_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', clean_res, re.IGNORECASE)
+        if not json_match:
+            json_match = re.search(r'(\{[\s\S]*?"condition_triggered"[\s\S]*?\})', clean_res)
+
+        if json_match:
+            try:
+                from doova_one_view.api.alerts.schemas import LlmAlertResult
+                parsed = LlmAlertResult.model_validate_json(json_match.group(1))
+                summary = parsed.summary.strip() or clean_res
+                return summary, parsed.condition_triggered, parsed.severity
+            except Exception as e:
+                logger.warning(f"AlertJobManager: Pydantic deserialization of LLM response failed ({e}), using regex fallback.")
+
+
+        # Layer 2: Explicit severity prefix regex
+        crit_match = re.search(r'^\*{0,2}(CRITICAL|ALERT):\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
+        warn_match = re.search(r'^\*{0,2}WARNING:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
+        info_match = re.search(r'^\*{0,2}INFO:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
+        ok_match   = re.search(r'^\*{0,2}OK:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
+
+        if crit_match:
+            return clean_res[crit_match.end():].strip(), True, "critical"
+        if warn_match:
+            return clean_res[warn_match.end():].strip(), True, "warning"
+        if info_match:
+            return clean_res[info_match.end():].strip(), False, "info"
         if ok_match:
-            return result[ok_match.end():].strip(), False
+            return clean_res[ok_match.end():].strip(), False, "success"
 
-        # Pass 2 — find STRATEGIC RECOMMENDATION section, then search inside it
-        rec_match = re.search(r'##\s*STRATEGIC\s+RECOMMENDATION\b', result, re.IGNORECASE)
-        section = result[rec_match.end():].strip() if rec_match else result
+        # Layer 3: Strategic Recommendation section fallback search
+        rec_match = re.search(r'##\s*STRATEGIC\s+RECOMMENDATION\b', clean_res, re.IGNORECASE)
+        section = clean_res[rec_match.end():].strip() if rec_match else clean_res
 
-        alert_in_sec = re.search(r'\*{0,2}ALERT:\*{0,2}\s*', section, re.IGNORECASE)
-        ok_in_sec    = re.search(r'\*{0,2}OK:\*{0,2}\s*',    section, re.IGNORECASE)
+        if re.search(r'\b(CRITICAL|ALERT)\b', section, re.IGNORECASE):
+            return section, True, "critical"
+        if re.search(r'\bWARNING\b', section, re.IGNORECASE):
+            return section, True, "warning"
+        if re.search(r'\bINFO\b', section, re.IGNORECASE):
+            return section, False, "info"
+        if re.search(r'\bOK\b', section, re.IGNORECASE):
+            return section, False, "success"
 
-        if alert_in_sec:
-            return section[alert_in_sec.end():].strip(), True
-        if ok_in_sec:
-            return section[ok_in_sec.end():].strip(), False
-
-        # Pass 3 — bare keyword anywhere (e.g. "**ALERT** — headline")
-        if re.search(r'\bALERT\b', section, re.IGNORECASE):
-            return section, True
-
-        return section, False
+        # Layer 4: Safe default fallback
+        return section, False, "info"
 
     # ------------------------------------------------------------------
     # Alert email
     # ------------------------------------------------------------------
 
-        tenant_name = schedule.tenant.name if schedule.tenant else "Your Business"
-        if schedule.tenants and len(schedule.tenants) > 0:
+    @staticmethod
+    async def _send_alert_email(schedule, tenant_id: str, summary: str, is_anomaly: bool = True, severity: str = "critical"):
+        from doova_one_view.api.email.service import EmailService
+        from doova_one_view.api.agent.tools_refactored.communication import _format_alert_email_html
+        from asgiref.sync import sync_to_async
+
+        @sync_to_async
+        def _resolve_tenant_name():
+            t_name = "Your Business"
             try:
-                from odoo_app.models.tenant import Tenant
-                t_objs = list(Tenant.objects.filter(id__in=schedule.tenants))
-                if t_objs:
-                    tenant_name = ", ".join(t.name for t in t_objs)
+                if schedule.tenant:
+                    t_name = schedule.tenant.name
             except Exception:
                 pass
+            if schedule.tenants and len(schedule.tenants) > 0:
+                try:
+                    from odoo_app.models.tenant import Tenant
+                    t_objs = list(Tenant.objects.filter(id__in=schedule.tenants))
+                    if t_objs:
+                        t_name = ", ".join(t.name for t in t_objs)
+                except Exception:
+                    pass
+            return t_name
 
-        subject = f"ALERT: Unusual Activity Detected — {tenant_name}"
-        company_note = (
-            "all companies"
-            if not schedule.companies
-            else f"{len(schedule.companies)} selected company/ies"
+        tenant_name = await _resolve_tenant_name()
+
+        prefix_map = {
+            "critical": "CRITICAL ALERT",
+            "warning": "WARNING ALERT",
+            "info": "INFORMATION UPDATE",
+            "success": "STATUS UPDATE: Business Check Clear",
+        }
+        prefix = prefix_map.get(severity, "ALERT: Unusual Activity Detected" if is_anomaly else "STATUS UPDATE: Business Check Clear")
+        subject = f"{prefix} — {tenant_name}"
+
+        html_body = _format_alert_email_html(
+            title=f"{prefix} — {tenant_name}",
+            message=summary,
+            severity=severity,
+            tenant_id=tenant_id,
         )
 
-        summary_html = _md_to_html(summary)
+async def _send_webhook_notification(webhook_url: str, title: str, summary: str, is_anomaly: bool):
+    """Dispatches real-time alert notifications to Slack, MS Teams, or custom HTTP Webhook URLs."""
+    import httpx
+    payload = {
+        "text": f"🚨 *{title}*",
+        "attachments": [
+            {
+                "color": "#e74c3c" if is_anomaly else "#2ecc71",
+                "title": "Nexus Financial Alert",
+                "text": summary[:2000],
+                "footer": "Nexus Automated AI Business Monitoring",
+            }
+        ],
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(webhook_url, json=payload)
+            resp.raise_for_status()
+            logger.info(f"Successfully dispatched alert webhook notification to {webhook_url}")
+    except Exception as exc:
+        logger.error(f"Failed to dispatch alert webhook notification to {webhook_url}: {exc}")
 
-        html_body = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<style>
-  /* Reset */
-  body,table,td,p,a,li,blockquote{{margin:0;padding:0;border:0;font-size:100%;vertical-align:baseline}}
-  body{{background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%}}
 
-  /* AI content typography */
-  .ai-content p{{margin:0 0 10px;font-size:13.5px;line-height:1.65;color:#374151}}
-  .ai-content h2{{font-size:15px;font-weight:700;color:#111827;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #e5e7eb}}
-  .ai-content h3{{font-size:13.5px;font-weight:700;color:#374151;margin:16px 0 6px}}
-  .ai-content h4{{font-size:13px;font-weight:700;color:#374151;margin:12px 0 4px}}
-
-  /* Tables */
-  .ai-content table{{border-collapse:collapse;width:100%;font-size:12.5px;margin:12px 0 16px;border-radius:6px;overflow:hidden}}
-  .ai-content thead tr{{background:#1e3a5f}}
-  .ai-content th{{text-align:left;padding:9px 12px;font-weight:600;color:#ffffff;font-size:12px;letter-spacing:0.3px}}
-  .ai-content td{{padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;vertical-align:top}}
-  .ai-content tbody tr:nth-child(even) td{{background:#f8fafc}}
-  .ai-content tbody tr:hover td{{background:#eff6ff}}
-  .ai-content tbody tr:last-child td{{border-bottom:none}}
-
-  /* Blockquotes */
-  .ai-content blockquote{{border-left:4px solid #f59e0b;background:#fffbeb;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0}}
-  .ai-content blockquote p{{color:#92400e;font-size:13px;margin:0}}
-
-  /* Lists */
-  .ai-content ul,.ai-content ol{{margin:8px 0 12px 20px;padding:0}}
-  .ai-content li{{font-size:13.5px;line-height:1.6;color:#374151;margin-bottom:4px}}
-
-  /* Inline */
-  .ai-content strong{{color:#111827;font-weight:700}}
-  .ai-content em{{font-style:italic;color:#6b7280}}
-  .ai-content code{{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:3px;padding:1px 5px;font-size:12px;font-family:monospace}}
-  .ai-content hr{{border:none;border-top:1px solid #e5e7eb;margin:16px 0}}
-</style>
-</head>
-<body style="background:#f3f4f6;padding:24px 0;">
-
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center">
-<table width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
-
-  <!-- Header -->
-  <tr>
-    <td style="background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);padding:28px 32px;border-radius:12px 12px 0 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td>
-            <span style="display:inline-block;background:#dc2626;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;text-transform:uppercase;margin-bottom:10px;">&#9888; Alert</span>
-            <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 6px;line-height:1.2;">Unusual Activity Detected</h1>
-            <p style="color:#93c5fd;font-size:13px;margin:0;">{tenant_name}&nbsp;&nbsp;·&nbsp;&nbsp;{company_note}</p>
-          </td>
-          <td align="right" style="vertical-align:top;">
-            <span style="font-size:42px;line-height:1;">&#128680;</span>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-
-  <!-- Alert summary strip -->
-  <tr>
-    <td style="background:#dc2626;padding:12px 32px;">
-      <p style="color:#fff;font-size:13px;margin:0;line-height:1.5;">
-        The AI monitoring check has detected <strong style="color:#fef9c3;">anomalies that require your immediate attention.</strong>
-        Review the findings below and take action.
-      </p>
-    </td>
-  </tr>
-
-  <!-- Main content -->
-  <tr>
-    <td style="background:#ffffff;padding:28px 32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
-      <div class="ai-content">
-        {summary_html}
-      </div>
-    </td>
-  </tr>
-
-  <!-- CTA footer -->
-  <tr>
-    <td style="background:#f8fafc;padding:20px 32px;border:1px solid #e5e7eb;border-top:2px solid #1e3a5f;border-radius:0 0 12px 12px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="vertical-align:middle;">
-            <p style="color:#374151;font-size:13px;margin:0 0 2px;font-weight:600;">Nexus</p>
-            <p style="color:#6b7280;font-size:12px;margin:0;">Automated AI Business Monitoring</p>
-          </td>
-          <td align="right" style="vertical-align:middle;">
-            <p style="color:#9ca3af;font-size:11px;margin:0;text-align:right;line-height:1.5;">
-              To manage alert schedules,<br>visit the <strong style="color:#1e3a5f;">Alerts</strong> section in Nexus.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-
-</table>
-</td></tr>
-</table>
-
-</body>
-</html>"""
-
+        sent_count = 0
+        errors = []
         for email in schedule.recipients:
-            await EmailService.send(
-                to=email,
-                subject=subject,
-                html_body=html_body,
-                priority="HIGH",
+            try:
+                await EmailService.send(
+                    to=email,
+                    subject=subject,
+                    html_body=html_body,
+                    priority="HIGH",
+                    max_retries=3,
+                )
+                sent_count += 1
+            except Exception as exc:
+                logger.error(f"Failed to send alert email to {email}: {exc}")
+                errors.append(f"{email}: {exc}")
+
+        # Dispatch to Webhook URL if configured (Slack / Teams / Custom)
+        if getattr(schedule, "webhook_url", None):
+            await _send_webhook_notification(
+                webhook_url=schedule.webhook_url,
+                title=subject,
+                summary=summary,
+                is_anomaly=True,
             )
+
+        if sent_count == 0 and schedule.recipients:
+            raise Exception(f"Failed to send alert email to any recipient after retries: {'; '.join(errors)}")

@@ -12,27 +12,40 @@ from doova_one_view.api.common.exceptions import APIException
 
 async def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
     """Handle custom API exceptions"""
-    # Extract clean message without status code
-    message = str(exc.detail) if hasattr(exc, 'detail') else str(exc.message)
-    
+    if hasattr(exc, 'detail') and isinstance(exc.detail, dict):
+        message = exc.detail.get("message", str(exc.detail))
+        msg_type = exc.detail.get("message_type", getattr(exc, 'message_type', 'error'))
+    else:
+        message = str(exc.detail) if hasattr(exc, 'detail') else str(getattr(exc, 'message', exc))
+        msg_type = getattr(exc, 'message_type', 'error')
+
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "message": message,
-            "message_type": getattr(exc, 'message_type', 'error')
+            "message_type": msg_type
         }
     )
+
 
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Handle standard HTTP exceptions"""
+    if isinstance(exc.detail, dict):
+        msg = exc.detail.get("message", str(exc.detail))
+        msg_type = exc.detail.get("message_type", "error")
+    else:
+        msg = str(exc.detail)
+        msg_type = "error"
+
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "message": str(exc.detail),
-            "message_type": "error"
+            "message": msg,
+            "message_type": msg_type
         }
     )
+
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

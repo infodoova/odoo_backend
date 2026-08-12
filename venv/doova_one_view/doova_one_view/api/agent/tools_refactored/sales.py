@@ -26,8 +26,11 @@ def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, compan
     
     native_curr = base_currency or get_tenant_currency(tenant_id, company_id=selected_company_ids[0] if len(selected_company_ids) == 1 else None)
 
+    has_data = rev > 0 or int(row.get("order_count") or 0) > 0
     return {
-        "tool_name": "get_sales_summary_tool", 
+        "tool_name": "get_sales_summary_tool",
+        "status": "SUCCESS" if has_data else "NO_DATA",
+        "message": "Sales summary retrieved successfully." if has_data else "No sales orders found for the specified period and filters.",
         "total_revenue": rev, 
         "order_count": int(row.get("order_count") or 0), 
         "average_order_value": float(row.get("average_order_value") or 0),
@@ -62,7 +65,12 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
     if end_date: query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"; params["end_date"] = end_date
     query += " GROUP BY l.product_id, p.name ORDER BY revenue DESC LIMIT :limit"
     rows = run_query(query, params)
-    return {"tool_name": "get_top_products_tool", "products": [{"product": r.get('product_name'), "revenue": float(r.get('revenue')), "quantity": float(r.get('quantity'))} for r in rows]}
+    return {
+        "tool_name": "get_top_products_tool",
+        "status": "SUCCESS" if rows else "NO_DATA",
+        "message": "Top products retrieved successfully." if rows else "No products or sales records found for the specified period and filters.",
+        "products": [{"product": r.get('product_name'), "revenue": float(r.get('revenue')), "quantity": float(r.get('quantity'))} for r in rows]
+    }
 
 def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
 

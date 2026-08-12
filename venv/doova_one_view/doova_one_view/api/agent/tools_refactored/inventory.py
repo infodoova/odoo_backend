@@ -94,10 +94,12 @@ def get_inventory_efficiency_tool(
 def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: int | None = None, limit: int = 25, offset: int = 0, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
     from asgiref.sync import async_to_sync
     from doova_one_view.api.inventory.service import InventoryService
+    from doova_one_view.api.agent.query_context import resolve_tenant_id
     from .common import normalize_company_ids
     company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    clean_tenant_id = resolve_tenant_id(tenant_id)
     res = async_to_sync(InventoryService.get_stock_table)(
-        tenant_id=tenant_id,
+        tenant_id=clean_tenant_id,
         table_type=table_type,
         company_ids=company_ids,
         limit=limit,
@@ -106,23 +108,25 @@ def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: 
     return {"tool_name": "get_inventory_stock_table_tool", **res}
 
 def get_inventory_dashboard_alerts_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    from asgiref.sync import async_to_sync
     from doova_one_view.api.inventory.service import InventoryService
+    from doova_one_view.api.agent.query_context import resolve_tenant_id
     from .common import normalize_company_ids
     company_ids = normalize_company_ids(company_id=company_id, companies=None)
-    res = async_to_sync(InventoryService.get_alerts)(
-        tenant_id=tenant_id,
+    clean_tenant_id = resolve_tenant_id(tenant_id)
+    res = InventoryService.get_alerts_sync(
+        tenant_id=clean_tenant_id,
         company_ids=company_ids
     )
     return {"tool_name": "get_inventory_dashboard_alerts_tool", **res}
 
 def get_inventory_valuation_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    from asgiref.sync import async_to_sync
     from doova_one_view.api.inventory.service import InventoryService
+    from doova_one_view.api.agent.query_context import resolve_tenant_id
     from .common import normalize_company_ids
     company_ids = normalize_company_ids(company_id=company_id, companies=None)
-    res = async_to_sync(InventoryService.get_inventory_summary)(
-        tenant_id=tenant_id,
+    clean_tenant_id = resolve_tenant_id(tenant_id)
+    res = InventoryService.get_inventory_summary_sync(
+        tenant_id=clean_tenant_id,
         company_ids=company_ids
     )
     return {"tool_name": "get_inventory_valuation_tool", **res}

@@ -93,17 +93,21 @@ async def get_partners_filters(
 async def search_partners(
     tenant_id: str,
     request: SearchRequest,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_partners(
-        tenant_id, request.filters, request.limit, request.offset
+        tenant_id, request.filters, request.limit, request.offset, _company_ids(company_id, companies)
     )
 
 
 @router.get("/{tenant_id}/partners/export")
 async def export_partners(
     tenant_id: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _export_partners,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -123,6 +127,8 @@ async def list_partners(
     is_customer: Optional[str] = Query(None),
     is_supplier: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -133,6 +139,7 @@ async def list_partners(
         search,
         _to_bool_or_none(is_customer),
         _to_bool_or_none(is_supplier),
+        _company_ids(company_id, companies),
     )
 
 
@@ -304,17 +311,21 @@ async def list_currencies(
 async def search_chart_of_accounts(
     tenant_id: str,
     request: SearchRequest,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_chart_of_accounts(
-        tenant_id, request.filters, request.limit, request.offset
+        tenant_id, request.filters, request.limit, request.offset, _company_ids(company_id, companies)
     )
 
 
 @router.get("/{tenant_id}/chart-of-accounts/export")
 async def export_chart_of_accounts(
     tenant_id: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _export_chart,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -341,9 +352,11 @@ async def list_chart_of_accounts(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     search: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_chart_of_accounts(
-        tenant_id, limit, offset, search
+        tenant_id, limit, offset, search, _company_ids(company_id, companies)
     )

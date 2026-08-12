@@ -108,9 +108,9 @@ def parse_graph_data_from_text(text: str) -> list | None:
     def clean_label(l_str: str) -> str:
         return re.sub(r"\*\*|\*|#", "", l_str).strip()
 
-    # 1. Parse ASCII table / series formats (e.g. "May 2025    $141.4M")
+    # 1. Parse ASCII table / series formats (e.g. "May 2025    $141.4M" or "Mar 2026    -$250K")
     ascii_rows = re.findall(
-        r"(?:^|\n)\s*([a-zA-Z0-9\s\-_/*#]{3,20})\s+([$₦€]?\s*-?[\d,]+(?:\.\d+)?\s*[kKmMBb]?)(?:\s|█|▊|▉|▎|▌|▏|—|$)",
+        r"(?:^|\n)\s*([a-zA-Z0-9\s_/*#]{3,20})\s+(-?[$₦€]?\s*-?[\d,]+(?:\.\d+)?\s*[kKmMBb]?)(?=\s|█|▊|▉|▎|▌|▏|—|$)",
         text
     )
     if ascii_rows:
@@ -129,7 +129,7 @@ def parse_graph_data_from_text(text: str) -> list | None:
     items = []
 
     # 2. Parse Markdown Table rows
-    table_rows = re.findall(r"\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|", text)
+    table_rows = re.findall(r"\|\s*([^|]+?)\s*\|\s*(-?[$₦€]?\s*-?[^|]+?)\s*\|", text)
     if table_rows:
         for label, val_str in table_rows:
             label_clean = clean_label(label)
@@ -143,8 +143,8 @@ def parse_graph_data_from_text(text: str) -> list | None:
 
     items = []
 
-    # 3. Parse colon or dash line formats (e.g., "* Jan: 12,500" or "Monthly Revenue - 50000")
-    colon_lines = re.findall(r"(?:^|\n)\s*[*+-]?\s*([a-zA-Z0-9\s\-_/*#]+)\s*[:\-]\s*([$₦€]?\s*-?[\d,]+(?:\.\d+)?\s*[kKmMBb]?)", text)
+    # 3. Parse colon or dash line formats (e.g., "* Jan: 12,500" or "Monthly Revenue - -$50000")
+    colon_lines = re.findall(r"(?:^|\n)\s*[*+-]?\s*([a-zA-Z0-9\s\-_/*#]+)\s*[:\-]\s*(-?[$₦€]?\s*-?[\d,]+(?:\.\d+)?\s*[kKmMBb]?)", text)
     if colon_lines:
         for label, val_str in colon_lines:
             label_clean = clean_label(label)

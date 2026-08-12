@@ -10,6 +10,8 @@ class AlertScheduleCreate(BaseModel):
     recipients: List[EmailStr]
     companyIds: List[int] = []
     tenantIds: List[str] = []
+    thresholds: Optional[dict] = None  # custom precheck overrides {"cash_drop_pct": 15.0, ...}
+    webhook_url: Optional[str] = None  # Slack/Teams/Custom HTTP webhook
     timezone: str = 'UTC'
     is_enabled: bool = True
     is_system_default: bool = False
@@ -31,6 +33,8 @@ class AlertScheduleUpdate(BaseModel):
     recipients: Optional[List[EmailStr]] = None
     companyIds: Optional[List[int]] = None
     tenantIds: Optional[List[str]] = None
+    thresholds: Optional[dict] = None
+    webhook_url: Optional[str] = None
     timezone: Optional[str] = None
     is_enabled: Optional[bool] = None
     is_system_default: Optional[bool] = None
@@ -45,6 +49,8 @@ class AlertScheduleResponse(BaseModel):
     prompt: str
     recipients: List[str]
     companyIds: List[int] = []
+    thresholds: dict = {}
+    webhook_url: Optional[str] = None
     timezone: str
     is_enabled: bool
     is_system_default: bool
@@ -60,7 +66,7 @@ class AlertLogResponse(BaseModel):
     schedule_id: Optional[str]
     tenant_id: Optional[str]
     status: str
-    has_anomalies: bool
+    condition_triggered: bool = False
     summary: Optional[str]
     alert_sent: bool
     error_message: Optional[str]
@@ -70,11 +76,53 @@ class AlertLogResponse(BaseModel):
 
 
 class RunAlertRequest(BaseModel):
-    send_email: bool = False
+    send_email: bool = True
 
 
 class RunAlertResponse(BaseModel):
-    has_anomalies: bool
-    summary: str
-    alert_sent: bool
+    condition_triggered: bool = False
+    alert_sent: bool = False
     log_id: int
+    message: str
+
+
+
+
+
+
+
+
+
+class AlertContextPayload(BaseModel):
+    tenant_id: Optional[str] = None
+    prompt: str = ""
+    thresholds: dict = {}
+    company_ids: List[int] = []
+    precheck_summary: str = ""
+
+    def to_json_prompt(self, max_bytes: int = 8192) -> str:
+        clean_prompt = self.prompt.strip()
+        if len(clean_prompt) > 4000:
+            clean_prompt = clean_prompt[:4000] + "... [truncated]"
+
+        payload = self.model_copy(update={"prompt": clean_prompt})
+        serialized = payload.model_dump_json(indent=2)
+        if len(serialized.encode("utf-8")) > max_bytes:
+            payload = payload.model_copy(update={"prompt": clean_prompt[:1000] + "... [truncated]"})
+            serialized = payload.model_dump_json(indent=2)
+        return serialized
+
+
+class LlmAlertResult(BaseModel):
+    condition_triggered: bool = False
+    severity: str = "info"
+    summary: str = ""
+
+    @field_validator("severity")
+    @classmethod
+    def validate_severity(cls, v: str) -> str:
+        v_lower = (v or "info").lower()
+        if v_lower in ("critical", "warning", "info", "success"):
+            return v_lower
+        return "info"
+

@@ -15,6 +15,17 @@ def get_companies_tool(tenant_id: str, tenant_ids: Optional[list[str]] = None) -
     rows = run_query(f"SELECT id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
     return {"tool_name": "get_companies_tool", "companies": rows}
 
+def resolve_company_name(tenant_id: str, company_id: int | None = None) -> str:
+    if not company_id:
+        return "All Companies"
+    try:
+        rows = run_query("SELECT name FROM dim_companies WHERE id = %(cid)s LIMIT 1", {"cid": int(company_id)})
+        if rows and rows[0].get("name"):
+            return rows[0]["name"]
+    except Exception:
+        pass
+    return f"Company {company_id}"
+
 def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
     """Fetches the company's industry, sector, and operational context from the database."""
     # dim_companies PK is "id", not "company_id"
@@ -35,27 +46,83 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
         company_params,
     )
 
-    # Infer business type from product and transaction data (tenant-scoped only, no company filter)
-    product_stats = run_query(
+    # 1. Dynamic Catalog Study (Group by ANY product_type in database)
+    cat_rows = run_query(
         f"""SELECT
-                COUNT(DISTINCT CASE WHEN product_type = 'product' THEN id END) AS physical_products,
-                COUNT(DISTINCT CASE WHEN product_type = 'service' THEN id END) AS services,
-                COUNT(DISTINCT CASE WHEN product_type = 'consu' THEN id END) AS consumables
+                COALESCE(product_type, 'unclassified') AS ptype,
+                COUNT(DISTINCT id) AS sku_count
             FROM dim_products
-            WHERE 1=1 {t_sql_def}""",
+            WHERE 1=1 {t_sql_def}
+            GROUP BY COALESCE(product_type, 'unclassified')""",
         t_params_def,
     )
+    catalog_by_type = {r["ptype"]: int(r["sku_count"]) for r in cat_rows}
+    total_skus = sum(catalog_by_type.values())
 
-    ps = product_stats[0] if product_stats else {}
-    physical = int(ps.get("physical_products") or 0)
-    services = int(ps.get("services") or 0)
+    # 2. Dynamic Transaction & Revenue Study (Group by ANY product_type in database)
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    rev_rows = run_query(
+        f"""SELECT
+                COALESCE(p.product_type, 'unclassified') AS ptype,
+                COUNT(DISTINCT l.id) AS line_count,
+                COALESCE(SUM(l.price_subtotal), 0) AS total_revenue
+            FROM fact_sales_order_lines l
+            JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
+            JOIN fact_sales_orders o ON l.sales_order_id = o.id AND l.tenant_id = o.tenant_id
+            WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
+            GROUP BY COALESCE(p.product_type, 'unclassified')
+            ORDER BY total_revenue DESC""",
+        t_params_l,
+    )
 
-    if services > physical * 2:
-        inferred_type = "Service-Based"
-    elif physical > services * 2:
-        inferred_type = "Product/Retail-Based"
+    # 3. Dynamic Category Study (Top Product Categories by Revenue)
+    cat_rev_rows = run_query(
+        f"""SELECT
+                COALESCE(c.complete_name, c.name, 'Uncategorized') AS category_name,
+                COALESCE(SUM(l.price_subtotal), 0) AS category_revenue,
+                COUNT(DISTINCT l.id) AS category_lines
+            FROM fact_sales_order_lines l
+            JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
+            JOIN fact_sales_orders o ON l.sales_order_id = o.id AND l.tenant_id = o.tenant_id
+            LEFT JOIN dim_product_categories c ON p.category_id = c.id AND p.tenant_id = c.tenant_id
+            WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
+            GROUP BY COALESCE(c.complete_name, c.name, 'Uncategorized')
+            ORDER BY category_revenue DESC
+            LIMIT 5""",
+        t_params_l,
+    )
+
+    total_revenue = sum(float(r["total_revenue"]) for r in rev_rows)
+    total_lines = sum(int(r["line_count"]) for r in rev_rows)
+
+    type_study = []
+    for r in rev_rows:
+        ptype = r["ptype"]
+        rev = float(r["total_revenue"])
+        lines = int(r["line_count"])
+        skus = catalog_by_type.get(ptype, 0)
+        pct = round((rev / total_revenue * 100), 1) if total_revenue > 0 else 0.0
+        line_pct = round((lines / total_lines * 100), 1) if total_lines > 0 else 0.0
+        type_study.append({
+            "product_type": ptype,
+            "revenue": rev,
+            "revenue_share_pct": f"{pct}%",
+            "order_line_count": lines,
+            "order_line_share_pct": f"{line_pct}%",
+            "catalog_sku_count": skus
+        })
+
+    # Dynamic Classification Label from Top Revenue Driver
+    if type_study and total_revenue > 0:
+        top_driver = type_study[0]
+        top_type = top_driver["product_type"].upper()
+        top_pct = top_driver["revenue_share_pct"]
+        inferred_type = f"Dynamic {top_type}-Dominant Business ({top_pct} Revenue Share)"
+        primary_driver = f"Top revenue driver: '{top_type}' generates {top_driver['revenue_share_pct']} of total revenue across {top_driver['order_line_count']} order lines."
     else:
-        inferred_type = "Hybrid (Product + Service)"
+        top_sku_type = max(catalog_by_type.items(), key=lambda x: x[1])[0] if catalog_by_type else "unclassified"
+        inferred_type = f"Dynamic {top_sku_type.upper()}-Weighted Catalog Model"
+        primary_driver = f"No sales transactions yet. Catalog is lead by '{top_sku_type}' ({catalog_by_type.get(top_sku_type, 0)} SKUs)."
 
     return {
         "tool_name": "get_tenant_profile_tool",
@@ -64,13 +131,26 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
             for r in rows
         ],
         "inferred_business_model": inferred_type,
-        "product_count": physical,
-        "service_count": services,
+        "primary_revenue_driver": primary_driver,
+        "dynamic_revenue_study": {
+            "total_revenue_analyzed": total_revenue,
+            "total_sales_lines_analyzed": total_lines,
+            "total_catalog_skus": total_skus,
+            "product_type_breakdown": type_study,
+            "top_product_categories": [
+                {
+                    "category": r["category_name"],
+                    "revenue": float(r["category_revenue"]),
+                    "revenue_share_pct": f"{round(float(r['category_revenue']) / total_revenue * 100, 1)}%" if total_revenue > 0 else "0%",
+                    "line_count": int(r["category_lines"])
+                } for r in cat_rev_rows
+            ]
+        }
     }
 
 def normalize_business_text_for_intent(message: str | None) -> str:
     """
-    Lightweight intent normalizer to fix typos and map phrases.
+    Lightweight intent normalizer to fix typos and map phrases using exact word matching.
     """
     text = (message or "").lower().strip()
 
@@ -87,10 +167,9 @@ def normalize_business_text_for_intent(message: str | None) -> str:
         "repport": "report", "pdfs": "pdf",
     }
 
-    for wrong, correct in replacements.items():
-        text = text.replace(wrong, correct)
-
-    return " ".join(text.split())
+    words = text.split()
+    cleaned = [replacements.get(w, w) for w in words]
+    return " ".join(cleaned)
 
 def is_graph_request(text: str) -> bool:
     text = normalize_business_text_for_intent(text)
@@ -168,123 +247,7 @@ def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | No
         logging.error(f"Error building currency case sql: {e}")
         return column
 
-def get_companies_tool(tenant_id: str, tenant_ids: Optional[list[str]] = None) -> dict:
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    rows = run_query(f"SELECT id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
-    return {"tool_name": "get_companies_tool", "companies": rows}
 
-def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    """Fetches the company's industry, sector, and operational context from the database."""
-    # dim_companies PK is "id", not "company_id"
-    company_f_sql, company_f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="id")
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    company_params = {**company_f_params, **t_params_def}
-
-    # Try to get basic company info
-    rows = run_query(
-        f"""SELECT
-                name,
-                'Not Specified' AS industry,
-                'Not Specified' AS company_type,
-                COALESCE(currency_name, currency_code, 'USD') AS currency
-            FROM dim_companies
-            WHERE 1=1 {t_sql_def} {company_f_sql}
-            LIMIT 5""",
-        company_params,
-    )
-
-    # Infer business type from product and transaction data (tenant-scoped only, no company filter)
-    product_stats = run_query(
-        f"""SELECT
-                COUNT(DISTINCT CASE WHEN product_type = 'product' THEN id END) AS physical_products,
-                COUNT(DISTINCT CASE WHEN product_type = 'service' THEN id END) AS services,
-                COUNT(DISTINCT CASE WHEN product_type = 'consu' THEN id END) AS consumables
-            FROM dim_products
-            WHERE 1=1 {t_sql_def}""",
-        t_params_def,
-    )
-
-    ps = product_stats[0] if product_stats else {}
-    physical = int(ps.get("physical_products") or 0)
-    services = int(ps.get("services") or 0)
-
-    if services > physical * 2:
-        inferred_type = "Service-Based"
-    elif physical > services * 2:
-        inferred_type = "Product/Retail-Based"
-    else:
-        inferred_type = "Hybrid (Product + Service)"
-
-    return {
-        "tool_name": "get_tenant_profile_tool",
-        "companies": [
-            {"name": r.get('name'), "industry": r.get('industry'), "type": r.get('company_type'), "currency": r.get('currency')}
-            for r in rows
-        ],
-        "inferred_business_model": inferred_type,
-        "product_count": physical,
-        "service_count": services,
-    }
-
-def normalize_business_text_for_intent(message: str | None) -> str:
-    """
-    Lightweight intent normalizer to fix typos and map phrases.
-    """
-    text = (message or "").lower().strip()
-
-    replacements = {
-        "revnue": "revenue", "revenu": "revenue", "revanue": "revenue",
-        "sale summery": "sales summary", "sales summery": "sales summary",
-        "salse": "sales", "seles": "sales", "seling": "selling",
-        "inventry": "inventory", "inventroy": "inventory", "invntory": "inventory",
-        "stok": "stock", "stcok": "stock", "custmer": "customer",
-        "custmers": "customers", "costumer": "customer", "costumers": "customers",
-        "prodcut": "product", "prodcuts": "products", "prduct": "product",
-        "prducts": "products", "grph": "graph", "grahp": "graph",
-        "char": "chart", "chrt": "chart", "reprt": "report",
-        "repport": "report", "pdfs": "pdf",
-    }
-
-    for wrong, correct in replacements.items():
-        text = text.replace(wrong, correct)
-
-    return " ".join(text.split())
-
-def is_graph_request(text: str) -> bool:
-    text = normalize_business_text_for_intent(text)
-    has_keywords = any(kw in text for kw in ["plot", "graph", "chart", "visualize"])
-    has_structured_data = bool(re.search(r"\d+\s*[:\-]\s*\d+", text))
-    return has_keywords or has_structured_data
-
-def extract_graph_data(text: str) -> dict:
-    pairs = re.findall(r"(\d+)\s*[:\-]\s*\d+", text)
-    if pairs:
-        x = [int(a) for a, _ in pairs]
-        y = [int(b) for _, b in pairs]
-        return {"x": x, "y": y, "points": [{"x": xv, "y": yv} for xv, yv in zip(x, y)]}
-    
-    numbers = list(map(int, re.findall(r"\d+", text)))
-    if len(numbers) >= 2:
-        x = list(range(1, len(numbers) + 1))
-        return {"x": x, "y": numbers, "points": [{"x": xv, "y": yv} for xv, yv in zip(x, numbers)]}
-    
-    return {"x": [], "y": [], "points": []}
-
-def generate_pdf(text: str, filename: str = "output.pdf") -> str:
-    c = canvas.Canvas(filename, pagesize=letter)
-    width, height = letter
-    y = height - 40
-    for line in text.split("\n"):
-        c.drawString(40, y, line[:100])
-        y -= 15
-        if y < 40:
-            c.showPage()
-            y = height - 40
-    c.save()
-    return filename
-
-def calculate_ratio(numerator: float, denominator: float) -> float:
-    return numerator / denominator if denominator != 0 else 0.0
 
 def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | None, currency_column: str = "currency_code", tenant_ids: Optional[list[str]] = None) -> str:
     """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""

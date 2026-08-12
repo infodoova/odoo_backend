@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
-from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Max, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncMonth
 
 from odoo_app.models import AccountMove, AccountMoveLine, PurchaseOrder, SalesOrder, SalesOrderLine, StockQuant
@@ -107,7 +107,21 @@ def _sum_converted(qs, field: str, effective_base: str, rate_map: dict) -> float
     return total_converted
 
 
-def _empty_overview(tenant_ids: list[str], date_from, date_to, company_ids):
+def _apply_tenant_company_filter(
+    qs,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    tenant_field: str = "tenant_id",
+    company_field: str = "company_id",
+):
+    if tenant_ids:
+        qs = qs.filter(**{f"{tenant_field}__in": tenant_ids})
+    if company_ids and company_field:
+        qs = qs.filter(**{f"{company_field}__in": company_ids})
+    return qs
+
+
+def _empty_overview(tenant_ids: Optional[list[str]], date_from, date_to, company_ids: Optional[list[int]]):
     return {
         "kpis": {
             "dashboard_revenue": {"today": 0.0, "month": 0.0, "year": 0.0},
@@ -136,7 +150,7 @@ def _empty_overview(tenant_ids: list[str], date_from, date_to, company_ids):
             },
         },
         "tenant_benchmarks": [],
-        "applied_filters": {"tenant_ids": tenant_ids, "date_from": date_from, "date_to": date_to, "company_ids": company_ids},
+        "applied_filters": {"tenant_ids": tenant_ids or [], "date_from": date_from, "date_to": date_to, "company_ids": company_ids or []},
     }
 
 
@@ -146,15 +160,24 @@ class KPIService:
         date_from: Optional[str],
         date_to: Optional[str],
         base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         def _get():
             today = date.today()
             rate_map = _get_rate_map()
             effective_base = base_currency or "XAF"
             
-            # Dashboard metrics (Today/Month/Year) - Independent of filters
-            dashboard_sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
-            dashboard_purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
+            # Dashboard metrics (Today/Month/Year) - Filtered by tenant_ids & company_ids if provided
+            dashboard_sales = _apply_tenant_company_filter(
+                SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True),
+                tenant_ids, company_ids
+            )
+            dashboard_purchases = _apply_tenant_company_filter(
+                PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True),
+                tenant_ids, company_ids
+            )
+
 
             revenue_today = _sum_converted(dashboard_sales.filter(date_order__date=today), "amount_total", effective_base, rate_map)
             revenue_month = _sum_converted(dashboard_sales.filter(date_order__year=today.year, date_order__month=today.month), "amount_total", effective_base, rate_map)
@@ -164,12 +187,15 @@ class KPIService:
             expenses_month = _sum_converted(dashboard_purchases.filter(date_order__year=today.year, date_order__month=today.month), "amount_total", effective_base, rate_map)
             expenses_year = _sum_converted(dashboard_purchases.filter(date_order__year=today.year), "amount_total", effective_base, rate_map)
 
-            # Receivables and Inventory - Independent of filters
-            receivables = AccountMove.objects.filter(
-                state="posted",
-                move_type="out_invoice",
-                payment_state__in=["not_paid", "partial", "in_payment"],
-                tenant__is_active=True
+            # Receivables and Inventory - Filtered by tenant_ids & company_ids
+            receivables = _apply_tenant_company_filter(
+                AccountMove.objects.filter(
+                    state="posted",
+                    move_type="out_invoice",
+                    payment_state__in=["not_paid", "partial", "in_payment"],
+                    tenant__is_active=True
+                ),
+                tenant_ids, company_ids
             )
             receivables_value = _sum_converted(receivables, "amount_residual", effective_base, rate_map)
             overdue_value = _sum_converted(receivables.filter(invoice_date_due__lt=today), "amount_residual", effective_base, rate_map)
@@ -179,7 +205,10 @@ class KPIService:
                 output_field=DecimalField(max_digits=20, decimal_places=4),
             )
             # Only count positive inventory for active tenants
-            quants = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True)
+            quants = _apply_tenant_company_filter(
+                StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True),
+                tenant_ids, company_ids
+            )
             inventory_raw = _to_float(quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
             # Inventory value is evaluated in COMPANY_BASE
             inventory_value = inventory_raw * _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
@@ -187,23 +216,33 @@ class KPIService:
             # Net Working Capital Additions (balances are in COMPANY_BASE)
             base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
             
-            cash_value = _sum(AccountMoveLine.objects.filter(
-                account_type='asset_cash',
-                account_move__state='posted',
-                tenant__is_active=True
-            ), "balance") * base_multiplier
+            cash_moves = _apply_tenant_company_filter(
+                AccountMoveLine.objects.filter(
+                    account_type='asset_cash',
+                    account_move__state='posted',
+                    tenant__is_active=True
+                ),
+                tenant_ids, company_ids, company_field="account_move__company_id"
+            )
+            cash_value = _sum(cash_moves, "balance") * base_multiplier
 
-            payables = AccountMove.objects.filter(
-                state="posted",
-                move_type="in_invoice",
-                payment_state__in=["not_paid", "partial", "in_payment"],
-                tenant__is_active=True
+            payables = _apply_tenant_company_filter(
+                AccountMove.objects.filter(
+                    state="posted",
+                    move_type="in_invoice",
+                    payment_state__in=["not_paid", "partial", "in_payment"],
+                    tenant__is_active=True
+                ),
+                tenant_ids, company_ids
             )
             payables_value = _sum_converted(payables, "amount_residual", effective_base, rate_map)
             
-            from odoo_app.models import TenantFinancialMapping
+            from odoo_app.models import TenantFinancialMapping, Company
             
             mappings = TenantFinancialMapping.objects.select_related('tenant').filter(tenant__is_active=True)
+            if tenant_ids:
+                mappings = mappings.filter(tenant_id__in=tenant_ids)
+
             q_accrued = Q()
             q_short_term = Q()
             
@@ -213,27 +252,24 @@ class KPIService:
                 for prefix in mapping.short_term_debt_prefixes:
                     q_short_term |= Q(tenant=mapping.tenant, account_code__startswith=prefix)
 
-            total_other_liabilities = -1 * _sum(AccountMoveLine.objects.filter(
-                account_type='liability_current',
-                account_move__state='posted',
-                tenant__is_active=True
-            ), "balance") * base_multiplier
+            other_liabilities_moves = _apply_tenant_company_filter(
+                AccountMoveLine.objects.filter(
+                    account_type='liability_current',
+                    account_move__state='posted',
+                    tenant__is_active=True
+                ),
+                tenant_ids, company_ids, company_field="account_move__company_id"
+            )
+
+            total_other_liabilities = -1 * _sum(other_liabilities_moves, "balance") * base_multiplier
 
             accrued_expenses_value = 0.0
             if q_accrued:
-                accrued_expenses_value = -1 * _sum(AccountMoveLine.objects.filter(
-                    account_type='liability_current',
-                    account_move__state='posted',
-                    tenant__is_active=True
-                ).filter(q_accrued), "balance") * base_multiplier
+                accrued_expenses_value = -1 * _sum(other_liabilities_moves.filter(q_accrued), "balance") * base_multiplier
 
             short_term_debt_value = 0.0
             if q_short_term:
-                short_term_debt_value = -1 * _sum(AccountMoveLine.objects.filter(
-                    account_type='liability_current',
-                    account_move__state='posted',
-                    tenant__is_active=True
-                ).filter(q_short_term), "balance") * base_multiplier
+                short_term_debt_value = -1 * _sum(other_liabilities_moves.filter(q_short_term), "balance") * base_multiplier
 
             other_liabilities_value = total_other_liabilities - accrued_expenses_value - short_term_debt_value
             
@@ -241,12 +277,105 @@ class KPIService:
             current_liabilities = payables_value + accrued_expenses_value + short_term_debt_value + other_liabilities_value
             net_working_capital = current_assets - current_liabilities
 
+            working_capital_ratio = round(current_assets / current_liabilities, 2) if current_liabilities > 0 else 0.0
+            quick_ratio = round((cash_value + receivables_value) / current_liabilities, 2) if current_liabilities > 0 else 0.0
+            health_status = "healthy" if working_capital_ratio >= 1.5 else ("warning" if working_capital_ratio >= 1.0 else "critical")
+
+            # ── Per-Company Net Working Capital Breakdown ─────────────────────────────
+            company_qs = Company.objects.all()
+            if tenant_ids:
+                company_qs = company_qs.filter(tenant_id__in=tenant_ids)
+            if company_ids:
+                company_qs = company_qs.filter(id__in=company_ids)
+
+            company_breakdown = []
+            for comp in company_qs:
+                c_cash_moves = AccountMoveLine.objects.filter(
+                    account_type='asset_cash',
+                    account_move__state='posted',
+                    tenant__is_active=True,
+                    company=comp
+                )
+                c_cash = _sum(c_cash_moves, "balance") * base_multiplier
+
+                c_receivables = AccountMove.objects.filter(
+                    state="posted",
+                    move_type="out_invoice",
+                    payment_state__in=["not_paid", "partial", "in_payment"],
+                    tenant__is_active=True,
+                    company=comp
+                )
+                c_ar_val = _sum_converted(c_receivables, "amount_residual", effective_base, rate_map)
+                c_ar_overdue = _sum_converted(c_receivables.filter(invoice_date_due__lt=today), "amount_residual", effective_base, rate_map)
+
+                c_quants = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True, company=comp)
+                c_inv_raw = _to_float(c_quants.aggregate(value=Coalesce(Sum(inventory_expr), Decimal("0")))["value"])
+                c_inv_val = c_inv_raw * base_multiplier
+
+                c_payables = AccountMove.objects.filter(
+                    state="posted",
+                    move_type="in_invoice",
+                    payment_state__in=["not_paid", "partial", "in_payment"],
+                    tenant__is_active=True,
+                    company=comp
+                )
+                c_ap_val = _sum_converted(c_payables, "amount_residual", effective_base, rate_map)
+
+                c_other_liab_moves = AccountMoveLine.objects.filter(
+                    account_type='liability_current',
+                    account_move__state='posted',
+                    tenant__is_active=True,
+                    company=comp
+                )
+                c_tot_other_liab = -1 * _sum(c_other_liab_moves, "balance") * base_multiplier
+                c_accrued = (-1 * _sum(c_other_liab_moves.filter(q_accrued), "balance") * base_multiplier) if q_accrued else 0.0
+                c_debt = (-1 * _sum(c_other_liab_moves.filter(q_short_term), "balance") * base_multiplier) if q_short_term else 0.0
+                c_other = c_tot_other_liab - c_accrued - c_debt
+
+                c_assets = c_cash + c_ar_val + c_inv_val
+                c_liabilities = c_ap_val + c_accrued + c_debt + c_other
+                c_nwc = c_assets - c_liabilities
+                c_cr = round(c_assets / c_liabilities, 2) if c_liabilities > 0 else 0.0
+                c_qr = round((c_cash + c_ar_val) / c_liabilities, 2) if c_liabilities > 0 else 0.0
+                c_status = "healthy" if c_cr >= 1.5 else ("warning" if c_cr >= 1.0 else "critical")
+
+                company_breakdown.append({
+                    "company_id": comp.id,
+                    "company_name": comp.name,
+                    "currency_code": comp.currency_code or "COMPANY_BASE",
+                    "net_working_capital": c_nwc,
+                    "working_capital_ratio": c_cr,
+                    "quick_ratio": c_qr,
+                    "health_status": c_status,
+                    "current_assets": {
+                        "total": c_assets,
+                        "cash_and_equivalents": c_cash,
+                        "accounts_receivable": {"value": c_ar_val, "overdue": c_ar_overdue},
+                        "inventory": c_inv_val,
+                    },
+                    "current_liabilities": {
+                        "total": c_liabilities,
+                        "accounts_payable": c_ap_val,
+                        "accrued_expenses": c_accrued,
+                        "short_term_debt": c_debt,
+                        "other_current_liabilities": c_other,
+                    }
+                })
+
+
+
+
             # Historical Metrics - Dependent on filters
             sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
+            sales = _apply_tenant_company_filter(sales, tenant_ids, company_ids)
             sales = _date_filter(sales, "date_order", date_from, date_to)
             
             # ── Inventory Risk Metrics ─────────────────────────────
-            quant_stats = StockQuant.objects.filter(tenant__is_active=True).aggregate(
+            quant_stats_qs = _apply_tenant_company_filter(
+                StockQuant.objects.filter(tenant__is_active=True),
+                tenant_ids, company_ids
+            )
+            quant_stats = quant_stats_qs.aggregate(
                 total_qty=Coalesce(Sum("quantity"), Decimal("0")),
                 total_reserved=Coalesce(Sum("reserved_quantity"), Decimal("0")),
             )
@@ -255,27 +384,48 @@ class KPIService:
             reservation_pressure = (total_reserved / total_qty * 100) if total_qty > 0 else 0.0
 
             # Low Stock: Products with quantity < 5 (Threshold)
-            low_stock_count = StockQuant.objects.filter(quantity__lt=5, quantity__gt=0, tenant__is_active=True).count()
+            low_stock_qs = _apply_tenant_company_filter(
+                StockQuant.objects.filter(quantity__lt=5, quantity__gt=0, tenant__is_active=True),
+                tenant_ids, company_ids
+            )
+            low_stock_count = low_stock_qs.count()
 
             # Expiring Soon: Lots expiring in the next 30 days with positive quantity
             thirty_days_later = today + timedelta(days=30)
-            expiring_soon_count = StockQuant.objects.filter(
-                lot__expiration_date__range=(today, thirty_days_later),
-                quantity__gt=0,
-                tenant__is_active=True
-            ).count()
+            expiring_soon_qs = _apply_tenant_company_filter(
+                StockQuant.objects.filter(
+                    lot__expiration_date__range=(today, thirty_days_later),
+                    quantity__gt=0,
+                    tenant__is_active=True
+                ),
+                tenant_ids, company_ids
+            )
+            expiring_soon_count = expiring_soon_qs.count()
 
             # Dead Stock: Products with stock but no sales in the last 90 days
             ninety_days_ago = today - timedelta(days=90)
-            sold_product_ids = SalesOrderLine.objects.filter(
-                sales_order__date_order__gte=ninety_days_ago,
-                sales_order__state__in=["sale", "done"],
-                tenant__is_active=True
-            ).values_list("product_id", flat=True).distinct()
+            sold_lines_qs = _apply_tenant_company_filter(
+                SalesOrderLine.objects.filter(
+                    sales_order__date_order__gte=ninety_days_ago,
+                    sales_order__state__in=["sale", "done"],
+                    tenant__is_active=True
+                ),
+                tenant_ids, company_ids, company_field="sales_order__company_id"
+            )
+            sold_product_ids = sold_lines_qs.values_list("product_id", flat=True).distinct()
             
-            dead_stock_quants = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True).exclude(product_id__in=sold_product_ids)
+            dead_stock_quants = _apply_tenant_company_filter(
+                StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True),
+                tenant_ids, company_ids
+            ).exclude(product_id__in=sold_product_ids)
+
             dead_stock_product_count = dead_stock_quants.values("product_id").distinct().count()
-            total_sku_count = StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True).values("product_id").distinct().count()
+
+            total_sku_qs = _apply_tenant_company_filter(
+                StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True),
+                tenant_ids, company_ids
+            )
+            total_sku_count = total_sku_qs.values("product_id").distinct().count()
             dead_stock_rate = (dead_stock_product_count / total_sku_count * 100) if total_sku_count > 0 else 0.0
 
 
@@ -304,6 +454,9 @@ class KPIService:
                         },
                         "net_working_capital": {
                             "value": net_working_capital,
+                            "working_capital_ratio": working_capital_ratio,
+                            "quick_ratio": quick_ratio,
+                            "health_status": health_status,
                             "current_assets": {
                                 "total": current_assets,
                                 "cash_and_equivalents": cash_value,
@@ -316,20 +469,23 @@ class KPIService:
                                 "accrued_expenses": accrued_expenses_value,
                                 "short_term_debt": short_term_debt_value,
                                 "other_current_liabilities": other_liabilities_value,
-                            }
+                            },
+                            "company_breakdown": company_breakdown,
                         },
                     },
                     "tenant_benchmarks": [],
                     "applied_filters": {
-                        "tenant_ids": [],
+                        "tenant_ids": tenant_ids or [],
                         "date_from": date_from,
                         "date_to": date_to,
-                        "company_ids": [],
+                        "company_ids": company_ids or [],
                     },
                 }
 
             purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
+            purchases = _apply_tenant_company_filter(purchases, tenant_ids, company_ids)
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
+
 
             sales_stats = sales.aggregate(
                 order_count=Count("id"),
@@ -392,6 +548,9 @@ class KPIService:
                     },
                     "net_working_capital": {
                         "value": net_working_capital,
+                        "working_capital_ratio": working_capital_ratio,
+                        "quick_ratio": quick_ratio,
+                        "health_status": health_status,
                         "current_assets": {
                             "total": current_assets,
                             "cash_and_equivalents": cash_value,
@@ -404,9 +563,11 @@ class KPIService:
                             "accrued_expenses": accrued_expenses_value,
                             "short_term_debt": short_term_debt_value,
                             "other_current_liabilities": other_liabilities_value,
-                        }
+                        },
+                        "company_breakdown": company_breakdown,
                     },
                 },
+
                 "tenant_benchmarks": [
                     {
                         "tenant_id": str(row["tenant_id"]),
@@ -419,10 +580,10 @@ class KPIService:
                     for row in tenant_rows
                 ],
                 "applied_filters": {
-                    "tenant_ids": [],
+                    "tenant_ids": tenant_ids or [],
                     "date_from": date_from,
                     "date_to": date_to,
-                    "company_ids": [],
+                    "company_ids": company_ids or [],
                 },
             }
 
@@ -433,6 +594,8 @@ class KPIService:
         date_from: Optional[str],
         date_to: Optional[str],
         base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         def _get():
             rate_map = _get_rate_map()
@@ -440,8 +603,11 @@ class KPIService:
             base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
             
             sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
+            sales = _apply_tenant_company_filter(sales, tenant_ids, company_ids)
             sales = _date_filter(sales, "date_order", date_from, date_to)
+
             purchases = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
+            purchases = _apply_tenant_company_filter(purchases, tenant_ids, company_ids)
             purchases = _date_filter(purchases, "date_order", date_from, date_to)
 
             sales_rows = list(
@@ -562,25 +728,41 @@ class KPIService:
                 "revenue_health": {"revenue": revenue_trend, "profit": profit_trend, "margin": margin_trend, "orders": orders_trend},
                 "items": revenue_trend,
                 "has_data": bool(revenue_trend or profit_trend or procurement_trend),
-                "applied_filters": {"tenant_ids": [], "date_from": date_from, "date_to": date_to, "company_ids": []},
+                "applied_filters": {"tenant_ids": tenant_ids or [], "date_from": date_from, "date_to": date_to, "company_ids": company_ids or []},
             }
 
         return await asyncio.to_thread(_get)
 
+
     @staticmethod
-    async def get_top_products(limit: int, descending: bool = True, base_currency: Optional[str] = None) -> dict[str, Any]:
+    async def get_top_products(
+        limit: int = 10,
+        offset: int = 0,
+        descending: bool = True,
+        base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
         def _get():
             rate_map = _get_rate_map()
             effective_base = base_currency or "XAF"
             base_multiplier = _get_conversion_rate("COMPANY_BASE", effective_base, rate_map)
             
+            cogs_expr = ExpressionWrapper(
+                F("product_uom_qty") * Coalesce(F("product__standard_price"), Value(0)),
+                output_field=DecimalField(max_digits=20, decimal_places=4)
+            )
+
             lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"], sales_order__tenant__is_active=True)
+            lines = _apply_tenant_company_filter(lines, tenant_ids, company_ids, company_field="sales_order__company_id")
             rows = list(
                 lines.values("product_id", "product__name", "product__default_code", "sales_order__currency_code")
                 .annotate(
                     revenue=Coalesce(Sum("price_subtotal"), Decimal("0")),
                     quantity=Coalesce(Sum("product_uom_qty"), Decimal("0")),
                     margin=Coalesce(Sum("margin"), Decimal("0")),
+                    calc_cogs=Coalesce(Sum(cogs_expr), Decimal("0")),
+                    last_sold_on=Max("sales_order__date_order"),
                 )
             )
             
@@ -596,21 +778,40 @@ class KPIService:
                         "revenue": 0.0,
                         "quantity": 0.0,
                         "margin": 0.0,
+                        "last_sold_on": None,
                     }
                 code = r["sales_order__currency_code"] or "COMPANY_BASE"
                 val = _to_float(r["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
                 
+                row_margin = _to_float(r["margin"]) * base_multiplier  # margin is in COMPANY_BASE
+                row_cogs = _to_float(r["calc_cogs"]) * base_multiplier
+                if row_margin == 0 and row_cogs > 0:
+                    row_margin = val - row_cogs
+
                 prod_map[pid]["revenue"] += val
                 prod_map[pid]["quantity"] += _to_float(r["quantity"])
-                prod_map[pid]["margin"] += _to_float(r["margin"]) * base_multiplier  # margin is in COMPANY_BASE
+                prod_map[pid]["margin"] += row_margin
+
+                m_date = r.get("last_sold_on")
+                if m_date:
+                    if prod_map[pid]["last_sold_on"] is None or m_date > prod_map[pid]["last_sold_on"]:
+                        prod_map[pid]["last_sold_on"] = m_date
+
                 
             agg_rows = list(prod_map.values())
             agg_rows.sort(key=lambda x: x["revenue"], reverse=descending)
-            agg_rows = agg_rows[:limit]
+            
+            total_count = len(agg_rows)
+            paged_rows = agg_rows[offset : offset + limit] if (limit and limit > 0) else agg_rows[offset:]
+            has_more = total_count > (offset + len(paged_rows))
+
             products = []
-            for row in agg_rows:
+            for row in paged_rows:
                 revenue = row["revenue"]
                 margin = row["margin"]
+                cogs = max(0.0, revenue - margin)
+                last_sold = row.get("last_sold_on")
+                last_sold_str = last_sold.strftime("%Y-%m-%d") if hasattr(last_sold, "strftime") else (str(last_sold)[:10] if last_sold else None)
                 products.append({
                     "id": _to_int(row["product_id"]),
                     "name": row["product__name"] or "Unknown Product",
@@ -618,17 +819,35 @@ class KPIService:
                     "product__default_code": row["product__default_code"] or "",
                     "revenue": revenue,
                     "quantity": row["quantity"],
+                    "gross_profit": margin,
+                    "cogs": cogs,
                     "margin_pct": (margin / revenue * 100) if revenue else 0.0,
+                    "last_sold_on": last_sold_str,
                 })
-            return {"products": products, "items": products, "total": len(products)}
+
+            return {
+                "products": products,
+                "items": products,
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "has_more": has_more,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
+                },
+            }
 
         return await asyncio.to_thread(_get)
+
 
     @staticmethod
     async def get_product_detail(
         product_id: int,
         order_limit: int = 50,
         order_offset: int = 0,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         """
         Returns details for a specific product, including total sales metrics
@@ -640,9 +859,15 @@ class KPIService:
             from odoo_app.models import Product
             
             try:
-                product = Product.objects.select_related("category", "tenant").get(id=product_id, tenant__is_active=True)
+                product_qs = Product.objects.select_related("category", "tenant").filter(id=product_id, tenant__is_active=True)
+                if tenant_ids:
+                    product_qs = product_qs.filter(tenant_id__in=tenant_ids)
+                if company_ids:
+                    product_qs = product_qs.filter(Q(company_id__in=company_ids) | Q(company_id__isnull=True))
+                product = product_qs.get()
             except Product.DoesNotExist:
-                raise HTTPException(status_code=404, detail="Product not found or tenant inactive")
+                raise HTTPException(status_code=404, detail="Product not found or tenant/company filter excluded product")
+
 
             # Get all sale/done order lines for this product
             lines_qs = SOLine.objects.filter(
@@ -650,6 +875,7 @@ class KPIService:
                 sales_order__state__in=["sale", "done"],
                 sales_order__tenant__is_active=True
             ).select_related("sales_order", "sales_order__partner", "sales_order__company", "sales_order__tenant")
+            lines_qs = _apply_tenant_company_filter(lines_qs, tenant_ids, company_ids, company_field="sales_order__company_id")
 
             totals = lines_qs.aggregate(
                 total_qty=Coalesce(Sum("product_uom_qty"), Decimal("0")),
@@ -702,12 +928,19 @@ class KPIService:
         return await asyncio.to_thread(_fetch)
 
     @staticmethod
-    async def get_top_customers(limit: int, base_currency: Optional[str] = None) -> dict[str, Any]:
+    async def get_top_customers(
+        limit: int = 10,
+        offset: int = 0,
+        base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
         def _get():
             rate_map = _get_rate_map()
             effective_base = base_currency or "XAF"
             
             sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
+            sales = _apply_tenant_company_filter(sales, tenant_ids, company_ids)
             rows = list(
                 sales.values("partner_id", "partner__name", "currency_code")
                 .annotate(
@@ -734,10 +967,13 @@ class KPIService:
                 
             agg_rows = list(cust_map.values())
             agg_rows.sort(key=lambda x: x["revenue"], reverse=True)
-            agg_rows = agg_rows[:limit]
             
+            total_count = len(agg_rows)
+            paged_rows = agg_rows[offset : offset + limit] if (limit and limit > 0) else agg_rows[offset:]
+            has_more = total_count > (offset + len(paged_rows))
+
             customers = []
-            for row in agg_rows:
+            for row in paged_rows:
                 customers.append({
                     "id": _to_int(row["partner_id"]),
                     "name": row["partner__name"] or "Unknown Customer",
@@ -745,15 +981,29 @@ class KPIService:
                     "revenue": row["revenue"],
                     "order_count": row["order_count"],
                 })
-            return {"customers": customers, "items": customers, "total": len(customers)}
+            return {
+                "customers": customers,
+                "items": customers,
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "has_more": has_more,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
+                },
+            }
 
         return await asyncio.to_thread(_get)
+
 
     @staticmethod
     async def get_customer_detail(
         customer_id: int,
         order_limit: int = 50,
         order_offset: int = 0,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         """
         Returns details for a specific customer, including their full contact profile
@@ -766,11 +1016,19 @@ class KPIService:
             from odoo_app.models import Partner
 
             try:
-                partner = Partner.objects.select_related("tenant").get(id=customer_id, tenant__is_active=True)
+                partner_qs = Partner.objects.select_related("tenant").filter(id=customer_id, tenant__is_active=True)
+                if tenant_ids:
+                    partner_qs = partner_qs.filter(tenant_id__in=tenant_ids)
+                if company_ids:
+                    partner_qs = partner_qs.filter(Q(company_id__in=company_ids) | Q(company_id__isnull=True))
+                partner = partner_qs.get()
             except Partner.DoesNotExist:
-                raise HTTPException(status_code=404, detail="Customer not found or tenant inactive")
+                raise HTTPException(status_code=404, detail="Customer not found or tenant/company filter excluded customer")
+
 
             base_sales = SalesOrder.objects.filter(state__in=["sale", "done"], partner=partner, tenant__is_active=True)
+            base_sales = _apply_tenant_company_filter(base_sales, tenant_ids, company_ids)
+
 
 
             # Calculate totals for this specific partner
@@ -856,7 +1114,10 @@ class KPIService:
 
 
     @staticmethod
-    async def get_receivables_aging() -> dict[str, Any]:
+    async def get_receivables_aging(
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
         def _get():
             today = date.today()
             receivables = AccountMove.objects.filter(
@@ -865,6 +1126,7 @@ class KPIService:
                 payment_state__in=["not_paid", "partial", "in_payment"],
                 tenant__is_active=True
             )
+            receivables = _apply_tenant_company_filter(receivables, tenant_ids, company_ids)
             buckets = [
                 {"bucket": "current", "amount": _sum(receivables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)), "amount_residual"), "count": receivables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)).count()},
                 {"bucket": "1-30 days", "amount": 0.0, "count": 0},
@@ -878,7 +1140,15 @@ class KPIService:
                 buckets[idx]["amount"] += _to_float(move.amount_residual)
                 buckets[idx]["count"] += 1
             overdue_total = sum(bucket["amount"] for bucket in buckets[1:])
-            return {"buckets": buckets, "total_receivables": sum(bucket["amount"] for bucket in buckets), "overdue_total": overdue_total}
+            return {
+                "buckets": buckets,
+                "total_receivables": sum(bucket["amount"] for bucket in buckets),
+                "overdue_total": overdue_total,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
+                },
+            }
 
         return await asyncio.to_thread(_get)
 
@@ -887,6 +1157,8 @@ class KPIService:
         bucket: str,
         limit: int = 50,
         offset: int = 0,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         """
         Return paginated invoices for a specific receivables aging bucket, grouped by tenant.
@@ -903,6 +1175,7 @@ class KPIService:
                 payment_state__in=["not_paid", "partial", "in_payment"],
                 tenant__is_active=True
             ).select_related("partner", "company", "tenant")
+            base_qs = _apply_tenant_company_filter(base_qs, tenant_ids, company_ids)
 
             bucket_key = bucket.lower().strip()
 
@@ -981,6 +1254,8 @@ class KPIService:
                 }
 
             active_tenants = list(Tenant.objects.filter(is_active=True))
+            if tenant_ids:
+                active_tenants = [t for t in active_tenants if str(t.id) in tenant_ids]
             tenants_res = []
 
             for t in active_tenants:
@@ -1006,8 +1281,13 @@ class KPIService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_fast_moving_products(limit: int) -> dict[str, Any]:
-        top = await KPIService.get_top_products(limit, descending=True)
+    async def get_fast_moving_products(
+        limit: int = 10,
+        offset: int = 0,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
+        top = await KPIService.get_top_products(limit=limit, offset=offset, descending=True, tenant_ids=tenant_ids, company_ids=company_ids)
         items = [
             {
                 "id": item["id"],
@@ -1017,33 +1297,71 @@ class KPIService:
             }
             for item in top.get("products", [])
         ]
-        return {"items": items, "products": items, "total": len(items)}
+        return {
+            "items": items,
+            "products": items,
+            "total": top.get("total", len(items)),
+            "limit": limit,
+            "offset": offset,
+            "has_more": top.get("has_more", False),
+            "applied_filters": {
+                "tenant_ids": tenant_ids or [],
+                "company_ids": company_ids or [],
+            },
+        }
 
     @staticmethod
-    async def get_category_performance() -> dict[str, Any]:
+    async def get_category_performance(
+        limit: int = 10,
+        offset: int = 0,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
         def _get():
             lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"], sales_order__tenant__is_active=True)
+            lines = _apply_tenant_company_filter(lines, tenant_ids, company_ids, company_field="sales_order__company_id")
             rows = list(
                 lines.values("product__category_id", "product__category__complete_name", "product__category__name")
                 .annotate(revenue=Coalesce(Sum("price_subtotal"), Decimal("0")), margin=Coalesce(Sum("margin"), Decimal("0")))
                 .order_by("-revenue")
             )
-            items = []
+            items_all = []
             for row in rows:
                 revenue = _to_float(row["revenue"])
                 margin = _to_float(row["margin"])
-                items.append({
+                items_all.append({
                     "id": _to_int(row["product__category_id"]),
                     "category": row["product__category__complete_name"] or row["product__category__name"] or "Uncategorized",
                     "revenue": revenue,
                     "margin_pct": (margin / revenue * 100) if revenue else 0.0,
                 })
-            return {"items": items, "categories": items, "total": len(items)}
+            
+            total_count = len(items_all)
+            paged_items = items_all[offset : offset + limit] if (limit and limit > 0) else items_all[offset:]
+            has_more = total_count > (offset + len(paged_items))
+
+            return {
+                "items": paged_items,
+                "categories": paged_items,
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "has_more": has_more,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
+                },
+            }
 
         return await asyncio.to_thread(_get)
 
+
     @staticmethod
-    async def get_currency_impact(base_currency: Optional[str] = None) -> dict[str, Any]:
+    async def get_currency_impact(
+        base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ) -> dict[str, Any]:
         def _get():
             from django.db import connection
             from odoo_app.models import AccountMove, SalesOrder
@@ -1078,6 +1396,7 @@ class KPIService:
 
             # ── 1. Currency Revenue Breakdown ──────────────────────────────
             sales = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
+            sales = _apply_tenant_company_filter(sales, tenant_ids, company_ids)
             rows = list(
                 sales.values("currency_code")
                 .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))
@@ -1135,16 +1454,25 @@ class KPIService:
             # ── 3. Unrealized FX Impact ────────────────────────────────────
             unrealized_fx = 0.0
             
+            sql_unrealized = """
+                SELECT m.currency_code, SUM(m.amount_residual) as residual
+                FROM fact_account_moves m
+                JOIN tenants t ON m.tenant_id = t.id
+                WHERE m.payment_state IN ('not_paid', 'partial')
+                  AND m.move_type IN ('out_invoice', 'in_invoice')
+                  AND t.is_active = True
+            """
+            params: list[Any] = []
+            if tenant_ids:
+                sql_unrealized += " AND m.tenant_id IN %s"
+                params.append(tuple(tenant_ids))
+            if company_ids:
+                sql_unrealized += " AND m.company_id IN %s"
+                params.append(tuple(company_ids))
+            sql_unrealized += " GROUP BY m.currency_code"
+
             with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT m.currency_code, SUM(m.amount_residual) as residual
-                    FROM fact_account_moves m
-                    JOIN tenants t ON m.tenant_id = t.id
-                    WHERE m.payment_state IN ('not_paid', 'partial')
-                      AND m.move_type IN ('out_invoice', 'in_invoice')
-                      AND t.is_active = True
-                    GROUP BY m.currency_code
-                """)
+                cursor.execute(sql_unrealized, params if params else None)
                 open_balances = cursor.fetchall()
 
             for code, residual in open_balances:
@@ -1159,17 +1487,26 @@ class KPIService:
 
             # ── 3.5 Realized FX Impact ─────────────────────────────────────
             realized_fx = 0.0
+            sql_realized = """
+                SELECT SUM(l.balance)
+                FROM fact_account_move_lines l
+                JOIN tenants t ON l.tenant_id = t.id
+                WHERE (LOWER(l.account_name) LIKE '%%difference%%'
+                   OR LOWER(l.account_name) LIKE '%%exchange%%'
+                   OR LOWER(l.account_name) LIKE '%%forex%%'
+                   OR LOWER(l.account_name) LIKE '%%change%%')
+                  AND t.is_active = True
+            """
+            r_params: list[Any] = []
+            if tenant_ids:
+                sql_realized += " AND l.tenant_id IN %s"
+                r_params.append(tuple(tenant_ids))
+            if company_ids:
+                sql_realized += " AND l.company_id IN %s"
+                r_params.append(tuple(company_ids))
+
             with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT SUM(l.balance)
-                    FROM fact_account_move_lines l
-                    JOIN tenants t ON l.tenant_id = t.id
-                    WHERE (LOWER(l.account_name) LIKE '%difference%'
-                       OR LOWER(l.account_name) LIKE '%exchange%'
-                       OR LOWER(l.account_name) LIKE '%forex%'
-                       OR LOWER(l.account_name) LIKE '%change%')
-                      AND t.is_active = True
-                """)
+                cursor.execute(sql_realized, r_params if r_params else None)
                 row = cursor.fetchone()
                 raw_realized = float(row[0]) if row and row[0] else 0.0
                 
@@ -1201,6 +1538,7 @@ class KPIService:
             }
 
         return await asyncio.to_thread(_get)
+
 
     @staticmethod
     def _apply_period(qs, period: str, target_date: date):
@@ -1326,6 +1664,8 @@ class KPIService:
         limit: int = 50,
         offset: int = 0,
         base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         """
         Return itemised breakdown of revenues / expenses / profits for the
@@ -1376,6 +1716,7 @@ class KPIService:
             # ── Revenues (SalesOrder + SalesOrderLines) ──────────────
             if kind in ("revenues", "profits"):
                 so_qs = SalesOrder.objects.filter(state__in=["sale", "done"], tenant__is_active=True)
+                so_qs = _apply_tenant_company_filter(so_qs, tenant_ids, company_ids)
                 so_qs = KPIService._apply_period(so_qs, period, target_date)
                 
                 # Global Aggregates
@@ -1408,6 +1749,7 @@ class KPIService:
             # ── Expenses (PurchaseOrder + PurchaseOrderLines) ─────────
             if kind in ("expenses", "profits"):
                 po_qs = PurchaseOrder.objects.filter(state__in=["purchase", "done"], tenant__is_active=True)
+                po_qs = _apply_tenant_company_filter(po_qs, tenant_ids, company_ids)
                 po_qs = KPIService._apply_period(po_qs, period, target_date)
 
                 
@@ -1463,6 +1805,11 @@ class KPIService:
                 "revenues": revenue_items,
                 "expenses": expense_items,
                 "tenants": tenants,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
+                },
             }
 
         return await asyncio.to_thread(_fetch)
+

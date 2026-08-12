@@ -18,6 +18,16 @@ class ReportScheduleCreate(BaseModel):
     is_enabled:  bool = True
     start_at:    datetime  # first send time (UTC)
 
+    @field_validator('timezone')
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        import zoneinfo
+        try:
+            zoneinfo.ZoneInfo(v)
+            return v
+        except Exception:
+            raise ValueError(f"Invalid timezone: '{v}'. Must be a valid IANA timezone string (e.g. UTC, Asia/Riyadh, America/New_York).")
+
     @field_validator('frequency')
     @classmethod
     def validate_frequency(cls, v: str) -> str:
@@ -44,12 +54,25 @@ class ReportScheduleUpdate(BaseModel):
     is_enabled:  Optional[bool] = None
     next_send_at: Optional[datetime] = None
 
+    @field_validator('timezone')
+    @classmethod
+    def validate_timezone(cls, v: str | None) -> str | None:
+        if v is not None:
+            import zoneinfo
+            try:
+                zoneinfo.ZoneInfo(v)
+                return v
+            except Exception:
+                raise ValueError(f"Invalid timezone: '{v}'. Must be a valid IANA timezone string (e.g. UTC, Asia/Riyadh, America/New_York).")
+        return v
+
     @field_validator('frequency')
     @classmethod
     def validate_frequency(cls, v: str | None) -> str | None:
         if v is not None and v not in VALID_FREQUENCIES:
             raise ValueError(f"frequency must be one of: {', '.join(sorted(VALID_FREQUENCIES))}")
         return v
+
 
 
 class ReportScheduleResponse(BaseModel):

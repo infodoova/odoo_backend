@@ -53,7 +53,10 @@ class ThinkingSafeChatAnthropic(ChatAnthropic):
                 # If we stripped everything and only had thinking blocks, use empty string
                 if not new_content:
                     new_content = ""
-                msg = msg.copy(update={"content": new_content})
+                if hasattr(msg, "model_copy"):
+                    msg = msg.model_copy(update={"content": new_content})
+                else:
+                    msg = msg.copy(update={"content": new_content})
             cleaned.append(msg)
         return cleaned
 
@@ -108,6 +111,9 @@ class DoovaLangChainAgent:
             agent=self.agent, 
             tools=agent_tools, 
             verbose=True,
+            max_iterations=10,
+            early_stopping_method="generate",
+            handle_parsing_errors=True,
             callbacks=[AgentCallbackHandler()]
         )
 

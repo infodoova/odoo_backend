@@ -22,11 +22,14 @@ class ReportSchedule(models.Model):
     tenants      = models.JSONField(default=list)  # [] = creator tenant, ["uuid1", "uuid2"] = specific tenant IDs
     report_type  = models.CharField(max_length=30, default='analysis')
     prompt       = models.TextField(default='', blank=True)
-    is_enabled   = models.BooleanField(default=True)
-    next_send_at = models.DateTimeField()
-    last_sent_at = models.DateTimeField(null=True, blank=True)
-    created_at   = models.DateTimeField(auto_now_add=True)
-    updated_at   = models.DateTimeField(auto_now=True)
+    is_enabled           = models.BooleanField(default=True)
+    consecutive_failures = models.IntegerField(default=0)
+    last_error           = models.TextField(null=True, blank=True)
+    paused_reason        = models.CharField(max_length=255, null=True, blank=True)
+    next_send_at         = models.DateTimeField()
+    last_sent_at         = models.DateTimeField(null=True, blank=True)
+    created_at           = models.DateTimeField(auto_now_add=True)
+    updated_at           = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'report_schedules'
@@ -44,16 +47,28 @@ class ReportLog(models.Model):
         ('sent',   'Sent'),
         ('failed', 'Failed'),
     ]
+    ERROR_CATEGORY_CHOICES = [
+        ('ai_failure',    'AI Agent Failure'),
+        ('pdf_failure',   'PDF Generation Failure'),
+        ('email_failure', 'Email Delivery Failure'),
+        ('smtp_missing',  'SMTP Unconfigured'),
+        ('data_failure',  'Data Fetch Failure'),
+        ('unknown',       'Unknown Failure'),
+    ]
 
-    id            = models.BigAutoField(primary_key=True)
-    schedule      = models.ForeignKey(ReportSchedule, on_delete=models.CASCADE, related_name='logs')
-    status        = models.CharField(max_length=10, choices=STATUS_CHOICES)
-    filename      = models.CharField(max_length=255, null=True, blank=True)
-    error_message = models.TextField(null=True, blank=True)
-    sent_at       = models.DateTimeField(auto_now_add=True)
+    id               = models.BigAutoField(primary_key=True)
+    schedule         = models.ForeignKey(ReportSchedule, on_delete=models.CASCADE, related_name='logs')
+    status           = models.CharField(max_length=10, choices=STATUS_CHOICES)
+    filename         = models.CharField(max_length=255, null=True, blank=True)
+    error_message    = models.TextField(null=True, blank=True)
+    error_category   = models.CharField(max_length=30, choices=ERROR_CATEGORY_CHOICES, default='unknown', null=True, blank=True)
+    duration_seconds = models.FloatField(null=True, blank=True)
+    pdf_size_bytes   = models.IntegerField(null=True, blank=True)
+    sent_at          = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'report_logs'
         indexes = [
             models.Index(fields=['schedule', 'sent_at']),
         ]
+

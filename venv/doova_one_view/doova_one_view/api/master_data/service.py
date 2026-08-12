@@ -84,6 +84,7 @@ def _currency_to_item(currency: Currency) -> dict[str, Any]:
 
 
 def _partner_to_item(partner: Partner) -> dict[str, Any]:
+    company = getattr(partner, "company", None)
     return {
         "id": partner.id,
         "odoo_id": partner.odoo_id,
@@ -101,15 +102,16 @@ def _partner_to_item(partner: Partner) -> dict[str, Any]:
         "customer_rank": partner.customer_rank,
         "supplier_rank": partner.supplier_rank,
         "is_active": partner.is_active,
-        "company": None,
-        "company_id": None,
-        "company_name": "",
+        "company": {"id": company.id, "name": company.name} if company else None,
+        "company_id": getattr(partner, "company_id", None),
+        "company_name": company.name if company else "",
         "synced_at": _iso(partner.created_at),
     }
 
 
 def _product_to_item(product: Product) -> dict[str, Any]:
     category = getattr(product, "category", None)
+    company = getattr(product, "company", None)
     return {
         "id": product.id,
         "odoo_id": product.odoo_id,
@@ -124,9 +126,9 @@ def _product_to_item(product: Product) -> dict[str, Any]:
         "standard_price": _to_float(product.standard_price),
         "uom_name": product.uom_name or "",
         "is_active": product.is_active,
-        "company": "",
-        "company_id": None,
-        "company_name": "",
+        "company": {"id": company.id, "name": company.name} if company else None,
+        "company_id": getattr(product, "company_id", None),
+        "company_name": company.name if company else "",
         "synced_at": _iso(product.created_at),
     }
 
@@ -157,6 +159,7 @@ def _lot_to_item(lot: Lot) -> dict[str, Any]:
 
 
 def _coa_to_item(coa: ChartOfAccounts) -> dict[str, Any]:
+    company = getattr(coa, "company", None)
     return {
         "id": coa.id,
         "odoo_id": coa.odoo_id,
@@ -165,6 +168,9 @@ def _coa_to_item(coa: ChartOfAccounts) -> dict[str, Any]:
         "account_type": coa.account_type,
         "reconcile": coa.reconcile,
         "deprecated": coa.deprecated,
+        "company_id": getattr(coa, "company_id", None),
+        "company_name": company.name if company else "",
+        "company": {"id": company.id, "name": company.name} if company else None,
         "synced_at": _iso(coa.synced_at),
     }
 
@@ -216,6 +222,14 @@ class MasterDataService:
                 qs = qs.filter(**{f"{orm_field}__iendswith": value})
             elif op in ("equals", "eq", "="):
                 qs = qs.filter(**{orm_field: value})
+            elif op in ("in",):
+                if isinstance(value, list):
+                    qs = qs.filter(**{f"{orm_field}__in": value})
+                elif isinstance(value, (str, int)):
+                    from doova_one_view.api.common.utils import parse_company_ids
+                    c_ids = parse_company_ids(value)
+                    if c_ids:
+                        qs = qs.filter(**{f"{orm_field}__in": c_ids})
             elif op in ("gt", "after"):
                 qs = qs.filter(**{f"{orm_field}__gt": value})
             elif op in ("lt", "before"):
@@ -257,9 +271,10 @@ class MasterDataService:
         search: Optional[str] = None,
         is_customer: Optional[bool] = None,
         is_supplier: Optional[bool] = None,
+        company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         def _list():
-            qs = Partner.objects.filter(tenant_id=tenant_id)
+            qs = _company_filter(Partner.objects.filter(tenant_id=tenant_id), company_ids)
             if is_customer is not None:
                 qs = qs.filter(is_customer=is_customer)
             if is_supplier is not None:
@@ -267,29 +282,31 @@ class MasterDataService:
             if search:
                 qs = qs.filter(Q(name__icontains=search) | Q(email__icontains=search) | Q(phone__icontains=search))
             total = qs.count()
-            items = [_partner_to_item(p) for p in qs.order_by("name", "id")[offset : offset + limit]]
-            return {"items": items, "total": total, "limit": limit, "offset": offset}
+            items = [_partner_to_item(p) for p in qs.select_related("company").order_by("name", "id")[offset : offset + limit]]
+            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids}}
         return await asyncio.to_thread(_list)
 
     @staticmethod
-    async def search_partners(tenant_id: str, filters: list[Any], limit: int, offset: int) -> dict[str, Any]:
+    async def search_partners(tenant_id: str, filters: list[Any], limit: int, offset: int, company_ids: Optional[list[int]] = None) -> dict[str, Any]:
         field_map = {
             "id": "id", "odoo_id": "odoo_id", "name": "name",
             "display_name": "name", "partner_type": "partner_type",
             "email": "email", "phone": "phone", "city": "city",
             "is_customer": "is_customer", "is_supplier": "is_supplier",
             "is_active": "is_active",
+            "company_id": "company_id", "company_name": "company__name",
         }
         def _search():
+            qs = _company_filter(Partner.objects.filter(tenant_id=tenant_id), company_ids)
             qs = MasterDataService._apply_search(
-                Partner.objects.filter(tenant_id=tenant_id),
+                qs,
                 filters,
                 field_map,
                 {"is_customer", "is_supplier", "is_active"},
             )
             total = qs.count()
-            items = [_partner_to_item(p) for p in qs.order_by("name", "id")[offset : offset + limit]]
-            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "filters": [getattr(f, "model_dump", lambda: dict(f))() for f in (filters or [])]}}
+            items = [_partner_to_item(p) for p in qs.select_related("company").order_by("name", "id")[offset : offset + limit]]
+            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "filters": [getattr(f, "model_dump", lambda: dict(f))() for f in (filters or [])], "company_ids": company_ids}}
         return await asyncio.to_thread(_search)
 
     @staticmethod
@@ -301,11 +318,11 @@ class MasterDataService:
         company_ids: Optional[list[int]] = None,
     ) -> dict[str, Any]:
         def _list():
-            qs = Product.objects.filter(tenant_id=tenant_id)
+            qs = _company_filter(Product.objects.filter(tenant_id=tenant_id), company_ids)
             if search:
                 qs = qs.filter(Q(name__icontains=search) | Q(default_code__icontains=search) | Q(barcode__icontains=search))
             total = qs.count()
-            items = [_product_to_item(p) for p in qs.select_related("category").order_by("name", "id")[offset : offset + limit]]
+            items = [_product_to_item(p) for p in qs.select_related("category", "company").order_by("name", "id")[offset : offset + limit]]
             return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids}}
         return await asyncio.to_thread(_list)
 
@@ -317,11 +334,13 @@ class MasterDataService:
             "product_type": "product_type", "category": "category__name",
             "list_price": "list_price", "standard_price": "standard_price",
             "uom_name": "uom_name", "is_active": "is_active",
+            "company_id": "company_id", "company_name": "company__name",
         }
         def _search():
-            qs = MasterDataService._apply_search(Product.objects.filter(tenant_id=tenant_id), filters, field_map, {"is_active"})
+            qs = _company_filter(Product.objects.filter(tenant_id=tenant_id), company_ids)
+            qs = MasterDataService._apply_search(qs, filters, field_map, {"is_active"})
             total = qs.count()
-            items = [_product_to_item(p) for p in qs.select_related("category").order_by("name", "id")[offset : offset + limit]]
+            items = [_product_to_item(p) for p in qs.select_related("category", "company").order_by("name", "id")[offset : offset + limit]]
             return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "filters": [getattr(f, "model_dump", lambda: dict(f))() for f in (filters or [])], "company_ids": company_ids}}
         return await asyncio.to_thread(_search)
 
@@ -535,28 +554,29 @@ class MasterDataService:
         ]) for row in rows])
 
     @staticmethod
-    async def get_chart_of_accounts(tenant_id: str, limit: int = 50, offset: int = 0, search: Optional[str] = None) -> dict[str, Any]:
+    async def get_chart_of_accounts(tenant_id: str, limit: int = 50, offset: int = 0, search: Optional[str] = None, company_ids: Optional[list[int]] = None) -> dict[str, Any]:
         def _list():
-            qs = ChartOfAccounts.objects.filter(tenant_id=tenant_id)
+            qs = _company_filter(ChartOfAccounts.objects.filter(tenant_id=tenant_id), company_ids)
             if search:
                 qs = qs.filter(Q(name__icontains=search) | Q(code__icontains=search))
             total = qs.count()
-            items = [_coa_to_item(c) for c in qs.order_by("code", "id")[offset : offset + limit]]
-            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id}}
+            items = [_coa_to_item(c) for c in qs.select_related("company").order_by("code", "id")[offset : offset + limit]]
+            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids}}
         return await asyncio.to_thread(_list)
 
     @staticmethod
-    async def search_chart_of_accounts(tenant_id: str, filters: list[Any], limit: int, offset: int) -> dict[str, Any]:
+    async def search_chart_of_accounts(tenant_id: str, filters: list[Any], limit: int, offset: int, company_ids: Optional[list[int]] = None) -> dict[str, Any]:
         field_map = {
             "id": "id", "odoo_id": "odoo_id", "code": "code", "name": "name",
             "account_type": "account_type", "reconcile": "reconcile", "deprecated": "deprecated",
+            "company_id": "company_id", "company_name": "company__name",
         }
         def _search():
-            qs = ChartOfAccounts.objects.filter(tenant_id=tenant_id)
+            qs = _company_filter(ChartOfAccounts.objects.filter(tenant_id=tenant_id), company_ids)
             qs = MasterDataService._apply_search(qs, filters, field_map)
             total = qs.count()
-            items = [_coa_to_item(c) for c in qs.order_by("code", "id")[offset : offset + limit]]
-            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "filters": [getattr(f, "model_dump", lambda: dict(f))() for f in (filters or [])]}}
+            items = [_coa_to_item(c) for c in qs.select_related("company").order_by("code", "id")[offset : offset + limit]]
+            return {"items": items, "total": total, "limit": limit, "offset": offset, "applied_filters": {"tenant_id": tenant_id, "filters": [getattr(f, "model_dump", lambda: dict(f))() for f in (filters or [])], "company_ids": company_ids}}
         return await asyncio.to_thread(_search)
 
     @staticmethod

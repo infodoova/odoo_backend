@@ -57,14 +57,11 @@ routes = [
     Mount("/api/v1", app=fastapi_app),  # FastAPI handles all /api/* endpoints
 ]
 
-# Add static files and reports mounting
+# Add static files mounting
 static_dir = Path(settings.STATIC_ROOT)
 if static_dir.exists():
     routes.append(Mount("/static", StaticFiles(directory=str(static_dir)), name="static"))
 
-reports_dir = Path("reports")
-reports_dir.mkdir(exist_ok=True)
-routes.append(Mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports"))
 
 # Mount Django at root (handles /admin and everything else)
 routes.append(Mount("/", app=django_asgi))

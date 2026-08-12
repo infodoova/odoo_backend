@@ -5,6 +5,7 @@ class Partner(models.Model):
     """Partner dimension (customers & suppliers)"""
     id = models.BigAutoField(primary_key=True)
     tenant = models.ForeignKey('odoo_app.Tenant', on_delete=models.CASCADE, related_name='partners')
+    company = models.ForeignKey('odoo_app.Company', on_delete=models.SET_NULL, null=True, blank=True)
     odoo_id = models.IntegerField()
     name = models.CharField(max_length=500)
     partner_type = models.CharField(max_length=50, null=True, blank=True)

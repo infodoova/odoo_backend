@@ -324,11 +324,60 @@ async def chat_endpoint(request: Request):
         f"   History Context: {len(chat_history_from_db)} messages"
     )
 
+    # Clean voice mode tags if present
+    clean_user_message = user_message
+    is_voice_mode = "[VOICE MODE:" in user_message
+    if is_voice_mode:
+        clean_user_message = _re.sub(r'\[VOICE MODE:[^\]]*\]', '', user_message).strip()
+
     # 2. Routing (pass recent chat history for context-aware intent resolution)
-    decision = await asyncio.to_thread(router_node.classify, user_message, chat_history_from_db)
-    
-    # 2.1 Handle Plan Approval (CONFIRM path)
-    if decision == "CONFIRM" and session.plan_state:
+    decision = await asyncio.to_thread(router_node.classify, clean_user_message or user_message, chat_history_from_db)
+
+    # 2.1 Handle Plan Approval (CONFIRM path with deterministic affirmative matching)
+    REJECTION_KEYWORDS = {"no", "nope", "nah", "cancel", "stop", "abort", "dont", "don't", "refuse", "reject", "nevermind", "nvm"}
+    AFFIRMATIVE_KEYWORDS = {
+        "yes", "ye", "yeah", "yep", "yup", "ya", "yaa", "yess", "yesss", "sure", "ok", "okay", "k", "kk",
+        "proceed", "go", "ahead", "do", "it", "confirm", "approve", "accepted", "agreed", "correct",
+        "right", "fine", "alright", "please", "pls", "plsn", "execute", "run", "start", "plan", "show",
+        "give", "perfect", "awesome", "great", "nice", "good", "super", "cool", "thx", "thanks", "thank",
+        "si", "oui", "claro", "vale", "sy", "sim", "create", "generate", "build", "make", "fetch", "pull"
+    }
+    AFFIRMATIVE_PHRASES = [
+        "give me", "sounds good", "looks good", "let's do", "lets do", "go ahead", "do it",
+        "run it", "give it", "show me", "why not", "of course", "do that", "do this", "all right"
+    ]
+
+    lower_msg = clean_user_message.lower()
+    user_words = set(_re.findall(r'\b\w+\b', lower_msg))
+    is_explicit_rejection = bool(user_words.intersection(REJECTION_KEYWORDS))
+
+    # If plan is pending and message is NOT an explicit rejection:
+    # treat explicit positive token or phrase as an approval
+    is_affirmative = not is_explicit_rejection and (
+        bool(user_words.intersection(AFFIRMATIVE_KEYWORDS)) or
+        any(phrase in lower_msg for phrase in AFFIRMATIVE_PHRASES)
+    )
+
+    if session.plan_state and (decision == "CONFIRM" or is_affirmative):
+        from django.utils import timezone
+        from .config import AgentConfig
+        import datetime
+        # Enforce plan expiry: stale plans are discarded to prevent accidental re-execution
+        plan_age_ok = True
+        if session.plan_created_at:
+            age_minutes = (timezone.now() - session.plan_created_at).total_seconds() / 60
+            if age_minutes > AgentConfig.PLAN_EXPIRY_MINUTES:
+                plan_age_ok = False
+                logger.warning(
+                    f"PLAN EXPIRED | Session: {current_session_id} | "
+                    f"Age: {age_minutes:.1f} min > {AgentConfig.PLAN_EXPIRY_MINUTES} min limit. "
+                    "Clearing plan state and routing to EXECUTE."
+                )
+                session.plan_state = None
+                session.plan_created_at = None
+                await sync_to_async(session.save)()
+
+    if session.plan_state and (decision == "CONFIRM" or is_affirmative):
         try:
             logger.info(f"PLAN APPROVED: Executing strategic architecture for session {current_session_id}")
             answer = await asyncio.to_thread(
@@ -396,16 +445,44 @@ async def chat_endpoint(request: Request):
                 )
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Guard against accidental rejections on short follow-up phrases in active sessions
-    if decision == "REJECT" and chat_history_from_db:
-        words = user_message.strip().split()
-        timeframe_keywords = {"today", "yesterday", "year", "month", "quarter", "ytd", "week", "now", "company"}
-        if len(words) <= 6 or any(w.lower().strip("!?.,") in timeframe_keywords for w in words):
-            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for follow-up prompt: '{user_message}'")
+    # Fail-safe guard against accidental rejections on follow-up phrases or voice mode in active sessions
+    clean_words = (clean_user_message or user_message).strip().split()
+    if decision == "REJECT" and (chat_history_from_db or is_voice_mode):
+        business_keywords = {
+            # English
+            "today", "yesterday", "year", "month", "quarter", "ytd", "week", "now", "company",
+            "sales", "revenue", "profit", "margin", "cost", "cogs", "inventory", "stock", "customers",
+            "clients", "partners", "receivables", "payables", "invoices", "orders", "top", "best", "total",
+            # French
+            "aujourd'hui", "hier", "annee", "année", "mois", "trimestre", "semaine", "acteurs", "detaille",
+            "produit", "produits", "ventes", "recettes", "benefice", "bénéfice", "marge", "client", "deux",
+            "clients", "fournisseurs", "factures", "commandes", "achats", "stock", "chiffre", "affaires",
+            # Spanish
+            "hoy", "ayer", "año", "mes", "trimestre", "semana", "ventas", "ingresos", "ganancias", "ambos",
+            "clientes", "proveedores", "facturas", "pedidos", "compras", "inventario", "productos", "detalle",
+            # Arabic & Transliterated
+            "مبيعات", "ارباح", "عملاء", "موردين", "مخزون", "فواتير", "منتجات", "mabi3at", "arba7", "omala"
+        }
+        clean_word_set = {w.lower().strip("!?.,;:'\"") for w in clean_words}
+        # In Voice Mode or ongoing chat session, treat ANY short utterance (<= 20 words) as valid business execution
+        if len(clean_words) <= 20 or is_voice_mode or bool(clean_word_set.intersection(business_keywords)):
+            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for follow-up/voice prompt: '{clean_user_message}'")
             decision = "EXECUTE"
 
     if decision == "REJECT":
-        answer = "I'm sorry, I can only assist with business and financial questions related to your Odoo data."
+        french_words = {"les", "des", "est", "que", "pourquoi", "comment", "bonjour", "salut", "qui", "combien", "quels", "quelles", "quel", "quelle", "dans", "avec", "par", "pour", "sur", "donne", "moi", "affiche", "montre", "acteurs", "détaille"}
+        spanish_words = {"hola", "que", "quien", "cuanto", "cuantos", "cual", "cuales", "como", "donde", "por", "para", "muestra", "dame", "ventas", "gracias", "ambos"}
+        arabic_words = {"مرحبا", "سلام", "شكرا", "كيف", "ماذا", "من", "كم", "هل"}
+
+        user_words_lower = set(_re.findall(r'\b\w+\b', clean_user_message.lower()))
+        if user_words_lower.intersection(french_words):
+            answer = "Désolé, je ne peux répondre qu'aux questions financières et commerciales liées à vos données Odoo."
+        elif user_words_lower.intersection(spanish_words):
+            answer = "Lo siento, solo puedo responder a preguntas financieras y comerciales sobre sus datos de Odoo."
+        elif user_words_lower.intersection(arabic_words):
+            answer = "عذراً، يمكنني المساعدة فقط في الأسئلة المالية والتجارية المتعلقة ببيانات Odoo الخاصة بك."
+        else:
+            answer = "I'm sorry, I can only assist with business and financial questions related to your Odoo data."
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
         duration = (time.time() - request_start) * 1000
         logger.info(f"REQUEST REJECTED in {duration:.0f}ms")
@@ -496,18 +573,30 @@ async def chat_endpoint(request: Request):
             company_ids=resolved_company_ids
         )
         # Format the plan into a readable answer for the UI
+        plan_objective = plan.get('strategic_objective') or plan.get('objective') or 'Strategic Analysis'
         plan_summary = f"### Strategic Architecture Plan\n\n"
-        plan_summary += f"**Objective:** {plan.get('objective', 'Strategic Audit')}\n\n"
-        
+        plan_summary += f"**Objective:** {plan_objective}\n\n"
+
+        steps = plan.get('steps', [])
         phases = plan.get('phases', [])
-        if phases:
+
+        if steps:
+            plan_summary += "**Execution Plan Steps:**\n"
+            for s in steps:
+                step_num = s.get('step', '')
+                desc = s.get('description', '')
+                tools = s.get('tools', [])
+                tools_str = f" *(Tools: {', '.join(tools)})*" if tools else ""
+                plan_summary += f"{step_num}. **Step {step_num}**: {desc}{tools_str}\n"
+            plan_summary += "\n"
+        elif phases:
             plan_summary += "**Phases:**\n"
             for i, p in enumerate(phases, 1):
                 title = p if isinstance(p, str) else p.get('title', 'Phase')
                 desc = "" if isinstance(p, str) else f": {p.get('description', '')}"
                 plan_summary += f"{i}. **{title}**{desc}\n"
             plan_summary += "\n"
-        
+
         plan_summary += f"**Expected Outcome:** {plan.get('expected_outcome', 'Complete Analysis')}\n\n"
         plan_summary += "---\n*This is a high-stakes request. Shall I proceed with this plan?*"
         
@@ -515,7 +604,9 @@ async def chat_endpoint(request: Request):
         
         # Save assistant message and plan state
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, message_type="plan", payload=plan)
+        from django.utils import timezone
         session.plan_state = plan
+        session.plan_created_at = timezone.now()
         await sync_to_async(session.save)()
         
         return make_chat_response(
@@ -651,6 +742,7 @@ async def generate_ai_report(request: Request):
             company_id=primary_company_id,
             company_ids=resolved_company_ids,
             custom_content=custom_content,
+            report_type=report_type,
             logo_path=logo_path,
         )
         return {"download_url": result.get("path", result["download_url"]), "filename": result["filename"]}
@@ -778,7 +870,8 @@ async def run_forecast(request: Request):
     await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
 
     try:
-        answer = fast_path_node.run(
+        answer = await asyncio.to_thread(
+            fast_path_node.run,
             message=prompt,
             tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
@@ -857,7 +950,8 @@ async def run_audit(request: Request):
     await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
 
     try:
-        answer = fast_path_node.run(
+        answer = await asyncio.to_thread(
+            fast_path_node.run,
             message=prompt,
             tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,

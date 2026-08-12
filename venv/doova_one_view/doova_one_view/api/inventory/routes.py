@@ -28,6 +28,8 @@ from doova_one_view.api.inventory.schemas import (
     ProductInventoryDetailResponse,
     StockTopCardsResponse,
     InventoryAlertsResponse,
+    UpcomingShipmentsResponse,
+    ShipmentTrackingDetailResponse,
 )
 from doova_one_view.api.inventory.service import InventoryService
 from doova_one_view.api.tenants.service import TenantService
@@ -142,6 +144,57 @@ async def get_stock_table(
         limit,
         offset,
     )
+
+
+@router.get("/{tenant_id}/dashboard/upcoming-shipments")
+@router.get("/{tenant_id}/upcoming-shipments")
+async def get_upcoming_shipments(
+    tenant_id: str,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    partner_id: Optional[int] = Query(None),
+    vendor_id: Optional[int] = Query(None),
+    product_id: Optional[int] = Query(None),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    eta_status: Optional[str] = Query(None, description="Filter by ETA status: overdue, arriving_today, on_time"),
+    search: Optional[str] = Query(None, description="Search picking name, PO origin, partner, or product"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    user: AppUser = _view_inventory_overview,
+) -> UpcomingShipmentsResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_upcoming_shipments(
+        tenant_id=tenant_id,
+        limit=limit,
+        offset=offset,
+        partner_id=vendor_id if vendor_id is not None else partner_id,
+        product_id=product_id,
+        start_date=start_date,
+        end_date=end_date,
+        eta_status=eta_status,
+        search=search,
+        company_ids=_company_ids(company_id, companies),
+    )
+
+
+@router.get("/{tenant_id}/shipments/{picking_id}/track")
+@router.get("/{tenant_id}/pickings/{picking_id}/track")
+async def get_shipment_tracking(
+    tenant_id: str,
+    picking_id: int,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    user: AppUser = _view_inventory_pickings,
+) -> ShipmentTrackingDetailResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await InventoryService.get_shipment_tracking(
+        tenant_id, picking_id, _company_ids(company_id, companies)
+    )
+
+
+
+# Pickings: static subpaths before /pickings/{picking_id}
 
 
 

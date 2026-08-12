@@ -15,8 +15,8 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
 
     t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    amount_m_col = build_currency_case_sql('m.amount_total', tenant_id, base_currency, 'm.currency_code')
+    amount_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
+    amount_m_col = build_currency_case_sql('m.amount_residual', tenant_id, base_currency, 'm.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     params.update(t_params_m)
     params.update(t_params_def)
@@ -45,6 +45,7 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
             WHERE 1=1 {t_sql_m}
               AND m.move_type = 'out_invoice'
               AND m.state = 'posted'
+              AND m.payment_state IN ('not_paid', 'partial')
               AND m.invoice_date_due < CURRENT_DATE
               {f_sql_m}
             GROUP BY p.name
@@ -296,8 +297,16 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, company
         params,
     )
 
+    from doova_one_view.api.jobs.alert_prechecks import run_all_prechecks
+    prechecks = run_all_prechecks(
+        tenant_id,
+        company_ids=normalize_company_ids(company_id=company_id, companies=company_ids),
+        tenant_ids=tenant_ids,
+    )
+
     return {
         "tool_name": "detect_anomalies_tool",
+        "macro_prechecks": prechecks,
         "unbalanced_entries": [
             {"entry": r.get('move_ref'), "debit": float(r.get('total_debit')), "credit": float(r.get('total_credit')), "variance": float(r.get('variance'))}
             for r in unbalanced
@@ -318,7 +327,7 @@ def detect_anomalies_tool(tenant_id: str, company_id: int | None = None, company
             {"entry": r.get('move_ref'), "amount": float(r.get('amount_total')), "date": str(r.get('date'))}
             for r in weekend_postings
         ],
-        "risk_level": "High" if len(unbalanced) > 3 or len(outliers) > 5 or duplicates else "Medium" if unbalanced or outliers or round_numbers else "Low",
+        "risk_level": "High" if prechecks.get("any_triggered") or len(unbalanced) > 3 or len(outliers) > 5 or duplicates else "Medium" if unbalanced or outliers or round_numbers else "Low",
     }
 
 

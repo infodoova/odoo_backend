@@ -19,6 +19,8 @@ class AlertSchedule(models.Model):
     recipients = models.JSONField()                  # ["admin@co.com"]
     companies = models.JSONField(default=list)        # [] = all, [1, 3] = specific
     tenants = models.JSONField(default=list)          # [] = creator tenant, ["uuid1", "uuid2"] = specific tenant IDs
+    thresholds = models.JSONField(default=dict, blank=True)  # custom pre-check overrides {"cash_drop_pct": 15.0, ...}
+    webhook_url = models.CharField(max_length=500, blank=True, null=True)  # Slack/Teams/Custom HTTP webhook
     timezone = models.CharField(max_length=60, default='UTC')
     is_enabled = models.BooleanField(default=True)
     is_system_default = models.BooleanField(default=False)  # True = runs for all tenants
@@ -64,7 +66,11 @@ class AlertLog(models.Model):
         related_name='alert_logs',
     )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
-    has_anomalies = models.BooleanField(default=False)
+    condition_triggered = models.BooleanField(default=False, db_column='has_anomalies')
+
+    @property
+    def has_anomalies(self) -> bool:
+        return self.condition_triggered
     summary = models.TextField(null=True, blank=True)   # AI-generated brief
     alert_sent = models.BooleanField(default=False)
     error_message = models.TextField(null=True, blank=True)

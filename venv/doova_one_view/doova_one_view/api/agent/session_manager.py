@@ -68,3 +68,14 @@ class SessionManager:
 
     def delete_session(self, session_id: str):
         ChatSession.objects.filter(session_id=session_id).delete()
+
+    def reset_session_memory(self, session_id: str):
+        """Reset a session's turn count, memory summary, and messages while keeping session record."""
+        ChatMessage.objects.filter(session__session_id=session_id).delete()
+        ChatSession.objects.filter(session_id=session_id).update(
+            turn_count=0,
+            summary="",
+            plan_state=None,
+            plan_created_at=None,
+            last_message=""
+        )

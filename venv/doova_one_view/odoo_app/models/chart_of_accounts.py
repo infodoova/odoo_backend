@@ -11,6 +11,7 @@ class ChartOfAccounts(models.Model):
     tenant = models.ForeignKey(
         'odoo_app.Tenant', on_delete=models.CASCADE, related_name='chart_of_accounts'
     )
+    company = models.ForeignKey('odoo_app.Company', on_delete=models.SET_NULL, null=True, blank=True)
     odoo_id = models.IntegerField()
     code = models.CharField(max_length=64)
     name = models.CharField(max_length=255)

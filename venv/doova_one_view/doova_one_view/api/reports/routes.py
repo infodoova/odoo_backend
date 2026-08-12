@@ -295,3 +295,61 @@ async def list_history(
 
     logs = await asyncio.to_thread(_fetch)
     return [_serialize_log(lg) for lg in logs]
+
+
+# ---------------------------------------------------------------------------
+# GET /reports/download/{filename}
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/download/{filename}",
+    summary="Securely download a generated report PDF file",
+    dependencies=[_view],
+)
+async def download_report_pdf(
+    filename: str,
+    user: AppUser = Depends(get_current_user),
+):
+    from fastapi.responses import FileResponse
+    from pathlib import Path
+
+    # Security check 1: Sanitize filename to prevent directory traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename format")
+
+    if not filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files can be downloaded")
+
+    # Security check 2: Verify file exists in reports directory
+    from django.conf import settings
+    reports_dir = Path(getattr(settings, "REPORTS_DIR", Path("reports")))
+    file_path = reports_dir / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=400 if not file_path.exists() else 404, detail="Report file not found or expired")
+
+
+    # Security check 3: Verify tenant ownership of the report
+    tenant_id = await _get_tenant_id_for_user(user)
+
+    def _verify_tenant():
+        from odoo_app.models.report_schedule import ReportLog
+        return ReportLog.objects.filter(
+            schedule__tenant_id=tenant_id,
+            filename=filename,
+        ).exists()
+
+    is_owner = await asyncio.to_thread(_verify_tenant)
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Access denied: report does not belong to your tenant")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=filename,
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "private, max-age=3600",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+

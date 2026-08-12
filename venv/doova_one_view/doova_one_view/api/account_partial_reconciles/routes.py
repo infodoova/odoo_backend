@@ -21,6 +21,11 @@ _export_reconciles = Depends(require_any_permission("export_account_reconciles")
 
 router = APIRouter(prefix="/account-partial-reconciles", tags=["Account Partial Reconciles"])
 
+from doova_one_view.api.common.utils import parse_company_ids
+
+def _company_ids(company_id: Optional[int], companies: Optional[str]) -> Optional[list[int]]:
+    return parse_company_ids(company_id if company_id is not None else companies)
+
 @router.get("/{tenant_id}/filters")
 async def get_reconciles_filters(
     tenant_id: str,
@@ -32,10 +37,12 @@ async def get_reconciles_filters(
 @router.get("/{tenant_id}/export")
 async def export_reconciles(
     tenant_id: str,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _export_reconciles,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    csv_content = await AccountPartialReconcileService.export_reconciles_csv(tenant_id)
+    csv_content = await AccountPartialReconcileService.export_reconciles_csv(tenant_id, _company_ids(company_id, companies))
     return Response(
         content=csv_content,
         media_type="text/csv",
@@ -46,20 +53,24 @@ async def export_reconciles(
 async def search_reconciles(
     tenant_id: str,
     request: SearchRequest,
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _view_reconciles,
 ) -> PaginatedResponse[AccountPartialReconcileRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await AccountPartialReconcileService.search_reconciles(tenant_id, request.filters, request.limit, request.offset)
+    return await AccountPartialReconcileService.search_reconciles(tenant_id, request.filters, request.limit, request.offset, _company_ids(company_id, companies))
 
 @router.get("/{tenant_id}")
 async def list_reconciles(
     tenant_id: str,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
     user: AppUser = _view_reconciles,
 ) -> PaginatedResponse[AccountPartialReconcileRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await AccountPartialReconcileService.get_reconciles(tenant_id, limit, offset)
+    return await AccountPartialReconcileService.get_reconciles(tenant_id, limit, offset, _company_ids(company_id, companies))
 
 @router.get("/{tenant_id}/{reconcile_id}")
 async def get_reconcile(
