@@ -6,7 +6,7 @@ import asyncio
 from datetime import date, timedelta
 from typing import Any, Optional
 
-from django.db.models import Avg, Count, Prefetch, Q, Sum
+from django.db.models import Avg, Case, Count, DecimalField, F, Prefetch, Q, Sum, When
 
 from odoo_app.models.account_move import AccountMove
 from odoo_app.models.account_move_line import AccountMoveLine
@@ -328,13 +328,22 @@ class AccountingService:
             revenue_qs = qs.filter(move_type="out_invoice", state="posted")
             expense_qs = qs.filter(move_type="in_invoice", state="posted")
 
-            posted_qs = qs.filter(state="posted")
             from odoo_app.models.account_move_line import AccountMoveLine
             from django.db.models import Sum
             
-            line_aggs = AccountMoveLine.objects.filter(
-                account_move__in=posted_qs
-            ).values("account_type", "account_code", "company__currency_code").annotate(
+            # Scoped direct index query on AccountMoveLine
+            line_base = AccountMoveLine.objects.filter(
+                tenant_id=tenant_id,
+                account_move__state='posted'
+            )
+            if company_ids:
+                line_base = line_base.filter(company_id__in=company_ids)
+            if start_date:
+                line_base = line_base.filter(account_move__date__gte=start_date)
+            if end_date:
+                line_base = line_base.filter(account_move__date__lte=end_date)
+
+            line_aggs = line_base.values("account_type", "account_code", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
@@ -378,13 +387,20 @@ class AccountingService:
                 cumulative_qs = cumulative_qs.filter(date__lte=end_date)
             cumulative_qs = cumulative_qs.filter(state='posted')
             
-            cumulative_aggs = AccountMoveLine.objects.filter(
-                account_move__in=cumulative_qs,
+            cum_lines = AccountMoveLine.objects.filter(
+                tenant_id=tenant_id,
+                account_move__state='posted',
                 account_type__in=[
                     "asset_receivable", "liability_payable", "liability_current", "asset_cash",
                     "asset_current", "asset_fixed", "asset_non_current", "asset_prepayments"
                 ]
-            ).values("account_type", "company__currency_code").annotate(
+            )
+            if company_ids:
+                cum_lines = cum_lines.filter(company_id__in=company_ids)
+            if end_date:
+                cum_lines = cum_lines.filter(account_move__date__lte=end_date)
+
+            cumulative_aggs = cum_lines.values("account_type", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
@@ -435,13 +451,16 @@ class AccountingService:
             
             # Opening balance (moves strictly before start_date)
             if start_date:
-                opening_qs = AccountingService._base_qs(tenant_id, company_ids).filter(
-                    date__lt=start_date, state='posted'
-                )
-                opening_aggs = AccountMoveLine.objects.filter(
-                    account_move__in=opening_qs,
+                open_lines = AccountMoveLine.objects.filter(
+                    tenant_id=tenant_id,
+                    account_move__state='posted',
+                    account_move__date__lt=start_date,
                     account_type="asset_cash"
-                ).values("company__currency_code").annotate(
+                )
+                if company_ids:
+                    open_lines = open_lines.filter(company_id__in=company_ids)
+
+                opening_aggs = open_lines.values("company__currency_code").annotate(
                     net_cash=Sum("debit") - Sum("credit")
                 )
                 for agg in opening_aggs:
@@ -452,13 +471,8 @@ class AccountingService:
                 opening_cash_balance = 0.0 # If all-time, opening is 0
 
             # Cash In & Out (moves within the date range)
-            period_qs = AccountingService._date_qs(
-                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
-            ).filter(state='posted')
-            period_aggs = AccountMoveLine.objects.filter(
-                account_move__in=period_qs,
-                account_type="asset_cash"
-            ).values("company__currency_code").annotate(
+            period_lines = line_base.filter(account_type="asset_cash")
+            period_aggs = period_lines.values("company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
@@ -508,9 +522,7 @@ class AccountingService:
                 for k, v in sorted(exp_vend_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]
             ]
 
-            trend_aggs = AccountMoveLine.objects.filter(
-                account_move__in=posted_qs
-            ).values("account_move__date", "account_type", "company__currency_code").annotate(
+            trend_aggs = line_base.values("account_move__date", "account_type", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
@@ -542,20 +554,19 @@ class AccountingService:
             expense_trend = [{"date": d, "value": v} for d, v in sorted(expense_trend_map.items())]
             cash_flow_trend = [{"date": d, "value": v} for d, v in sorted(cash_flow_map.items())]
 
-
-
-            state_distribution = {
-                row["state"] or "unknown": row["count"]
-                for row in qs.values("state").annotate(count=Count("id"))
-            }
-            payment_state_distribution = {
-                row["payment_state"] or "unknown": row["count"]
-                for row in qs.values("payment_state").annotate(count=Count("id"))
-            }
-            move_type_distribution = {
-                row["move_type"] or "unknown": row["count"]
-                for row in qs.values("move_type").annotate(count=Count("id"))
-            }
+            # Consolidated single query for distributions
+            dist_rows = list(qs.values("state", "payment_state", "move_type").annotate(count=Count("id")))
+            state_distribution = {}
+            payment_state_distribution = {}
+            move_type_distribution = {}
+            for r in dist_rows:
+                st = r["state"] or "unknown"
+                pst = r["payment_state"] or "unknown"
+                mt = r["move_type"] or "unknown"
+                cnt = r["count"]
+                state_distribution[st] = state_distribution.get(st, 0) + cnt
+                payment_state_distribution[pst] = payment_state_distribution.get(pst, 0) + cnt
+                move_type_distribution[mt] = move_type_distribution.get(mt, 0) + cnt
 
             receivables_aging = AccountingService._aging(qs, "out_invoice", effective_base, rate_map)
             payables_aging = AccountingService._aging(qs, "in_invoice", effective_base, rate_map)
@@ -565,7 +576,7 @@ class AccountingService:
             # Calculate total cash flow from the trend array
             total_cash_flow = sum(item["value"] for item in cash_flow_trend)
             
-            # --- Deep Cash Flow Tracing (Breakdown) ---
+            # --- Deep Cash Flow Tracing (Breakdown) with Tenant Scoped Joins ---
             from django.db import connection
             cash_flow_breakdown_map = {}
             with connection.cursor() as cursor:
@@ -605,46 +616,55 @@ class AccountingService:
                     -- FIND COUNTERPART (Outstanding or AR/AP)
                     LEFT JOIN fact_account_move_lines pay_cp_line 
                         ON pay_cp_line.account_move_id = pay_move.id 
+                        AND pay_cp_line.tenant_id = pay_line.tenant_id
                         AND pay_cp_line.id != pay_line.id
                         AND pay_cp_line.account_type IN ('asset_receivable', 'liability_payable', 'asset_current', 'asset_cash')
                         
                     -- ZERO-STEP (Direct Cash Expense/Income)
                     LEFT JOIN fact_account_move_lines m1_inc_line
                         ON m1_inc_line.account_move_id = pay_move.id
+                        AND m1_inc_line.tenant_id = pay_line.tenant_id
                         AND m1_inc_line.id != pay_line.id
                         AND m1_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
                         
                     -- JUMP 1
                     LEFT JOIN fact_account_partial_reconciles recon1
-                        ON (pay_cp_line.id = recon1.debit_move_line_id OR pay_cp_line.id = recon1.credit_move_line_id)
+                        ON recon1.tenant_id = pay_line.tenant_id
+                        AND (pay_cp_line.id = recon1.debit_move_line_id OR pay_cp_line.id = recon1.credit_move_line_id)
                         
                     LEFT JOIN fact_account_move_lines m2_line
-                        ON (m2_line.id = recon1.debit_move_line_id OR m2_line.id = recon1.credit_move_line_id)
+                        ON m2_line.tenant_id = pay_line.tenant_id
+                        AND (m2_line.id = recon1.debit_move_line_id OR m2_line.id = recon1.credit_move_line_id)
                         AND m2_line.id != pay_cp_line.id
                         
                     -- One-Step target: Is Move 2 the Invoice?
                     LEFT JOIN fact_account_move_lines m2_inc_line
-                        ON m2_inc_line.account_move_id = m2_line.account_move_id
+                        ON m2_inc_line.tenant_id = pay_line.tenant_id
+                        AND m2_inc_line.account_move_id = m2_line.account_move_id
                         AND m2_inc_line.id != m2_line.id
                         AND m2_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
 
                     -- JUMP 2
                     -- If Move 2 was a Payment, it has an AR/AP line to reconcile with the Invoice
                     LEFT JOIN fact_account_move_lines m2_ar_line
-                        ON m2_ar_line.account_move_id = m2_line.account_move_id
+                        ON m2_ar_line.tenant_id = pay_line.tenant_id
+                        AND m2_ar_line.account_move_id = m2_line.account_move_id
                         AND m2_ar_line.id != m2_line.id
                         AND m2_ar_line.account_type IN ('asset_receivable', 'liability_payable')
                         
                     LEFT JOIN fact_account_partial_reconciles recon2
-                        ON (m2_ar_line.id = recon2.debit_move_line_id OR m2_ar_line.id = recon2.credit_move_line_id)
+                        ON recon2.tenant_id = pay_line.tenant_id
+                        AND (m2_ar_line.id = recon2.debit_move_line_id OR m2_ar_line.id = recon2.credit_move_line_id)
                         
                     LEFT JOIN fact_account_move_lines m3_line
-                        ON (m3_line.id = recon2.debit_move_line_id OR m3_line.id = recon2.credit_move_line_id)
+                        ON m3_line.tenant_id = pay_line.tenant_id
+                        AND (m3_line.id = recon2.debit_move_line_id OR m3_line.id = recon2.credit_move_line_id)
                         AND m3_line.id != m2_ar_line.id
                         
                     -- Two-Step target: Income on Move 3
                     LEFT JOIN fact_account_move_lines m3_inc_line
-                        ON m3_inc_line.account_move_id = m3_line.account_move_id
+                        ON m3_inc_line.tenant_id = pay_line.tenant_id
+                        AND m3_inc_line.account_move_id = m3_line.account_move_id
                         AND m3_inc_line.id != m3_line.id
                         AND m3_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
                         
@@ -1976,7 +1996,6 @@ class AccountingService:
             ).model_dump()
             
         return await asyncio.to_thread(_get)
-
     @staticmethod
     async def get_journal_cards(
         tenant_id: str,
@@ -2001,15 +2020,162 @@ class AccountingService:
                 qs = qs.filter(company_id__in=company_ids)
                 
             total = qs.count()
-            journals = qs.select_related('company').order_by('name')[offset:offset+limit]
-            
+            journals = list(qs.select_related('company').order_by('name')[offset:offset+limit])
+            if not journals:
+                return {
+                    "items": [],
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                    "base_currency": effective_base
+                }
+
+            j_ids = [j.id for j in journals]
+            today_val = date.today()
+
+            # 1. Batch Misc Operations across all journals in page
+            misc_qs = AccountMove.objects.filter(
+                tenant_id=tenant_id,
+                journal_id__in=j_ids,
+                state='posted',
+                move_type='entry'
+            )
+            if start_date:
+                misc_qs = misc_qs.filter(date__gte=start_date)
+            if end_date:
+                misc_qs = misc_qs.filter(date__lte=end_date)
+
+            misc_aggs = {
+                r['journal_id']: r
+                for r in misc_qs.values('journal_id').annotate(
+                    count=Count('id'),
+                    amount=Sum('amount_total')
+                )
+            }
+
+            # 2. Batch Bank Statements across bank/cash journals
+            bank_cash_jids = [j.id for j in journals if (j.type or "general") in ["bank", "cash"]]
+            latest_stmts_map = {}
+            if bank_cash_jids:
+                stmt_qs = BankStatement.objects.filter(tenant_id=tenant_id, journal_id__in=bank_cash_jids)
+                if end_date:
+                    stmt_qs = stmt_qs.filter(date__lte=end_date)
+                
+                for stmt in stmt_qs.order_by('journal_id', '-date', '-id'):
+                    if stmt.journal_id not in latest_stmts_map:
+                        latest_stmts_map[stmt.journal_id] = _to_float(stmt.balance_end_real)
+
+            # 3. Batch General Ledger lines for bank/cash & general journals
+            gl_base = AccountMoveLine.objects.filter(
+                tenant_id=tenant_id,
+                account_move__state='posted'
+            )
+            if end_date:
+                gl_base = gl_base.filter(account_move__date__lte=end_date)
+
+            gl_journal_aggs = {
+                r['account_move__journal_id']: r
+                for r in gl_base.filter(account_move__journal_id__in=j_ids).values('account_move__journal_id').annotate(
+                    total_debit=Sum('debit'),
+                    total_credit=Sum('credit')
+                )
+            }
+
+            code_company_pairs = set()
+            for j in journals:
+                if hasattr(j, 'default_account_code') and j.default_account_code:
+                    code_company_pairs.add((j.default_account_code, j.company_id))
+
+            gl_code_map = {}
+            if code_company_pairs:
+                q_codes = Q()
+                for code, comp_id in code_company_pairs:
+                    if comp_id:
+                        q_codes |= Q(account_code=code, company_id=comp_id)
+                    else:
+                        q_codes |= Q(account_code=code)
+                
+                for r in gl_base.filter(q_codes).values('account_code', 'company_id').annotate(
+                    total_debit=Sum('debit'),
+                    total_credit=Sum('credit')
+                ):
+                    gl_code_map[(r['account_code'], r['company_id'])] = _to_float(r['total_debit']) - _to_float(r['total_credit'])
+
+            # 4. Batch Sale & Purchase Moves
+            sale_purchase_jids = [j.id for j in journals if (j.type or "general") in ["sale", "purchase"]]
+            sale_purchase_aggs = {}
+            if sale_purchase_jids:
+                sp_moves = AccountMove.objects.filter(
+                    tenant_id=tenant_id,
+                    journal_id__in=sale_purchase_jids,
+                )
+                if start_date:
+                    sp_moves = sp_moves.filter(date__gte=start_date)
+                if end_date:
+                    sp_moves = sp_moves.filter(date__lte=end_date)
+
+                sp_data = sp_moves.values('journal_id', 'state', 'payment_state').annotate(
+                    cnt=Count('id'),
+                    total_signed=Sum('amount_total_signed'),
+                    residual_signed=Sum('amount_residual_signed'),
+                    late_cnt=Count(Case(When(invoice_date_due__lt=today_val, then=1))),
+                    late_residual=Sum(Case(When(invoice_date_due__lt=today_val, then='amount_residual_signed'), default=0, output_field=DecimalField()))
+                )
+                for r in sp_data:
+                    jid = r['journal_id']
+                    if jid not in sale_purchase_aggs:
+                        sale_purchase_aggs[jid] = {
+                            'draft_count': 0,
+                            'draft_amount': 0.0,
+                            'unpaid_count': 0,
+                            'unpaid_amount': 0.0,
+                            'late_count': 0,
+                            'late_amount': 0.0,
+                        }
+                    rec = sale_purchase_aggs[jid]
+                    st = r['state']
+                    pay_st = r['payment_state']
+                    
+                    if st == 'draft':
+                        rec['draft_count'] += r['cnt'] or 0
+                        rec['draft_amount'] += abs(_to_float(r['total_signed']))
+                    elif st == 'posted' and pay_st not in ['paid', 'reversed']:
+                        rec['unpaid_count'] += r['cnt'] or 0
+                        rec['unpaid_amount'] += abs(_to_float(r['residual_signed']))
+                        rec['late_count'] += r['late_cnt'] or 0
+                        rec['late_amount'] += abs(_to_float(r['late_residual']))
+
+            # 5. Batch General Journal Moves (state=draft & state=posted)
+            general_jids = [j.id for j in journals if (j.type or "general") not in ["bank", "cash", "sale", "purchase"]]
+            general_moves_aggs = {}
+            if general_jids:
+                gen_moves = AccountMove.objects.filter(
+                    tenant_id=tenant_id,
+                    journal_id__in=general_jids
+                )
+                if start_date:
+                    gen_moves = gen_moves.filter(date__gte=start_date)
+                if end_date:
+                    gen_moves = gen_moves.filter(date__lte=end_date)
+                
+                for r in gen_moves.values('journal_id', 'state').annotate(
+                    count=Count('id'),
+                    amount=Sum('amount_total')
+                ):
+                    jid = r['journal_id']
+                    if jid not in general_moves_aggs:
+                        general_moves_aggs[jid] = {}
+                    general_moves_aggs[jid][r['state']] = {
+                        'count': r['count'] or 0,
+                        'amount': _to_float(r['amount'])
+                    }
+
             cards = []
             for j in journals:
                 company_currency = j.company.currency_code if (j.company and j.company.currency_code) else "COMPANY_BASE"
                 if not company_currency or company_currency == "COMPANY_BASE":
                     company_currency = "XAF"
                 
-                # Default rate for non-residual items (balances)
                 rate = _get_conversion_rate(company_currency, effective_base, rate_map)
                 
                 metrics = {
@@ -2028,143 +2194,60 @@ class AccountingService:
                     "misc_operations_amount": 0.0
                 }
                 
-                # Fetch misc operations
-                all_misc_qs = AccountMove.objects.filter(
-                    tenant_id=tenant_id,
-                    journal=j,
-                    state='posted',
-                    move_type='entry'
-                )
-                if start_date:
-                    all_misc_qs = all_misc_qs.filter(date__gte=start_date)
-                if end_date:
-                    all_misc_qs = all_misc_qs.filter(date__lte=end_date)
-                
-                misc_all_agg = all_misc_qs.aggregate(
-                    count=Count('id'),
-                    amount=Sum('amount_total')
-                )
-                metrics["misc_operations_count"] = misc_all_agg['count'] or 0
-                metrics["misc_operations_amount"] = _to_float(misc_all_agg['amount']) * rate
+                misc_data = misc_aggs.get(j.id)
+                if misc_data:
+                    metrics["misc_operations_count"] = misc_data['count'] or 0
+                    metrics["misc_operations_amount"] = _to_float(misc_data['amount']) * rate
                 
                 j_type = j.type or "general"
                 
                 if j_type in ["bank", "cash"]:
-                    stmt_qs = BankStatement.objects.filter(tenant_id=tenant_id, journal=j)
-                    if end_date:
-                        stmt_qs = stmt_qs.filter(date__lte=end_date)
-                    
-                    latest_statement = stmt_qs.order_by('-date', '-id').first()
-                    
-                    if latest_statement:
-                        metrics["latest_statement_balance"] = _to_float(latest_statement.balance_end_real) * rate
+                    if j.id in latest_stmts_map:
+                        metrics["latest_statement_balance"] = latest_stmts_map[j.id] * rate
                         metrics["balance"] = metrics["latest_statement_balance"]
-                    
-                    gl_qs = AccountMoveLine.objects.filter(
-                        tenant_id=tenant_id,
-                        account_move__state='posted'
-                    )
-                    
+
                     if hasattr(j, 'default_account_code') and j.default_account_code:
-                        gl_qs = gl_qs.filter(account_code=j.default_account_code)
-                        if j.company_id:
-                            gl_qs = gl_qs.filter(company_id=j.company_id)
+                        gl_net = gl_code_map.get((j.default_account_code, j.company_id), 0.0)
                     else:
-                        gl_qs = gl_qs.filter(account_move__journal=j)
-                        
-                    if end_date:
-                        gl_qs = gl_qs.filter(account_move__date__lte=end_date)
-                        
-                    gl_agg = gl_qs.aggregate(
-                        total_debit=Sum('debit'),
-                        total_credit=Sum('credit')
-                    )
-                    metrics["gl_balance"] = (_to_float(gl_agg['total_debit']) - _to_float(gl_agg['total_credit'])) * rate
-                    
-                    if not latest_statement:
+                        j_gl = gl_journal_aggs.get(j.id)
+                        gl_net = (_to_float(j_gl['total_debit']) - _to_float(j_gl['total_credit'])) if j_gl else 0.0
+
+                    metrics["gl_balance"] = gl_net * rate
+                    if j.id not in latest_stmts_map:
                         metrics["balance"] = metrics["gl_balance"]
-                        
+
                     if hasattr(j, 'default_account_code') and j.default_account_code:
-                        journal_own_qs = gl_qs.filter(account_move__journal=j)
-                        journal_own_agg = journal_own_qs.aggregate(
-                            total_debit=Sum('debit'),
-                            total_credit=Sum('credit')
-                        )
-                        journal_own_bal = (_to_float(journal_own_agg['total_debit']) - _to_float(journal_own_agg['total_credit'])) * rate
+                        j_gl = gl_journal_aggs.get(j.id)
+                        j_own_net = (_to_float(j_gl['total_debit']) - _to_float(j_gl['total_credit'])) if j_gl else 0.0
+                        journal_own_bal = j_own_net * rate
                     else:
                         journal_own_bal = metrics["gl_balance"]
-                        
+
                     metrics["misc_operations_amount"] = metrics["gl_balance"] - journal_own_bal
-                    
+
                 elif j_type in ["sale", "purchase"]:
-                    move_types = ['out_invoice', 'out_refund'] if j_type == "sale" else ['in_invoice', 'in_refund']
-                    
-                    moves_qs = AccountMove.objects.filter(
-                        tenant_id=tenant_id,
-                        journal=j,
-                        move_type__in=move_types
-                    )
-                    if start_date:
-                        moves_qs = moves_qs.filter(date__gte=start_date)
-                    if end_date:
-                        moves_qs = moves_qs.filter(date__lte=end_date)
-                    
-                    draft_qs = moves_qs.filter(state='draft')
-                    draft_agg = draft_qs.aggregate(total=Sum('amount_total_signed'))
-                    metrics["draft_count"] = draft_qs.count()
-                    metrics["draft_amount"] = abs(_to_float(draft_agg['total'])) * rate
-                    
-                    unpaid_qs = moves_qs.filter(state='posted').exclude(payment_state__in=['paid', 'reversed'])
-                    unpaid_agg = unpaid_qs.aggregate(total=Sum('amount_residual_signed'))
-                    metrics["unpaid_count"] = unpaid_qs.count()
-                    metrics["unpaid_amount"] = abs(_to_float(unpaid_agg['total'])) * rate
-                    
-                    late_qs = unpaid_qs.filter(invoice_date_due__lt=date.today())
-                    late_agg = late_qs.aggregate(total=Sum('amount_residual_signed'))
-                    metrics["late_count"] = late_qs.count()
-                    metrics["late_amount"] = abs(_to_float(late_agg['total'])) * rate
+                    sp_res = sale_purchase_aggs.get(j.id, {})
+                    metrics["draft_count"] = sp_res.get("draft_count", 0)
+                    metrics["draft_amount"] = sp_res.get("draft_amount", 0.0) * rate
+                    metrics["unpaid_count"] = sp_res.get("unpaid_count", 0)
+                    metrics["unpaid_amount"] = sp_res.get("unpaid_amount", 0.0) * rate
+                    metrics["late_count"] = sp_res.get("late_count", 0)
+                    metrics["late_amount"] = sp_res.get("late_amount", 0.0) * rate
 
                 else:
-                    # General journals: misc. operations, stock, voucher, etc.
-                    gen_moves_qs = AccountMove.objects.filter(
-                        tenant_id=tenant_id,
-                        journal=j
-                    )
-                    if start_date:
-                        gen_moves_qs = gen_moves_qs.filter(date__gte=start_date)
-                    if end_date:
-                        gen_moves_qs = gen_moves_qs.filter(date__lte=end_date)
+                    g_res = general_moves_aggs.get(j.id, {})
+                    draft_info = g_res.get("draft", {})
+                    metrics["draft_count"] = draft_info.get("count", 0)
+                    metrics["draft_amount"] = draft_info.get("amount", 0.0) * rate
 
-                    draft_agg = gen_moves_qs.filter(state='draft').aggregate(
-                        count=Count('id'),
-                        amount=Sum('amount_total')
-                    )
-                    metrics["draft_count"] = draft_agg['count'] or 0
-                    metrics["draft_amount"] = _to_float(draft_agg['amount']) * rate
+                    j_gl = gl_journal_aggs.get(j.id)
+                    gl_net = (_to_float(j_gl['total_debit']) - _to_float(j_gl['total_credit'])) if j_gl else 0.0
+                    metrics["gl_balance"] = gl_net * rate
 
-                    gl_qs = AccountMoveLine.objects.filter(
-                        tenant_id=tenant_id,
-                        account_move__journal=j,
-                        account_move__state='posted'
-                    )
-                    if start_date:
-                        gl_qs = gl_qs.filter(account_move__date__gte=start_date)
-                    if end_date:
-                        gl_qs = gl_qs.filter(account_move__date__lte=end_date)
-
-                    gl_agg = gl_qs.aggregate(
-                        total_debit=Sum('debit'),
-                        total_credit=Sum('credit')
-                    )
-                    metrics["gl_balance"] = (_to_float(gl_agg['total_debit']) - _to_float(gl_agg['total_credit'])) * rate
-
-                    posted_agg = gen_moves_qs.filter(state='posted').aggregate(
-                        count=Count('id'),
-                        amount=Sum('amount_total')
-                    )
-                    metrics["balance"] = _to_float(posted_agg['amount']) * rate
-                    metrics["unpaid_count"] = posted_agg['count'] or 0
-                    metrics["unpaid_amount"] = _to_float(posted_agg['amount']) * rate
+                    posted_info = g_res.get("posted", {})
+                    metrics["balance"] = posted_info.get("amount", 0.0) * rate
+                    metrics["unpaid_count"] = posted_info.get("count", 0)
+                    metrics["unpaid_amount"] = posted_info.get("amount", 0.0) * rate
 
                 cards.append({
                     "id": j.odoo_id,
