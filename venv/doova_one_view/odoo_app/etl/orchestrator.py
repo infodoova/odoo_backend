@@ -81,9 +81,13 @@ class ETLOrchestrator:
         return self.db.cursor.rowcount > 0
 
     def _release_lock(self, tenant_id: str, status: str = 'active'):
-        """Release the sync lock"""
-        query = "UPDATE tenants SET sync_status = %s, last_sync_at = NOW() WHERE id = %s"
-        self.db.execute(query, (status, tenant_id))
+        """Release the sync lock. Only update last_sync_at on successful sync."""
+        if status == 'active':
+            query = "UPDATE tenants SET sync_status = %s, last_sync_at = NOW() WHERE id = %s"
+            self.db.execute(query, (status, tenant_id))
+        else:
+            query = "UPDATE tenants SET sync_status = %s WHERE id = %s"
+            self.db.execute(query, (status, tenant_id))
 
     def run_full_sync(self) -> Dict[str, Any]:
         """
