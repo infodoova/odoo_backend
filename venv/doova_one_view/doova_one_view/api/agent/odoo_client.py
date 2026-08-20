@@ -4,6 +4,7 @@ Used for real-time data lookups and verification.
 """
 
 import os
+import ssl
 import xmlrpc.client
 from .config import AgentConfig
 
@@ -20,8 +21,17 @@ class OdooClient:
                 "Check ODOO_URL, ODOO_DB, ODOO_USERNAME, ODOO_API_KEY in .env"
             )
 
-        self.common = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common")
-        self.models = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object")
+        context = ssl.create_default_context()
+        if (
+            '.dev.odoo.com' in self.url
+            or '.odoo.sh' in self.url
+            or os.environ.get('ODOO_VERIFY_SSL', '').lower() in ('false', '0', 'no')
+        ):
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+
+        self.common = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/common", context=context)
+        self.models = xmlrpc.client.ServerProxy(f"{self.url}/xmlrpc/2/object", context=context)
 
         try:
             self.uid = self.common.authenticate(
