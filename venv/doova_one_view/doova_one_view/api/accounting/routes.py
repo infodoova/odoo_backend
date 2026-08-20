@@ -117,7 +117,7 @@ async def get_bank_cash_summary(
 ) -> BankCashSummaryResponse:
     """Dedicated endpoint for the Bank & Cash Balance vs Cash Flow dashboard card."""
     await TenantService.get_tenant(tenant_id, str(user.id))
-    data = await AccountingService.get_dashboard(
+    data = await AccountingService.get_bank_cash_summary(
         tenant_id,
         start_date or date_from,
         end_date or date_to,

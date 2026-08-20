@@ -577,228 +577,9 @@ class AccountingService:
             total_cash_flow = sum(item["value"] for item in cash_flow_trend)
             
             # --- Deep Cash Flow Tracing (Breakdown) with Tenant Scoped Joins ---
-            from django.db import connection
-            cash_flow_breakdown_map = {}
-            with connection.cursor() as cursor:
-                sql = """
-                    SELECT 
-                        pay_line.id as cash_line_id,
-                        pay_line.debit - pay_line.credit as cash_amount,
-                        comp.currency_code,
-                        
-                        -- === Zero-Step ===
-                        m1_inc_line.id as m1_inc_id,
-                        m1_inc_line.account_name as m1_account_name,
-                        ABS(m1_inc_line.balance) as m1_inc_balance,
-                        
-                        -- === One-Step ===
-                        recon1.id as recon1_id,
-                        recon1.amount as recon1_amount,
-                        m2_line.id as m2_line_id,
-                        ABS(m2_line.balance) as m2_line_balance,
-                        m2_inc_line.id as m2_inc_id,
-                        m2_inc_line.account_name as m2_account_name,
-                        ABS(m2_inc_line.balance) as m2_inc_balance,
-                        
-                        -- === Two-Step ===
-                        recon2.id as recon2_id,
-                        recon2.amount as recon2_amount,
-                        m3_line.id as m3_line_id,
-                        ABS(m3_line.balance) as m3_ar_balance,
-                        m3_inc_line.id as m3_inc_id,
-                        m3_inc_line.account_name as m3_account_name,
-                        ABS(m3_inc_line.balance) as m3_inc_balance
-                        
-                    FROM fact_account_move_lines pay_line
-                    JOIN fact_account_moves pay_move ON pay_line.account_move_id = pay_move.id
-                    LEFT JOIN dim_companies comp ON pay_line.company_id = comp.id
-                    
-                    -- FIND COUNTERPART (Outstanding or AR/AP)
-                    LEFT JOIN fact_account_move_lines pay_cp_line 
-                        ON pay_cp_line.account_move_id = pay_move.id 
-                        AND pay_cp_line.tenant_id = pay_line.tenant_id
-                        AND pay_cp_line.id != pay_line.id
-                        AND pay_cp_line.account_type IN ('asset_receivable', 'liability_payable', 'asset_current', 'asset_cash')
-                        
-                    -- ZERO-STEP (Direct Cash Expense/Income)
-                    LEFT JOIN fact_account_move_lines m1_inc_line
-                        ON m1_inc_line.account_move_id = pay_move.id
-                        AND m1_inc_line.tenant_id = pay_line.tenant_id
-                        AND m1_inc_line.id != pay_line.id
-                        AND m1_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
-                        
-                    -- JUMP 1
-                    LEFT JOIN fact_account_partial_reconciles recon1
-                        ON recon1.tenant_id = pay_line.tenant_id
-                        AND (pay_cp_line.id = recon1.debit_move_line_id OR pay_cp_line.id = recon1.credit_move_line_id)
-                        
-                    LEFT JOIN fact_account_move_lines m2_line
-                        ON m2_line.tenant_id = pay_line.tenant_id
-                        AND (m2_line.id = recon1.debit_move_line_id OR m2_line.id = recon1.credit_move_line_id)
-                        AND m2_line.id != pay_cp_line.id
-                        
-                    -- One-Step target: Is Move 2 the Invoice?
-                    LEFT JOIN fact_account_move_lines m2_inc_line
-                        ON m2_inc_line.tenant_id = pay_line.tenant_id
-                        AND m2_inc_line.account_move_id = m2_line.account_move_id
-                        AND m2_inc_line.id != m2_line.id
-                        AND m2_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
-
-                    -- JUMP 2
-                    -- If Move 2 was a Payment, it has an AR/AP line to reconcile with the Invoice
-                    LEFT JOIN fact_account_move_lines m2_ar_line
-                        ON m2_ar_line.tenant_id = pay_line.tenant_id
-                        AND m2_ar_line.account_move_id = m2_line.account_move_id
-                        AND m2_ar_line.id != m2_line.id
-                        AND m2_ar_line.account_type IN ('asset_receivable', 'liability_payable')
-                        
-                    LEFT JOIN fact_account_partial_reconciles recon2
-                        ON recon2.tenant_id = pay_line.tenant_id
-                        AND (m2_ar_line.id = recon2.debit_move_line_id OR m2_ar_line.id = recon2.credit_move_line_id)
-                        
-                    LEFT JOIN fact_account_move_lines m3_line
-                        ON m3_line.tenant_id = pay_line.tenant_id
-                        AND (m3_line.id = recon2.debit_move_line_id OR m3_line.id = recon2.credit_move_line_id)
-                        AND m3_line.id != m2_ar_line.id
-                        
-                    -- Two-Step target: Income on Move 3
-                    LEFT JOIN fact_account_move_lines m3_inc_line
-                        ON m3_inc_line.tenant_id = pay_line.tenant_id
-                        AND m3_inc_line.account_move_id = m3_line.account_move_id
-                        AND m3_inc_line.id != m3_line.id
-                        AND m3_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
-                        
-                    WHERE pay_line.tenant_id = %s
-                      AND pay_line.account_type = 'asset_cash'
-                      AND pay_move.state = 'posted'
-                """
-                params = [tenant_id]
-                
-                if start_date:
-                    sql += " AND pay_move.date >= %s"
-                    params.append(start_date)
-                if end_date:
-                    sql += " AND pay_move.date <= %s"
-                    params.append(end_date)
-                if company_ids:
-                    placeholders = ','.join(['%s'] * len(company_ids))
-                    sql += f" AND pay_line.company_id IN ({placeholders})"
-                    params.extend(company_ids)
-                    
-                cursor.execute(sql, params)
-                columns = [col[0] for col in cursor.description]
-                
-                # Track by cash line to handle un-reconciled remainders
-                cash_lines = {}
-                
-                for row in cursor.fetchall():
-                    d = dict(zip(columns, row))
-                    c_id = d['cash_line_id']
-                    if c_id not in cash_lines:
-                        cash_lines[c_id] = {
-                            'amount': _to_float(d['cash_amount']),
-                            'currency': d['currency_code'] or 'COMPANY_BASE',
-                            'm1_inc_lines': {},
-                            'recon1s': {}
-                        }
-                        
-                    c_info = cash_lines[c_id]
-                    
-                    if d['m1_inc_id']:
-                        c_info['m1_inc_lines'][d['m1_inc_id']] = {
-                            'cat': d['m1_account_name'],
-                            'balance': _to_float(d['m1_inc_balance'] or 0)
-                        }
-                        
-                    if d['recon1_id']:
-                        r1_id = d['recon1_id']
-                        if r1_id not in c_info['recon1s']:
-                            c_info['recon1s'][r1_id] = {
-                                'amount': _to_float(d['recon1_amount'] or 0),
-                                'm2_line_balance': _to_float(d['m2_line_balance'] or 0),
-                                'm2_inc_lines': {},
-                                'recon2s': {}
-                            }
-                        r1_info = c_info['recon1s'][r1_id]
-                        
-                        if d['m2_inc_id']:
-                            r1_info['m2_inc_lines'][d['m2_inc_id']] = {
-                                'cat': d['m2_account_name'],
-                                'balance': _to_float(d['m2_inc_balance'] or 0)
-                            }
-                            
-                        if d['recon2_id']:
-                            r2_id = d['recon2_id']
-                            if r2_id not in r1_info['recon2s']:
-                                r1_info['recon2s'][r2_id] = {
-                                    'amount': _to_float(d['recon2_amount'] or 0),
-                                    'm3_ar_balance': _to_float(d['m3_ar_balance'] or 0),
-                                    'm3_inc_lines': {}
-                                }
-                            r2_info = r1_info['recon2s'][r2_id]
-                            
-                            if d['m3_inc_id']:
-                                r2_info['m3_inc_lines'][d['m3_inc_id']] = {
-                                    'cat': d['m3_account_name'],
-                                    'balance': _to_float(d['m3_inc_balance'] or 0)
-                                }
-
-                # Process allocations
-                for c_id, info in cash_lines.items():
-                    total_abs = abs(info['amount'])
-                    sign = 1 if info['amount'] > 0 else -1
-                    explained_abs = 0.0
-                    rate = _get_conversion_rate(info['currency'], effective_base, rate_map)
-                    
-                    for r1_id, r1_info in info['recon1s'].items():
-                        r1_amt = r1_info['amount']
-                        if r1_amt == 0: continue
-                        
-                        explained_abs += r1_amt
-                        
-                        if r1_info['m2_inc_lines']:
-                            m2_ar_bal = r1_info['m2_line_balance']
-                            if m2_ar_bal > 0:
-                                for m2_inc_id, m2_inc in r1_info['m2_inc_lines'].items():
-                                    ratio = m2_inc['balance'] / m2_ar_bal
-                                    allocated = r1_amt * ratio * sign
-                                    cat = m2_inc['cat'] or 'Unknown'
-                                    cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (allocated * rate)
-                                    
-                        elif r1_info['recon2s']:
-                            m2_line_bal = r1_info['m2_line_balance']
-                            if m2_line_bal > 0:
-                                funding_ratio = r1_amt / m2_line_bal
-                                
-                                for r2_id, r2_info in r1_info['recon2s'].items():
-                                    invoice_funded = r2_info['amount'] * funding_ratio
-                                    m3_ar_bal = r2_info['m3_ar_balance']
-                                    if m3_ar_bal > 0:
-                                        for m3_inc_id, m3_inc in r2_info['m3_inc_lines'].items():
-                                            inc_ratio = m3_inc['balance'] / m3_ar_bal
-                                            allocated = invoice_funded * inc_ratio * sign
-                                            cat = m3_inc['cat'] or 'Unknown'
-                                            cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (allocated * rate)
-                        else:
-                            cat = 'Unreconciled Cash Entry'
-                            cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (r1_amt * sign * rate)
-
-                    unreconciled_abs = total_abs - explained_abs
-                    if unreconciled_abs > 0.01:
-                        if info['m1_inc_lines']:
-                            total_m1_bal = sum(m1['balance'] for m1 in info['m1_inc_lines'].values())
-                            if total_m1_bal > 0:
-                                for m1_inc_id, m1_inc in info['m1_inc_lines'].items():
-                                    ratio = m1_inc['balance'] / total_m1_bal
-                                    allocated = unreconciled_abs * ratio * sign
-                                    cat = m1_inc['cat'] or 'Unknown'
-                                    cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (allocated * rate)
-                            else:
-                                cat = 'Unreconciled Cash Entry'
-                                cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (unreconciled_abs * sign * rate)
-                        else:
-                            cat = 'Unreconciled Cash Entry'
-                            cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (unreconciled_abs * sign * rate)
+            cash_flow_breakdown_map = AccountingService._calc_cash_flow_breakdown(
+                tenant_id, start_date, end_date, company_ids, effective_base, rate_map
+            )
             
             # Format breakdown for output
             cash_flow_breakdown = [
@@ -904,6 +685,338 @@ class AccountingService:
             }
 
         return await asyncio.to_thread(_dashboard)
+
+    @staticmethod
+    def _calc_cash_flow_breakdown(
+        tenant_id: str,
+        start_date: Optional[str],
+        end_date: Optional[str],
+        company_ids: Optional[list[int]],
+        effective_base: str,
+        rate_map: dict
+    ) -> dict[str, float]:
+        from django.db import connection
+        cash_flow_breakdown_map = {}
+        with connection.cursor() as cursor:
+            sql = """
+                SELECT 
+                    pay_line.id as cash_line_id,
+                    pay_line.debit - pay_line.credit as cash_amount,
+                    comp.currency_code,
+                    
+                    -- === Zero-Step ===
+                    m1_inc_line.id as m1_inc_id,
+                    m1_inc_line.account_name as m1_account_name,
+                    ABS(m1_inc_line.balance) as m1_inc_balance,
+                    
+                    -- === One-Step ===
+                    COALESCE(recon1_d.id, recon1_c.id) as recon1_id,
+                    COALESCE(recon1_d.amount, recon1_c.amount) as recon1_amount,
+                    COALESCE(m2_d.id, m2_c.id) as m2_line_id,
+                    ABS(COALESCE(m2_d.balance, m2_c.balance)) as m2_line_balance,
+                    m2_inc_line.id as m2_inc_id,
+                    m2_inc_line.account_name as m2_account_name,
+                    ABS(m2_inc_line.balance) as m2_inc_balance,
+                    
+                    -- === Two-Step ===
+                    COALESCE(recon2_d.id, recon2_c.id) as recon2_id,
+                    COALESCE(recon2_d.amount, recon2_c.amount) as recon2_amount,
+                    COALESCE(m3_d.id, m3_c.id) as m3_line_id,
+                    ABS(COALESCE(m3_d.balance, m3_c.balance)) as m3_ar_balance,
+                    m3_inc_line.id as m3_inc_id,
+                    m3_inc_line.account_name as m3_account_name,
+                    ABS(m3_inc_line.balance) as m3_inc_balance
+                    
+                FROM fact_account_move_lines pay_line
+                JOIN fact_account_moves pay_move ON pay_line.account_move_id = pay_move.id
+                LEFT JOIN dim_companies comp ON pay_line.company_id = comp.id
+                
+                -- FIND COUNTERPART (Outstanding or AR/AP)
+                LEFT JOIN fact_account_move_lines pay_cp_line 
+                    ON pay_cp_line.account_move_id = pay_move.id 
+                    AND pay_cp_line.tenant_id = pay_line.tenant_id
+                    AND pay_cp_line.id != pay_line.id
+                    AND pay_cp_line.account_type IN ('asset_receivable', 'liability_payable', 'asset_current', 'asset_cash')
+                    
+                -- ZERO-STEP (Direct Cash Expense/Income)
+                LEFT JOIN fact_account_move_lines m1_inc_line
+                    ON m1_inc_line.account_move_id = pay_move.id
+                    AND m1_inc_line.tenant_id = pay_line.tenant_id
+                    AND m1_inc_line.id != pay_line.id
+                    AND m1_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
+                    
+                -- JUMP 1 (Pure Index Equalities)
+                LEFT JOIN fact_account_partial_reconciles recon1_d
+                    ON recon1_d.tenant_id = pay_line.tenant_id
+                    AND recon1_d.debit_move_line_id = pay_cp_line.id
+                LEFT JOIN fact_account_move_lines m2_d
+                    ON m2_d.tenant_id = pay_line.tenant_id
+                    AND m2_d.id = recon1_d.credit_move_line_id
+                    
+                LEFT JOIN fact_account_partial_reconciles recon1_c
+                    ON recon1_c.tenant_id = pay_line.tenant_id
+                    AND recon1_c.credit_move_line_id = pay_cp_line.id
+                LEFT JOIN fact_account_move_lines m2_c
+                    ON m2_c.tenant_id = pay_line.tenant_id
+                    AND m2_c.id = recon1_c.debit_move_line_id
+                    
+                -- One-Step target: Is Move 2 the Invoice?
+                LEFT JOIN fact_account_move_lines m2_inc_line
+                    ON m2_inc_line.tenant_id = pay_line.tenant_id
+                    AND m2_inc_line.account_move_id = COALESCE(m2_d.account_move_id, m2_c.account_move_id)
+                    AND m2_inc_line.id != COALESCE(m2_d.id, m2_c.id)
+                    AND m2_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
+
+                -- JUMP 2 (Pure Index Equalities)
+                LEFT JOIN fact_account_move_lines m2_ar_line
+                    ON m2_ar_line.tenant_id = pay_line.tenant_id
+                    AND m2_ar_line.account_move_id = COALESCE(m2_d.account_move_id, m2_c.account_move_id)
+                    AND m2_ar_line.id != COALESCE(m2_d.id, m2_c.id)
+                    AND m2_ar_line.account_type IN ('asset_receivable', 'liability_payable')
+                    
+                LEFT JOIN fact_account_partial_reconciles recon2_d
+                    ON recon2_d.tenant_id = pay_line.tenant_id
+                    AND recon2_d.debit_move_line_id = m2_ar_line.id
+                LEFT JOIN fact_account_move_lines m3_d
+                    ON m3_d.tenant_id = pay_line.tenant_id
+                    AND m3_d.id = recon2_d.credit_move_line_id
+                    
+                LEFT JOIN fact_account_partial_reconciles recon2_c
+                    ON recon2_c.tenant_id = pay_line.tenant_id
+                    AND recon2_c.credit_move_line_id = m2_ar_line.id
+                LEFT JOIN fact_account_move_lines m3_c
+                    ON m3_c.tenant_id = pay_line.tenant_id
+                    AND m3_c.id = recon2_c.debit_move_line_id
+                    
+                -- Two-Step target: Income on Move 3
+                LEFT JOIN fact_account_move_lines m3_inc_line
+                    ON m3_inc_line.tenant_id = pay_line.tenant_id
+                    AND m3_inc_line.account_move_id = COALESCE(m3_d.account_move_id, m3_c.account_move_id)
+                    AND m3_inc_line.id != COALESCE(m3_d.id, m3_c.id)
+                    AND m3_inc_line.account_type NOT IN ('asset_receivable', 'liability_payable', 'asset_cash')
+                    
+                WHERE pay_line.tenant_id = %s
+                  AND pay_line.account_type = 'asset_cash'
+                  AND pay_move.state = 'posted'
+            """
+            params = [tenant_id]
+            
+            if start_date:
+                sql += " AND pay_move.date >= %s"
+                params.append(start_date)
+            if end_date:
+                sql += " AND pay_move.date <= %s"
+                params.append(end_date)
+            if company_ids:
+                placeholders = ','.join(['%s'] * len(company_ids))
+                sql += f" AND pay_line.company_id IN ({placeholders})"
+                params.extend(company_ids)
+                
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            
+            # Track by cash line to handle un-reconciled remainders
+            cash_lines = {}
+            
+            for row in cursor.fetchall():
+                d = dict(zip(columns, row))
+                c_id = d['cash_line_id']
+                if c_id not in cash_lines:
+                    cash_lines[c_id] = {
+                        'amount': _to_float(d['cash_amount']),
+                        'currency': d['currency_code'] or 'COMPANY_BASE',
+                        'm1_inc_lines': {},
+                        'recon1s': {}
+                    }
+                    
+                c_info = cash_lines[c_id]
+                
+                if d['m1_inc_id']:
+                    c_info['m1_inc_lines'][d['m1_inc_id']] = {
+                        'cat': d['m1_account_name'],
+                        'balance': _to_float(d['m1_inc_balance'] or 0)
+                    }
+                    
+                if d['recon1_id']:
+                    r1_id = d['recon1_id']
+                    if r1_id not in c_info['recon1s']:
+                        c_info['recon1s'][r1_id] = {
+                            'amount': _to_float(d['recon1_amount'] or 0),
+                            'm2_line_balance': _to_float(d['m2_line_balance'] or 0),
+                            'm2_inc_lines': {},
+                            'recon2s': {}
+                        }
+                    r1_info = c_info['recon1s'][r1_id]
+                    
+                    if d['m2_inc_id']:
+                        r1_info['m2_inc_lines'][d['m2_inc_id']] = {
+                            'cat': d['m2_account_name'],
+                            'balance': _to_float(d['m2_inc_balance'] or 0)
+                        }
+                        
+                    if d['recon2_id']:
+                        r2_id = d['recon2_id']
+                        if r2_id not in r1_info['recon2s']:
+                            r1_info['recon2s'][r2_id] = {
+                                'amount': _to_float(d['recon2_amount'] or 0),
+                                'm3_ar_balance': _to_float(d['m3_ar_balance'] or 0),
+                                'm3_inc_lines': {}
+                            }
+                        r2_info = r1_info['recon2s'][r2_id]
+                        
+                        if d['m3_inc_id']:
+                            r2_info['m3_inc_lines'][d['m3_inc_id']] = {
+                                'cat': d['m3_account_name'],
+                                'balance': _to_float(d['m3_inc_balance'] or 0)
+                            }
+
+            # Process allocations
+            for c_id, info in cash_lines.items():
+                total_abs = abs(info['amount'])
+                sign = 1 if info['amount'] > 0 else -1
+                explained_abs = 0.0
+                rate = _get_conversion_rate(info['currency'], effective_base, rate_map)
+                
+                for r1_id, r1_info in info['recon1s'].items():
+                    r1_amt = r1_info['amount']
+                    if r1_amt == 0: continue
+                    
+                    explained_abs += r1_amt
+                    
+                    if r1_info['m2_inc_lines']:
+                        m2_ar_bal = r1_info['m2_line_balance']
+                        if m2_ar_bal > 0:
+                            for m2_inc_id, m2_inc in r1_info['m2_inc_lines'].items():
+                                ratio = m2_inc['balance'] / m2_ar_bal
+                                allocated = r1_amt * ratio * sign
+                                cat = m2_inc['cat'] or 'Unknown'
+                                cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (allocated * rate)
+                                
+                    elif r1_info['recon2s']:
+                        m2_line_bal = r1_info['m2_line_balance']
+                        if m2_line_bal > 0:
+                            funding_ratio = r1_amt / m2_line_bal
+                            
+                            for r2_id, r2_info in r1_info['recon2s'].items():
+                                invoice_funded = r2_info['amount'] * funding_ratio
+                                m3_ar_bal = r2_info['m3_ar_balance']
+                                if m3_ar_bal > 0:
+                                    for m3_inc_id, m3_inc in r2_info['m3_inc_lines'].items():
+                                        inc_ratio = m3_inc['balance'] / m3_ar_bal
+                                        allocated = invoice_funded * inc_ratio * sign
+                                        cat = m3_inc['cat'] or 'Unknown'
+                                        cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (allocated * rate)
+                    else:
+                        cat = 'Unreconciled Cash Entry'
+                        cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (r1_amt * sign * rate)
+
+                unreconciled_abs = total_abs - explained_abs
+                if unreconciled_abs > 0.01:
+                    if info['m1_inc_lines']:
+                        total_m1_bal = sum(m1['balance'] for m1 in info['m1_inc_lines'].values())
+                        if total_m1_bal > 0:
+                            for m1_inc_id, m1_inc in info['m1_inc_lines'].items():
+                                ratio = m1_inc['balance'] / total_m1_bal
+                                allocated = unreconciled_abs * ratio * sign
+                                cat = m1_inc['cat'] or 'Unknown'
+                                cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (allocated * rate)
+                        else:
+                            cat = 'Unreconciled Cash Entry'
+                            cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (unreconciled_abs * sign * rate)
+                    else:
+                        cat = 'Unreconciled Cash Entry'
+                        cash_flow_breakdown_map[cat] = cash_flow_breakdown_map.get(cat, 0.0) + (unreconciled_abs * sign * rate)
+
+        return cash_flow_breakdown_map
+
+    @staticmethod
+    async def get_bank_cash_summary(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Dedicated high-performance calculation for bank & cash summary endpoint."""
+        def _summary():
+            rate_map = _get_rate_map()
+            effective_base = base_currency or "XAF"
+            
+            line_base = AccountMoveLine.objects.filter(
+                tenant_id=tenant_id,
+                account_move__state='posted'
+            )
+            if company_ids:
+                line_base = line_base.filter(company_id__in=company_ids)
+            if start_date:
+                line_base = line_base.filter(account_move__date__gte=start_date)
+            if end_date:
+                line_base = line_base.filter(account_move__date__lte=end_date)
+
+            cum_lines = AccountMoveLine.objects.filter(
+                tenant_id=tenant_id,
+                account_move__state='posted',
+                account_type="asset_cash"
+            )
+            if company_ids:
+                cum_lines = cum_lines.filter(company_id__in=company_ids)
+            if end_date:
+                cum_lines = cum_lines.filter(account_move__date__lte=end_date)
+
+            cumulative_aggs = cum_lines.values("company__currency_code").annotate(
+                total_debit=Sum("debit"),
+                total_credit=Sum("credit")
+            )
+            bank_balance = 0.0
+            for agg in cumulative_aggs:
+                comp_curr = agg["company__currency_code"] or "COMPANY_BASE"
+                rate = _get_conversion_rate(comp_curr, effective_base, rate_map)
+                bank_balance += (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
+
+            opening_cash_balance = 0.0
+            cash_in = 0.0
+            cash_out = 0.0
+            
+            if start_date:
+                open_lines = AccountMoveLine.objects.filter(
+                    tenant_id=tenant_id,
+                    account_move__state='posted',
+                    account_move__date__lt=start_date,
+                    account_type="asset_cash"
+                )
+                if company_ids:
+                    open_lines = open_lines.filter(company_id__in=company_ids)
+
+                for agg in open_lines.values("company__currency_code").annotate(net_cash=Sum("debit") - Sum("credit")):
+                    comp_curr = agg["company__currency_code"] or "COMPANY_BASE"
+                    rate = _get_conversion_rate(comp_curr, effective_base, rate_map)
+                    opening_cash_balance += _to_float(agg["net_cash"]) * rate
+
+            period_lines = line_base.filter(account_type="asset_cash")
+            for agg in period_lines.values("company__currency_code").annotate(total_debit=Sum("debit"), total_credit=Sum("credit")):
+                comp_curr = agg["company__currency_code"] or "COMPANY_BASE"
+                rate = _get_conversion_rate(comp_curr, effective_base, rate_map)
+                cash_in += _to_float(agg["total_debit"]) * rate
+                cash_out += _to_float(agg["total_credit"]) * rate
+
+            cash_flow_breakdown_map = AccountingService._calc_cash_flow_breakdown(
+                tenant_id, start_date, end_date, company_ids, effective_base, rate_map
+            )
+            cash_flow_breakdown = [
+                {"category": cat, "value": val} 
+                for cat, val in sorted(cash_flow_breakdown_map.items(), key=lambda x: abs(x[1]), reverse=True)
+            ]
+
+            return {
+                "opening_cash_balance": opening_cash_balance,
+                "cash_in": cash_in,
+                "cash_out": cash_out,
+                "closing_cash_balance": opening_cash_balance + cash_in - cash_out,
+                "bank_balance": bank_balance,
+                "cash_flow_breakdown": cash_flow_breakdown,
+            }
+
+        return await asyncio.to_thread(_summary)
 
     @staticmethod
     async def get_pnl_summary(
@@ -1169,32 +1282,53 @@ class AccountingService:
         if rate_map is None:
             rate_map = {}
         today = date.today()
+        d30 = today - timedelta(days=30)
+        d60 = today - timedelta(days=60)
+        d90 = today - timedelta(days=90)
+        
         base = qs.filter(
             move_type=move_type,
             invoice_date_due__isnull=False,
             amount_residual__gt=0,
         ).exclude(payment_state__in=["paid", "reversed"])
-        buckets = [
-            ("0-30", today - timedelta(days=30), today),
-            ("31-60", today - timedelta(days=60), today - timedelta(days=31)),
-            ("61-90", today - timedelta(days=90), today - timedelta(days=61)),
-            ("90+", None, today - timedelta(days=91)),
+
+        rows = list(
+            base.values("currency_code")
+            .annotate(
+                cnt_0_30=Count(Case(When(invoice_date_due__gte=d30, invoice_date_due__lte=today, then=1))),
+                amt_0_30=Sum(Case(When(invoice_date_due__gte=d30, invoice_date_due__lte=today, then="amount_residual"), default=0, output_field=DecimalField())),
+                cnt_31_60=Count(Case(When(invoice_date_due__gte=d60, invoice_date_due__lt=d30, then=1))),
+                amt_31_60=Sum(Case(When(invoice_date_due__gte=d60, invoice_date_due__lt=d30, then="amount_residual"), default=0, output_field=DecimalField())),
+                cnt_61_90=Count(Case(When(invoice_date_due__gte=d90, invoice_date_due__lt=d60, then=1))),
+                amt_61_90=Sum(Case(When(invoice_date_due__gte=d90, invoice_date_due__lt=d60, then="amount_residual"), default=0, output_field=DecimalField())),
+                cnt_90_plus=Count(Case(When(invoice_date_due__lt=d90, then=1))),
+                amt_90_plus=Sum(Case(When(invoice_date_due__lt=d90, then="amount_residual"), default=0, output_field=DecimalField())),
+            )
+        )
+
+        buckets = {
+            "0-30": {"amount": 0.0, "count": 0},
+            "31-60": {"amount": 0.0, "count": 0},
+            "61-90": {"amount": 0.0, "count": 0},
+            "90+": {"amount": 0.0, "count": 0},
+        }
+
+        for r in rows:
+            code = r["currency_code"] or "COMPANY_BASE"
+            rate = _get_conversion_rate(code, effective_base, rate_map)
+            buckets["0-30"]["count"] += r["cnt_0_30"] or 0
+            buckets["0-30"]["amount"] += _to_float(r["amt_0_30"]) * rate
+            buckets["31-60"]["count"] += r["cnt_31_60"] or 0
+            buckets["31-60"]["amount"] += _to_float(r["amt_31_60"]) * rate
+            buckets["61-90"]["count"] += r["cnt_61_90"] or 0
+            buckets["61-90"]["amount"] += _to_float(r["amt_61_90"]) * rate
+            buckets["90+"]["count"] += r["cnt_90_plus"] or 0
+            buckets["90+"]["amount"] += _to_float(r["amt_90_plus"]) * rate
+
+        return [
+            {"bucket": k, "amount": buckets[k]["amount"], "count": buckets[k]["count"]}
+            for k in ["0-30", "31-60", "61-90", "90+"]
         ]
-        out = []
-        for label, start, end in buckets:
-            bucket_qs = base.filter(invoice_date_due__lte=end)
-            if start is not None:
-                bucket_qs = bucket_qs.filter(invoice_date_due__gte=start)
-            
-            amount = _sum_converted(bucket_qs, "amount_residual", effective_base, rate_map)
-            count = bucket_qs.count()
-            
-            out.append({
-                "bucket": label,
-                "amount": amount,
-                "count": count or 0,
-            })
-        return out or _empty_aging()
 
     @staticmethod
     async def get_filters(tenant_id: str) -> dict[str, Any]:

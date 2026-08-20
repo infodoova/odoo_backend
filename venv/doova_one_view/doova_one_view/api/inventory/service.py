@@ -729,11 +729,11 @@ class InventoryService:
             )
             trend_quants = quants
             if start_date:
-                trend_quants = trend_quants.filter(in_date__gte=start_date)
-                pickings = pickings.filter(scheduled_date__gte=start_date)
+                trend_quants = trend_quants.filter(in_date__date__gte=start_date)
+                pickings = pickings.filter(scheduled_date__date__gte=start_date)
             if end_date:
-                trend_quants = trend_quants.filter(in_date__lte=end_date)
-                pickings = pickings.filter(scheduled_date__lte=end_date)
+                trend_quants = trend_quants.filter(in_date__date__lte=end_date)
+                pickings = pickings.filter(scheduled_date__date__lte=end_date)
 
             total_items = int(quants.filter(quantity__gt=0).aggregate(total=Sum("quantity"))["total"] or 0)
             stock_status_distribution = {
@@ -1051,9 +1051,9 @@ class InventoryService:
             elif metric in ["incoming_shipments_count", "incoming"]:
                 is_picking_metric = True
                 if start_date:
-                    pickings = pickings.filter(scheduled_date__gte=start_date)
+                    pickings = pickings.filter(scheduled_date__date__gte=start_date)
                 if end_date:
-                    pickings = pickings.filter(scheduled_date__lte=end_date)
+                    pickings = pickings.filter(scheduled_date__date__lte=end_date)
                 qs = pickings.exclude(state__in=["done", "cancel"]).filter(
                     Q(picking_type="incoming") | Q(picking_type__icontains="receipt")
                 )
@@ -1061,9 +1061,9 @@ class InventoryService:
             elif metric in ["outgoing_shipments_count", "outgoing"]:
                 is_picking_metric = True
                 if start_date:
-                    pickings = pickings.filter(scheduled_date__gte=start_date)
+                    pickings = pickings.filter(scheduled_date__date__gte=start_date)
                 if end_date:
-                    pickings = pickings.filter(scheduled_date__lte=end_date)
+                    pickings = pickings.filter(scheduled_date__date__lte=end_date)
                 qs = pickings.exclude(state__in=["done", "cancel"]).filter(
                     Q(picking_type="outgoing") | Q(picking_type__icontains="delivery")
                 )
@@ -1409,9 +1409,9 @@ class InventoryService:
                 qs = qs.filter(moves__product_id=product_id).distinct()
 
             if start_date:
-                qs = qs.filter(scheduled_date__gte=start_date)
+                qs = qs.filter(scheduled_date__date__gte=start_date)
             if end_date:
-                qs = qs.filter(scheduled_date__lte=end_date)
+                qs = qs.filter(scheduled_date__date__lte=end_date)
 
             today = timezone.now().date()
             if eta_status == "overdue":
