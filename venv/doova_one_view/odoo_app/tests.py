@@ -685,3 +685,103 @@ class BankStatementsTestCase(TransactionTestCase):
         csv = async_to_sync(BankStatementService.export_statements_csv)(str(self.tenant.id))
         self.assertIn("BNK/2026/001", csv)
 
+
+class UpcomingShipmentsTestCase(TransactionTestCase):
+    def setUp(self):
+        from odoo_app.models.stock_move import StockMove
+        self.tenant = Tenant.objects.create(
+            name="Shipment Test Tenant",
+            odoo_url="https://test.odoo.com",
+            odoo_database="shipment_db",
+        )
+        self.company = Company.objects.create(
+            tenant=self.tenant,
+            odoo_id=1,
+            name="Shipment Test Company",
+            currency_code="USD",
+        )
+        self.vendor = Partner.objects.create(
+            tenant=self.tenant,
+            odoo_id=50,
+            name="Acme Supplier",
+            is_supplier=True,
+        )
+        self.product = Product.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=200,
+            name="Test Widget",
+            default_code="WIDGET-01",
+            list_price=50.0,
+            standard_price=30.0,
+        )
+
+    def test_upcoming_shipments_empty(self):
+        res = async_to_sync(InventoryService.get_upcoming_shipments)(str(self.tenant.id))
+        self.assertEqual(res["total"], 0)
+        self.assertEqual(res["items"], [])
+
+    def test_upcoming_shipments_with_data_and_tracking(self):
+        from django.utils import timezone
+        from odoo_app.models.stock_move import StockMove
+        from datetime import timedelta
+
+        scheduled = timezone.now() + timedelta(days=2)
+        picking = StockPicking.objects.create(
+            tenant=self.tenant,
+            company=self.company,
+            odoo_id=501,
+            odoo_name="WH/IN/00001",
+            partner=self.vendor,
+            scheduled_date=scheduled,
+            picking_type="incoming",
+            state="assigned",
+            origin="PO00099",
+        )
+        StockMove.objects.create(
+            tenant=self.tenant,
+            picking=picking,
+            company=self.company,
+            odoo_id=601,
+            product=self.product,
+            product_uom_qty=25.0,
+            quantity_done=5.0,
+            state="assigned",
+        )
+
+        # 1. Test get_upcoming_shipments
+        res = async_to_sync(InventoryService.get_upcoming_shipments)(str(self.tenant.id))
+        self.assertEqual(res["total"], 1)
+        item = res["items"][0]
+        self.assertEqual(item["odoo_name"], "WH/IN/00001")
+        self.assertEqual(item["origin"], "PO00099")
+        self.assertEqual(item["partner_name"], "Acme Supplier")
+        self.assertEqual(item["eta_status"], "on_time")
+        self.assertEqual(item["progress_pct"], 20.0)
+        self.assertEqual(len(item["arriving_products"]), 1)
+        self.assertEqual(item["arriving_products"][0]["product_name"], "Test Widget")
+        self.assertEqual(item["arriving_products"][0]["expected_qty"], 25.0)
+        self.assertEqual(item["arriving_products"][0]["received_qty"], 5.0)
+
+        # 2. Test get_dashboard_metric_details with incoming_shipments_count metric
+        dash_res = async_to_sync(InventoryService.get_dashboard_metric_details)(
+            str(self.tenant.id), metric="incoming_shipments_count"
+        )
+        self.assertEqual(dash_res["total"], 1)
+        dash_item = dash_res["items"][0]
+        self.assertEqual(dash_item["odoo_name"], "WH/IN/00001")
+        self.assertEqual(dash_item["eta_status"], "on_time")
+        self.assertEqual(len(dash_item["arriving_products"]), 1)
+
+        # 3. Test get_shipment_tracking
+        track_res = async_to_sync(InventoryService.get_shipment_tracking)(
+            str(self.tenant.id), picking_id=picking.id
+        )
+        self.assertEqual(track_res["shipment"]["id"], picking.id)
+        self.assertEqual(len(track_res["timeline"]), 4)
+        # Check assigned timeline step is current
+        assigned_step = [s for s in track_res["timeline"] if s["stage"] == "assigned"][0]
+        self.assertTrue(assigned_step["is_current"])
+        self.assertEqual(len(track_res["arriving_products"]), 1)
+
+

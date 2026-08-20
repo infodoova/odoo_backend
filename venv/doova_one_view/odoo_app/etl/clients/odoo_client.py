@@ -2,10 +2,12 @@
 Odoo JSON-RPC 2.0 API Client
 """
 
+import os
 import requests
 import json
 import logging
 import random
+import urllib3
 from typing import List, Dict, Optional, Any
 from odoo_app.etl.config import TenantConfig
 
@@ -21,7 +23,7 @@ class OdooClient:
     fully compatible with Odoo API Keys.
     """
     
-    def __init__(self, config: TenantConfig, timeout: int = 60):
+    def __init__(self, config: TenantConfig, timeout: int = 60, verify_ssl: Optional[bool] = None):
         self.config = config
         self.url = config.odoo_url.rstrip('/')
         self.db = config.odoo_database
@@ -30,14 +32,31 @@ class OdooClient:
         self.uid = None
         self.timeout = timeout
         
+        # Configure SSL Verification
+        if verify_ssl is not None:
+            self.verify_ssl = verify_ssl
+        else:
+            env_verify = os.environ.get('ODOO_VERIFY_SSL', '').lower()
+            if env_verify in ('false', '0', 'no'):
+                self.verify_ssl = False
+            elif '.dev.odoo.com' in self.url or '.odoo.sh' in self.url:
+                # Odoo dev and staging domains often have multi-level subdomains with wildcard SSL mismatches
+                self.verify_ssl = False
+            else:
+                self.verify_ssl = True
+
+        if not self.verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
         # HTTP session for connection pooling
         self.session = requests.Session()
+        self.session.verify = self.verify_ssl
         self.session.headers.update({
             'Content-Type': 'application/json',
             'User-Agent': 'DoovaOneView-ETL/1.0'
         })
         
-        logger.info(f"Initialized Odoo JSON-RPC client for {config.name}")
+        logger.info(f"Initialized Odoo JSON-RPC client for {config.name} (verify_ssl={self.verify_ssl})")
     
     def _call_rpc(self, service: str, method: str, args: List) -> Any:
         """
@@ -57,7 +76,7 @@ class OdooClient:
         url = f"{self.url}/jsonrpc"
         
         try:
-            response = self.session.post(url, json=payload, timeout=self.timeout)
+            response = self.session.post(url, json=payload, timeout=self.timeout, verify=self.verify_ssl)
             response.raise_for_status()
             
             result = response.json()
