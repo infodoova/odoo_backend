@@ -13,7 +13,8 @@ import json
 import logging
 import re
 from datetime import datetime, timezone as tz, timedelta
-
+from django.db import close_old_connections
+from doova_one_view.api.common.utils import db_sync_to_async
 
 from doova_one_view.api.email.email_utils import md_to_html as _md_to_html
 
@@ -66,6 +67,7 @@ class AlertJobManager:
         logger.info("AlertJobManager loop started")
         while cls._running:
             try:
+                close_old_connections()
                 await cls._process_due_schedules()
             except Exception:
                 logger.exception("AlertJobManager: unhandled error in loop")
@@ -80,12 +82,11 @@ class AlertJobManager:
 
     @staticmethod
     async def _process_due_schedules():
-        from asgiref.sync import sync_to_async
-
+        close_old_connections()
         now = datetime.now(tz.utc)
         logger.info(f"AlertJobManager: checking due schedules at {now.isoformat()}")
 
-        @sync_to_async
+        @db_sync_to_async
         def _get_due():
             from odoo_app.models.alert_schedule import AlertSchedule
             return list(
@@ -138,9 +139,7 @@ class AlertJobManager:
 
     @staticmethod
     async def _get_all_tenant_ids() -> list:
-        from asgiref.sync import sync_to_async
-
-        @sync_to_async
+        @db_sync_to_async
         def _fetch():
             from odoo_app.models.tenant import Tenant
             return [str(t.id) for t in Tenant.objects.all()]
@@ -149,9 +148,7 @@ class AlertJobManager:
 
     @staticmethod
     async def _check_daily_rate_limit(tenant_id: str) -> bool:
-        from asgiref.sync import sync_to_async
-
-        @sync_to_async
+        @db_sync_to_async
         def _check():
             from odoo_app.models.alert_schedule import AlertLog
             from doova_one_view.api.agent.config import AgentConfig
@@ -183,8 +180,6 @@ class AlertJobManager:
         """
         Run the AI anomaly check for one (schedule, tenant) pair.
         """
-        from asgiref.sync import sync_to_async
-
         now = datetime.now(tz.utc)
         company_ids = schedule.companies if schedule.companies else None
 
@@ -211,7 +206,7 @@ class AlertJobManager:
                 }
 
         if not is_instant:
-            @sync_to_async
+            @db_sync_to_async
             def _claim():
                 from odoo_app.models.alert_schedule import AlertSchedule
                 return AlertSchedule.objects.filter(
@@ -249,7 +244,7 @@ class AlertJobManager:
                 alert_sent = True
 
 
-            @sync_to_async
+            @db_sync_to_async
             def _log_success():
                 from odoo_app.models.alert_schedule import AlertLog
                 from odoo_app.models.tenant import Tenant
@@ -285,7 +280,7 @@ class AlertJobManager:
             )
 
             # next_check_at already advanced in _claim — just log the failure
-            @sync_to_async
+            @db_sync_to_async
             def _log_failure():
                 from odoo_app.models.alert_schedule import AlertLog
                 from odoo_app.models.tenant import Tenant
@@ -557,9 +552,7 @@ class AlertJobManager:
     async def _send_alert_email(schedule, tenant_id: str, summary: str, is_anomaly: bool = True, severity: str = "critical"):
         from doova_one_view.api.email.service import EmailService
         from doova_one_view.api.agent.tools_refactored.communication import _format_alert_email_html
-        from asgiref.sync import sync_to_async
-
-        @sync_to_async
+        @db_sync_to_async
         def _resolve_tenant_name():
             t_name = "Your Business"
             try:

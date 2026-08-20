@@ -1,12 +1,32 @@
-"""
-Common utility functions
-"""
-
-from django.conf import settings
+from functools import wraps
 from typing import Optional, Any
 import logging
+from asgiref.sync import sync_to_async
+from django.conf import settings
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
+
+
+def db_sync_to_async(func=None, **sync_to_async_kwargs):
+    """
+    Decorator / wrapper around sync_to_async that ensures Django database connections
+    are cleanly verified and refreshed before and after execution in background tasks.
+    Prevents 'InterfaceError: connection already closed' and idle timeout disconnects.
+    """
+    def decorator(fn):
+        @wraps(fn)
+        def inner(*args, **kwargs):
+            close_old_connections()
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                close_old_connections()
+        return sync_to_async(inner, **sync_to_async_kwargs)
+
+    if func is not None:
+        return decorator(func)
+    return decorator
 
 
 def encrypt_api_key(api_key: str) -> bytes:

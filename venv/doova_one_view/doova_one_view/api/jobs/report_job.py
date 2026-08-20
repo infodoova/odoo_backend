@@ -12,7 +12,8 @@ import logging
 import time
 from datetime import datetime, timezone as tz
 from pathlib import Path
-from asgiref.sync import sync_to_async
+from django.db import close_old_connections
+from doova_one_view.api.common.utils import db_sync_to_async
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class ReportJobManager:
         logger.info("ReportJobManager loop started — running initial check immediately")
         while cls._running:
             try:
+                close_old_connections()
                 await cls._process_due_schedules()
 
                 # Run PDF retention cleanup every 24 hours (86400 seconds)
@@ -97,12 +99,11 @@ class ReportJobManager:
 
     @staticmethod
     async def _process_due_schedules():
-        from asgiref.sync import sync_to_async
-
+        close_old_connections()
         now = datetime.now(tz.utc)
         logger.info(f"ReportJobManager: checking due schedules at {now.isoformat()}")
 
-        @sync_to_async
+        @db_sync_to_async
         def _get_due():
             from odoo_app.models.report_schedule import ReportSchedule
             return list(
@@ -132,7 +133,6 @@ class ReportJobManager:
 
     @staticmethod
     async def _fire_schedule(schedule, now: datetime):
-        from asgiref.sync import sync_to_async
         from odoo_app.models.report_schedule import ReportLog
         from doova_one_view.api.email.service import EmailService
         from doova_one_view.api.reports.utils import calculate_next_send
@@ -148,7 +148,7 @@ class ReportJobManager:
         # concurrent process cannot re-pick this schedule and send duplicates.
         # The WHERE clause on next_send_at acts as an optimistic lock:
         # if another process already claimed it, 0 rows match and we bail out.
-        @sync_to_async
+        @db_sync_to_async
         def _claim():
             from odoo_app.models.report_schedule import ReportSchedule
             return ReportSchedule.objects.filter(
@@ -173,7 +173,7 @@ class ReportJobManager:
                     error_msg = "SMTP credentials not configured"
                     duration_sec = round(time.time() - start_time, 2)
                     
-                    @sync_to_async
+                    @db_sync_to_async
                     def _save_early_failure():
                         schedule.consecutive_failures += 1
                         schedule.last_error = error_msg
@@ -197,7 +197,7 @@ class ReportJobManager:
             from doova_one_view.api.agent.thresholds import get_tenant_thresholds
             from doova_one_view.api.agent.citation_validator import CitationValidator
             from doova_one_view.api.agent.completeness import CompletenessEvaluator
-            thresholds = await sync_to_async(get_tenant_thresholds)(tenant_id)
+            thresholds = await db_sync_to_async(get_tenant_thresholds)(tenant_id)
             min_completeness = thresholds.get("min_completeness_threshold_pct", 90.0)
 
             # 2. Build AI-generated report content using the user's prompt
@@ -216,7 +216,7 @@ class ReportJobManager:
                 from doova_one_view.api.agent.tools_refactored.finance import calculate_pnl_tool
                 ground_truth = {}
                 try:
-                    pnl_data = await sync_to_async(calculate_pnl_tool)(tenant_id=tenant_id, company_ids=company_ids)
+                    pnl_data = await db_sync_to_async(calculate_pnl_tool)(tenant_id=tenant_id, company_ids=company_ids)
                     if isinstance(pnl_data, dict):
                         ground_truth.update(pnl_data)
                 except Exception:
@@ -247,7 +247,7 @@ class ReportJobManager:
 
             # 4. Generate PDF
             try:
-                result = await sync_to_async(generate_report_tool)(
+                result = await db_sync_to_async(generate_report_tool)(
                     tenant_id=tenant_id,
                     company_ids=company_ids,
                     custom_content=custom_content,
@@ -302,7 +302,7 @@ class ReportJobManager:
             duration_sec = round(time.time() - start_time, 2)
 
             # 5. Success reset & log record
-            @sync_to_async
+            @db_sync_to_async
             def _save_success():
                 schedule.last_sent_at = now
                 schedule.consecutive_failures = 0
@@ -327,7 +327,7 @@ class ReportJobManager:
             logger.exception(f"Failed to fire schedule {schedule.id} ({error_category}) after {duration_sec}s")
 
             # Increment consecutive failures & check circuit breaker
-            @sync_to_async
+            @db_sync_to_async
             def _save_failure():
                 schedule.consecutive_failures += 1
                 schedule.last_error = error_msg[:1000]
@@ -420,7 +420,7 @@ class ReportJobManager:
             )
 
 
-@sync_to_async
+@db_sync_to_async
 def _get_schedule_tenant_name(schedule) -> str:
     if schedule.tenants and len(schedule.tenants) > 0:
         try:
