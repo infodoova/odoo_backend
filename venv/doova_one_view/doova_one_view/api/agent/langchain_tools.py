@@ -200,7 +200,7 @@ def trial_balance(tenant_id: Optional[str], company_id: Optional[int] = None, co
 def financial_ratios(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, base_currency: str = None, tenant_ids: Optional[list[str]] = None):
     """Calculate all key financial ratios: Current Ratio, Quick Ratio, Debt-to-Equity,
     ROE, ROA, Gross Margin %, and Net Margin %.
-    Use for: financial health scoring, benchmark comparisons, investor-level analysis.
+    Use for: financial health scoring, benchmark comparisons, in-depth financial analysis.
     Always call tenant_profile first to know the correct industry benchmarks to compare against.
     Pair with business_health for a weighted composite score."""
     return get_financial_ratios_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
@@ -209,7 +209,7 @@ def financial_ratios(tenant_id: Optional[str], company_id: Optional[int] = None,
 def working_capital(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, base_currency: str = None, tenant_ids: Optional[list[str]] = None):
     """Calculate Working Capital (Current Assets minus Current Liabilities) and the WC ratio.
     Use for: short-term liquidity assessment, operational funding buffer, cash runway estimation.
-    A negative working capital is a critical red flag — flag it immediately.
+    When short-term bills exceed short-term assets (negative working capital), that's a critical warning.
     Pair with cash_flow_health and aging_analysis for full liquidity context."""
     return get_working_capital_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
 
@@ -242,23 +242,23 @@ def aging_analysis(tenant_id: Optional[str], company_id: Optional[int] = None, c
 @tool
 def cash_flow_health(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, base_currency: str = None, tenant_ids: Optional[list[str]] = None):
     """Assess overall cash flow and liquidity health using real AR and AP balances.
-    Returns: net cash position, burn rate indicators, and liquidity stress signals.
-    Use for: cash runway assessment, liquidity crisis detection, short-term solvency.
+    Returns: net cash position, spending rate indicators, and cash pressure signals.
+    Use for: cash runway assessment, cash crunch detection, short-term solvency.
     Run first in any liquidity investigation before diving into working_capital or aging."""
     return get_cash_flow_health_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
 
 @tool
 def business_health(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, base_currency: str = None, tenant_ids: Optional[list[str]] = None):
     """Calculate the composite weighted business health score (0–100) across four dimensions:
-    Profitability, Liquidity, Leverage, and Collections efficiency.
-    Use for: executive health dashboards, overall company performance scoring, board summaries.
+    profitability, cash availability, debt levels, and how well you collect payments.
+    Use for: overall business health checks, company performance scoring, summary dashboards.
     Always run financial_ratios before this to have the underlying ratio context available."""
     return get_business_health_score_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
 
 @tool
 def profitability_analysis(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, base_currency: str = None, tenant_ids: Optional[list[str]] = None):
     """Analyze gross margin and net margin with exact percentage calculations.
-    Use for: margin compression detection, profitability trend context, cost structure review.
+    Use for: margin shrinkage detection, profitability trend context, cost structure review.
     Best run after calculate_pnl to contextualize which cost lines are driving margin changes."""
     return analyze_profitability_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids)
 
@@ -288,8 +288,8 @@ def tax_summary(tenant_id: Optional[str], company_id: Optional[int] = None, comp
 
 @tool
 def detect_anomalies(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None):
-    """Audit tool: detect unbalanced journal entries and statistically unusual transactions (>3σ from mean).
-    Use for: fraud indicators, data integrity checks, unexplained spikes, audit preparation.
+    """Audit tool: detect unbalanced journal entries and statistically unusual transactions (significantly outside the normal range).
+    Use for: data integrity checks, unexplained spikes, spotting errors, audit preparation.
     Always call this when: trial_balance is unbalanced, balance sheet A≠L+E, or a tool returns
     contradictory data. Also run proactively as part of any full audit sequence."""
     return detect_anomalies_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids)
@@ -419,16 +419,23 @@ def purchase_trend(tenant_id: Optional[str], company_id: Optional[int] = None, c
 
 @tool
 def create_report(
-    tenant_id: Optional[str],
-    custom_content: str,
+    tenant_id: Optional[str] = None,
+    custom_content: Optional[str] = None,
     company_id: Optional[int] = None,
     company_ids: Optional[list[int]] = None,
     tenant_ids: Optional[list[str]] = None,
     logo_path: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    reporting_period: Optional[str] = None,
+    comparison_label: Optional[str] = None,
+    base_currency: Optional[str] = None,
 ):
     """MANDATORY: When the user asks to 'generate a report' or 'create a report', you MUST call this tool.
     Generate a professional branded PDF executive report including vital signs and your analysis.
-    You MUST pass your full markdown report analysis into the `custom_content` parameter. This parameter is REQUIRED.
+    Pass your full markdown report analysis into the `custom_content` parameter if available.
+    Pass explicit `start_date` and `end_date` (YYYY-MM-DD) or `reporting_period` (e.g. 'Q2 2026') if analyzing a specific timeframe.
+    Pass `base_currency` (e.g. 'USD', 'EUR') if the user requested a specific currency.
     Do NOT output the report directly in the chat text. Pass it ALL into `custom_content`.
     Do NOT call this before you have gathered the data — the report cannot be regenerated mid-session."""
     
@@ -440,6 +447,11 @@ def create_report(
         company_ids=company_ids,
         tenant_ids=tenant_ids,
         logo_path=logo_path,
+        start_date=start_date,
+        end_date=end_date,
+        reporting_period=reporting_period,
+        comparison_label=comparison_label,
+        base_currency=base_currency,
     )
     url = result.get("download_url", "")
     

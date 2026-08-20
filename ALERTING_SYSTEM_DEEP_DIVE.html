@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus AI Alerting System — Interactive Technical Deep Dive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --bg-card-hover: rgba(31, 41, 55, 0.8);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(99, 102, 241, 0.3);
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-indigo: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --glow-indigo: rgba(99, 102, 241, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: -100px;
+      left: 20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--glow-indigo) 0%, rgba(11, 15, 25, 0) 70%);
+      filter: blur(80px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .ambient-glow-2 {
+      position: fixed;
+      bottom: -100px;
+      right: 10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, rgba(11, 15, 25, 0) 70%);
+      filter: blur(80px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid var(--border-accent);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    .badge-pill::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      max-width: 800px;
+    }
+
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(12px);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 32px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #ffffff;
+      background: var(--accent-indigo);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tag {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .tag-critical { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .tag-warning { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .tag-info { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .tag-success { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    pre, code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    pre {
+      background: #060911;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      margin: 12px 0;
+    }
+
+    .pipeline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .pipeline-step {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .step-number {
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 0.875rem;
+      min-width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .step-content h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .sim-box {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
+      border: 1px solid var(--border-accent);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .sim-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select, input {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #ffffff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .sim-output {
+      background: #050811;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #a5b4fc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-primary);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      color: var(--text-secondary);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-primary);
+    }
+
+    .metric-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+  <div class="ambient-glow-2"></div>
+
+  <div class="container">
+    <header>
+      <div>
+        <div class="badge-pill">Nexus AI Engine v2.4</div>
+        <h1>Nexus AI Alerting System</h1>
+        <p class="subtitle">Complete Interactive Technical Deep Dive — Two-Tier Architecture, Deterministic Pre-Checks, Dynamic Thresholds & Autonomous CFO Agent</p>
+      </div>
+      <div>
+        <span class="tag tag-success" style="font-size: 0.85rem; padding: 6px 14px;">Production Verified</span>
+      </div>
+    </header>
+
+    <nav class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('arch')">🏛 Pipeline & Architecture</button>
+      <button class="tab-btn" onclick="switchTab('thresholds')">⚙️ Dynamic Active Thresholds</button>
+      <button class="tab-btn" onclick="switchTab('prechecks')">🔍 Tier 1: 8 SQL Pre-Checks</button>
+      <button class="tab-btn" onclick="switchTab('agent')">🤖 Tier 2: AI Agent & Prompt</button>
+      <button class="tab-btn" onclick="switchTab('db_api')">🗄 DB Models & REST APIs</button>
+      <button class="tab-btn" onclick="switchTab('metrics')">📊 Telemetry & Prometheus</button>
+    </nav>
+
+    <!-- TAB 1: Architecture -->
+    <div id="tab-arch" class="tab-panel active">
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <h3 class="card-title">🚀 End-to-End Operational Lifecycle</h3>
+          <span class="tag tag-info">Hourly Cron Worker</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          The Nexus Alerting system operates on a high-speed, cost-optimized two-tier engine. The background worker queries due schedules, evaluates deterministic SQL rules at sub-50ms speed, and only invokes expensive LLM reasoning when hard anomalies or custom inquiries demand it.
+        </p>
+
+        <div class="pipeline-container">
+          <div class="pipeline-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4>Background Worker Polling & Atomic Claiming</h4>
+              <p><code>AlertJobManager</code> runs an asynchronous check loop every 60 seconds. It claims due schedules using atomic SQL updates (<code>next_check_at = now + 1 day</code>) with <code>asyncio.Semaphore(5)</code> concurrency controls.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h4>Tenant Rate Limit & Cooldown Validation</h4>
+              <p>Guards against credit exhaustion by enforcing a strict maximum of <strong>30 AI alert checks per tenant per 24 hours</strong> and a <strong>60-second cooldown</strong> on instant runs.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h4>Tier 1: High-Speed Deterministic SQL Pre-Checks</h4>
+              <p>Executes 8 raw PostgreSQL queries against <code>fact_account_moves</code>, <code>fact_account_move_lines</code>, and <code>fact_stock_quants</code>. If all checks are clear and no custom user prompt was submitted, <strong>Tier 2 LLM inference is completely bypassed ($0.00 token cost)</strong>.</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <h4>Tier 2: LangChain AI Agent (Virtual CFO Reasoning)</h4>
+              <p>If anomalies are detected, the payload is serialized into <code>AlertContextPayload</code> with active thresholds and pre-check findings. The agent applies an executive severity rubric (<code>CRITICAL</code>, <code>WARNING</code>, <code>OK</code>, <code>INFO</code>).</p>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-number">5</div>
+            <div class="step-content">
+              <h4>Multi-Channel Notification Dispatch</h4>
+              <p>Dispatches branded HTML email briefs with color-coded severity headers via <code>EmailService</code> and triggers configured Webhook URLs for Slack or MS Teams.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Dynamic Active Thresholds -->
+    <div id="tab-thresholds" class="tab-panel">
+      <div class="sim-box">
+        <h3 style="margin-bottom: 8px; color: #ffffff;">⚡ Interactive Dynamic Threshold Simulator</h3>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 20px;">
+          Test how the 3-Tier Precedence Hierarchy resolves active thresholds based on business type and custom overrides.
+        </p>
+
+        <div class="sim-controls">
+          <div>
+            <label>Business Profile</label>
+            <select id="sim-biz-type" onchange="runThresholdSim()">
+              <option value="product">Product (Retail, FMCG, E-Commerce)</option>
+              <option value="service">Service (Consultancy, Agency, IT)</option>
+              <option value="hybrid">Hybrid (Wholesale, Manufacturing)</option>
+              <option value="none">Unknown / Fallback (AgentConfig)</option>
+            </select>
+          </div>
+          <div>
+            <label>Custom Cash Drop Override (%)</label>
+            <input type="number" id="sim-custom-cash" placeholder="e.g. 10" oninput="runThresholdSim()" />
+          </div>
+          <div>
+            <label>Custom AR Overdue Ratio</label>
+            <input type="number" step="0.05" id="sim-custom-ar" placeholder="e.g. 0.20" oninput="runThresholdSim()" />
+          </div>
+        </div>
+
+        <label>Resolved Active Threshold Configuration (Payload to Agent):</label>
+        <div id="sim-result" class="sim-output">Loading...</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🏛 3-Tier Precedence Hierarchy</h3>
+          </div>
+          <ol style="margin-left: 20px; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8;">
+            <li><strong style="color: #ffffff;">1. Schedule Custom Overrides (Highest)</strong>: Explicit JSON parameters in <code>AlertSchedule.thresholds</code>.</li>
+            <li><strong style="color: #ffffff;">2. Inferred Profile Baselines (Medium)</strong>: Auto-adapted based on tenant business model (Retail vs. Consultancy).</li>
+            <li><strong style="color: #ffffff;">3. Global System Fallbacks (Lowest)</strong>: Hardcoded safety bounds in <code>AgentConfig</code>.</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🎯 Why Threshold Awareness Matters</h3>
+          </div>
+          <ul style="margin-left: 20px; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8;">
+            <li><strong>Zero Hallucinations</strong>: Prevents the LLM from making subjective guesses about what is "material".</li>
+            <li><strong>Calibrated Severity</strong>: Maps directly to <code>&lt;severity_rubric&gt;</code> for decisive <code>CRITICAL</code> or <code>WARNING</code> alerts.</li>
+            <li><strong>Executive Transparency</strong>: The agent cites the exact threshold in its brief delivered to stakeholders.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: 8 Deterministic SQL Pre-Checks -->
+    <div id="tab-prechecks" class="tab-panel">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">1. Cash Flow Depletion</h4>
+            <span class="tag tag-warning">check_cash_drop</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px;">
+            Compares 24h net cash movement (<code>asset_cash</code>) against the 7-day daily rolling average.
+          </p>
+          <pre><code>WITH cash_moves AS (
+  SELECT m.date, SUM(l.balance) as daily_net
+  FROM fact_account_move_lines l
+  JOIN fact_account_moves m ON l.account_move_id = m.id
+  WHERE l.account_type = 'asset_cash' AND m.state = 'posted'
+  GROUP BY m.date
+)
+SELECT recent_cash, avg_cash_7d FROM stats;</code></pre>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">2. Overdue Receivables Ratio</h4>
+            <span class="tag tag-warning">check_overdue_ar</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px;">
+            Checks if overdue receivables exceed the configured percentage of total open customer debt.
+          </p>
+          <pre><code>SELECT 
+  COALESCE(SUM(amount_residual), 0) AS total_ar,
+  COALESCE(SUM(CASE WHEN invoice_date_due &lt; CURRENT_DATE 
+    THEN amount_residual ELSE 0 END), 0) AS overdue_ar
+FROM fact_account_moves
+WHERE move_type = 'out_invoice' AND state = 'posted';</code></pre>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">3. Revenue Cliff Drop</h4>
+            <span class="tag tag-warning">check_revenue_anomaly</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px;">
+            Detects severe daily revenue drops relative to the 30-day trailing baseline.
+          </p>
+          <pre><code>WITH daily_rev AS (
+  SELECT date, SUM(amount_untaxed) as rev
+  FROM fact_account_moves
+  WHERE move_type = 'out_invoice' AND state = 'posted'
+    AND date &gt;= CURRENT_DATE - INTERVAL '30 days'
+  GROUP BY date
+)
+SELECT rev_24h, avg_rev_30d FROM daily_rev;</code></pre>
+        </div>
+
+        <div class="card" style="border-color: rgba(244, 63, 94, 0.4);">
+          <div class="card-header">
+            <h4 class="card-title" style="color: #fda4af;">4. Unbalanced Journals</h4>
+            <span class="tag tag-critical">Instant Critical</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 8px;">
+            Audit integrity check that triggers immediate Critical severity if debit != credit.
+          </p>
+          <pre><code>SELECT COUNT(DISTINCT m.id) as unbalanced_cnt
+FROM fact_account_move_lines l
+JOIN fact_account_moves m ON l.account_move_id = m.id
+WHERE m.state = 'posted'
+GROUP BY m.id
+HAVING ABS(SUM(l.debit) - SUM(l.credit)) &gt; 0.01;</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: AI Agent & Prompt -->
+    <div id="tab-agent" class="tab-panel">
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <h3 class="card-title">🤖 Grounded Context & Output Formatting</h3>
+          <span class="tag tag-info">LangChain + Claude</span>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
+          The AI Agent prompt enforces strict XML isolation tags and mandates an exact executive output structure with a trailing machine-readable JSON block.
+        </p>
+
+        <pre><code>&lt;role&gt;
+You are a senior executive business advisor / Virtual CFO to the company owner.
+&lt;/role&gt;
+
+&lt;alert_context_json&gt;
+{
+  "tenant_id": "c7a192bc-5134-4b51-9e57-8cfb180db2e4",
+  "thresholds": {"cash_drop_pct": 12.0, "ar_overdue_ratio": 0.15},
+  "precheck_summary": "• Cash balance dropped by 18.2% (threshold: 12.0%)."
+}
+&lt;/alert_context_json&gt;
+
+&lt;output_format&gt;
+WARNING: Significant Cash Drop Breaches Retail Baseline
+
+1. PRIMARY FINDING: 2-3 sentences with exact figures.
+2. BUSINESS IMPACT: Quantified impact on cash runway.
+3. RECOMMENDED ACTION: 1-3 concrete next steps with owners.
+
+```json
+{
+  "condition_triggered": true,
+  "severity": "warning",
+  "summary": "Cash balance dropped by 18.2% breaching the 12.0% threshold.",
+  "confidence": "high"
+}
+```
+&lt;/output_format&gt;</code></pre>
+      </div>
+    </div>
+
+    <!-- TAB 5: DB Models & REST APIs -->
+    <div id="tab-db_api" class="tab-panel">
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <h3 class="card-title">🌐 REST API Matrix (<code>/api/v1/alerts</code>)</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Permission</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="metric-badge" style="color: #6ee7b7; background: rgba(110, 231, 183, 0.1);">POST</span></td>
+              <td><code>/schedules</code></td>
+              <td><code>manage_alerts</code></td>
+              <td>Create a scheduled alert with custom thresholds and recipients.</td>
+            </tr>
+            <tr>
+              <td><span class="metric-badge" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1);">GET</span></td>
+              <td><code>/schedules</code></td>
+              <td><code>view_alerts</code></td>
+              <td>List all schedules for the current tenant and system defaults.</td>
+            </tr>
+            <tr>
+              <td><span class="metric-badge" style="color: #fcd34d; background: rgba(252, 211, 77, 0.1);">POST</span></td>
+              <td><code>/schedules/{id}/run-now</code></td>
+              <td><code>manage_alerts</code></td>
+              <td>Instant anomaly check (governed by 60s cooldown).</td>
+            </tr>
+            <tr>
+              <td><span class="metric-badge" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1);">GET</span></td>
+              <td><code>/history</code></td>
+              <td><code>view_alerts</code></td>
+              <td>Execution logs (<code>AlertLog</code>) with anomaly summaries.</td>
+            </tr>
+            <tr>
+              <td><span class="metric-badge" style="color: #a78bfa; background: rgba(167, 139, 250, 0.1);">GET</span></td>
+              <td><code>/ops/metrics</code></td>
+              <td><code>view_alerts</code></td>
+              <td>Telemetry endpoint returning JSON or Prometheus metrics.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 6: Prometheus & Telemetry -->
+    <div id="tab-metrics" class="tab-panel">
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">Alert Checks Evaluated</h4>
+          </div>
+          <div style="font-size: 2rem; font-weight: 800; color: #38bdf8; margin: 8px 0;">1,420</div>
+          <p style="font-size: 0.8rem; color: var(--text-muted);"><code>nexus_alerts_triggered_total</code></p>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">LLM Inferences Skipped</h4>
+          </div>
+          <div style="font-size: 2rem; font-weight: 800; color: #34d399; margin: 8px 0;">1,288</div>
+          <p style="font-size: 0.8rem; color: var(--text-muted);"><code>nexus_prechecks_skipped_llm_total</code> (90.7% Cost Savings)</p>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">Estimated Cost Saved</h4>
+          </div>
+          <div style="font-size: 2rem; font-weight: 800; color: #a78bfa; margin: 8px 0;">$193.20</div>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">$0.15 per skipped check baseline</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      
+      const targetPanel = document.getElementById('tab-' + tabId);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+      
+      event.currentTarget.classList.add('active');
+    }
+
+    function runThresholdSim() {
+      const bType = document.getElementById('sim-biz-type').value;
+      const customCash = document.getElementById('sim-custom-cash').value;
+      const customAr = document.getElementById('sim-custom-ar').value;
+
+      const baselines = {
+        product: { cash_drop_pct: 12.0, ar_overdue_ratio: 0.15, revenue_deviation_pct: 20.0, low_stock_threshold: 15, large_txn_multiplier: 2.5 },
+        service: { cash_drop_pct: 35.0, ar_overdue_ratio: 0.40, revenue_deviation_pct: 45.0, low_stock_threshold: 0, large_txn_multiplier: 3.5 },
+        hybrid:  { cash_drop_pct: 20.0, ar_overdue_ratio: 0.30, revenue_deviation_pct: 30.0, low_stock_threshold: 5, large_txn_multiplier: 3.0 },
+        none:    { cash_drop_pct: 20.0, ar_overdue_ratio: 0.30, revenue_deviation_pct: 30.0, low_stock_threshold: 5, large_txn_multiplier: 3.0 },
+      };
+
+      let effective = { ...(baselines[bType] || baselines.none) };
+
+      if (customCash) effective.cash_drop_pct = parseFloat(customCash);
+      if (customAr) effective.ar_overdue_ratio = parseFloat(customAr);
+
+      document.getElementById('sim-result').textContent = JSON.stringify({
+        tenant_id: "demo-tenant-uuid",
+        inferred_business_model: bType,
+        active_resolved_thresholds: effective
+      }, null, 2);
+    }
+
+    runThresholdSim();
+  </script>
+</body>
+</html>

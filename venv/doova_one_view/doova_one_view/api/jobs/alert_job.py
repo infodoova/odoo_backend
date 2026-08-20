@@ -29,7 +29,7 @@ DEFAULT_ALERT_PROMPT = (
     "3. Identify large unexpected expenses or duplicate/suspicious transactions.\n"
     "4. Highlight overdue invoices past 30 days.\n"
     "5. Flag abnormal inventory movements or sudden changes in order volumes.\n"
-    "6. Report any other anomaly a CFO should know about immediately.\n"
+    "6. Report any other anomaly a business owner should know about immediately.\n"
     "</monitoring_criteria>"
 )
 
@@ -237,8 +237,7 @@ class AlertJobManager:
             )
 
             alert_sent = False
-            is_ai_error = "AI Advisor Service" in summary
-            should_send = (condition_triggered or (is_instant and not is_ai_error)) and send_email and schedule.recipients
+            should_send = condition_triggered and send_email and bool(schedule.recipients)
             if should_send:
                 await AlertJobManager._send_alert_email(
                     schedule=schedule,
@@ -276,6 +275,7 @@ class AlertJobManager:
                 "summary": summary,
                 "alert_sent": alert_sent,
                 "log_id": log_id,
+                "severity": severity,
             }
 
         except Exception as exc:
@@ -335,7 +335,7 @@ class AlertJobManager:
         if not precheck_res["any_triggered"] and not has_custom_prompt:
             logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant={tenant_id} and no custom prompt — skipping LLM inference.")
             from doova_one_view.api.agent.metrics import metrics_registry
-            metrics_registry.record_alert_check(has_anomalies=False, alert_sent=False, skipped_llm=True, status="completed")
+            metrics_registry.record_alert_check(condition_triggered=False, alert_sent=False, skipped_llm=True, status="completed")
             return "OK: All monitored financial, inventory, and operational metrics are within normal baseline ranges.", False, "success"
 
         if has_custom_prompt:
@@ -365,37 +365,98 @@ class AlertJobManager:
 
         full_prompt = (
             f"<role>\n"
-            f"You are an executive business advisor reporting to a business owner {company_ctx}.\n"
-            f"Your expertise is translating complex data into simple, actionable executive findings.\n"
+            f"You are a senior executive business advisor to the owner of a company {company_ctx}.\n"
+            f"Your core skill is converting raw financial and operational data into concise, "
+            f"decision-ready findings. You communicate like a trusted business advisor: precise, plain-spoken, "
+            f"and focused on business impact — never on technical mechanics.\n"
             f"</role>\n\n"
+
             f"<alert_context_json>\n"
             f"{context_json}\n"
             f"</alert_context_json>\n\n"
+
             f"<deterministic_precheck_findings>\n"
             f"Automated pre-checks flagged the following potential anomalies:\n"
             f"{precheck_res['precheck_summary']}\n"
             f"</deterministic_precheck_findings>\n\n"
+
+            f"<grounding_rules>\n"
+            f"- Base every claim strictly on <alert_context_json> and "
+            f"<deterministic_precheck_findings>. Never invent figures, dates, or trends.\n"
+            f"- If the data is insufficient to answer <user_request> definitively, say so "
+            f"explicitly and state what data would resolve it. Do not guess.\n"
+            f"- Round figures for readability (e.g., '$1.2M' not '$1,203,447.18') unless "
+            f"exact precision is material to the finding.\n"
+            f"</grounding_rules>\n\n"
+
+            f"<severity_rubric>\n"
+            f"Severity is determined by the CONTENT of the answer to <user_request>, never "
+            f"by how the question is phrased. A factually-phrased question (e.g., 'are "
+            f"yearly expenses above 1M?') does not by itself mean INFO — evaluate what the "
+            f"answer actually says.\n\n"
+            f"Once you have the answer, judge it the way an informed business owner would, "
+            f"using whatever thresholds, targets, budgets, or prior-period comparisons are "
+            f"available in the data:\n"
+            f"- CRITICAL: the answer reveals an immediate, material adverse risk or a hard "
+            f"threshold breach requiring action within days.\n"
+            f"- WARNING: the answer reveals a deteriorating trend or an approaching "
+            f"threshold that needs attention soon, but is not yet an emergency.\n"
+            f"- OK: the answer is healthy, on-target, or within expected bounds.\n"
+            f"- INFO: the answer is purely descriptive with no clear positive or negative "
+            f"reading even in context (e.g., a headcount, a balance, a status with nothing "
+            f"to compare it against). Never default to INFO just because the question "
+            f"sounds factual — use it only when the finding itself carries no good/bad "
+            f"signal.\n\n"
+            f"Example: 'Are yearly expenses above $1M?' — '$1.2M, 20% over budget' is "
+            f"adverse → WARNING or CRITICAL depending on severity, NOT INFO. '$850K, under "
+            f"budget' is healthy → OK, NOT INFO. Only a version with nothing to measure "
+            f"against (e.g., 'what were total yearly expenses?' with no budget on record) "
+            f"would be INFO.\n\n"
+            f"Escalation guard: pre-check anomalies UNRELATED to <user_request> (e.g., "
+            f"overdue AR, stockouts) must NOT hijack the primary headline severity. Report "
+            f"them separately under 'Additional Risk Observations'.\n"
+            f"</severity_rubric>\n\n"
+
             f"<instructions>\n"
-            f"1. Use relevant tools to gather context on the flagged issues before making your assessment.\n"
-            f"2. Write for a business owner/client. Omit raw internal database sequence numbers (e.g. #317916/#317917) and internal GL account IDs.\n"
-            f"3. Do NOT use technical statistical jargon like '>3σ from mean' — say 'Unusually Large Transaction'.\n"
-            f"4. Structure your response into 3 simple sections: What Happened, Business Impact, and Recommended Action.\n"
-            f"5. Before writing your final report, enclose your internal reasoning within <thinking> tags.\n"
-            f"6. After thinking, output your final assessment matching the strict format defined in <output_format>.\n"
+            f"1. Answer the primary metric or question in <user_request> first and directly.\n"
+            f"2. Apply <severity_rubric> to determine the headline severity.\n"
+            f"3. Quantify impact wherever possible: amounts, percentages, deltas vs. prior "
+            f"periods, and time horizons.\n"
+            f"4. Write for a business owner: no internal sequence IDs, no schema/field names, "
+            f"no statistical jargon (say 'unusually high vs. the last 6 months', not "
+            f"'3-sigma deviation').\n"
+            f"5. Recommended actions must be specific and executable this week — name the "
+            f"action, the owner (role), and the urgency. Avoid vague advice like "
+            f"'monitor closely'.\n"
+            f"6. Before writing your final report, reason step-by-step inside <thinking> tags: "
+            f"restate the user's question, identify the relevant data points, test them "
+            f"against the rubric, and decide severity. Keep this reasoning out of the "
+            f"final report sections.\n"
+            f"7. Then output your final assessment exactly per <output_format>.\n"
             f"</instructions>\n\n"
+
             f"<output_format>\n"
-            f"Your response must begin with a STRATEGIC RECOMMENDATION section. The very first line of this section MUST state the exact severity, matching one of:\n"
+            f"After the closing </thinking> tag, your report must begin with the severity "
+            f"line. The very first line MUST match exactly one of:\n"
             f"  CRITICAL: <one-line headline>\n"
             f"  WARNING: <one-line headline>\n"
             f"  INFO: <one-line headline>\n"
             f"  OK: <one-line headline>\n\n"
-            f"Do not add any text, markdown, or greetings before the severity line. "
-            f"Following the headline, provide your simple, executive findings.\n"
-            f"You may also optionally include a JSON summary block at the end of your response:\n"
+            f"No text, markdown, or greeting may precede the severity line.\n\n"
+            f"Then provide these sections in order:\n"
+            f"1. PRIMARY FINDING — 2-3 sentences answering the user's question with key figures.\n"
+            f"2. BUSINESS IMPACT — what this means for cash, revenue, cost, or operations, "
+            f"quantified where possible.\n"
+            f"3. RECOMMENDED ACTION — 1-3 concrete, prioritized next steps.\n"
+            f"4. ADDITIONAL RISK OBSERVATIONS — only if pre-checks flagged unrelated issues; "
+            f"omit this section entirely if none exist.\n\n"
+            f"End with a mandatory machine-readable summary block:\n"
             f"```json\n"
-            f'{{"condition_triggered": true|false, "severity": "critical|warning|info|success", "summary": "..."}}\n'
+            f'{{"condition_triggered": true|false, "severity": "critical|warning|info|success", '
+            f'"summary": "<one sentence>", "confidence": "high|medium|low"}}\n'
             f"```\n"
             f"</output_format>\n\n"
+
             f"<user_request>\n"
             f"{effective_prompt}\n"
             f"</user_request>"
@@ -458,7 +519,7 @@ class AlertJobManager:
 
 
         # Layer 2: Explicit severity prefix regex
-        crit_match = re.search(r'^\*{0,2}(CRITICAL|ALERT):\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
+        crit_match = re.search(r'^\*{0,2}CRITICAL:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
         warn_match = re.search(r'^\*{0,2}WARNING:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
         info_match = re.search(r'^\*{0,2}INFO:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
         ok_match   = re.search(r'^\*{0,2}OK:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
@@ -476,7 +537,7 @@ class AlertJobManager:
         rec_match = re.search(r'##\s*STRATEGIC\s+RECOMMENDATION\b', clean_res, re.IGNORECASE)
         section = clean_res[rec_match.end():].strip() if rec_match else clean_res
 
-        if re.search(r'\b(CRITICAL|ALERT)\b', section, re.IGNORECASE):
+        if re.search(r'\bCRITICAL\b', section, re.IGNORECASE):
             return section, True, "critical"
         if re.search(r'\bWARNING\b', section, re.IGNORECASE):
             return section, True, "warning"
@@ -516,6 +577,9 @@ class AlertJobManager:
                     pass
             return t_name
 
+        from doova_one_view.api.agent.utils import replace_tenant_ids_with_names
+        summary = replace_tenant_ids_with_names(summary)
+
         tenant_name = await _resolve_tenant_name()
 
         prefix_map = {
@@ -533,29 +597,6 @@ class AlertJobManager:
             severity=severity,
             tenant_id=tenant_id,
         )
-
-async def _send_webhook_notification(webhook_url: str, title: str, summary: str, is_anomaly: bool):
-    """Dispatches real-time alert notifications to Slack, MS Teams, or custom HTTP Webhook URLs."""
-    import httpx
-    payload = {
-        "text": f"🚨 *{title}*",
-        "attachments": [
-            {
-                "color": "#e74c3c" if is_anomaly else "#2ecc71",
-                "title": "Nexus Financial Alert",
-                "text": summary[:2000],
-                "footer": "Nexus Automated AI Business Monitoring",
-            }
-        ],
-    }
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(webhook_url, json=payload)
-            resp.raise_for_status()
-            logger.info(f"Successfully dispatched alert webhook notification to {webhook_url}")
-    except Exception as exc:
-        logger.error(f"Failed to dispatch alert webhook notification to {webhook_url}: {exc}")
-
 
         sent_count = 0
         errors = []
@@ -575,12 +616,41 @@ async def _send_webhook_notification(webhook_url: str, title: str, summary: str,
 
         # Dispatch to Webhook URL if configured (Slack / Teams / Custom)
         if getattr(schedule, "webhook_url", None):
-            await _send_webhook_notification(
+            await AlertJobManager._send_webhook_notification(
                 webhook_url=schedule.webhook_url,
                 title=subject,
                 summary=summary,
-                is_anomaly=True,
+                is_anomaly=is_anomaly,
             )
 
         if sent_count == 0 and schedule.recipients:
             raise Exception(f"Failed to send alert email to any recipient after retries: {'; '.join(errors)}")
+
+    @staticmethod
+    async def _send_webhook_notification(webhook_url: str, title: str, summary: str, is_anomaly: bool):
+        """Dispatches real-time alert notifications to Slack, MS Teams, or custom HTTP Webhook URLs."""
+        import httpx
+        from doova_one_view.api.agent.utils import replace_tenant_ids_with_names
+        title = replace_tenant_ids_with_names(title)
+        summary = replace_tenant_ids_with_names(summary)
+        payload = {
+            "text": f"🚨 *{title}*",
+            "attachments": [
+                {
+                    "color": "#e74c3c" if is_anomaly else "#2ecc71",
+                    "title": "Nexus Financial Alert",
+                    "text": summary[:2000],
+                    "footer": "Nexus Automated AI Business Monitoring",
+                }
+            ],
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(webhook_url, json=payload)
+                resp.raise_for_status()
+                logger.info(f"Successfully dispatched alert webhook notification to {webhook_url}")
+        except Exception as exc:
+            logger.error(f"Failed to dispatch alert webhook notification to {webhook_url}: {exc}")
+
+
+_send_webhook_notification = AlertJobManager._send_webhook_notification

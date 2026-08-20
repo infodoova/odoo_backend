@@ -111,8 +111,8 @@ class DoovaLangChainAgent:
             agent=self.agent, 
             tools=agent_tools, 
             verbose=True,
-            max_iterations=10,
-            early_stopping_method="generate",
+            max_iterations=15,
+            early_stopping_method="force",
             handle_parsing_errors=True,
             callbacks=[AgentCallbackHandler()]
         )
@@ -170,7 +170,7 @@ class DoovaLangChainAgent:
             log_summarization(len(to_summarize), len(memory_summary), sum_duration)
 
         try:
-            from .utils import get_tenant_currency, fix_currency_symbols
+            from .utils import get_tenant_currency, fix_currency_symbols, replace_tenant_ids_with_names
             from .query_context import normalize_company_ids, normalize_tenant_ids
             
             resolved_tenant_ids = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
@@ -203,6 +203,7 @@ class DoovaLangChainAgent:
                 output = str(raw_output)
 
             output = fix_currency_symbols(output, currency)
+            output = replace_tenant_ids_with_names(output, resolved_tenant_ids)
 
             duration = (time.time() - start) * 1000
             log_agent_complete(output, duration)

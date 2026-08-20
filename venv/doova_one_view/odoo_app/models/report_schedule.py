@@ -48,12 +48,14 @@ class ReportLog(models.Model):
         ('failed', 'Failed'),
     ]
     ERROR_CATEGORY_CHOICES = [
-        ('ai_failure',    'AI Agent Failure'),
-        ('pdf_failure',   'PDF Generation Failure'),
-        ('email_failure', 'Email Delivery Failure'),
-        ('smtp_missing',  'SMTP Unconfigured'),
-        ('data_failure',  'Data Fetch Failure'),
-        ('unknown',       'Unknown Failure'),
+        ('ai_failure',           'AI Agent Failure'),
+        ('pdf_failure',          'PDF Generation Failure'),
+        ('email_failure',        'Email Delivery Failure'),
+        ('smtp_missing',         'SMTP Unconfigured'),
+        ('data_failure',         'Data Fetch Failure'),
+        ('validation_failed',    'Citation Grounding Validation Failed'),
+        ('completeness_failure', 'Data Completeness Below Threshold'),
+        ('unknown',              'Unknown Failure'),
     ]
 
     id               = models.BigAutoField(primary_key=True)

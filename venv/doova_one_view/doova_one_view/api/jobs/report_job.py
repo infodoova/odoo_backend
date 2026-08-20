@@ -12,6 +12,7 @@ import logging
 import time
 from datetime import datetime, timezone as tz
 from pathlib import Path
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ class ReportJobManager:
         from doova_one_view.api.reports.utils import calculate_next_send
         from doova_one_view.api.agent.tools_refactored.reporting_v2 import generate_report_tool
 
-        tenant_id = str(schedule.tenant.id) if schedule.tenant else None
+        tenant_id = str(schedule.tenant_id) if schedule.tenant_id else None
         company_ids = schedule.companies if schedule.companies else None
         tenant_ids = schedule.tenants if schedule.tenants else None
         next_dt = calculate_next_send(schedule.frequency, now)
@@ -192,7 +193,14 @@ class ReportJobManager:
                     await _save_early_failure()
                     return
 
-            # 1. Build AI-generated report content using the user's prompt
+            # 1. Fetch tenant-specific configurable thresholds
+            from doova_one_view.api.agent.thresholds import get_tenant_thresholds
+            from doova_one_view.api.agent.citation_validator import CitationValidator
+            from doova_one_view.api.agent.completeness import CompletenessEvaluator
+            thresholds = await sync_to_async(get_tenant_thresholds)(tenant_id)
+            min_completeness = thresholds.get("min_completeness_threshold_pct", 90.0)
+
+            # 2. Build AI-generated report content using the user's prompt
             try:
                 custom_content = await ReportJobManager._build_analysis(
                     tenant_id, schedule.report_type, company_ids, schedule.prompt, tenant_ids=tenant_ids
@@ -201,13 +209,51 @@ class ReportJobManager:
                 error_category = "ai_failure"
                 raise ai_err
 
-            # 2. Generate PDF
+            # 3. Programmatic Citation-Grounding Verification Gate
+            citations = CitationValidator.extract_citations_from_text(custom_content)
+            if citations:
+                from doova_one_view.api.agent.tools_refactored.sales import get_sales_summary_tool
+                from doova_one_view.api.agent.tools_refactored.finance import calculate_pnl_tool
+                ground_truth = {}
+                try:
+                    pnl_data = await sync_to_async(calculate_pnl_tool)(tenant_id=tenant_id, company_ids=company_ids)
+                    if isinstance(pnl_data, dict):
+                        ground_truth.update(pnl_data)
+                except Exception:
+                    pass
+
+                val_res = CitationValidator.validate_citations(
+                    citations, ground_truth=ground_truth, tolerance_pct=thresholds.get("po_matching_tolerance_pct", 1.0)
+                )
+
+                if not val_res["is_valid"]:
+                    logger.warning(f"ReportJobManager: Citations ungrounded for schedule {schedule.id} — attempting repair retry")
+                    # 1-Step Repair Retry
+                    try:
+                        repair_prompt = (schedule.prompt or "") + "\n\n" + (val_res["repair_prompt"] or "")
+                        custom_content = await ReportJobManager._build_analysis(
+                            tenant_id, schedule.report_type, company_ids, repair_prompt, tenant_ids=tenant_ids
+                        )
+                        citations_retry = CitationValidator.extract_citations_from_text(custom_content)
+                        val_res_retry = CitationValidator.validate_citations(
+                            citations_retry, ground_truth=ground_truth, tolerance_pct=thresholds.get("po_matching_tolerance_pct", 1.0)
+                        )
+                        if not val_res_retry["is_valid"]:
+                            error_category = "validation_failed"
+                            raise Exception(f"Citation validation failed after repair retry: {val_res_retry['violations']}")
+                    except Exception as rep_err:
+                        error_category = "validation_failed"
+                        raise rep_err
+
+            # 4. Generate PDF
             try:
                 result = await sync_to_async(generate_report_tool)(
                     tenant_id=tenant_id,
                     company_ids=company_ids,
                     custom_content=custom_content,
                     tenant_ids=tenant_ids,
+                    report_type=schedule.report_type,
+                    prompt=schedule.prompt,
                 )
                 filename = result['filename']
             except Exception as pdf_err:
@@ -229,8 +275,9 @@ class ReportJobManager:
             }
 
             # 4. Email each recipient with backoff retry
-            subject = _build_subject(schedule)
-            html_body = _build_email_body(schedule)
+            tname = await _get_schedule_tenant_name(schedule)
+            subject = _build_subject(schedule, tname)
+            html_body = _build_email_body(schedule, tname)
             sent_count = 0
             email_errors = []
 
@@ -335,7 +382,7 @@ class ReportJobManager:
 
         full_prompt = (
             f"<role>\n"
-            f"You are an elite automated reporting AI and financial analyst, generating a highly structured {report_type} report {company_ctx}.\n"
+            f"You are an automated reporting AI and business analyst, generating a highly structured {report_type} report {company_ctx}.\n"
             f"Your expertise is in synthesizing complex business data into clear, actionable executive summaries.\n"
             f"</role>\n\n"
             f"<instructions>\n"
@@ -373,6 +420,7 @@ class ReportJobManager:
             )
 
 
+@sync_to_async
 def _get_schedule_tenant_name(schedule) -> str:
     if schedule.tenants and len(schedule.tenants) > 0:
         try:
@@ -382,10 +430,13 @@ def _get_schedule_tenant_name(schedule) -> str:
                 return ", ".join(t.name for t in tenants)
         except Exception:
             pass
-    return schedule.tenant.name if schedule.tenant else "Your Business"
+    try:
+        return schedule.tenant.name if schedule.tenant else "Your Business"
+    except Exception:
+        return "Your Business"
 
 
-def _build_subject(schedule) -> str:
+def _build_subject(schedule, tname: str = "Your Business") -> str:
     freq_labels = {
         'daily':       'Daily',
         'weekly':      'Weekly',
@@ -396,11 +447,10 @@ def _build_subject(schedule) -> str:
         'annual':      'Annual',
     }
     label = freq_labels.get(schedule.frequency, schedule.frequency.capitalize())
-    tname = _get_schedule_tenant_name(schedule)
     return f"Your {label} Business Report — {tname}"
 
 
-def _build_email_body(schedule) -> str:
+def _build_email_body(schedule, tname: str = "Your Business") -> str:
     freq_labels = {
         'daily':       'daily',
         'weekly':      'weekly',
@@ -415,7 +465,6 @@ def _build_email_body(schedule) -> str:
         "all companies" if not schedule.companies
         else f"{len(schedule.companies)} selected company/ies"
     )
-    tname = _get_schedule_tenant_name(schedule)
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
         <h2 style="color: #1a3d5c;">Your Scheduled Business Report</h2>
@@ -431,3 +480,4 @@ def _build_email_body(schedule) -> str:
         </p>
     </div>
     """
+

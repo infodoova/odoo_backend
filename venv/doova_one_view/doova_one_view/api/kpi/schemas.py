@@ -121,9 +121,11 @@ class KPITenantSummary(BaseModel):
 
 
 class KPIPeriodDetailResponse(BaseModel):
-    period: str
+    period: Optional[str] = None
     kind: str
-    date: str
+    date: Optional[str] = None
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
     limit: int
     offset: int
     grand_revenue_amount: float

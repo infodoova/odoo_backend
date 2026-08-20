@@ -10,7 +10,7 @@ from django.conf import settings as django_settings
 
 
 class AgentConfig:
-    """Centralised knobs for the AI financial-advisor agent."""
+    """Centralised knobs for the AI business advisor agent."""
 
     # ── LLM provider ──────────────────────────────────────────────────
     ANTHROPIC_API_KEY: str = (
@@ -36,7 +36,7 @@ class AgentConfig:
     THINKING_BUDGET = 32000
 
     # ── Token budgets ─────────────────────────────────────────────────
-    # 8192 supports the CFO INTERNAL THOUGHT PROCESS + STRATEGIC RECOMMENDATION
+    # 8192 supports the internal analysis + recommendations
     # sections without truncation on compound multi-tool analyses.
     # Use MAX_REPORT_TOKENS for report-generation endpoints that need longer output.
     MAX_FAST_TOKENS = 8192

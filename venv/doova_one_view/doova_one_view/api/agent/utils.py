@@ -244,6 +244,28 @@ def fix_currency_symbols(text: str, currency: str) -> str:
         
     return text
 
+def replace_tenant_ids_with_names(text: str, tenant_ids: list[str] | None = None) -> str:
+    """
+    Replace raw tenant UUIDs in the text with their friendly human-readable names.
+    """
+    if not text or not isinstance(text, str):
+        return text or ""
+    try:
+        from odoo_app.models import Tenant
+        uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+        found_uuids = set(re.findall(uuid_pattern, text, flags=re.IGNORECASE))
+        if tenant_ids:
+            found_uuids.update(t for t in tenant_ids if t and t != "default")
+
+        if found_uuids:
+            tenant_map = dict(Tenant.objects.filter(id__in=found_uuids).values_list("id", "name"))
+            for uid, name in tenant_map.items():
+                if name:
+                    text = text.replace(str(uid), str(name))
+    except Exception:
+        pass
+    return text
+
 def get_project_logo_b64(custom_logo_path: str | None = None) -> tuple[str | None, str | None]:
     """
     Auto-discovers and encodes project logo image for report generation.

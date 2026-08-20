@@ -109,7 +109,7 @@ def make_chat_response(
     plan: Optional[dict] = None,
     status: Optional[str] = None
 ) -> dict:
-    from .utils import parse_json_chart_from_text, strip_json_chart_from_text
+    from .utils import parse_json_chart_from_text, strip_json_chart_from_text, replace_tenant_ids_with_names
 
     chart_payload = parse_json_chart_from_text(answer)
 
@@ -121,6 +121,8 @@ def make_chat_response(
     else:
         final_answer = answer
         res_type = "text"
+
+    final_answer = replace_tenant_ids_with_names(final_answer)
 
     res = {
         "answer": final_answer,
@@ -134,7 +136,11 @@ def make_chat_response(
         res["payload"] = chart_payload
 
     if plan is not None:
-        res["plan"] = plan
+        try:
+            cleaned_plan_str = replace_tenant_ids_with_names(json.dumps(plan))
+            res["plan"] = json.loads(cleaned_plan_str)
+        except Exception:
+            res["plan"] = plan
     if status is not None:
         res["status"] = status
     return res
@@ -744,6 +750,12 @@ async def generate_ai_report(request: Request):
             custom_content=custom_content,
             report_type=report_type,
             logo_path=logo_path,
+            base_currency=body.get("base_currency"),
+            start_date=body.get("start_date") or body.get("from_date"),
+            end_date=body.get("end_date") or body.get("to_date"),
+            reporting_period=body.get("reporting_period"),
+            comparison_label=body.get("comparison_label"),
+            prompt=body.get("prompt") or body.get("message") or "",
         )
         return {"download_url": result.get("path", result["download_url"]), "filename": result["filename"]}
     except Exception as e:

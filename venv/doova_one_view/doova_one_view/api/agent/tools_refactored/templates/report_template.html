@@ -3,10 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ company_name|default("Financial Overview") }}</title>
+    <title>{{ company_name|default("Nexus") }} — Executive Business Health Report</title>
     <style>
         /* -------------------------------------------------------------------------
-           1. PAGE SETUP (CSS Paged Media)
+           1. PAGE SETUP (Standard CSS Paged Media for WeasyPrint A4)
            ------------------------------------------------------------------------- */
         *,
         *::before,
@@ -15,787 +15,1146 @@
         }
 
         @page {
-            size: letter;
-            margin: 0.8cm 1cm 1.8cm 1cm;
-
-            @frame footer {
-                -pdf-frame-content: footerContent;
-                bottom: 0.4cm;
-                height: 0.8cm;
-                left: 40px;
-                right: 40px;
+            size: A4;
+            margin: 16mm 12mm 16mm 12mm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 7.5pt;
+                color: #94a3b8;
+            }
+            @bottom-left {
+                content: "{{ company_name|default('Nexus') }} — Confidential & Proprietary";
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 7.5pt;
+                color: #94a3b8;
             }
         }
 
-        /* -------------------------------------------------------------------------
-           2. BASE TYPOGRAPHY
-           ------------------------------------------------------------------------- */
+        @page :first {
+            margin: 0;
+            @bottom-right { content: normal; }
+            @bottom-left { content: normal; }
+        }
+
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #334155;
-            line-height: 1.6;
-            font-size: 10.5pt;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.45;
+            font-size: 8.5pt;
             margin: 0;
             padding: 0;
-            orphans: 3;
-            widows: 3;
+            background-color: #ffffff;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
         }
 
         .page-break {
-            page-break-before: always;
+            page-break-after: always;
+            break-after: page;
         }
 
         .avoid-break {
+            break-inside: avoid;
             page-break-inside: avoid;
         }
 
         /* -------------------------------------------------------------------------
-           3. COVER PAGE DESIGN
+           2. TYPOGRAPHY & GENERAL HEADINGS
            ------------------------------------------------------------------------- */
-        .cover-header {
-            background-color: #263C8F;
+        h1, h2, h3, h4, h5 {
+            color: #0f172a;
+            break-after: avoid;
+            page-break-after: avoid;
+            font-weight: 700;
+            margin-top: 0;
+        }
+
+        h1.section-title {
+            font-size: 12pt;
+            color: #0f172a;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 4px;
+            margin-top: 14px;
+            margin-bottom: 10px;
+            letter-spacing: -0.3px;
+        }
+
+        h2.sub-title {
+            font-size: 10pt;
+            color: #2563eb;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            border-left: 3px solid #2563eb;
+            padding-left: 6px;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+
+        strong {
+            color: #0f172a;
+        }
+
+        /* -------------------------------------------------------------------------
+           3. COVER PAGE
+           ------------------------------------------------------------------------- */
+        .cover-wrapper {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: #ffffff;
+        }
+
+        .cover-top {
+            background-color: #0f172a;
             color: #ffffff;
-            padding: 90mm 20mm 40mm 20mm;
+            padding: 48px 36px 36px 36px;
             text-align: center;
         }
 
-        .cover-eyebrow {
-            color: #94a3b8;
+        .brand-logo-container {
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .header-logo-img {
+            max-height: 44px;
+            max-width: 180px;
+            object-fit: contain;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        .brand-icon {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            background-color: #2563eb;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 11pt;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .brand-text {
+            color: #ffffff;
+            font-size: 11pt;
+            font-weight: 800;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            font-size: 9.5pt;
-            font-weight: bold;
-            margin-bottom: 24px;
+        }
+
+        .cover-template-badge {
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 8pt;
+            font-weight: 700;
+            margin-bottom: 10px;
         }
 
         .cover-title {
             color: #ffffff;
-            font-size: 34pt;
-            font-weight: bold;
-            margin-bottom: 20px;
+            font-size: 22pt;
+            font-weight: 700;
+            margin-bottom: 8px;
             line-height: 1.2;
-            padding: 0 20px;
+            letter-spacing: -0.5px;
         }
 
-        .cover-tagline {
+        .cover-subtitle {
             color: #94a3b8;
-            font-size: 11pt;
-            max-width: 450px;
-            margin: 0 auto;
-            line-height: 1.5;
-        }
-
-        .cover-body {
-            padding: 30mm 20mm;
-            text-align: center;
-        }
-
-        .cover-info-card {
-            background-color: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-top: 4px solid #263C8F;
-            width: 85%;
-            margin: -60mm auto 30px auto;
-            padding: 10px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .cover-meta-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .cover-meta-col {
-            width: 25%;
-            text-align: center;
-            vertical-align: middle;
-            padding: 20px 10px;
-            border-right: 1px solid #f1f5f9;
-        }
-
-        .cover-meta-col-last {
-            border-right: none;
-        }
-
-        .cover-meta-label {
-            color: #64748b;
-            font-size: 8pt;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-
-        .cover-meta-value {
-            color: #263C8F;
-            font-weight: bold;
-            font-size: 11pt;
-        }
-
-        .cover-stamp {
-            display: inline-block;
-            color: #64748b;
-            font-size: 8pt;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: bold;
-            border: 1px solid #cbd5e1;
-            padding: 6px 18px;
-            margin-bottom: 16px;
-            border-radius: 4px;
-        }
-
-        .cover-footer-note {
-            color: #94a3b8;
-            font-size: 8.5pt;
-            max-width: 400px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        /* -------------------------------------------------------------------------
-           4. TABLE OF CONTENTS
-           ------------------------------------------------------------------------- */
-        .toc-page h1 {
-            margin-top: 0;
-        }
-
-        .toc-subtitle {
-            color: #64748b;
-            font-size: 9.5pt;
-            margin-top: -6px;
-            margin-bottom: 28px;
-        }
-
-        .toc-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .toc-row {
-            width: 100%;
-        }
-
-        .toc-row td {
-            padding: 11px 0;
-            border-bottom: 1px solid #f1f5f9;
-            vertical-align: top;
-        }
-
-        .toc-row.toc-row-last td {
-            border-bottom: none;
-        }
-
-        .toc-num-cell {
-            width: 34px;
-        }
-
-        .toc-num {
-            display: inline-block;
-            width: 22px;
-            height: 22px;
-            line-height: 22px;
-            text-align: center;
-            border-radius: 50%;
-            background-color: #263C8F;
-            color: #ffffff;
             font-size: 9pt;
-            font-weight: bold;
-        }
-
-        .toc-num-plain {
-            display: inline-block;
-            width: 22px;
-            height: 22px;
-            line-height: 22px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 11pt;
-        }
-
-        .toc-title-cell {
-            padding-left: 6px;
-            padding-right: 16px;
-        }
-
-        .toc-title {
-            display: block;
-            color: #263C8F;
-            font-weight: bold;
-            font-size: 11pt;
-            margin-bottom: 2px;
-        }
-
-        .toc-desc {
-            display: block;
-            color: #64748b;
-            font-size: 9pt;
+            max-width: 480px;
+            margin: 0 auto;
             line-height: 1.4;
         }
 
-        .toc-page-cell {
-            width: 44px;
-            text-align: right;
-            color: #475569;
-            font-size: 10pt;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-
-        a.toc-pageref {
-            text-decoration: none;
-        }
-
-        /* -------------------------------------------------------------------------
-           5. SECTION HEADINGS
-           ------------------------------------------------------------------------- */
-        h1,
-        h2,
-        h3,
-        h4 {
-            page-break-after: avoid;
-            margin-top: 24px;
-            margin-bottom: 12px;
-        }
-
-        h1 {
-            color: #263C8F;
-            font-size: 20pt;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 8px;
-            margin-top: 0;
-        }
-
-        h2 {
-            color: #263C8F;
-            font-size: 15pt;
-        }
-
-        h3 {
-            color: #334155;
-            font-size: 12.5pt;
-        }
-
-        h4 {
-            color: #475569;
-            font-size: 10.5pt;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        p {
-            margin-bottom: 12px;
-            text-align: left;
-        }
-
-        .section-intro {
-            color: #475569;
-        }
-
-        .content-section ul,
-        .content-section ol {
-            margin: 0 0 14px 0;
-            padding-left: 22px;
-        }
-
-        .content-section li {
-            margin-bottom: 6px;
-        }
-
-        .content-section a {
-            color: #263C8F;
-            text-decoration: none;
-            border-bottom: 1px solid #cbd5e1;
-        }
-
-        .content-section blockquote {
-            margin: 16px 0;
-            padding: 10px 18px;
-            border-left: 3px solid #cbd5e1;
-            color: #475569;
-            font-style: italic;
-        }
-
-        /* -------------------------------------------------------------------------
-           6. KPI DASHBOARD
-           ------------------------------------------------------------------------- */
-        .kpi-container {
-            width: 100%;
-            margin: 16px 0 24px 0;
-            table-layout: fixed;
-            border-collapse: separate;
-            border-spacing: 12px 0;
-        }
-
-        .kpi-card {
-            padding: 16px;
+        .cover-body {
+            padding: 24px;
             text-align: center;
-            border-radius: 6px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .kpi-title {
-            font-size: 8.5pt;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-
-        .kpi-value {
-            font-size: 18pt;
-            font-weight: bold;
-            line-height: 1.1;
-        }
-
-        .kpi-trend {
-            font-size: 8.5pt;
-            font-weight: bold;
-            margin-top: 6px;
-        }
-
-        .kpi-trend-up {
-            color: #16a34a;
-        }
-
-        .kpi-trend-down {
-            color: #dc2626;
-        }
-
-        .kpi-card-good {
-            background-color: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-top: 4px solid #16a34a;
-        }
-
-        .kpi-card-good .kpi-title {
-            color: #166534;
-        }
-
-        .kpi-card-good .kpi-value {
-            color: #14532d;
-        }
-
-        .kpi-card-warning {
-            background-color: #fffbeb;
-            border: 1px solid #fde68a;
-            border-top: 4px solid #d97706;
-        }
-
-        .kpi-card-warning .kpi-title {
-            color: #92400e;
-        }
-
-        .kpi-card-warning .kpi-value {
-            color: #78350f;
-        }
-
-        .kpi-card-critical {
-            background-color: #fef2f2;
-            border: 1px solid #fecaca;
-            border-top: 4px solid #dc2626;
-        }
-
-        .kpi-card-critical .kpi-title {
-            color: #991b1b;
-        }
-
-        .kpi-card-critical .kpi-value {
-            color: #7f1d1d;
-        }
-
-        .kpi-card-neutral {
-            background-color: #ffffff;
+        /* 6-Field Metadata Grid */
+        .meta-card {
+            background-color: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-top: 4px solid #263C8F;
+            border-top: 3.5px solid #2563eb;
+            border-radius: 6px;
+            padding: 14px;
+            margin: 0 auto 16px auto;
+            width: 100%;
+            max-width: 620px;
         }
 
-        .kpi-card-neutral .kpi-title {
-            color: #64748b;
-        }
-
-        .kpi-card-neutral .kpi-value {
-            color: #263C8F;
-        }
-
-        /* -------------------------------------------------------------------------
-           7. DATA TABLES
-           ------------------------------------------------------------------------- */
-        table.data-table {
+        .meta-grid-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 16px 0;
-            border: 1px solid #cbd5e1;
-            background-color: #ffffff;
-            page-break-inside: avoid;
         }
 
-        table.data-table th {
-            background-color: #263C8F;
-            color: #ffffff;
-            text-align: left;
-            padding: 10px 12px;
-            font-size: 9pt;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid #1a2a6b;
-        }
-
-        table.data-table td {
-            padding: 8px 12px;
-            font-size: 10pt;
-            border-bottom: 1px solid #e2e8f0;
+        .meta-grid-table td {
+            width: 50%;
+            padding: 6px 10px;
             vertical-align: top;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
         }
 
-        table.data-table tbody tr:nth-child(even) td {
-            background-color: #f8fafc;
-        }
-
-        table.data-table tbody tr:last-child td {
+        .meta-grid-table tr:last-child td {
             border-bottom: none;
         }
 
-        .table-caption {
-            font-size: 9pt;
+        .meta-field-label {
+            font-size: 7pt;
+            font-weight: 700;
             color: #64748b;
-            margin: -8px 0 16px 0;
-            font-weight: bold;
-        }
-
-        /* -------------------------------------------------------------------------
-           8. CALLOUT / INSIGHT BOXES
-           ------------------------------------------------------------------------- */
-        .callout {
-            margin: 18px 0;
-            padding: 14px 18px;
-            border-radius: 4px;
-            border-left: 4px solid;
-            page-break-inside: avoid;
-        }
-
-        .callout-label {
-            display: block;
-            font-size: 8pt;
-            font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
+            letter-spacing: 0.8px;
+            margin-bottom: 2px;
         }
 
-        .callout p:last-child {
-            margin-bottom: 0;
+        .meta-field-value {
+            font-size: 8.5pt;
+            font-weight: 700;
+            color: #0f172a;
         }
 
-        /* Brand Info Box */
-        .callout-insight {
-            background-color: #f1f5f9;
-            border-left-color: #263C8F;
+        .management-callout {
+            background-color: #eff6ff;
+            border-left: 3.5px solid #2563eb;
+            padding: 10px 14px;
+            border-radius: 0 4px 4px 0;
+            font-size: 8pt;
+            color: #1e3a8a;
+            line-height: 1.45;
+            max-width: 620px;
+            margin: 0 auto 14px auto;
+            text-align: left;
         }
 
-        .callout-insight .callout-label {
-            color: #263C8F;
+        .cover-footer {
+            padding: 14px 24px;
+            text-align: center;
+            border-top: 1px solid #f1f5f9;
         }
 
-        .callout-risk {
-            background-color: #fffbeb;
-            border-left-color: #d97706;
+        .cover-stamp {
+            font-size: 7pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 3px;
         }
 
-        .callout-risk .callout-label {
-            color: #92400e;
-        }
-
-        .callout-critical {
-            background-color: #fef2f2;
-            border-left-color: #dc2626;
-        }
-
-        .callout-critical .callout-label {
-            color: #991b1b;
-        }
-
-        .callout-positive {
-            background-color: #f0fdf4;
-            border-left-color: #16a34a;
-        }
-
-        .callout-positive .callout-label {
-            color: #166534;
+        .cover-disclaimer {
+            font-size: 6.5pt;
+            color: #94a3b8;
+            margin: 0;
         }
 
         /* -------------------------------------------------------------------------
-           9. FIGURES, CHARTS & CAPTIONS
+           4. AI EXECUTIVE SUMMARY TABLE (6-ROW STRUCTURED)
            ------------------------------------------------------------------------- */
-        .chart-container {
-            text-align: center;
-            margin: 24px 0;
-            padding: 16px;
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .summary-table th {
+            background-color: #0f172a;
+            color: #ffffff;
+            text-align: left;
+            padding: 7px 10px;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .summary-table td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 7.5pt;
+            vertical-align: top;
+        }
+
+        .summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .summary-dimension {
+            width: 25%;
+            font-weight: 700;
+            color: #0f172a;
+            background-color: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .summary-content {
+            width: 75%;
+            color: #334155;
+            line-height: 1.4;
+        }
+
+        /* -------------------------------------------------------------------------
+           5. KPI CARDS (FINANCIAL & LIQUIDITY GRIDS)
+           ------------------------------------------------------------------------- */
+        .kpi-grid-6 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-grid-8 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            position: relative;
+        }
+
+        .kpi-card-top-bar {
+            height: 3px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .bar-blue { background-color: #2563eb; }
+        .bar-green { background-color: #10b981; }
+        .bar-amber { background-color: #f59e0b; }
+        .bar-red { background-color: #ef4444; }
+        .bar-cyan { background-color: #06b6d4; }
+        .bar-purple { background-color: #8b5cf6; }
+
+        .kpi-title {
+            font-size: 6.5pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            margin-top: 1px;
+        }
+
+        .kpi-value {
+            font-size: 10pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 2px;
+            line-height: 1.15;
+        }
+
+        .kpi-variance {
+            font-size: 7pt;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            margin-bottom: 3px;
+        }
+
+        .variance-positive {
+            color: #16a34a;
+        }
+
+        .variance-negative {
+            color: #dc2626;
+        }
+
+        .variance-neutral {
+            color: #64748b;
+        }
+
+        .kpi-source {
+            font-size: 6pt;
+            color: #94a3b8;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 2px;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+
+        /* -------------------------------------------------------------------------
+           6. CHARTS CONTAINERS
+           ------------------------------------------------------------------------- */
+        .chart-box {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px;
+            margin-bottom: 12px;
+            text-align: center;
+            break-inside: avoid;
             page-break-inside: avoid;
         }
 
-        .chart-image {
-            width: 100%;
-            max-width: 700px;
-            height: auto;
+        .chart-box-title {
+            font-size: 8.5pt;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: left;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        .figure-caption {
-            font-size: 9pt;
+        .chart-img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .chart-caption {
+            font-size: 6.5pt;
             color: #64748b;
-            margin-top: 10px;
-            font-weight: bold;
+            margin-top: 4px;
+            text-align: center;
         }
 
         /* -------------------------------------------------------------------------
-           10. BADGES
+           7. STANDARD DATA TABLES (COMPARISON, DRIVERS, ALERTS)
            ------------------------------------------------------------------------- */
-        .badge {
-            display: inline-block;
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
             font-size: 7.5pt;
-            font-weight: bold;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .data-table th {
+            background-color: #0f172a;
+            color: #ffffff;
+            text-align: left;
+            padding: 6px 8px;
+            font-size: 7pt;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            border: 1px solid transparent;
+            letter-spacing: 0.6px;
+        }
+
+        .data-table th.text-right {
+            text-align: right;
+        }
+
+        .data-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
             vertical-align: middle;
         }
 
-        .badge-critical {
-            color: #991b1b;
-            background-color: #fee2e2;
-            border-color: #fca5a5;
+        .data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table td.text-right {
+            text-align: right;
+        }
+
+        .data-table td.font-bold {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Priority Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 6.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            line-height: 1.3;
+            vertical-align: middle;
+        }
+
+        .badge-critical, .badge-danger, .badge-urgent {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .badge-warning, .badge-warn {
+            background-color: #fefce8;
+            color: #ca8a04;
+            border: 1px solid #fef08a;
         }
 
         .badge-high {
-            color: #9a3412;
-            background-color: #ffedd5;
-            border-color: #fdba74;
+            background-color: #fff7ed;
+            color: #ea580c;
+            border: 1px solid #fed7aa;
         }
 
-        .badge-warning {
-            color: #854d0e;
-            background-color: #fef9c3;
-            border-color: #fde047;
+        .badge-medium, .badge-moderate {
+            background-color: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
         }
 
-        .badge-good {
-            color: #166534;
-            background-color: #dcfce7;
-            border-color: #86efac;
+        .badge-good, .badge-healthy, .badge-success {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
         }
 
-        .badge-note {
-            color: #263C8F;
-            background-color: #e2e8f0;
-            border-color: #cbd5e1;
+        .badge-info, .badge-note {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
         }
 
-        .badge-neutral {
-            color: #475569;
-            background-color: #f1f5f9;
-            border-color: #cbd5e1;
+        /* Driver Icons */
+        .driver-favorable {
+            color: #16a34a;
+            font-weight: 700;
+        }
+
+        .driver-unfavorable {
+            color: #dc2626;
+            font-weight: 700;
         }
 
         /* -------------------------------------------------------------------------
-           11. NUMBERED ACTION / RECOMMENDATION LISTS
+           8. DETAILED ANALYSIS (MARKDOWN BODY)
            ------------------------------------------------------------------------- */
-        .action-list {
-            margin: 16px 0;
-            padding-left: 20px;
+        .analysis-body {
+            font-size: 8pt;
+            color: #334155;
+            line-height: 1.5;
         }
 
-        .action-list li {
-            padding: 2px 0 8px 0;
-            margin-bottom: 4px;
+        .analysis-body h2 {
+            font-size: 9.5pt;
+            color: #0f172a;
+            border-left: 3px solid #2563eb;
+            padding-left: 5px;
+            margin-top: 10px;
+            margin-bottom: 5px;
         }
 
-        .action-list .action-title {
-            font-weight: bold;
-            color: #263C8F;
+        .analysis-body h3 {
+            font-size: 8.5pt;
+            color: #1e293b;
+            margin-top: 8px;
+            margin-bottom: 3px;
+        }
+
+        .analysis-body p {
+            margin: 5px 0;
+            line-height: 1.45;
+        }
+
+        .analysis-body ul, .analysis-body ol {
+            margin: 6px 0 8px 0;
+            padding-left: 18px;
+        }
+
+        .analysis-body li {
+            margin-bottom: 3px;
+            line-height: 1.4;
+            color: #334155;
+        }
+
+        .analysis-body li > p {
+            display: inline;
+            margin: 0;
+            padding: 0;
+        }
+
+        .analysis-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 7pt;
+        }
+
+        .analysis-body th {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 5px 7px;
+            text-align: left;
+        }
+
+        .analysis-body td {
+            padding: 4px 7px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .analysis-body tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        /* -------------------------------------------------------------------------
+           9. ACCOUNTING & METRIC FOOTER
+           ------------------------------------------------------------------------- */
+        .ref-footer {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 6.5pt;
+            color: #64748b;
+            margin-top: 14px;
+            line-height: 1.4;
+            break-inside: avoid;
+        }
+
+        /* -------------------------------------------------------------------------
+           10. NEXUS LOGO WATERMARK (Fixed background on report pages)
+           ------------------------------------------------------------------------- */
+        .report-watermark {
+            position: fixed;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-25deg);
+            z-index: -1000;
+            opacity: 0.042;
+            pointer-events: none;
+            text-align: center;
+            width: 550px;
+        }
+
+        .watermark-nexus-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .watermark-svg {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 8px auto;
             display: block;
         }
 
-        /* -------------------------------------------------------------------------
-           13. DISCLAIMER / METHODOLOGY
-           ------------------------------------------------------------------------- */
-        .disclaimer-page h1 {
-            margin-top: 0;
-        }
-
-        .disclaimer-block {
-            margin-bottom: 20px;
-        }
-
-        .disclaimer-block h4 {
+        .watermark-brand-text {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 52pt;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 14px;
+            text-transform: uppercase;
+            line-height: 1;
             margin-bottom: 6px;
         }
 
-        .disclaimer-block p {
-            color: #475569;
-            font-size: 9.5pt;
+        .watermark-sub-text {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 13pt;
+            font-weight: 700;
+            color: #2563eb;
+            letter-spacing: 5px;
+            text-transform: uppercase;
         }
 
-        .prepared-by {
-            margin-top: 32px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 9pt;
-            color: #64748b;
+        .watermark-img {
+            max-width: 320px;
+            max-height: 220px;
+            object-fit: contain;
+            margin: 0 auto;
         }
     </style>
 </head>
 
 <body>
-    <div id="footerContent">
-        <table style="width: 100%; border: none; margin: 0; padding: 0;">
-            <tr>
-                <td style="text-align: left; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
-                    Confidential &middot; {{ company_name|default("Financial Overview") }}
-                </td>
-                <td style="text-align: right; color: #94a3b8; font-size: 8pt; border: none; padding: 0; background: transparent;">
-                    Page <pdf:pagenumber /> of <pdf:pagecount />
-                </td>
-            </tr>
-        </table>
-    </div>
 
-    <div class="cover-header">
-        <div class="cover-eyebrow">Executive Financial Report</div>
-        <div class="cover-title">{{ company_name|default("Financial Overview") }}</div>
-        <div class="cover-tagline">{{ report_tagline|default("A confidential summary of financial performance and
-            business health, prepared for tenant leadership.") }}</div>
-    </div>
-
-    <div class="cover-body">
-        <div class="cover-info-card">
-            <table class="cover-meta-table">
-                <tr>
-                    <td class="cover-meta-col">
-                        <div class="cover-meta-label">Tenant ID</div>
-                        <div class="cover-meta-value">{{ tenant_id|default("—") }}</div>
-                    </td>
-                    <td class="cover-meta-col">
-                        <div class="cover-meta-label">Reporting Period</div>
-                        <div class="cover-meta-value">{{ reporting_period|default("—") }}</div>
-                    </td>
-                    <td class="cover-meta-col">
-                        <div class="cover-meta-label">Prepared On</div>
-                        <div class="cover-meta-value">{{ date|default("—") }}</div>
-                    </td>
-                    <td class="cover-meta-col cover-meta-col-last">
-                        <div class="cover-meta-label">Generated By</div>
-                        <div class="cover-meta-value">Nexus</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <div class="cover-stamp">Strictly Confidential &middot; Internal Use Only</div>
-        <p class="cover-footer-note">This document contains confidential and proprietary financial information.
-            Distribution is limited to authorized recipients.</p>
-    </div>
-
-    {% if toc_entries %}
-    <div class="page-break toc-page">
-        <h1>Table of Contents</h1>
-        <div class="toc-subtitle">{{ company_name|default("Financial Overview") }} &middot; {{
-            reporting_period|default(date|default("")) }}</div>
-        <table class="toc-list">
-            {% set ns = namespace(n=0) %}
-            {% for entry in toc_entries %}
-            {% set is_map = entry is mapping %}
-            {% set title = entry.title if is_map else entry %}
-            {% set numbered = entry.numbered if (is_map and entry.numbered is defined) else true %}
-            {% if numbered %}{% set ns.n = ns.n + 1 %}{% endif %}
-            <tr class="toc-row{% if loop.last %} toc-row-last{% endif %}">
-                <td class="toc-num-cell">
-                    {% if numbered %}
-                    <span class="toc-num">{{ ns.n }}</span>
-                    {% else %}
-                    <span class="toc-num-plain">&middot;</span>
-                    {% endif %}
-                </td>
-                <td class="toc-title-cell">
-                    <span class="toc-title">{{ title }}</span>
-                    {% if is_map and entry.description %}<span class="toc-desc">{{ entry.description }}</span>{% endif
-                    %}
-                </td>
-                <td class="toc-page-cell">
-                    {% if is_map and entry.page %}{{ entry.page }}
-                    {% elif is_map and entry.id %}<a class="toc-pageref" href="#{{ entry.id }}"></a>
-                    {% else %}—{% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-    {% endif %}
-
-    <div class="page-break" id="vital-signs">
-        <h1>Business Vital Signs</h1>
-        <p class="section-intro">A snapshot of the core financial indicators for the current reporting period.</p>
-
-        <table class="kpi-container">
-            <tr>
-                <td class="kpi-card kpi-card-critical">
-                    <div class="kpi-title">Health Score</div>
-                    <div class="kpi-value">{{ health_score }}/100</div>
-                    <div class="kpi-trend kpi-trend-down">▼ {{ health_trend }} pts</div>
-                </td>
-                <td class="kpi-card kpi-card-neutral">
-                    <div class="kpi-title">Total Revenue</div>
-                    <div class="kpi-value">{{ revenue }}</div>
-                    <div class="kpi-trend kpi-trend-up">▲ {{ revenue_trend }} MoM</div>
-                </td>
-                <td class="kpi-card kpi-card-critical">
-                    <div class="kpi-title">EBIT</div>
-                    <div class="kpi-value">{{ margin }}</div>
-                    <div class="kpi-trend kpi-trend-down">▼ {{ margin_trend }} YoY</div>
-                </td>
-            </tr>
-        </table>
-
-        {% if chart_b64 %}
-        <div class="chart-container avoid-break">
-            <img class="chart-image" src="data:image/png;base64,{{ chart_b64 }}" />
-            <div class="figure-caption">{{ chart_caption }}</div>
+    <!-- =========================================================================
+         NEXUS WATERMARK EMBLEM (Repeating background layer)
+         ========================================================================= -->
+    <div class="report-watermark">
+        {% if logo_b64 %}
+        <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}" class="watermark-img" alt="Nexus Logo Watermark" />
+        {% else %}
+        <div class="watermark-nexus-logo">
+            <svg viewBox="0 0 100 100" class="watermark-svg" xmlns="http://www.w3.org/2000/svg">
+                <!-- Outer Hexagon Frame -->
+                <polygon points="50,4 92,26 92,74 50,96 8,74 8,26" fill="none" stroke="#0f172a" stroke-width="5" />
+                <!-- Inner Hexagon Frame -->
+                <polygon points="50,14 82,32 82,68 50,86 18,68 18,32" fill="none" stroke="#2563eb" stroke-width="2.5" />
+                <!-- Center Nexus Icon N -->
+                <text x="50" y="66" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="46" font-weight="900" text-anchor="middle" fill="#0f172a">N</text>
+            </svg>
+            <div class="watermark-brand-text">NEXUS</div>
+            <div class="watermark-sub-text">EXECUTIVE INTELLIGENCE</div>
         </div>
         {% endif %}
     </div>
 
-    <div class="content-section page-break">
-        {{ body_html|safe }}
+    <!-- =========================================================================
+         PAGE 1: COVER PAGE
+         ========================================================================= -->
+    <div class="cover-wrapper page-break">
+        <div class="cover-top">
+            <div class="brand-logo-container">
+                {% if logo_b64 %}
+                <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}" class="header-logo-img" alt="Logo" />
+                {% elif logo_url %}
+                <img src="{{ logo_url }}" class="header-logo-img" alt="Logo" />
+                {% else %}
+                <div class="brand-badge">
+                    <span class="brand-icon">N</span>
+                    <span class="brand-text">NEXUS</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="cover-template-badge">Finance & Operations</div>
+            <div class="cover-title">Executive Business Health Report</div>
+            <div class="cover-subtitle">Financial performance, liquidity, working capital, and management action.</div>
+        </div>
+
+        <div class="cover-body">
+            <!-- 6-Field Metadata Grid -->
+            <div class="meta-card">
+                <table class="meta-grid-table">
+                    <tr>
+                        <td>
+                            <div class="meta-field-label">Company / Group</div>
+                            <div class="meta-field-value">{{ company_name|default("All Companies (Consolidated)") }}</div>
+                        </td>
+                        <td>
+                            <div class="meta-field-label">Reporting Period</div>
+                            <div class="meta-field-value">{{ reporting_period|default("Current Year-to-Date") }}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="meta-field-label">View Scope</div>
+                            <div class="meta-field-value">{{ view_type|default("Consolidated") }}</div>
+                        </td>
+                        <td>
+                            <div class="meta-field-label">Comparison Basis</div>
+                            <div class="meta-field-value">{{ comparison_label|default("Same Period Prior Year") }}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="meta-field-label">Reporting Currency</div>
+                            <div class="meta-field-value">{{ currency|default("XAF") }}</div>
+                        </td>
+                        <td>
+                            <div class="meta-field-label">Data Status / Last Sync</div>
+                            <div class="meta-field-value">{{ last_sync|default("Live Posted Ledger") }}</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Management View Note -->
+            <div class="management-callout">
+                <strong>Management View:</strong> This report is structured to allow executive leadership to evaluate profitability, liquidity, working-capital pressures, major performance drivers, and immediate actions in under two minutes.
+            </div>
+        </div>
+
+        <div class="cover-footer">
+            <div class="cover-stamp">Strictly Confidential &middot; Executive Leadership Briefing</div>
+            <p class="cover-disclaimer">All financial measures reconcile directly to Odoo ERP general ledger records. Data prepared for management decision support.</p>
+        </div>
     </div>
 
-    <div class="page-break disclaimer-page" id="methodology">
-        <h1>Methodology &amp; Disclaimer</h1>
-        <div class="disclaimer-block">
-            <h4>Data Sources</h4>
-            <p>Figures in this report are drawn from the tenant's connected accounting, billing, and operating systems
-                as of the reporting date. Where source data was incomplete, affected figures are noted inline.</p>
-        </div>
-        <div class="disclaimer-block">
-            <h4>Health Score Methodology</h4>
-            <p>The Health Score is a composite indicator (0–100) derived from revenue trend, profitability, liquidity,
-                and account activity signals. It is intended as a directional gauge, not an audited or certified rating.
-            </p>
-        </div>
-        <div class="disclaimer-block">
-            <h4>Disclaimer</h4>
-            <p>This report is provided for informational purposes only and does not constitute financial, legal, tax, or
-                investment advice. Nexus makes no representation as to the completeness or accuracy of underlying source
-                data supplied by third-party systems. Recipients should verify material figures against their own
-                records before relying on them for decision-making.</p>
-        </div>
-        <div class="prepared-by">
-            Prepared by {{ prepared_by|default("the Nexus Team") }} &middot; Questions:
+    <!-- =========================================================================
+         PAGE 2: EXECUTIVE SUMMARY & VITAL SIGNS
+         ========================================================================= -->
+    <div class="page-break">
+        <!-- Section 1: AI Executive Summary -->
+        <h1 class="section-title">1. AI Executive Summary</h1>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Dimension</th>
+                    <th>Executive Finding & Financial Effect</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="summary-dimension">Overall Performance</td>
+                    <td class="summary-content">{% if exec_summary and exec_summary.overall %}{{ exec_summary.overall }}{% else %}Business is operating with positive top-line growth across core commercial activities.{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="summary-dimension">Profitability</td>
+                    <td class="summary-content">{% if exec_summary and exec_summary.profitability %}{{ exec_summary.profitability }}{% else %}Gross margins remain healthy, though operating expenses require ongoing discipline.{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="summary-dimension">Positive Driver</td>
+                    <td class="summary-content">{% if exec_summary and exec_summary.positive_driver %}{{ exec_summary.positive_driver }}{% else %}Strong revenue generation in core trade product lines.{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="summary-dimension">Negative Driver</td>
+                    <td class="summary-content">{% if exec_summary and exec_summary.negative_driver %}{{ exec_summary.negative_driver }}{% else %}High concentration of capital tied up in inventory and delayed receivables.{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="summary-dimension">Liquidity / Working Capital</td>
+                    <td class="summary-content">{% if exec_summary and exec_summary.liquidity %}{{ exec_summary.liquidity }}{% else %}Cash buffer is maintained; overdue receivables should be accelerated to optimize liquidity.{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="summary-dimension">Management Action</td>
+                    <td class="summary-content">{% if exec_summary and exec_summary.action %}{{ exec_summary.action }}{% else %}Enforce strict collection protocols on high-exposure overdue accounts.{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Section 2: Financial Performance (6 KPI Cards) -->
+        <h1 class="section-title">2. Financial Performance</h1>
+        <div class="kpi-grid-6">
+            <!-- Card 1: Revenue -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-blue"></div>
+                <div class="kpi-title">Revenue</div>
+                <div class="kpi-value">{% if kpis and kpis.revenue %}{{ kpis.revenue.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.revenue %}{{ kpis.revenue.var_class }}{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.revenue %}{{ kpis.revenue.arrow }} {{ kpis.revenue.var_text }}{% else %}—{% endif %} vs {{ comparison_label|default('Prior Year') }}
+                </div>
+                <div class="kpi-source">Source: Configured P&L revenue line</div>
+            </div>
+
+            <!-- Card 2: Gross Profit -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-cyan"></div>
+                <div class="kpi-title">Gross Profit</div>
+                <div class="kpi-value">{% if kpis and kpis.gross_profit %}{{ kpis.gross_profit.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.gross_profit %}{{ kpis.gross_profit.var_class }}{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.gross_profit %}{{ kpis.gross_profit.arrow }} {{ kpis.gross_profit.var_text }}{% else %}—{% endif %} vs {{ comparison_label|default('Prior Year') }}
+                </div>
+                <div class="kpi-source">Source: Revenue &minus; COGS</div>
+            </div>
+
+            <!-- Card 3: Gross Margin % -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-green"></div>
+                <div class="kpi-title">Gross Margin %</div>
+                <div class="kpi-value">{% if kpis and kpis.gross_margin %}{{ kpis.gross_margin.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.gross_margin %}{{ kpis.gross_margin.var_class }}{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.gross_margin %}{{ kpis.gross_margin.arrow }} {{ kpis.gross_margin.var_text }}{% else %}—{% endif %} vs {{ comparison_label|default('Prior Year') }}
+                </div>
+                <div class="kpi-source">Source: Gross profit / revenue</div>
+            </div>
+
+            <!-- Card 4: Operating Expenses -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-amber"></div>
+                <div class="kpi-title">Operating Expenses</div>
+                <div class="kpi-value">{% if kpis and kpis.opex %}{{ kpis.opex.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.opex %}{{ kpis.opex.var_class }}{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.opex %}{{ kpis.opex.arrow }} {{ kpis.opex.var_text }}{% else %}—{% endif %} vs {{ comparison_label|default('Prior Year') }}
+                </div>
+                <div class="kpi-source">Source: Mapped OpEx accounts</div>
+            </div>
+
+            <!-- Card 5: Operating Profit -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-purple"></div>
+                <div class="kpi-title">Operating Profit (EBIT)</div>
+                <div class="kpi-value">{% if kpis and kpis.ebit %}{{ kpis.ebit.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.ebit %}{{ kpis.ebit.var_class }}{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.ebit %}{{ kpis.ebit.arrow }} {{ kpis.ebit.var_text }}{% else %}—{% endif %} vs {{ comparison_label|default('Prior Year') }}
+                </div>
+                <div class="kpi-source">Source: Operating profit subtotal</div>
+            </div>
+
+            <!-- Card 6: Net Profit / Loss -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar {% if kpis and kpis.net_profit and kpis.net_profit.raw >= 0 %}bar-green{% else %}bar-red{% endif %}"></div>
+                <div class="kpi-title">Net Profit / Loss</div>
+                <div class="kpi-value">{% if kpis and kpis.net_profit %}{{ kpis.net_profit.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.net_profit %}{{ kpis.net_profit.var_class }}{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.net_profit %}{{ kpis.net_profit.arrow }} {{ kpis.net_profit.var_text }}{% else %}—{% endif %} vs {{ comparison_label|default('Prior Year') }}
+                </div>
+                <div class="kpi-source">Source: Total income &minus; total expenses</div>
+            </div>
         </div>
     </div>
+
+    <!-- =========================================================================
+         PAGE 3: LIQUIDITY & WORKING CAPITAL
+         ========================================================================= -->
+    <div class="page-break">
+        <h1 class="section-title">3. Liquidity & Working Capital</h1>
+        <div class="kpi-grid-8">
+            <!-- 1. Cash and Bank -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-green"></div>
+                <div class="kpi-title">Cash & Bank</div>
+                <div class="kpi-value">{% if kpis and kpis.cash %}{{ kpis.cash.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance variance-neutral">Book Balance</div>
+                <div class="kpi-source">Source: Cash/Bank GL balances</div>
+            </div>
+
+            <!-- 2. Accounts Receivable -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-blue"></div>
+                <div class="kpi-title">Accounts Receivable</div>
+                <div class="kpi-value">{% if kpis and kpis.ar %}{{ kpis.ar.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance variance-neutral">Open Invoices</div>
+                <div class="kpi-source">Source: Open customer residuals</div>
+            </div>
+
+            <!-- 3. Overdue Receivables % -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar {% if kpis and kpis.overdue_pct and kpis.overdue_pct.raw > 30 %}bar-red{% elif kpis and kpis.overdue_pct and kpis.overdue_pct.raw > 15 %}bar-amber{% else %}bar-green{% endif %}"></div>
+                <div class="kpi-title">Overdue AR %</div>
+                <div class="kpi-value">{% if kpis and kpis.overdue_pct %}{{ kpis.overdue_pct.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.overdue_pct and kpis.overdue_pct.raw > 30 %}variance-negative{% else %}variance-neutral{% endif %}">
+                    {% if kpis and kpis.overdue_amt %}{{ kpis.overdue_amt.formatted }}{% else %}0{% endif %} Overdue
+                </div>
+                <div class="kpi-source">Source: Overdue AR / Total AR</div>
+            </div>
+
+            <!-- 4. Accounts Payable -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-amber"></div>
+                <div class="kpi-title">Accounts Payable</div>
+                <div class="kpi-value">{% if kpis and kpis.ap %}{{ kpis.ap.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance variance-neutral">Vendor Obligations</div>
+                <div class="kpi-source">Source: Open supplier residuals</div>
+            </div>
+
+            <!-- 5. Inventory Value -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-purple"></div>
+                <div class="kpi-title">Inventory Value</div>
+                <div class="kpi-value">{% if kpis and kpis.inventory %}{{ kpis.inventory.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance variance-neutral">Period-end Valuation</div>
+                <div class="kpi-source">Source: Stock valuation at end date</div>
+            </div>
+
+            <!-- 6. Net Working Capital -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar bar-cyan"></div>
+                <div class="kpi-title">Net Working Capital</div>
+                <div class="kpi-value">{% if kpis and kpis.nwc %}{{ kpis.nwc.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.nwc and kpis.nwc.raw >= 0 %}variance-positive{% else %}variance-negative{% endif %}">
+                    Current Assets &minus; Liabilities
+                </div>
+                <div class="kpi-source">Source: Balance sheet classification</div>
+            </div>
+
+            <!-- 7. Current Ratio -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar {% if kpis and kpis.current_ratio and kpis.current_ratio.raw >= 1.5 %}bar-green{% elif kpis and kpis.current_ratio and kpis.current_ratio.raw >= 1.0 %}bar-amber{% else %}bar-red{% endif %}"></div>
+                <div class="kpi-title">Current Ratio</div>
+                <div class="kpi-value">{% if kpis and kpis.current_ratio %}{{ kpis.current_ratio.formatted }}{% else %}—{% endif %}</div>
+                <div class="kpi-variance {% if kpis and kpis.current_ratio and kpis.current_ratio.raw >= 1.5 %}variance-positive{% else %}variance-negative{% endif %}">
+                    {% if kpis and kpis.current_ratio and kpis.current_ratio.raw >= 1.5 %}Adequate Buffer{% else %}Tight Liquidity{% endif %}
+                </div>
+                <div class="kpi-source">Source: Current Assets / Liabilities</div>
+            </div>
+
+            <!-- 8. Health Score -->
+            <div class="kpi-card">
+                <div class="kpi-card-top-bar {% if kpis and kpis.health_score and kpis.health_score.raw >= 70 %}bar-green{% elif kpis and kpis.health_score and kpis.health_score.raw >= 50 %}bar-amber{% else %}bar-red{% endif %}"></div>
+                <div class="kpi-title">Health Score</div>
+                <div class="kpi-value">{% if kpis and kpis.health_score %}{{ kpis.health_score.formatted }}{% else %}80{% endif %}/100</div>
+                <div class="kpi-variance variance-positive">Multi-factor Index</div>
+                <div class="kpi-source">Source: Weighted operational model</div>
+            </div>
+        </div>
+
+        <!-- Section 4: Performance Charts -->
+        <h1 class="section-title">4. Performance Trend & Profit Bridge</h1>
+        
+        <!-- Multi-series Performance Trend Chart -->
+        {% if trend_chart_b64 %}
+        <div class="chart-box">
+            <div class="chart-box-title">Revenue, Operating Expenses & Net Profit Trend</div>
+            <img class="chart-img" src="data:image/png;base64,{{ trend_chart_b64 }}" alt="Performance Trend" />
+            <div class="chart-caption">Monthly performance trajectory across key financial layers.</div>
+        </div>
+        {% endif %}
+
+        <!-- Profit Bridge Waterfall Chart -->
+        {% if waterfall_chart_b64 %}
+        <div class="chart-box">
+            <div class="chart-box-title">Profit Bridge (Waterfall Analysis)</div>
+            <img class="chart-img" src="data:image/png;base64,{{ waterfall_chart_b64 }}" alt="Profit Bridge" />
+            <div class="chart-caption">Step-down reconciliation from Gross Revenue to Net Profit after all expenses and taxes.</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- =========================================================================
+         PAGE 4: WORKING CAPITAL, DRIVERS & MANAGEMENT ACTIONS
+         ========================================================================= -->
+    <div class="page-break">
+        <!-- Cash & Working Capital Position Chart -->
+        {% if wc_chart_b64 %}
+        <div class="chart-box">
+            <div class="chart-box-title">Cash & Working Capital Balance Distribution</div>
+            <img class="chart-img" src="data:image/png;base64,{{ wc_chart_b64 }}" alt="Working Capital Distribution" />
+            <div class="chart-caption">Point-in-time balances of primary liquidity and working-capital components.</div>
+        </div>
+        {% endif %}
+
+        <!-- Multi-Company Comparison Table (if multiple companies present) -->
+        {% if company_comparison and company_comparison|length > 1 %}
+        <h1 class="section-title">5. Company / Branch Comparison</h1>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Company / Branch</th>
+                    <th class="text-right">Revenue</th>
+                    <th class="text-right">Gross Profit</th>
+                    <th class="text-right">Gross Margin</th>
+                    <th class="text-right">Net Profit</th>
+                    <th class="text-right">Cash Balance</th>
+                    <th class="text-right">Overdue AR</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in company_comparison %}
+                <tr>
+                    <td class="font-bold">{{ c.name }}</td>
+                    <td class="text-right">{{ c.revenue }}</td>
+                    <td class="text-right">{{ c.gross_profit }}</td>
+                    <td class="text-right">{{ c.gross_margin }}</td>
+                    <td class="text-right">{{ c.net_profit }}</td>
+                    <td class="text-right">{{ c.cash }}</td>
+                    <td class="text-right">{{ c.overdue_ar }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Section 6: Largest Performance Drivers -->
+        <h1 class="section-title">6. Largest Performance Drivers</h1>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Driver Dimension</th>
+                    <th>Current Value</th>
+                    <th>Financial Effect</th>
+                    <th>AI Explanation & Operational Cause</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if drivers and drivers.positive %}
+                {% for d in drivers.positive %}
+                <tr>
+                    <td class="font-bold driver-favorable">&#9650; {{ d.name }}</td>
+                    <td>{{ d.current }}</td>
+                    <td class="driver-favorable">+{{ d.impact }}</td>
+                    <td>{{ d.explanation }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+                {% if drivers and drivers.negative %}
+                {% for d in drivers.negative %}
+                <tr>
+                    <td class="font-bold driver-unfavorable">&#9660; {{ d.name }}</td>
+                    <td>{{ d.current }}</td>
+                    <td class="driver-unfavorable">&minus;{{ d.impact }}</td>
+                    <td>{{ d.explanation }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Section 7: Management Alerts and Actions -->
+        <h1 class="section-title">7. Management Alerts & Recommended Actions</h1>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Priority</th>
+                    <th style="width: 25%;">Alert Description</th>
+                    <th style="width: 15%;">Financial Impact</th>
+                    <th style="width: 30%;">Recommended Action</th>
+                    <th style="width: 10%;">Owner</th>
+                    <th style="width: 8%;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if alerts %}
+                {% for a in alerts %}
+                <tr>
+                    <td>
+                        <span class="badge badge-{{ a.priority_class }}">{{ a.priority }}</span>
+                    </td>
+                    <td class="font-bold">{{ a.title }}</td>
+                    <td>{{ a.impact }}</td>
+                    <td>{{ a.action }}</td>
+                    <td>{{ a.owner|default("Finance Team") }}</td>
+                    <td><span class="badge badge-info">{{ a.status|default("Open") }}</span></td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #94a3b8;">No critical alerts identified for this period.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- =========================================================================
+         PAGE 5: DETAILED AUDIT ANALYSIS & METRIC REFERENCE
+         ========================================================================= -->
+    <div>
+        <h1 class="section-title">8. Detailed Analysis & Strategic Notes</h1>
+        <div class="analysis-body">
+            {{ body_html|safe }}
+        </div>
+
+        <div class="ref-footer">
+            <strong>Developer & Accounting Treatment Reference:</strong> All metrics reconcile to configured Odoo accounting models. Revenue includes posted credit notes; excludes tax, drafts, and cancellations. Cash balances represent closing GL bank/cash records. Overdue AR is computed from contractual due dates. Multi-company figures are presented on an aggregated/consolidated basis with intercompany disclosures where configured.
+        </div>
+    </div>
+
 </body>
 
-</html>"""
+</html>

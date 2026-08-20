@@ -447,26 +447,38 @@ def extract_sql_from_text(text: str) -> str | None:
             return " from " in lowered or "\nfrom " in lowered
 
         if lowered.startswith("with"):
-            # Real CTE should normally contain AS (...) and then SELECT.
-            return " as " in lowered and "select" in lowered and " from " in lowered
+            # Real CTE should contain AS (...) and then SELECT FROM
+            return (" as (" in lowered or " as\n(" in lowered or " as (" in lowered) and "select" in lowered and (" from " in lowered or "\nfrom " in lowered)
 
         return False
 
+    # 1. Closed ```sql block
     code_block = re.search(r"```sql\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
     if code_block:
         candidate = code_block.group(1).strip()
-        return candidate if looks_like_sql(candidate) else None
+        if looks_like_sql(candidate):
+            return candidate
 
+    # 2. Unclosed ```sql block (if response ends at token limit)
+    unclosed_sql = re.search(r"```sql\s*(.*)", text, re.DOTALL | re.IGNORECASE)
+    if unclosed_sql:
+        candidate = unclosed_sql.group(1).strip()
+        if looks_like_sql(candidate):
+            return candidate
+
+    # 3. Generic ``` block
     generic_block = re.search(r"```\s*(.*?)```", text, re.DOTALL)
     if generic_block:
         candidate = generic_block.group(1).strip()
-        return candidate if looks_like_sql(candidate) else None
+        if looks_like_sql(candidate):
+            return candidate
 
-    # Prefer SQL-looking lines only. Do not extract normal English beginning with "with".
-    match = re.search(r"((?:with\s+.+?select\s+.+?)|(?:select\s+.+?))(?:;|$)", text, re.DOTALL | re.IGNORECASE)
+    # 4. Raw SQL without markdown backticks
+    match = re.search(r"((?:with\s+[a-zA-Z0-9_]+\s+as\s*\(.+?select\s+.+?)|(?:select\s+.+?))(?:;|$)", text, re.DOTALL | re.IGNORECASE)
     if match:
         candidate = match.group(1).strip()
-        return candidate if looks_like_sql(candidate) else None
+        if looks_like_sql(candidate):
+            return candidate
 
     return None
 
@@ -515,7 +527,7 @@ def _attempt_sql_correction(
     """Ask the LLM to produce a corrected SQL query. Returns the SQL or None."""
     response = client.messages.create(
         model=model,
-        max_tokens=1200,
+        max_tokens=2500,
         temperature=0,
         messages=[{"role": "user", "content": retry_prompt}],
     )
@@ -580,7 +592,7 @@ def run_sql_agent(
 
     first_response = client.messages.create(
         model=model,
-        max_tokens=1200,
+        max_tokens=2500,
         temperature=0,
         messages=[
             {

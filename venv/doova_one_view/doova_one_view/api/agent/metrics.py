@@ -64,7 +64,9 @@ class AgentMetricsRegistry:
             if metric_name in self.metrics:
                 self.metrics[metric_name] += amount
 
-    def record_alert_check(self, condition_triggered: bool = False, alert_sent: bool = False, skipped_llm: bool = False, status: str = "completed"):
+    def record_alert_check(self, condition_triggered: bool = False, alert_sent: bool = False, skipped_llm: bool = False, status: str = "completed", **kwargs):
+        if "has_anomalies" in kwargs:
+            condition_triggered = kwargs["has_anomalies"]
         with self._mutex:
             self.metrics["alerts_triggered_total"] += 1
             if skipped_llm:

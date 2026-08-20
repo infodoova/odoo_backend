@@ -18,26 +18,45 @@ class SessionManager:
         self.title_prompt = SESSION_TITLE_PROMPT
 
     def generate_title(self, first_message: str) -> str:
+        clean_message = (first_message or "").strip()
+        if not clean_message:
+            return "New Conversation"
+
+        # Fast-path: Common short greetings don't need an LLM call
+        common_greetings = {"hello", "hi", "hey", "good morning", "good afternoon", "good evening", "greetings", "test", "help"}
+        if clean_message.lower().strip("!.,? ") in common_greetings or len(clean_message) <= 3:
+            return "New Conversation"
+
         try:
             chain = self.title_prompt | self.llm
-            response = chain.invoke({"message": first_message})
-            return response.content.strip().strip('"')
+            response = chain.invoke({"message": clean_message})
+            raw = str(response.content).strip().strip('"').strip("'")
+            # If the model output multiple lines, take only the first line
+            first_line = raw.split("\n")[0].strip().strip('"').strip("'")
+            if first_line.lower().startswith("title:"):
+                first_line = first_line[6:].strip()
+            
+            # If the model still returned a chatty explanation instead of a title
+            if len(first_line) > 60 or "provide" in first_line.lower() or "ready to" in first_line.lower():
+                if len(clean_message) <= 40:
+                    return clean_message
+                return clean_message[:37] + "..."
+                
+            return first_line or "New Conversation"
         except Exception as e:
             from .logger import log_error
             log_error("SessionManager.generate_title", e)
-            clean_message = (first_message or "").strip()
-            if not clean_message:
-                return "New Chat"
             if len(clean_message) > 40:
                 return clean_message[:37] + "..."
-            return clean_message
+            return clean_message or "New Conversation"
 
     def get_or_create_session(self, session_id: str, tenant_id: str, first_message: str = None) -> ChatSession:
         session, created = ChatSession.objects.get_or_create(session_id=session_id)
         if created:
-            session.tenant_id = tenant_id
+            session.tenant_id = str(tenant_id)[:255] if tenant_id else None
             if first_message:
-                session.title = self.generate_title(first_message)
+                raw_title = self.generate_title(first_message)
+                session.title = (raw_title or "New Chat")[:250]
             session.save()
         return session
 

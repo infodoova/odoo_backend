@@ -33,6 +33,8 @@ def _format_alert_email_html(title: str, message: str, severity: str, tenant_id:
         severity = "critical"
     elif is_warning_match and severity not in ("critical", "success"):
         severity = "warning"
+    elif severity not in ("critical", "warning", "info", "success"):
+        severity = "info"
 
     severity_colors = {
         "critical": ("#dc2626", "#fef2f2", "CRITICAL ALERT"),
@@ -42,6 +44,22 @@ def _format_alert_email_html(title: str, message: str, severity: str, tenant_id:
     }
     color, bg_color, label = severity_colors.get(severity, ("#2563eb", "#eff6ff", "ALERT"))
 
+    from doova_one_view.api.agent.utils import replace_tenant_ids_with_names
+    from odoo_app.models.tenant import Tenant
+    tenant_name = "Organization"
+    is_uuid = bool(re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', str(tenant_id or ""), re.IGNORECASE))
+    try:
+        t_obj = Tenant.objects.filter(id=tenant_id).first()
+        if t_obj and t_obj.name:
+            tenant_name = t_obj.name
+        elif tenant_id and not is_uuid:
+            tenant_name = str(tenant_id)
+    except Exception:
+        if tenant_id and not is_uuid:
+            tenant_name = str(tenant_id)
+
+    title = replace_tenant_ids_with_names(title)
+    message = replace_tenant_ids_with_names(message)
     message_html = md_to_html(message)
 
     return f"""<!DOCTYPE html>
@@ -79,7 +97,7 @@ def _format_alert_email_html(title: str, message: str, severity: str, tenant_id:
         {message_html}
       </div>
       <div style="margin-top: 20px; background-color: {bg_color}; border-left: 4px solid {color}; padding: 12px; border-radius: 4px; font-size: 13px; color: #4b5563;">
-        Tenant ID: <strong>{tenant_id}</strong><br/>
+        Organization: <strong>{tenant_name}</strong><br/>
         Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
       </div>
     </div>
@@ -131,6 +149,10 @@ def send_alert_tool(
     allowed = ["info", "warning", "critical", "success"]
     if severity not in allowed:
         severity = "info"
+
+    from doova_one_view.api.agent.utils import replace_tenant_ids_with_names
+    title = replace_tenant_ids_with_names(title)
+    message = replace_tenant_ids_with_names(message)
 
     alert = {
         "alert_id": str(uuid4()),
@@ -208,6 +230,10 @@ def send_email_tool(
 ) -> dict:
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", to_email):
         return {"tool_name": "send_email_tool", "sent": False, "status": "invalid_email"}
+
+    from doova_one_view.api.agent.utils import replace_tenant_ids_with_names
+    subject = replace_tenant_ids_with_names(subject)
+    body = replace_tenant_ids_with_names(body)
 
     email = {
         "email_id": str(uuid4()),
