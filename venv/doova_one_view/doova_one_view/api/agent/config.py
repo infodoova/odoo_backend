@@ -31,6 +31,15 @@ class AgentConfig:
     SUMMARIZER_MODEL = "claude-haiku-4-5-20251001"
     SQL_AGENT_MODEL = "claude-haiku-4-5-20251001"
 
+    # ── Executor–Advisor Pattern ──────────────────────────────────────
+    ENABLE_ADVISOR_TOOL: bool = (
+        os.getenv("ENABLE_ADVISOR_TOOL", "false").lower() in ("true", "1", "yes")
+        or getattr(django_settings, "ENABLE_ADVISOR_TOOL", False)
+    )
+    EXECUTOR_MODEL: str = os.getenv("AGENT_EXECUTOR_MODEL", "claude-haiku-4-5-20251001")
+    ADVISOR_MODEL: str = os.getenv("AGENT_ADVISOR_MODEL", "claude-sonnet-5")
+    MAX_ADVISOR_TOKENS: int = 4096
+
     # ── Extended Capabilities ─────────────────────────────────────────
     ENABLE_THINKING = True
     THINKING_BUDGET = 32000

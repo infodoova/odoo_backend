@@ -568,6 +568,22 @@ def backorder_aging(tenant_id: Optional[str], company_id: Optional[int] = None, 
 def supplier_lead_time(tenant_id: Optional[str], company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None):
     """Calculate average actual lead time vs scheduled for incoming stock pickings by supplier.
     Use for: 'which suppliers are late?', 'supplier delivery performance', 'average delay'."""
+    return get_supplier_lead_time_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids)
+
+@tool
+def consult_strategic_advisor(
+    problem_type: str,
+    question: str,
+    context_details: Optional[str] = "",
+) -> str:
+    """Consult the high-reasoning Strategic Financial & Technical Advisor.
+    Use for:
+    - 'sql_planning': Planning multi-table SQL joins across reconciliations, moves, and orders.
+    - 'error_diagnosis': Diagnosing why a query or calculation failed and getting the exact corrected SQL.
+    - 'financial_strategy': Formulating CFO-grade anomaly assessments, working capital optimization, and executive actions."""
+    from .advisor_tool import consult_strategic_advisor_tool
+    return consult_strategic_advisor_tool(problem_type=problem_type, question=question, context_details=context_details or "")
+
 # ── Consolidated Agent Tools ─────────────────
 
 agent_tools = [
@@ -598,3 +614,8 @@ agent_tools = [
     # Reporting & Communication
     create_report, get_latest_report, send_alert, send_email,
 ]
+
+from .config import AgentConfig
+if getattr(AgentConfig, "ENABLE_ADVISOR_TOOL", False):
+    agent_tools.append(consult_strategic_advisor)
+

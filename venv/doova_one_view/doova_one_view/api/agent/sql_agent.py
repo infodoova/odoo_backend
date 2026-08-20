@@ -525,8 +525,12 @@ def _attempt_sql_correction(
     model: str,
 ) -> str | None:
     """Ask the LLM to produce a corrected SQL query. Returns the SQL or None."""
+    correction_model = model
+    if getattr(AgentConfig, "ENABLE_ADVISOR_TOOL", False):
+        correction_model = getattr(AgentConfig, "ADVISOR_MODEL", "claude-sonnet-5")
+
     response = client.messages.create(
-        model=model,
+        model=correction_model,
         max_tokens=2500,
         temperature=0,
         messages=[{"role": "user", "content": retry_prompt}],
@@ -561,7 +565,10 @@ def run_sql_agent(
     schema = get_database_schema()
 
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-    model = getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001")
+    if getattr(AgentConfig, "ENABLE_ADVISOR_TOOL", False):
+        model = getattr(AgentConfig, "EXECUTOR_MODEL", "claude-haiku-4-5-20251001")
+    else:
+        model = getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001")
     max_retries = getattr(AgentConfig, "MAX_SQL_RETRIES", 3)
 
     tenant_note = ""
