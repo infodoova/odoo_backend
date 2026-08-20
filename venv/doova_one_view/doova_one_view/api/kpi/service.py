@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
-from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Max, Q, Sum, Value
+from django.db.models import Avg, Case, Count, DecimalField, ExpressionWrapper, F, Max, Q, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncMonth
+from django.utils import timezone
 
 from odoo_app.models import AccountMove, AccountMoveLine, PurchaseOrder, SalesOrder, SalesOrderLine, StockQuant
 from odoo_app.models.purchase_order_line import PurchaseOrderLine
@@ -194,15 +195,49 @@ class KPIService:
                 tenant_ids, company_ids
             )
 
-            revenue_today = _sum_converted(base_sales.filter(date_order__date=ref_date), "amount_total", effective_base, rate_map)
-            revenue_month = _sum_converted(base_sales.filter(date_order__year=ref_date.year, date_order__month=ref_date.month), "amount_total", effective_base, rate_map)
-            revenue_year = _sum_converted(base_sales.filter(date_order__year=ref_date.year), "amount_total", effective_base, rate_map)
-            
-            expenses_today = _sum_converted(base_purchases.filter(date_order__date=ref_date), "amount_total", effective_base, rate_map)
-            expenses_month = _sum_converted(base_purchases.filter(date_order__year=ref_date.year, date_order__month=ref_date.month), "amount_total", effective_base, rate_map)
-            expenses_year = _sum_converted(base_purchases.filter(date_order__year=ref_date.year), "amount_total", effective_base, rate_map)
+            # Timezone-aware date bounds for Today / Month / Year
+            start_of_day = datetime.combine(ref_date, time.min)
+            end_of_day = datetime.combine(ref_date, time.max)
+            start_of_month = datetime.combine(date(ref_date.year, ref_date.month, 1), time.min)
+            start_of_year = datetime.combine(date(ref_date.year, 1, 1), time.min)
+            end_of_year = datetime.combine(date(ref_date.year, 12, 31), time.max)
 
-            # Receivables and Inventory - Filtered by tenant_ids, company_ids & as_of_date
+            if timezone.is_aware(timezone.now()):
+                start_of_day = timezone.make_aware(start_of_day)
+                end_of_day = timezone.make_aware(end_of_day)
+                start_of_month = timezone.make_aware(start_of_month)
+                start_of_year = timezone.make_aware(start_of_year)
+                end_of_year = timezone.make_aware(end_of_year)
+
+            sales_time_rows = list(
+                base_sales.filter(date_order__range=(start_of_year, end_of_year))
+                .values("currency_code")
+                .annotate(
+                    today_total=Coalesce(Sum(Case(When(date_order__range=(start_of_day, end_of_day), then="amount_total"), default=Decimal("0"))), Decimal("0")),
+                    month_total=Coalesce(Sum(Case(When(date_order__gte=start_of_month, then="amount_total"), default=Decimal("0"))), Decimal("0")),
+                    year_total=Coalesce(Sum("amount_total"), Decimal("0")),
+                )
+            )
+
+            purchases_time_rows = list(
+                base_purchases.filter(date_order__range=(start_of_year, end_of_year))
+                .values("currency_code")
+                .annotate(
+                    today_total=Coalesce(Sum(Case(When(date_order__range=(start_of_day, end_of_day), then="amount_total"), default=Decimal("0"))), Decimal("0")),
+                    month_total=Coalesce(Sum(Case(When(date_order__gte=start_of_month, then="amount_total"), default=Decimal("0"))), Decimal("0")),
+                    year_total=Coalesce(Sum("amount_total"), Decimal("0")),
+                )
+            )
+
+            revenue_today = sum(_to_float(r["today_total"]) * _get_conversion_rate(r["currency_code"] or "COMPANY_BASE", effective_base, rate_map) for r in sales_time_rows)
+            revenue_month = sum(_to_float(r["month_total"]) * _get_conversion_rate(r["currency_code"] or "COMPANY_BASE", effective_base, rate_map) for r in sales_time_rows)
+            revenue_year = sum(_to_float(r["year_total"]) * _get_conversion_rate(r["currency_code"] or "COMPANY_BASE", effective_base, rate_map) for r in sales_time_rows)
+
+            expenses_today = sum(_to_float(r["today_total"]) * _get_conversion_rate(r["currency_code"] or "COMPANY_BASE", effective_base, rate_map) for r in purchases_time_rows)
+            expenses_month = sum(_to_float(r["month_total"]) * _get_conversion_rate(r["currency_code"] or "COMPANY_BASE", effective_base, rate_map) for r in purchases_time_rows)
+            expenses_year = sum(_to_float(r["year_total"]) * _get_conversion_rate(r["currency_code"] or "COMPANY_BASE", effective_base, rate_map) for r in purchases_time_rows)
+
+            # Receivables and Payables - Filtered by tenant_ids, company_ids & as_of_date
             receivables = _apply_tenant_company_filter(
                 AccountMove.objects.filter(
                     state="posted",
@@ -216,85 +251,103 @@ class KPIService:
             receivables_value = _sum_converted(receivables, "amount_residual", effective_base, rate_map)
             overdue_value = _sum_converted(receivables.filter(invoice_date_due__lt=as_of_date), "amount_residual", effective_base, rate_map)
 
+            payables = _apply_tenant_company_filter(
+                AccountMove.objects.filter(
+                    state="posted",
+                    move_type="in_invoice",
+                    payment_state__in=["not_paid", "partial", "in_payment"],
+                    tenant__is_active=True,
+                    date__lte=as_of_date,
+                ),
+                tenant_ids, company_ids
+            )
+            payables_value = _sum_converted(payables, "amount_residual", effective_base, rate_map)
+
             # ── Inventory Valuation (Historical StockMove/GL or Live StockQuant) ────────
             is_historical = bool(date_from or date_to)
+            inv_expr = ExpressionWrapper(
+                F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
+                output_field=DecimalField(max_digits=20, decimal_places=4),
+            )
 
-            def _calculate_inventory_value(c_ids=None) -> float:
-                from odoo_app.models import StockMove
-                inv_expr = ExpressionWrapper(
-                    F("quantity") * Coalesce(F("product__standard_price"), Value(0)),
-                    output_field=DecimalField(max_digits=20, decimal_places=4),
+            # Pre-compute inventory values by company
+            comp_inv_cache: dict[Optional[int], float] = {}
+
+            if not is_historical or as_of_date >= date.today():
+                quants_qs = _apply_tenant_company_filter(
+                    StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True),
+                    tenant_ids, company_ids
                 )
-                
-                # If no date filter is passed, return live physical StockQuant valuation
-                if not is_historical:
-                    quants_qs = _apply_tenant_company_filter(
-                        StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True),
-                        tenant_ids, c_ids
-                    )
-                    inv_raw = _to_float(quants_qs.aggregate(value=Coalesce(Sum(inv_expr), Decimal("0")))["value"])
-                    return inv_raw * base_multiplier
-                
+                comp_quants = list(
+                    quants_qs.values("company_id")
+                    .annotate(val=Coalesce(Sum(inv_expr), Decimal("0")))
+                )
+                for r in comp_quants:
+                    cid = r["company_id"]
+                    comp_inv_cache[cid] = _to_float(r["val"]) * base_multiplier
+            else:
                 # Historical stock valuation as of as_of_date:
-                # 1. From completed StockMoves up to as_of_date
-                moves = _apply_tenant_company_filter(
-                    StockMove.objects.filter(state="done", date__date__lte=as_of_date, tenant__is_active=True),
-                    tenant_ids, c_ids
-                ).select_related("product")
+                # Use flat values() to avoid heavy model instantiation
+                from odoo_app.models import StockMove
+                moves_data = list(
+                    _apply_tenant_company_filter(
+                        StockMove.objects.filter(state="done", date__date__lte=as_of_date, tenant__is_active=True),
+                        tenant_ids, company_ids
+                    ).values(
+                        "company_id", "product_id", "quantity_done", "product_uom_qty",
+                        "location_src", "location_dest", "product__standard_price"
+                    )
+                )
 
-                if moves.exists():
-                    prod_qty_map: dict[int, Decimal] = {}
+                if moves_data:
+                    comp_prod_qty: dict[tuple[Optional[int], int], Decimal] = {}
                     prod_price_map: dict[int, Decimal] = {}
-                    for m in moves:
-                        pid = m.product_id
+                    for m in moves_data:
+                        cid = m["company_id"]
+                        pid = m["product_id"]
                         if not pid:
                             continue
-                        qty = m.quantity_done if m.quantity_done is not None and m.quantity_done > 0 else m.product_uom_qty
+                        qty = m["quantity_done"] if m["quantity_done"] is not None and m["quantity_done"] > 0 else m["product_uom_qty"]
                         if not qty:
                             continue
-                        src = (m.location_src or "").lower()
-                        dest = (m.location_dest or "").lower()
+                        src = (m["location_src"] or "").lower()
+                        dest = (m["location_dest"] or "").lower()
                         is_outgoing = ("stock" in src or "internal" in src or "wh" in src) and not ("stock" in dest or "internal" in dest or "wh" in dest)
                         
+                        key = (cid, pid)
+                        delta = Decimal(str(qty))
                         if is_outgoing:
-                            prod_qty_map[pid] = prod_qty_map.get(pid, Decimal("0")) - Decimal(str(qty))
+                            comp_prod_qty[key] = comp_prod_qty.get(key, Decimal("0")) - delta
                         else:
-                            prod_qty_map[pid] = prod_qty_map.get(pid, Decimal("0")) + Decimal(str(qty))
+                            comp_prod_qty[key] = comp_prod_qty.get(key, Decimal("0")) + delta
                         
                         if pid not in prod_price_map:
-                            prod_price_map[pid] = Decimal(str(m.product.standard_price or 0)) if m.product else Decimal("0")
-                    
-                    hist_total = sum(
-                        max(Decimal("0"), net_qty) * prod_price_map.get(pid, Decimal("0"))
-                        for pid, net_qty in prod_qty_map.items()
-                    )
-                    return _to_float(hist_total) * base_multiplier
-                
-                # 2. General Ledger asset_current fallback
-                gl_moves = _apply_tenant_company_filter(
-                    AccountMoveLine.objects.filter(
-                        account_type='asset_current',
-                        account_move__state='posted',
-                        tenant__is_active=True,
-                        account_move__date__lte=as_of_date,
-                    ),
-                    tenant_ids, c_ids, company_field="account_move__company_id"
-                )
-                if gl_moves.exists():
-                    gl_val = _sum(gl_moves, "balance") * base_multiplier
-                    if gl_val > 0:
-                        return gl_val
+                            prod_price_map[pid] = Decimal(str(m["product__standard_price"] or 0))
 
-                # 3. If as_of_date is today or in the future, fallback to StockQuant
-                if as_of_date >= date.today():
-                    quants_qs = _apply_tenant_company_filter(
-                        StockQuant.objects.filter(quantity__gt=0, tenant__is_active=True),
-                        tenant_ids, c_ids
+                    for (cid, pid), net_qty in comp_prod_qty.items():
+                        if net_qty > 0:
+                            item_val = _to_float(net_qty * prod_price_map.get(pid, Decimal("0"))) * base_multiplier
+                            comp_inv_cache[cid] = comp_inv_cache.get(cid, 0.0) + item_val
+                else:
+                    # Fallback to General Ledger asset_current
+                    gl_moves = _apply_tenant_company_filter(
+                        AccountMoveLine.objects.filter(
+                            account_type='asset_current',
+                            account_move__state='posted',
+                            tenant__is_active=True,
+                            account_move__date__lte=as_of_date,
+                        ),
+                        tenant_ids, company_ids, company_field="account_move__company_id"
                     )
-                    inv_raw = _to_float(quants_qs.aggregate(value=Coalesce(Sum(inv_expr), Decimal("0")))["value"])
-                    return inv_raw * base_multiplier
+                    for r in gl_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0"))):
+                        gl_v = _to_float(r["tot"]) * base_multiplier
+                        if gl_v > 0:
+                            comp_inv_cache[r["account_move__company_id"]] = gl_v
 
-                return 0.0
+            def _calculate_inventory_value(c_ids=None) -> float:
+                if c_ids is None:
+                    return sum(comp_inv_cache.values())
+                return sum(comp_inv_cache.get(cid, 0.0) for cid in c_ids)
 
             inventory_value = _calculate_inventory_value(company_ids)
 
@@ -310,17 +363,47 @@ class KPIService:
             )
             cash_value = _sum(cash_moves, "balance") * base_multiplier
 
-            payables = _apply_tenant_company_filter(
-                AccountMove.objects.filter(
-                    state="posted",
-                    move_type="in_invoice",
-                    payment_state__in=["not_paid", "partial", "in_payment"],
-                    tenant__is_active=True,
-                    date__lte=as_of_date,
-                ),
-                tenant_ids, company_ids
+            # Batched Cash by Company
+            cash_by_comp = {
+                r["account_move__company_id"]: _to_float(r["tot"]) * base_multiplier
+                for r in cash_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+            }
+
+            # Batched Receivables & Overdue by Company
+            ar_by_comp_curr = list(
+                receivables.values("company_id", "currency_code")
+                .annotate(tot=Coalesce(Sum("amount_residual"), Decimal("0")))
             )
-            payables_value = _sum_converted(payables, "amount_residual", effective_base, rate_map)
+            ar_map: dict[Optional[int], float] = {}
+            for r in ar_by_comp_curr:
+                cid = r["company_id"]
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
+                ar_map[cid] = ar_map.get(cid, 0.0) + val
+
+            ar_overdue_by_comp_curr = list(
+                receivables.filter(invoice_date_due__lt=as_of_date)
+                .values("company_id", "currency_code")
+                .annotate(tot=Coalesce(Sum("amount_residual"), Decimal("0")))
+            )
+            ar_overdue_map: dict[Optional[int], float] = {}
+            for r in ar_overdue_by_comp_curr:
+                cid = r["company_id"]
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
+                ar_overdue_map[cid] = ar_overdue_map.get(cid, 0.0) + val
+
+            # Batched Payables by Company
+            ap_by_comp_curr = list(
+                payables.values("company_id", "currency_code")
+                .annotate(tot=Coalesce(Sum("amount_residual"), Decimal("0")))
+            )
+            ap_map: dict[Optional[int], float] = {}
+            for r in ap_by_comp_curr:
+                cid = r["company_id"]
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
+                ap_map[cid] = ap_map.get(cid, 0.0) + val
             
             from odoo_app.models import TenantFinancialMapping, Company
             
@@ -367,6 +450,24 @@ class KPIService:
             quick_ratio = round((cash_value + receivables_value) / current_liabilities, 2) if current_liabilities > 0 else 0.0
             health_status = "healthy" if working_capital_ratio >= 1.5 else ("warning" if working_capital_ratio >= 1.0 else "critical")
 
+            # Batched Other Liabilities by Company
+            tot_other_liab_by_comp = {
+                r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
+                for r in other_liabilities_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+            }
+            accrued_by_comp = {}
+            if q_accrued:
+                accrued_by_comp = {
+                    r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
+                    for r in other_liabilities_moves.filter(q_accrued).values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+                }
+            debt_by_comp = {}
+            if q_short_term:
+                debt_by_comp = {
+                    r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
+                    for r in other_liabilities_moves.filter(q_short_term).values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+                }
+
             # ── Per-Company Net Working Capital Breakdown ─────────────────────────────
             company_qs = Company.objects.all()
             if tenant_ids:
@@ -376,48 +477,14 @@ class KPIService:
 
             company_breakdown = []
             for comp in company_qs:
-                c_cash_moves = AccountMoveLine.objects.filter(
-                    account_type='asset_cash',
-                    account_move__state='posted',
-                    tenant__is_active=True,
-                    account_move__date__lte=as_of_date,
-                    company=comp
-                )
-                c_cash = _sum(c_cash_moves, "balance") * base_multiplier
-
-                c_receivables = AccountMove.objects.filter(
-                    state="posted",
-                    move_type="out_invoice",
-                    payment_state__in=["not_paid", "partial", "in_payment"],
-                    tenant__is_active=True,
-                    date__lte=as_of_date,
-                    company=comp
-                )
-                c_ar_val = _sum_converted(c_receivables, "amount_residual", effective_base, rate_map)
-                c_ar_overdue = _sum_converted(c_receivables.filter(invoice_date_due__lt=as_of_date), "amount_residual", effective_base, rate_map)
-
+                c_cash = cash_by_comp.get(comp.id, 0.0)
+                c_ar_val = ar_map.get(comp.id, 0.0)
+                c_ar_overdue = ar_overdue_map.get(comp.id, 0.0)
                 c_inv_val = _calculate_inventory_value([comp.id])
-
-                c_payables = AccountMove.objects.filter(
-                    state="posted",
-                    move_type="in_invoice",
-                    payment_state__in=["not_paid", "partial", "in_payment"],
-                    tenant__is_active=True,
-                    date__lte=as_of_date,
-                    company=comp
-                )
-                c_ap_val = _sum_converted(c_payables, "amount_residual", effective_base, rate_map)
-
-                c_other_liab_moves = AccountMoveLine.objects.filter(
-                    account_type='liability_current',
-                    account_move__state='posted',
-                    tenant__is_active=True,
-                    account_move__date__lte=as_of_date,
-                    company=comp
-                )
-                c_tot_other_liab = -1 * _sum(c_other_liab_moves, "balance") * base_multiplier
-                c_accrued = (-1 * _sum(c_other_liab_moves.filter(q_accrued), "balance") * base_multiplier) if q_accrued else 0.0
-                c_debt = (-1 * _sum(c_other_liab_moves.filter(q_short_term), "balance") * base_multiplier) if q_short_term else 0.0
+                c_ap_val = ap_map.get(comp.id, 0.0)
+                c_tot_other_liab = tot_other_liab_by_comp.get(comp.id, 0.0)
+                c_accrued = accrued_by_comp.get(comp.id, 0.0)
+                c_debt = debt_by_comp.get(comp.id, 0.0)
                 c_other = c_tot_other_liab - c_accrued - c_debt
 
                 c_assets = c_cash + c_ar_val + c_inv_val
@@ -479,12 +546,12 @@ class KPIService:
                         prev_revenue = _sum_converted(prev_sales, "amount_total", effective_base, rate_map)
                         prev_expenses = _sum_converted(prev_purchases, "amount_total", effective_base, rate_map)
                         prev_profit = prev_revenue - prev_expenses
-                        prev_orders = prev_sales.count()
-                        prev_avg_order_value = round(prev_revenue / prev_orders, 2) if prev_orders else 0.0
-                        
                         prev_sales_stats = prev_sales.aggregate(
+                            order_count=Count("id"),
                             gross_margin=Coalesce(Sum("margin"), Decimal("0"))
                         )
+                        prev_orders = prev_sales_stats["order_count"] or 0
+                        prev_avg_order_value = round(prev_revenue / prev_orders, 2) if prev_orders else 0.0
                         prev_gross_margin_val = _to_float(prev_sales_stats["gross_margin"]) * base_multiplier if prev_sales_stats["gross_margin"] else (prev_revenue - prev_expenses)
                         prev_margin_pct = round(prev_gross_margin_val / prev_revenue * 100, 2) if prev_revenue else 0.0
                 except (ValueError, TypeError):
@@ -653,29 +720,39 @@ class KPIService:
             gross_margin_value = _to_float(sales_stats["gross_margin"]) * base_multiplier if sales_stats["gross_margin"] else (total_revenue - total_expenses)
             gross_margin_pct = round(gross_margin_value / total_revenue * 100, 2) if total_revenue else 0.0
 
-            # Tenant benchmarks (converting margin and revenue)
-            tenant_rows = list(
-                sales.values("tenant_id", "tenant__name")
-                .annotate(order_count=Count("id"), margin=Coalesce(Sum("margin"), Decimal("0")))
+            # Tenant benchmarks (converting margin and revenue in single aggregation)
+            tenant_stats = list(
+                sales.values("tenant_id", "tenant__name", "currency_code")
+                .annotate(
+                    order_count=Count("id"),
+                    margin=Coalesce(Sum("margin"), Decimal("0")),
+                    revenue=Coalesce(Sum("amount_total"), Decimal("0")),
+                )
             )
-            
-            # Re-fetch grouped by tenant and currency for accurate revenue conversion
-            tenant_rev_rows = list(
-                sales.values("tenant_id", "currency_code")
-                .annotate(revenue=Coalesce(Sum("amount_total"), Decimal("0")))
-            )
-            
-            tenant_rev_map = {}
-            for r in tenant_rev_rows:
+            tenant_map = {}
+            for r in tenant_stats:
                 tid = r["tenant_id"]
+                tname = r["tenant__name"] or str(tid)
                 code = r["currency_code"] or "COMPANY_BASE"
-                val = _to_float(r["revenue"]) * _get_conversion_rate(code, effective_base, rate_map)
-                tenant_rev_map[tid] = tenant_rev_map.get(tid, 0.0) + val
+                conv = _get_conversion_rate(code, effective_base, rate_map)
+                rev_val = _to_float(r["revenue"]) * conv
+                margin_val = _to_float(r["margin"]) * base_multiplier
+                
+                if tid not in tenant_map:
+                    tenant_map[tid] = {
+                        "tenant_id": str(tid),
+                        "tenant_name": tname,
+                        "revenue": 0.0,
+                        "order_count": 0,
+                        "margin": 0.0,
+                    }
+                tenant_map[tid]["revenue"] += rev_val
+                tenant_map[tid]["order_count"] += r["order_count"]
+                tenant_map[tid]["margin"] += margin_val
 
+            tenant_rows = list(tenant_map.values())
             for row in tenant_rows:
-                tid = row["tenant_id"]
-                row["revenue"] = tenant_rev_map.get(tid, 0.0)
-            
+                row["margin_rate_pct"] = (row["margin"] / row["revenue"] * 100) if row["revenue"] else 0.0
             tenant_rows.sort(key=lambda x: x["revenue"], reverse=True)
 
             return {
@@ -729,11 +806,11 @@ class KPIService:
                 "tenant_benchmarks": [
                     {
                         "tenant_id": str(row["tenant_id"]),
-                        "tenant_name": row["tenant__name"] or str(row["tenant_id"]),
+                        "tenant_name": row["tenant_name"],
                         "revenue": _to_float(row["revenue"]),
                         "order_count": _to_int(row["order_count"]),
                         "margin": _to_float(row["margin"]),
-                        "margin_rate_pct": (_to_float(row["margin"]) / _to_float(row["revenue"]) * 100) if _to_float(row["revenue"]) else 0.0,
+                        "margin_rate_pct": row["margin_rate_pct"],
                     }
                     for row in tenant_rows
                 ],
