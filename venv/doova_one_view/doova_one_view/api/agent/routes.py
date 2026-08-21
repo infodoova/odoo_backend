@@ -47,6 +47,7 @@ class ChatRequest(BaseModel):
     companies: Optional[List[Union[int, str]]] = Field(default=None)
 
     chat_history: Optional[List[dict]] = Field(default=[])
+    web_search: Optional[bool] = Field(alias="webSearch", default=False)
 
     # Fallback for 'message' vs 'text'
     @property
@@ -107,7 +108,8 @@ def make_chat_response(
     session_title: str,
     user_message: str,
     plan: Optional[dict] = None,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    citations: Optional[List[dict]] = None,
 ) -> dict:
     from .utils import parse_json_chart_from_text, strip_json_chart_from_text, replace_tenant_ids_with_names
 
@@ -143,6 +145,8 @@ def make_chat_response(
             res["plan"] = plan
     if status is not None:
         res["status"] = status
+    if citations:
+        res["citations"] = citations
     return res
 
 
@@ -498,26 +502,52 @@ async def chat_endpoint(request: Request):
     if decision == "EXECUTE":
         try:
             from datetime import date
+            from .config import AgentConfig
             today_str = date.today().strftime("%Y-%m-%d")
-            
-            # Persist summary to DB when agent generates one
-            def save_summary_to_db(summary_text: str):
-                session_manager.save_summary(current_session_id, summary_text)
-                logger.info(f"SUMMARY SAVED | Session: {current_session_id} | Length: {len(summary_text)} chars")
-            
-            def run_fast_path():
-                return fast_path_node.run(
-                    message=user_message,
-                    tenant_id=primary_tenant_id,
-                    tenant_ids=resolved_tenant_ids,
-                    company_id=primary_company_id,
-                    company_ids=resolved_company_ids,
-                    chat_history=chat_history_from_db,
-                    memory_summary=db_summary,
-                    on_summary=save_summary_to_db
-                )
-            
-            answer = await asyncio.to_thread(run_fast_path)
+
+            use_web_search = bool(
+                (getattr(req_data, "web_search", False) or body.get("web_search") or body.get("webSearch"))
+                and getattr(AgentConfig, "ENABLE_WEB_SEARCH", False)
+            )
+
+            citations = None
+            if use_web_search:
+                from .web_search_agent import WebSearchAgent
+                logger.info(f"WEB SEARCH ACTIVE for session {current_session_id}")
+
+                def run_web_search():
+                    agent = WebSearchAgent()
+                    return agent.run(
+                        message=user_message,
+                        tenant_id=primary_tenant_id,
+                        tenant_ids=resolved_tenant_ids,
+                        company_id=primary_company_id,
+                        company_ids=resolved_company_ids,
+                        chat_history=chat_history_from_db,
+                        memory_summary=db_summary,
+                    )
+
+                answer, citations = await asyncio.to_thread(run_web_search)
+            else:
+                # Persist summary to DB when agent generates one
+                def save_summary_to_db(summary_text: str):
+                    session_manager.save_summary(current_session_id, summary_text)
+                    logger.info(f"SUMMARY SAVED | Session: {current_session_id} | Length: {len(summary_text)} chars")
+
+                def run_fast_path():
+                    return fast_path_node.run(
+                        message=user_message,
+                        tenant_id=primary_tenant_id,
+                        tenant_ids=resolved_tenant_ids,
+                        company_id=primary_company_id,
+                        company_ids=resolved_company_ids,
+                        chat_history=chat_history_from_db,
+                        memory_summary=db_summary,
+                        on_summary=save_summary_to_db
+                    )
+
+                answer = await asyncio.to_thread(run_fast_path)
+
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             duration = (time.time() - request_start) * 1000
             logger.info(f"EXECUTE COMPLETE in {duration:.0f}ms | Response: \"{answer[:80]}...\"")
@@ -526,7 +556,8 @@ async def chat_endpoint(request: Request):
                 "EXECUTE",
                 current_session_id,
                 session.title,
-                user_message
+                user_message,
+                citations=citations if citations else None
             )
         except Exception as e:
             log_error("chat_endpoint.EXECUTE", e)

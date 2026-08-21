@@ -40,6 +40,16 @@ class AgentConfig:
     ADVISOR_MODEL: str = os.getenv("AGENT_ADVISOR_MODEL", "claude-sonnet-5")
     MAX_ADVISOR_TOKENS: int = 4096
 
+    # ── Web Search ────────────────────────────────────────────────────
+    ENABLE_WEB_SEARCH: bool = (
+        os.getenv("ENABLE_WEB_SEARCH", "false").lower() in ("true", "1", "yes")
+        or getattr(django_settings, "ENABLE_WEB_SEARCH", False)
+    )
+    WEB_SEARCH_MAX_USES: int = int(os.getenv("WEB_SEARCH_MAX_USES", "5"))
+    WEB_SEARCH_TOOL_VERSION: str = os.getenv("WEB_SEARCH_TOOL_VERSION", "web_search_20250305")
+    WEB_SEARCH_DEFAULT_COUNTRY: str = os.getenv("WEB_SEARCH_DEFAULT_COUNTRY", "CM")
+    WEB_SEARCH_DEFAULT_TIMEZONE: str = os.getenv("WEB_SEARCH_DEFAULT_TIMEZONE", "Africa/Douala")
+
     # ── Extended Capabilities ─────────────────────────────────────────
     ENABLE_THINKING = True
     THINKING_BUDGET = 32000
