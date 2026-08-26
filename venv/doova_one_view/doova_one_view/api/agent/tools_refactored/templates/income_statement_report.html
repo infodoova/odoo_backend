@@ -1,0 +1,145 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#0284c7{% endblock %}
+{% block watermark_accent %}#0284c7{% endblock %}
+{% block watermark_title %}INCOME STATEMENT{% endblock %}
+{% block cover_badge %}Income Statement{% endblock %}
+{% block cover_title %}Comprehensive Income Statement{% endblock %}
+{% block cover_subtitle %}Revenue performance, cost of goods, operating expenses, and net profit retention.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Financial Review:</strong> Analyze top-line revenue, cost of goods sold, gross margin contribution, overhead operating expenditure, and net retained earnings.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Financial Profitability KPIs</h1>
+
+    <!-- 6 Core P&L KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Gross Revenue</div>
+            <div class="kpi-value">{{ report_data.get('revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—')) }}</div>
+            {% set rev_var = report_data.get('revenue', {}).get('var_text', kpis.get('revenue', {}).get('var_text', '')) %}
+            {% if rev_var %}
+            <div class="kpi-variance {{ report_data.get('revenue', {}).get('var_class', kpis.get('revenue', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('revenue', {}).get('arrow', kpis.get('revenue', {}).get('arrow', '')) }} {{ rev_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Posted Sales Invoices</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Cost of Goods (COGS)</div>
+            <div class="kpi-value">{{ report_data.get('cogs', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('cogs', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cogs', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cogs', {}).get('arrow', '') }} {{ report_data.get('cogs', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Direct Material & Product Cost</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Gross Profit</div>
+            <div class="kpi-value">{{ report_data.get('gross_profit', {}).get('formatted', kpis.get('gross_profit', {}).get('formatted', '—')) }}</div>
+            {% set gp_var = report_data.get('gross_profit', {}).get('var_text', kpis.get('gross_profit', {}).get('var_text', '')) %}
+            {% if gp_var %}
+            <div class="kpi-variance {{ report_data.get('gross_profit', {}).get('var_class', kpis.get('gross_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('gross_profit', {}).get('arrow', kpis.get('gross_profit', {}).get('arrow', '')) }} {{ gp_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Revenue - COGS</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Operating Expenses (OpEx)</div>
+            <div class="kpi-value">{{ report_data.get('operating_expenses', {}).get('formatted', report_data.get('opex', {}).get('formatted', kpis.get('opex', {}).get('formatted', '—'))) }}</div>
+            {% set opex_var = report_data.get('operating_expenses', {}).get('var_text', kpis.get('opex', {}).get('var_text', '')) %}
+            {% if opex_var %}
+            <div class="kpi-variance {{ report_data.get('operating_expenses', {}).get('var_class', kpis.get('opex', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('operating_expenses', {}).get('arrow', kpis.get('opex', {}).get('arrow', '')) }} {{ opex_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Admin, Commercial & Overhead</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Operating Profit (EBIT)</div>
+            <div class="kpi-value">{{ report_data.get('ebit', {}).get('formatted', kpis.get('ebit', {}).get('formatted', '—')) }}</div>
+            {% set ebit_var = report_data.get('ebit', {}).get('var_text', kpis.get('ebit', {}).get('var_text', '')) %}
+            {% if ebit_var %}
+            <div class="kpi-variance {{ report_data.get('ebit', {}).get('var_class', kpis.get('ebit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('ebit', {}).get('arrow', kpis.get('ebit', {}).get('arrow', '')) }} {{ ebit_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Gross Profit - OpEx</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Profit / Loss</div>
+            <div class="kpi-value">{{ report_data.get('net_profit', {}).get('formatted', kpis.get('net_profit', {}).get('formatted', '—')) }}</div>
+            {% set net_var = report_data.get('net_profit', {}).get('var_text', kpis.get('net_profit', {}).get('var_text', '')) %}
+            {% if net_var %}
+            <div class="kpi-variance {{ report_data.get('net_profit', {}).get('var_class', kpis.get('net_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('net_profit', {}).get('arrow', kpis.get('net_profit', {}).get('arrow', '')) }} {{ net_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Income - Total Expenses</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if waterfall_chart_b64 or chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Profit Reconciliation Waterfall (Revenue to Net Profit)</div>
+        <img src="data:image/png;base64,{{ chart_1_b64|default(waterfall_chart_b64) }}" class="chart-img" alt="P&L Waterfall Chart" />
+    </div>
+    {% endif %}
+
+    <!-- Structured P&L Table -->
+    {% set pnl_rows = report_data.get('pnl_statement', []) %}
+    {% if pnl_rows %}
+    <h2 class="sub-title">Income Statement Line Items</h2>
+    <table class="statement-table">
+        <thead>
+            <tr>
+                <th>Account / Line Item</th>
+                <th class="text-right">Current Period</th>
+                <th class="text-right">Prior Period</th>
+                <th class="text-right">Variance %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in pnl_rows %}
+            <tr class="{% if row.get('is_total') %}statement-total-row{% elif row.get('is_header') %}statement-header-row{% endif %}">
+                <td class="{% if row.get('is_bold') %}font-bold{% endif %}">{{ row.get('name', 'Line Item') }}</td>
+                <td class="text-right font-bold">{{ row.get('current', '—') }}</td>
+                <td class="text-right">{{ row.get('prior', '—') }}</td>
+                <td class="text-right">{{ row.get('variance', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Management Commentary & Profitability Insights</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>P&L Accounting Standard:</strong> Prepared in accordance with posted general ledger journals under the Accrual Basis of Accounting.
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#475569{% endblock %}
+{% block watermark_accent %}#475569{% endblock %}
+{% block watermark_title %}GENERAL LEDGER & AUDIT{% endblock %}
+{% block cover_badge %}General Ledger{% endblock %}
+{% block cover_title %}Accounting & Ledger Integrity Report{% endblock %}
+{% block cover_subtitle %}Trial balance health, debtor/creditor aging, journal consistency, and control checks.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Accounting Governance:</strong> Audit general ledger reconciliations, posted move integrity, unallocated journal balances, and trade debtor/creditor aging bands.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Ledger Balances & Accounting Health</h1>
+
+    <!-- 6 Core Accounting KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Posted Income</div>
+            <div class="kpi-value">{{ report_data.get('revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—')) }}</div>
+            <div class="kpi-source">GL Class: Income Accounts</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Posted Expenses</div>
+            <div class="kpi-value">{{ report_data.get('total_expenses', {}).get('formatted', report_data.get('opex', {}).get('formatted', kpis.get('opex', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-source">GL Class: Expense Accounts</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Ledger Result</div>
+            <div class="kpi-value">{{ report_data.get('net_profit', {}).get('formatted', kpis.get('net_profit', {}).get('formatted', '—')) }}</div>
+            <div class="kpi-source">Current Year Earnings</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">GL Asset Balance</div>
+            <div class="kpi-value">{{ report_data.get('total_assets', {}).get('formatted', '—') }}</div>
+            <div class="kpi-source">All Posted Asset Accounts</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Open AR (Debtors)</div>
+            <div class="kpi-value">{{ report_data.get('accounts_receivable', {}).get('formatted', report_data.get('ar', {}).get('formatted', kpis.get('ar', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-source">Unreconciled Customer Invoices</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-red"></div>
+            <div class="kpi-title">Open AP (Creditors)</div>
+            <div class="kpi-value">{{ report_data.get('accounts_payable', {}).get('formatted', report_data.get('ap', {}).get('formatted', kpis.get('ap', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-source">Unreconciled Vendor Bills</div>
+        </div>
+    </div>
+
+    <!-- AR / AP Aging Tables -->
+    {% set ar_aging = report_data.get('ar_aging', []) %}
+    {% if ar_aging %}
+    <h2 class="sub-title">Accounts Receivable Aging Schedule</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Aging Bracket</th>
+                <th class="text-right">Outstanding Amount</th>
+                <th class="text-right">Share of Total</th>
+                <th class="text-right">Risk Level</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if ar_aging is mapping %}
+            <tr>
+                <td class="font-bold">Current (0–30 Days)</td>
+                <td class="text-right font-bold">{{ ar_aging.get('current', '—') }}</td>
+                <td class="text-right">{{ ar_aging.get('current_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-success">Low</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">31–60 Days</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_30', '—') }}</td>
+                <td class="text-right">{{ ar_aging.get('days_30_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-info">Normal</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">61–90 Days</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_60', '—') }}</td>
+                <td class="text-right">{{ ar_aging.get('days_60_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-warning">Watch</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">90+ Days (Overdue)</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_90_plus', '—') }}</td>
+                <td class="text-right">{{ ar_aging.get('days_90_plus_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-danger">High Risk</span></td>
+            </tr>
+            {% else %}
+            {% for row in ar_aging %}
+            {% if row is mapping %}
+            <tr>
+                <td class="font-bold">{{ row.get('bracket', row.get('period', 'Bracket')) }}</td>
+                <td class="text-right font-bold">{{ row.get('amount', '—') }}</td>
+                <td class="text-right">{{ row.get('share', '—') }}</td>
+                <td class="text-right"><span class="badge {{ row.get('badge_class', 'badge-info') }}">{{ row.get('risk', 'Normal') }}</span></td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Audit Findings & Ledger Governance</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Statutory Accounting Standard:</strong> Data extracted from posted move lines in compliance with standard chart of accounts structures.
+    </div>
+</div>
+{% endblock %}

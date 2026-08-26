@@ -50,6 +50,14 @@ class AgentConfig:
     WEB_SEARCH_DEFAULT_COUNTRY: str = os.getenv("WEB_SEARCH_DEFAULT_COUNTRY", "CM")
     WEB_SEARCH_DEFAULT_TIMEZONE: str = os.getenv("WEB_SEARCH_DEFAULT_TIMEZONE", "Africa/Douala")
 
+    # ── Web Fetch (URL content retrieval) ─────────────────────────────
+    ENABLE_WEB_FETCH: bool = (
+        os.getenv("ENABLE_WEB_FETCH", "true").lower() in ("true", "1", "yes")
+        or getattr(django_settings, "ENABLE_WEB_FETCH", True)
+    )
+    WEB_FETCH_MAX_USES: int = int(os.getenv("WEB_FETCH_MAX_USES", "5"))
+    WEB_FETCH_TOOL_VERSION: str = os.getenv("WEB_FETCH_TOOL_VERSION", "web_fetch_20260318")
+
     # ── Extended Capabilities ─────────────────────────────────────────
     ENABLE_THINKING = True
     THINKING_BUDGET = 32000
@@ -62,6 +70,7 @@ class AgentConfig:
     MAX_REPORT_TOKENS = 16384
     MAX_REASONING_TOKENS = 8000
     MAX_ROUTER_TOKENS = 20
+    MAX_REPORT_CLASSIFIER_TOKENS = 30
     # 1024 ensures the summarizer captures exact KPI numbers and date ranges
     # without truncating mid-way through a financial summary.
     MAX_SUMMARIZER_TOKENS = 1024

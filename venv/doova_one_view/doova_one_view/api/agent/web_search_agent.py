@@ -68,12 +68,12 @@ class WebSearchAgent:
     def _build_tools_list(self) -> List[Dict[str, Any]]:
         """
         Builds the complete tools array including all internal ERP tools
-        plus the native Anthropic web_search server tool.
+        plus the native Anthropic web_search and web_fetch server tools.
         """
         tools_list: List[Dict[str, Any]] = []
 
-        # 1. Native Anthropic web_search server tool definition
-        search_version = getattr(AgentConfig, "WEB_SEARCH_TOOL_VERSION", "web_search_20250305")
+        # 1a. Native Anthropic web_search server tool definition
+        search_version = getattr(AgentConfig, "WEB_SEARCH_TOOL_VERSION", "web_search_20260318")
         max_uses = getattr(AgentConfig, "WEB_SEARCH_MAX_USES", 5)
 
         web_search_tool: Dict[str, Any] = {
@@ -82,16 +82,30 @@ class WebSearchAgent:
             "max_uses": max_uses,
         }
 
-        country = getattr(AgentConfig, "WEB_SEARCH_DEFAULT_COUNTRY", "CM")
-        timezone = getattr(AgentConfig, "WEB_SEARCH_DEFAULT_TIMEZONE", "Africa/Douala")
-        if country:
+        # user_location is optional in Anthropic API and only supports specific ISO codes.
+        # If not in the supported list or omitted, global search without user_location is used.
+        country = (getattr(AgentConfig, "WEB_SEARCH_DEFAULT_COUNTRY", "") or "").strip().upper()
+        timezone = (getattr(AgentConfig, "WEB_SEARCH_DEFAULT_TIMEZONE", "") or "").strip()
+        ANTHROPIC_SUPPORTED_COUNTRIES = {"US", "GB", "CA", "AU", "FR", "DE", "ES", "IT", "JP"}
+        if country and country in ANTHROPIC_SUPPORTED_COUNTRIES:
             web_search_tool["user_location"] = {
                 "type": "approximate",
                 "country": country,
-                "timezone": timezone,
+                "timezone": timezone or "UTC",
             }
 
         tools_list.append(web_search_tool)
+
+        # 1b. Native Anthropic web_fetch server tool (reads full page content)
+        if getattr(AgentConfig, "ENABLE_WEB_FETCH", True):
+            fetch_version = getattr(AgentConfig, "WEB_FETCH_TOOL_VERSION", "web_fetch_20260318")
+            fetch_max_uses = getattr(AgentConfig, "WEB_FETCH_MAX_USES", 5)
+            web_fetch_tool: Dict[str, Any] = {
+                "type": fetch_version,
+                "name": "web_fetch",
+                "max_uses": fetch_max_uses,
+            }
+            tools_list.append(web_fetch_tool)
 
         # 2. Convert all existing internal business database tools
         for tool in agent_tools:
@@ -139,7 +153,10 @@ class WebSearchAgent:
             f"AGENT CORE INSTRUCTIONS\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"You are the senior AI business advisor for Doova One View.\n"
-            f"You have access to 40+ internal business tools and native real-time Web Search.\n"
+            f"You have access to 40+ internal business tools, native real-time Web Search, and Web Fetch (deep URL reading).\n\n"
+            f"LANGUAGE & LOCALIZATION DIRECTIVE (STRICT):\n"
+            f"- You MUST reply strictly in the exact same language as the user's latest query (e.g. if the user query is in English, you MUST reply 100% in English; if in Arabic, reply in Arabic; if in French, reply in French).\n"
+            f"- NEVER maintain or reply in an older session language if the user switched languages in their latest query.\n\n"
             f"{WEB_SEARCH_SYSTEM_PROMPT_ADDITION}"
         )
         return full_system_prompt

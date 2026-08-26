@@ -48,6 +48,9 @@ class ChatRequest(BaseModel):
 
     chat_history: Optional[List[dict]] = Field(default=[])
     web_search: Optional[bool] = Field(alias="webSearch", default=False)
+    attachments: Optional[List[dict]] = Field(default=None)
+    is_voice: Optional[bool] = Field(alias="isVoice", default=False)
+    language: Optional[str] = Field(default=None)
 
     # Fallback for 'message' vs 'text'
     @property
@@ -101,6 +104,37 @@ def extract_context_ids(req_data: Union[ChatRequest, dict]):
 
     return primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids
 
+def format_pdf_links_as_clickable_markdown(text: str) -> tuple[str, Optional[str]]:
+    """
+    Ensures any generated PDF report URLs are formatted as standard clickable Markdown links.
+    Converts raw strings or backtick-wrapped paths like `/reports/x.pdf` into `[📥 **Download PDF Report**](/reports/x.pdf)`.
+    """
+    if not text:
+        return text, None
+
+    download_url = None
+    pdf_pattern = r'(?:https?://[^\s`()]+)?/(?:api/v1/)?(?:financial-advisor/)?reports/[^\s`()]+\.pdf'
+    match = _re.search(pdf_pattern, text)
+    if match:
+        download_url = match.group(0)
+
+    # 1. Replace backticked PDF links `.../reports/xyz.pdf` with [📥 **Download PDF Report**](url)
+    text = _re.sub(
+        r'`\s*((?:https?://[^\s`()]+)?/(?:api/v1/)?(?:financial-advisor/)?reports/[^`\s()]+\.pdf)\s*`',
+        r'[📥 **Download PDF Report**](\1)',
+        text
+    )
+
+    # 2. Replace raw unlinked URLs (not preceded by `](` or `(`) with clickable markdown links
+    text = _re.sub(
+        r'(?<!\]\()(?<!\()(?<!`)\b((?:https?://[^\s`()]+)?/(?:api/v1/)?(?:financial-advisor/)?reports/[^\s`()]+\.pdf)\b(?!\))',
+        r'[📥 **Download PDF Report**](\1)',
+        text
+    )
+
+    return text, download_url
+
+
 def make_chat_response(
     answer: str,
     mode: str,
@@ -125,6 +159,7 @@ def make_chat_response(
         res_type = "text"
 
     final_answer = replace_tenant_ids_with_names(final_answer)
+    final_answer, pdf_download_url = format_pdf_links_as_clickable_markdown(final_answer)
 
     res = {
         "answer": final_answer,
@@ -133,6 +168,9 @@ def make_chat_response(
         "session_title": session_title,
         "type": res_type,
     }
+
+    if pdf_download_url:
+        res["download_url"] = pdf_download_url
 
     if chart_payload:
         res["payload"] = chart_payload
@@ -269,6 +307,14 @@ async def chat_endpoint(request: Request):
     # Extract message from multiple potential sources
     user_message = req_data.query_alt or req_data.message or req_data.content or req_data.prompt or ""
     
+    # Clean voice mode tags and reply-to metadata immediately
+    clean_user_message = user_message
+    is_voice_mode = bool(req_data.is_voice) or ("[VOICE MODE:" in user_message)
+    user_language = req_data.language or None
+    if "[VOICE MODE:" in user_message:
+        clean_user_message = _re.sub(r'\[VOICE MODE:[^\]]*\]', '', user_message).strip()
+    clean_user_message = _re.sub(r'>\s*\[REPLY_TO:[^\]]*\]', '', clean_user_message).strip()
+
     # Extract & normalize all tenant and company ids
     from asgiref.sync import sync_to_async
     primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = await sync_to_async(extract_context_ids)(req_data)
@@ -304,18 +350,65 @@ async def chat_endpoint(request: Request):
         if m.role in ("user", "assistant")
     ]
     
-    # Now save the new user message to DB
-    await sync_to_async(session_manager.save_message)(current_session_id, "user", user_message or "[Empty Message]")
+    # Save the new user message to DB (persisting attachments in payload if present)
+    user_payload = {"attachments": req_data.attachments} if req_data.attachments else {}
+    await sync_to_async(session_manager.save_message)(
+        current_session_id, "user", user_message or "[Empty Message]", payload=user_payload
+    )
     log_session_event("MESSAGE_SAVED", current_session_id, "user message")
 
-    SOCIAL_PHRASES = {
+    ARABIC_GREETINGS = {
+        "هلا", "مرحبا", "مرحب", "سلام", "السلام", "أهلا", "أهلاً", "أهلين", "اهلين",
+        "صباح الخير", "مساء الخير", "حياك الله", "حياك", "حياكم", "يا هلا", "مرحبا بك",
+        "أهلا وسهلا", "اهلا وسهلا", "يعطيك العافية", "شكرا", "شكراً", "تسلم", "مشكور",
+        "السلام عليكم", "سلام عليكم", "هاي", "هلو", "كيف الحال", "كيفك", "شخبارك", "هلا وغلا"
+    }
+    FRENCH_GREETINGS = {
+        "bonjour", "salut", "coucou", "bonsoir", "merci", "au revoir", "comment ca va", "comment allez-vous"
+    }
+    SPANISH_GREETINGS = {
+        "hola", "buenos dias", "buenas tardes", "buenas noches", "gracias", "adios", "que tal", "como estas"
+    }
+    ENGLISH_GREETINGS = {
         "hi", "hello", "hey", "how are you", "how are you?",
         "good morning", "good afternoon", "good evening",
         "thanks", "thank you", "bye", "goodbye", "ok", "okay",
+        "greetings", "whats up", "what's up", "yo"
     }
-    # Handle empty messages / simple social phrases before hitting the router
-    if not user_message or not user_message.strip() or user_message.lower().strip("!.?") in SOCIAL_PHRASES:
-        answer = "Hello! I am Nexus. How can I assist you with your business data today?"
+
+    # Helper: Check if message is a short greeting / pleasantry
+    msg_clean_lower = clean_user_message.lower().strip("!.? \t\n\r,;")
+    msg_words = msg_clean_lower.split()
+    
+    is_arabic_greeting = (
+        msg_clean_lower in ARABIC_GREETINGS
+        or (any(w in ARABIC_GREETINGS for w in msg_words) and len(msg_words) <= 4)
+        or (any(clean_user_message.startswith(g) for g in ["هلا", "مرحبا", "السلام عليكم", "أهلا", "اهلا", "صباح الخير", "مساء الخير"]) and len(msg_words) <= 5)
+    )
+    is_french_greeting = (
+        msg_clean_lower in FRENCH_GREETINGS
+        or (any(w in FRENCH_GREETINGS for w in msg_words) and len(msg_words) <= 3)
+    )
+    is_spanish_greeting = (
+        msg_clean_lower in SPANISH_GREETINGS
+        or (any(w in SPANISH_GREETINGS for w in msg_words) and len(msg_words) <= 3)
+    )
+    is_english_greeting = (
+        msg_clean_lower in ENGLISH_GREETINGS
+        or (any(w in ENGLISH_GREETINGS for w in msg_words) and len(msg_words) <= 3)
+    )
+
+    # Handle empty messages / simple social phrases before hitting the router (only if no attachments)
+    if not req_data.attachments and (not user_message or not user_message.strip() or is_arabic_greeting or is_french_greeting or is_spanish_greeting or is_english_greeting):
+        if is_arabic_greeting:
+            answer = "أهلاً وسهلاً بك! أنا Nexus، مساعدك الذكي في Doova One View. كيف يمكنني مساعدتك في بيانات أعمالك اليوم؟"
+        elif is_french_greeting:
+            answer = "Bonjour ! Je suis Nexus. Comment puis-je vous aider avec vos données d'entreprise aujourd'hui ?"
+        elif is_spanish_greeting:
+            answer = "¡Hola! Soy Nexus. ¿Cómo puedo ayudarte con los datos de tu empresa hoy?"
+        else:
+            answer = "Hello! I am Nexus. How can I assist you with your business data today?"
+
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
         return make_chat_response(
             answer,
@@ -331,17 +424,50 @@ async def chat_endpoint(request: Request):
         f"   Tenants: {resolved_tenant_ids or 'ALL'}\n"
         f"   Companies: {resolved_company_ids or 'ALL'}\n"
         f"   Message: \"{user_message[:100]}\"\n"
+        f"   Attachments: {len(req_data.attachments) if req_data.attachments else 0}\n"
+        f"   Voice Mode: {is_voice_mode}\n"
+        f"   Language: {user_language}\n"
         f"   History Context: {len(chat_history_from_db)} messages"
     )
 
-    # Clean voice mode tags if present
-    clean_user_message = user_message
-    is_voice_mode = "[VOICE MODE:" in user_message
-    if is_voice_mode:
-        clean_user_message = _re.sub(r'\[VOICE MODE:[^\]]*\]', '', user_message).strip()
+    # If user provided attachments, always route to EXECUTE directly
+    if req_data.attachments:
+        decision = "EXECUTE"
 
-    # 2. Routing (pass recent chat history for context-aware intent resolution)
-    decision = await asyncio.to_thread(router_node.classify, clean_user_message or user_message, chat_history_from_db)
+    # ── Defense 1: Pre-Router Deterministic Fast Path ──────────────────────
+    # Short affirmations MUST NOT go through the LLM router. The router is
+    # unreliable for 1-3 word messages and may misclassify "yes" as PLAN.
+    # Instead, we deterministically resolve them here.
+    _HARD_AFFIRMATIVE_TOKENS = {
+        # English
+        "yes", "ye", "yeah", "yep", "yup", "ya", "yaa", "yess", "yesss",
+        "sure", "ok", "okay", "proceed", "go", "ahead", "confirm", "approve",
+        "right", "fine", "alright", "perfect", "great", "cool", "do",
+        # French
+        "oui", "ouais", "bien", "entendu", "d'accord", "daccord",
+        # Spanish
+        "si", "sí", "claro", "vale", "dale", "bueno",
+        # Arabic
+        "\u0646\u0639\u0645", "\u0623\u064a\u0648\u0629", "\u0627\u064a\u0648\u0629", "\u062a\u0645\u0627\u0645", "\u0645\u0627\u0634\u064a", "\u064a\u0644\u0627", "\u0627\u062a\u0643\u0644",
+        "\u062e\u0644\u0627\u0635", "\u0623\u0643\u064a\u062f", "\u0627\u0643\u064a\u062f", "\u0637\u0628\u0639\u0627\u064b", "\u0637\u0628\u0639\u0627", "\u0645\u0648\u0627\u0641\u0642", "\u064a\u0627\u0644\u0644\u0647",
+        "\u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644", "\u0627\u0628\u062f\u0623",
+    }
+    _SHORT_MSG_THRESHOLD = 8  # words
+    _pre_router_words = clean_user_message.strip().split()
+    _pre_router_word_set = {w.lower().strip("!?.,;:'\"") for w in _pre_router_words}
+
+    if (len(_pre_router_words) <= _SHORT_MSG_THRESHOLD
+            and _pre_router_word_set.intersection(_HARD_AFFIRMATIVE_TOKENS)):
+        # Short affirmative detected — skip the LLM router entirely
+        if session.plan_state:
+            decision = "CONFIRM"
+            logger.info(f"PRE-ROUTER FAST PATH | Short affirmative with pending plan → CONFIRM | msg='{clean_user_message}'")
+        else:
+            decision = "EXECUTE"
+            logger.info(f"PRE-ROUTER FAST PATH | Short affirmative, no plan → EXECUTE | msg='{clean_user_message}'")
+    else:
+        # 2. Routing (pass recent chat history for context-aware intent resolution)
+        decision = await asyncio.to_thread(router_node.classify, clean_user_message or user_message, chat_history_from_db)
 
     # 2.1 Handle Plan Approval (CONFIRM path with deterministic affirmative matching)
     REJECTION_KEYWORDS = {"no", "nope", "nah", "cancel", "stop", "abort", "dont", "don't", "refuse", "reject", "nevermind", "nvm"}
@@ -350,11 +476,16 @@ async def chat_endpoint(request: Request):
         "proceed", "go", "ahead", "do", "it", "confirm", "approve", "accepted", "agreed", "correct",
         "right", "fine", "alright", "please", "pls", "plsn", "execute", "run", "start", "plan", "show",
         "give", "perfect", "awesome", "great", "nice", "good", "super", "cool", "thx", "thanks", "thank",
-        "si", "oui", "claro", "vale", "sy", "sim", "create", "generate", "build", "make", "fetch", "pull"
+        "si", "oui", "claro", "vale", "sy", "sim", "create", "generate", "build", "make", "fetch", "pull",
+        # Arabic affirmations
+        "\u0646\u0639\u0645", "\u0623\u064a\u0648\u0629", "\u0627\u064a\u0648\u0629", "\u062a\u0645\u0627\u0645", "\u0645\u0627\u0634\u064a", "\u064a\u0644\u0627", "\u0627\u062a\u0643\u0644", "\u062e\u0644\u0627\u0635",
+        "\u0623\u0643\u064a\u062f", "\u0627\u0643\u064a\u062f", "\u0637\u0628\u0639\u0627\u064b", "\u0637\u0628\u0639\u0627", "\u0645\u0648\u0627\u0641\u0642", "\u064a\u0627\u0644\u0644\u0647", "\u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644", "\u0627\u0628\u062f\u0623",
     }
     AFFIRMATIVE_PHRASES = [
         "give me", "sounds good", "looks good", "let's do", "lets do", "go ahead", "do it",
-        "run it", "give it", "show me", "why not", "of course", "do that", "do this", "all right"
+        "run it", "give it", "show me", "why not", "of course", "do that", "do this", "all right",
+        # Arabic affirmative phrases
+        "\u0627\u062a\u0643\u0644 \u0639\u0644\u0649 \u0627\u0644\u0644\u0647", "\u0639\u0644\u0649 \u0628\u0631\u0643\u0629 \u0627\u0644\u0644\u0647", "\u064a\u0644\u0627 \u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644 \u0644\u0646\u0627", "\u0627\u0639\u0645\u0644\u0647\u0627",
     ]
 
     lower_msg = clean_user_message.lower()
@@ -455,6 +586,13 @@ async def chat_endpoint(request: Request):
                 )
             raise HTTPException(status_code=500, detail=str(e))
 
+    # 2.2 Conversational Continuation Handling:
+    # If the user gives an affirmative reply ("yes", "ok", "sure", "proceed") or router returned CONFIRM,
+    # but there is NO pending plan in session: treat as a conversational follow-up/execution.
+    if not session.plan_state and (decision == "CONFIRM" or is_affirmative):
+        logger.info(f"ROUTER OVERRIDE | No active plan in session {current_session_id}. Converting CONFIRM/affirmative to EXECUTE for conversational continuation.")
+        decision = "EXECUTE"
+
     # Fail-safe guard against accidental rejections on follow-up phrases or voice mode in active sessions
     clean_words = (clean_user_message or user_message).strip().split()
     if decision == "REJECT" and (chat_history_from_db or is_voice_mode):
@@ -498,6 +636,34 @@ async def chat_endpoint(request: Request):
         logger.info(f"REQUEST REJECTED in {duration:.0f}ms")
         return {"answer": answer}
     
+    # 2.3 Strict Fallback: Any non-REJECT, non-PLAN decision defaults to EXECUTE
+    if decision != "PLAN":
+        decision = "EXECUTE"
+
+    # ── Defense 2: PLAN Gate ──────────────────────────────────────────────
+    # Even if the router returned PLAN, only allow it if the user's message
+    # contains explicit strategic planning language. Without this, a simple
+    # "yes" that slips past Defense 1 would still reach create_plan().
+    if decision == "PLAN":
+        _PLAN_TRIGGER_KEYWORDS = {
+            "roadmap", "strategic plan", "transformation", "multi-phase",
+            "multi phase", "enterprise audit", "5 year", "five year",
+            "long term", "long-term", "comprehensive audit", "full audit",
+            "action plan", "implementation plan", "project plan",
+            # Arabic
+            "\u062e\u0637\u0629 \u0627\u0633\u062a\u0631\u0627\u062a\u064a\u062c\u064a\u0629", "\u062e\u0627\u0631\u0637\u0629 \u0637\u0631\u064a\u0642", "\u062e\u0637\u0629 \u0639\u0645\u0644",
+            # French
+            "feuille de route", "plan strategique", "plan strat\u00e9gique",
+        }
+        _plan_msg_lower = clean_user_message.lower()
+        _has_plan_language = any(kw in _plan_msg_lower for kw in _PLAN_TRIGGER_KEYWORDS)
+        if not _has_plan_language:
+            logger.info(
+                f"PLAN GATE | Router returned PLAN but no planning keywords found in message. "
+                f"Converting to EXECUTE. | msg='{clean_user_message[:100]}'"
+            )
+            decision = "EXECUTE"
+
     # 3. Execution Path
     if decision == "EXECUTE":
         try:
@@ -536,19 +702,26 @@ async def chat_endpoint(request: Request):
 
                 def run_fast_path():
                     return fast_path_node.run(
-                        message=user_message,
+                        message=clean_user_message or user_message,
                         tenant_id=primary_tenant_id,
                         tenant_ids=resolved_tenant_ids,
                         company_id=primary_company_id,
                         company_ids=resolved_company_ids,
                         chat_history=chat_history_from_db,
                         memory_summary=db_summary,
-                        on_summary=save_summary_to_db
+                        on_summary=save_summary_to_db,
+                        attachments=req_data.attachments,
+                        session_id=current_session_id,
+                        is_voice=is_voice_mode,
+                        language=user_language
                     )
 
                 answer = await asyncio.to_thread(run_fast_path)
 
-            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+            message_payload = {"citations": citations} if citations else None
+            await sync_to_async(session_manager.save_message)(
+                current_session_id, "assistant", answer, payload=message_payload
+            )
             duration = (time.time() - request_start) * 1000
             logger.info(f"EXECUTE COMPLETE in {duration:.0f}ms | Response: \"{answer[:80]}...\"")
             return make_chat_response(
@@ -712,63 +885,78 @@ def _extract_json_block(text: str) -> dict | None:
 async def generate_ai_report(request: Request):
     body = await request.json()
     primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
-    report_type = body.get("type", "analysis")
+    from .report_classifier import ReportTypeClassifier
+    raw_type = body.get("report_type") or body.get("type")
+    prompt_text = body.get("prompt") or body.get("message") or ""
+    report_type = ReportTypeClassifier.classify(
+        prompt=prompt_text,
+        custom_content=body.get("custom_content") or "",
+        raw_type=raw_type,
+    )
+    report_data = body.get("report_data")
     data = body.get("data", {})
 
     lines = []
+    if body.get("custom_content"):
+        custom_content = body["custom_content"]
+    else:
+        if report_type in ("analysis", "health", "executive", "general"):
+            lines += [
+                f"## {data.get('title', 'Financial Analysis')}",
+                f"**Primary Metric:** {data.get('value', 'N/A')}  |  **Trend:** {data.get('trend', 'N/A')}",
+                "",
+            ]
+            if data.get("summary"):
+                lines += ["### Executive Summary", data["summary"], ""]
+            if data.get("insights"):
+                lines.append("### Key Insights")
+                lines += [f"- {i}" for i in data["insights"]]
+                lines.append("")
+            if data.get("details"):
+                lines.append("### Key Findings")
+                for d in data["details"]:
+                    lines += [f"**{d['title']}**", d["description"], ""]
+            if data.get("levers"):
+                lines.append("### Optimization Levers")
+                lines += [f"- {l}" for l in data["levers"]]
 
-    if report_type == "analysis":
-        lines += [
-            f"## {data.get('title', 'Financial Analysis')}",
-            f"**Primary Metric:** {data.get('value', 'N/A')}  |  **Trend:** {data.get('trend', 'N/A')}",
-            "",
-        ]
-        if data.get("summary"):
-            lines += ["### Executive Summary", data["summary"], ""]
-        if data.get("insights"):
-            lines.append("### Key Insights")
-            lines += [f"- {i}" for i in data["insights"]]
-            lines.append("")
-        if data.get("details"):
-            lines.append("### Key Findings")
-            for d in data["details"]:
-                lines += [f"**{d['title']}**", d["description"], ""]
-        if data.get("levers"):
-            lines.append("### Optimization Levers")
-            lines += [f"- {l}" for l in data["levers"]]
+        elif report_type in ("forecast", "proforma"):
+            lines += [
+                f"## {data.get('title', 'Sales Forecast')}",
+                f"**Projected Value:** {data.get('value', 'N/A')}  |  "
+                f"**Period:** {data.get('period', 'N/A')}  |  "
+                f"**Confidence:** {data.get('confidence', 'N/A')}%",
+                "",
+            ]
+            if data.get("insights"):
+                lines.append("### Key Insights")
+                lines += [f"- {i}" for i in data["insights"]]
+                lines.append("")
+            if data.get("steps"):
+                lines.append("### Strategic Action Plan")
+                for idx, s in enumerate(data["steps"], 1):
+                    lines += [f"**Phase {idx}: {s['title']}**", s["description"], ""]
 
-    elif report_type == "forecast":
-        lines += [
-            f"## {data.get('title', 'Sales Forecast')}",
-            f"**Projected Value:** {data.get('value', 'N/A')}  |  "
-            f"**Period:** {data.get('period', 'N/A')}  |  "
-            f"**Confidence:** {data.get('confidence', 'N/A')}%",
-            "",
-        ]
-        if data.get("insights"):
-            lines.append("### Key Insights")
-            lines += [f"- {i}" for i in data["insights"]]
-            lines.append("")
-        if data.get("steps"):
-            lines.append("### Strategic Action Plan")
-            for idx, s in enumerate(data["steps"], 1):
-                lines += [f"**Phase {idx}: {s['title']}**", s["description"], ""]
+        elif report_type in ("audit", "accounting"):
+            lines += [
+                f"## {data.get('title', 'Integrity Audit')}",
+                f"**Score:** {data.get('score', 'N/A')}/100  |  "
+                f"**Status:** {data.get('status', 'N/A')}  |  "
+                f"**Grade:** {data.get('grade', 'N/A')}",
+                "",
+            ]
+            if data.get("findings"):
+                lines.append("### Audit Findings")
+                for f in data["findings"]:
+                    sev = f.get("severity", "info").upper()
+                    lines += [f"**[{sev}] {f['title']}**", f["description"], ""]
+        else:
+            if data.get("title"):
+                lines.append(f"## {data['title']}\n")
+            if data.get("summary"):
+                lines.append(f"### Summary\n{data['summary']}\n")
 
-    elif report_type == "audit":
-        lines += [
-            f"## {data.get('title', 'Integrity Audit')}",
-            f"**Score:** {data.get('score', 'N/A')}/100  |  "
-            f"**Status:** {data.get('status', 'N/A')}  |  "
-            f"**Grade:** {data.get('grade', 'N/A')}",
-            "",
-        ]
-        if data.get("findings"):
-            lines.append("### Audit Findings")
-            for f in data["findings"]:
-                sev = f.get("severity", "info").upper()
-                lines += [f"**[{sev}] {f['title']}**", f["description"], ""]
-
-    custom_content = "\n".join(lines)
+        custom_content = "\n".join(lines)
     logo_path = body.get("logo_path")
 
     try:
@@ -780,6 +968,7 @@ async def generate_ai_report(request: Request):
             company_ids=resolved_company_ids,
             custom_content=custom_content,
             report_type=report_type,
+            report_data=report_data,
             logo_path=logo_path,
             base_currency=body.get("base_currency"),
             start_date=body.get("start_date") or body.get("from_date"),
@@ -1041,13 +1230,19 @@ async def list_sessions(tenant_id: str = None):
 @router.get("/sessions/{session_id}/messages", dependencies=[_use_agent])
 async def get_session_messages(session_id: str):
     """Retrieve all messages for a specific session."""
-    messages = session_manager.get_messages(session_id)
+    from asgiref.sync import sync_to_async
+    def _fetch():
+        return list(session_manager.get_messages(session_id))
+    messages = await sync_to_async(_fetch)()
     return {
         "messages": [
             {
                 "role": m.role,
                 "content": m.content,
                 "message_type": m.message_type,
+                "payload": m.payload,
+                "attachments": (m.payload.get("attachments") if m.payload and isinstance(m.payload, dict) else []) or [],
+                "citations": (m.payload.get("citations") if m.payload and isinstance(m.payload, dict) else None),
                 "created_at": m.created_at
             }
             for m in messages
@@ -1057,8 +1252,12 @@ async def get_session_messages(session_id: str):
 @router.get("/sessions/{session_id}", dependencies=[_use_agent])
 async def get_session_details(session_id: str):
     """Retrieve details and messages for a specific session."""
-    session = session_manager.get_or_create_session(session_id, "default") # tenant_id is not strictly needed for retrieval here
-    messages = session_manager.get_messages(session_id)
+    from asgiref.sync import sync_to_async
+    def _fetch():
+        sess = session_manager.get_or_create_session(session_id, "default")
+        msgs = list(session_manager.get_messages(session_id))
+        return sess, msgs
+    session, messages = await sync_to_async(_fetch)()
     return {
         "session_id": session.session_id,
         "title": session.title,
@@ -1069,6 +1268,8 @@ async def get_session_details(session_id: str):
                 "content": m.content,
                 "message_type": m.message_type,
                 "payload": m.payload,
+                "attachments": (m.payload.get("attachments") if m.payload and isinstance(m.payload, dict) else []) or [],
+                "citations": (m.payload.get("citations") if m.payload and isinstance(m.payload, dict) else None),
                 "created_at": m.created_at
             }
             for m in messages
@@ -1078,7 +1279,8 @@ async def get_session_details(session_id: str):
 @router.delete("/sessions/{session_id}", dependencies=[_use_agent])
 async def delete_session(session_id: str):
     """Delete a chat session."""
-    session_manager.delete_session(session_id)
+    from asgiref.sync import sync_to_async
+    await sync_to_async(session_manager.delete_session)(session_id)
     log_session_event("DELETED", session_id, "User requested deletion")
     return {"status": "deleted"}
 
@@ -1133,21 +1335,35 @@ async def approve_plan(request: ChatRequest, plan: dict):
 
 @router.get("/reports/{filename}", tags=["Agent Reports"])
 async def download_ai_report(filename: str):
-    """Download an AI-generated PDF report."""
+    """Download an AI-generated PDF report with browser preview support."""
     from fastapi.responses import FileResponse
+    from django.conf import settings
     import os
+    import urllib.parse
 
-    # Prevent path traversal attacks
-    if "/" in filename or "\\" in filename or ".." in filename:
+    # 1. Decode URL encoding (e.g. %60 for backtick) and clean up filename
+    cleaned_filename = urllib.parse.unquote(filename).strip("`'\" \t\n\r")
+    
+    # 2. Prevent path traversal attacks
+    if "/" in cleaned_filename or "\\" in cleaned_filename or ".." in cleaned_filename:
         raise HTTPException(status_code=400, detail="Invalid report filename")
 
-    report_path = os.path.join("reports", filename)
+    # 3. Check reports directory from Django settings or fallback
+    reports_dir = getattr(settings, "REPORTS_DIR", "reports")
+    report_path = os.path.join(reports_dir, cleaned_filename)
+
     if not os.path.exists(report_path):
-        raise HTTPException(status_code=404, detail="Report not found")
+        # Fallback to local reports/ directory
+        report_path = os.path.join("reports", cleaned_filename)
+        if not os.path.exists(report_path):
+            raise HTTPException(status_code=404, detail="Report not found")
 
     return FileResponse(
         path=report_path,
-        filename=filename,
+        filename=cleaned_filename,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        headers={
+            "Content-Disposition": f'inline; filename="{cleaned_filename}"',
+            "Cache-Control": "private, max-age=3600",
+        }
     )

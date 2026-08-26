@@ -1,0 +1,137 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#0f172a{% endblock %}
+{% block watermark_accent %}#0f172a{% endblock %}
+{% block watermark_title %}CONSOLIDATED FINANCIALS{% endblock %}
+{% block cover_badge %}Consolidated Financials{% endblock %}
+{% block cover_title %}Consolidated Financial Statements{% endblock %}
+{% block cover_subtitle %}Full corporate pack combining P&L, balance sheet, cash flow, and multi-entity metrics.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Group Executive Summary:</strong> Comprehensive multi-statement board pack reconciling performance across operating subsidiaries, consolidating balance sheet assets, and reporting net group cash flows.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Consolidated Group Executive KPIs</h1>
+
+    <!-- 6 Core Consolidated KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Gross Revenue</div>
+            <div class="kpi-value">{{ report_data.get('revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—')) }}</div>
+            {% set rev_var = report_data.get('revenue', {}).get('var_text', kpis.get('revenue', {}).get('var_text', '')) %}
+            {% if rev_var %}
+            <div class="kpi-variance {{ report_data.get('revenue', {}).get('var_class', kpis.get('revenue', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('revenue', {}).get('arrow', kpis.get('revenue', {}).get('arrow', '')) }} {{ rev_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Consolidated Group Income</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Gross Profit</div>
+            <div class="kpi-value">{{ report_data.get('gross_profit', {}).get('formatted', kpis.get('gross_profit', {}).get('formatted', '—')) }}</div>
+            {% set gp_var = report_data.get('gross_profit', {}).get('var_text', kpis.get('gross_profit', {}).get('var_text', '')) %}
+            {% if gp_var %}
+            <div class="kpi-variance {{ report_data.get('gross_profit', {}).get('var_class', kpis.get('gross_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('gross_profit', {}).get('arrow', kpis.get('gross_profit', {}).get('arrow', '')) }} {{ gp_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Consolidated Margin</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Profit</div>
+            <div class="kpi-value">{{ report_data.get('net_profit', {}).get('formatted', kpis.get('net_profit', {}).get('formatted', '—')) }}</div>
+            {% set net_var = report_data.get('net_profit', {}).get('var_text', kpis.get('net_profit', {}).get('var_text', '')) %}
+            {% if net_var %}
+            <div class="kpi-variance {{ report_data.get('net_profit', {}).get('var_class', kpis.get('net_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('net_profit', {}).get('arrow', kpis.get('net_profit', {}).get('arrow', '')) }} {{ net_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Group Retained Earnings</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Total Assets</div>
+            <div class="kpi-value">{{ report_data.get('total_assets', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('total_assets', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('total_assets', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_assets', {}).get('arrow', '') }} {{ report_data.get('total_assets', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Consolidated Group Assets</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-red"></div>
+            <div class="kpi-title">Total Liabilities</div>
+            <div class="kpi-value">{{ report_data.get('total_liabilities', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('total_liabilities', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('total_liabilities', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_liabilities', {}).get('arrow', '') }} {{ report_data.get('total_liabilities', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Group Obligations</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Liquid Cash Reserves</div>
+            <div class="kpi-value">{{ report_data.get('cash_balance', {}).get('formatted', report_data.get('cash', {}).get('formatted', kpis.get('cash', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('cash_balance', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cash_balance', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cash_balance', {}).get('arrow', '') }} {{ report_data.get('cash_balance', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Group Cash & Bank</div>
+        </div>
+    </div>
+
+    <!-- Company Comparison Table (Multi-Company) -->
+    {% set comps = report_data.get('company_comparison', company_comparison|default([])) %}
+    {% if comps %}
+    <h2 class="sub-title">Entity Breakdown & Subsidiary Contributions</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Entity / Subsidiary</th>
+                <th class="text-right">Revenue</th>
+                <th class="text-right">Gross Profit</th>
+                <th class="text-right">Net Profit</th>
+                <th class="text-right">Overdue AR</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in comps %}
+            <tr>
+                <td class="font-bold">{{ c.get('name', 'Company') }}</td>
+                <td class="text-right font-bold">{{ c.get('revenue', '—') }}</td>
+                <td class="text-right">{{ c.get('gross_profit', '—') }}</td>
+                <td class="text-right">{{ c.get('net_profit', '—') }}</td>
+                <td class="text-right">{{ c.get('overdue_ar', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Consolidated Management Commentary</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Consolidation Accounting Standards:</strong> Financial positions reflect intercompany account eliminations across all active registered tenant subsidiaries.
+    </div>
+</div>
+{% endblock %}

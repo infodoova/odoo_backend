@@ -98,6 +98,15 @@ def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: 
     from .common import normalize_company_ids
     company_ids = normalize_company_ids(company_id=company_id, companies=None)
     clean_tenant_id = resolve_tenant_id(tenant_id)
+    # Coerce limit/offset to int — the LLM agent may pass them as strings
+    try:
+        limit = int(limit) if limit is not None else 25
+    except (ValueError, TypeError):
+        limit = 25
+    try:
+        offset = int(offset) if offset is not None else 0
+    except (ValueError, TypeError):
+        offset = 0
     res = async_to_sync(InventoryService.get_stock_table)(
         tenant_id=clean_tenant_id,
         table_type=table_type,

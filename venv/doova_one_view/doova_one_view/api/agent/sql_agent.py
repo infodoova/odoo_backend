@@ -452,31 +452,38 @@ def extract_sql_from_text(text: str) -> str | None:
 
         return False
 
+    def clean_candidate(candidate: str) -> str:
+        # Strip any trailing markdown fence or explanation text
+        c = re.sub(r"```.*", "", candidate, flags=re.DOTALL).strip()
+        # Strip trailing semicolon
+        c = c.rstrip(";").strip()
+        return c
+
     # 1. Closed ```sql block
     code_block = re.search(r"```sql\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
     if code_block:
-        candidate = code_block.group(1).strip()
+        candidate = clean_candidate(code_block.group(1))
         if looks_like_sql(candidate):
             return candidate
 
-    # 2. Unclosed ```sql block (if response ends at token limit)
-    unclosed_sql = re.search(r"```sql\s*(.*)", text, re.DOTALL | re.IGNORECASE)
-    if unclosed_sql:
-        candidate = unclosed_sql.group(1).strip()
-        if looks_like_sql(candidate):
-            return candidate
-
-    # 3. Generic ``` block
+    # 2. Generic ``` block
     generic_block = re.search(r"```\s*(.*?)```", text, re.DOTALL)
     if generic_block:
-        candidate = generic_block.group(1).strip()
+        candidate = clean_candidate(generic_block.group(1))
+        if looks_like_sql(candidate):
+            return candidate
+
+    # 3. Unclosed ```sql block (if response ends at token limit)
+    unclosed_sql = re.search(r"```sql\s*(.*)", text, re.DOTALL | re.IGNORECASE)
+    if unclosed_sql:
+        candidate = clean_candidate(unclosed_sql.group(1))
         if looks_like_sql(candidate):
             return candidate
 
     # 4. Raw SQL without markdown backticks
-    match = re.search(r"((?:with\s+[a-zA-Z0-9_]+\s+as\s*\(.+?select\s+.+?)|(?:select\s+.+?))(?:;|$)", text, re.DOTALL | re.IGNORECASE)
+    match = re.search(r"((?:with\s+[a-zA-Z0-9_]+\s+as\s*\(.+?select\s+.+?)|(?:select\s+.+?))(?:;|\n\s*```|$)", text, re.DOTALL | re.IGNORECASE)
     if match:
-        candidate = match.group(1).strip()
+        candidate = clean_candidate(match.group(1))
         if looks_like_sql(candidate):
             return candidate
 

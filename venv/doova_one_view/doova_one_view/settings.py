@@ -21,8 +21,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 REPORTS_DIR = Path(os.environ.get('REPORTS_DIR', str(BASE_DIR / 'reports'))).resolve()
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Logs directory
+(BASE_DIR / 'logs').mkdir(parents=True, exist_ok=True)
+
+# Storage directories for TTS & Agent uploads
+TTS_CACHE_DIR = BASE_DIR / "storage_uploads" / "tts_cache"
+TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+AI_UPLOADS_DIR = BASE_DIR / "storage_uploads" / "ai_agent_user_input"
+AI_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Load .env file
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -167,7 +177,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Logging Configuration for ETL
+# Logging Configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -177,7 +187,7 @@ LOGGING = {
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {asctime} {message}',
+            'format': '{levelname} {asctime} {name}: {message}',
             'style': '{',
         },
     },
@@ -197,8 +207,38 @@ LOGGING = {
         'level': 'INFO',
     },
     'loggers': {
+        'doova_one_view': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'doova.agent': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'odoo_app': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'odoo_app.etl': {
             'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'uvicorn': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'uvicorn.error': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'uvicorn.access': {
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },

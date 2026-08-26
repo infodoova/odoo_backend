@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ company_name|default("Nexus") }} — {% block title %}{{ title|default("Executive Business Report") }}{% endblock %}</title>
+    <style>
+        /* -------------------------------------------------------------------------
+           1. PAGE SETUP (Standard CSS Paged Media for WeasyPrint A4)
+           ------------------------------------------------------------------------- */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent-color: {% block cover_accent_color %}#2563eb{% endblock %};
+        }
+
+        @page {
+            size: A4;
+            margin: 16mm 12mm 16mm 12mm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 7.5pt;
+                color: #94a3b8;
+            }
+            @bottom-left {
+                content: "{{ company_name|default('Nexus') }} — Confidential & Proprietary";
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 7.5pt;
+                color: #94a3b8;
+            }
+        }
+
+        @page :first {
+            margin: 0;
+            @bottom-right { content: normal; }
+            @bottom-left { content: normal; }
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.45;
+            font-size: 8.5pt;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .page-break {
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* -------------------------------------------------------------------------
+           2. TYPOGRAPHY & GENERAL HEADINGS
+           ------------------------------------------------------------------------- */
+        h1, h2, h3, h4, h5 {
+            color: #0f172a;
+            break-after: avoid;
+            page-break-after: avoid;
+            font-weight: 700;
+            margin-top: 0;
+        }
+
+        h1.section-title {
+            font-size: 11.5pt;
+            color: #0f172a;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 4px;
+            margin-top: 14px;
+            margin-bottom: 10px;
+            letter-spacing: -0.3px;
+        }
+
+        h2.sub-title {
+            font-size: 9.5pt;
+            color: var(--accent-color, #2563eb);
+            margin-top: 12px;
+            margin-bottom: 6px;
+            border-left: 3px solid var(--accent-color, #2563eb);
+            padding-left: 6px;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+
+        strong {
+            color: #0f172a;
+        }
+
+        /* -------------------------------------------------------------------------
+           3. COVER PAGE
+           ------------------------------------------------------------------------- */
+        .cover-wrapper {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: #ffffff;
+        }
+
+        .cover-top {
+            background-color: #0f172a;
+            color: #ffffff;
+            padding: 46px 36px 34px 36px;
+            text-align: center;
+        }
+
+        .brand-logo-container {
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .header-logo-img {
+            max-height: 44px;
+            max-width: 180px;
+            object-fit: contain;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        .brand-icon {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            background-color: var(--accent-color, #2563eb);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 11pt;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .brand-text {
+            color: #ffffff;
+            font-size: 11pt;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .cover-template-badge {
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 8pt;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .cover-title {
+            color: #ffffff;
+            font-size: 22pt;
+            font-weight: 700;
+            margin-bottom: 8px;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+
+        .cover-subtitle {
+            color: #94a3b8;
+            font-size: 9pt;
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+
+        .cover-body {
+            padding: 24px;
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* 6-Field Metadata Grid */
+        .meta-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-top: 3.5px solid var(--accent-color, #2563eb);
+            border-radius: 6px;
+            padding: 14px;
+            margin: 0 auto 16px auto;
+            width: 100%;
+            max-width: 620px;
+        }
+
+        .meta-grid-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta-grid-table td {
+            width: 50%;
+            padding: 6px 10px;
+            vertical-align: top;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .meta-grid-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .meta-field-label {
+            font-size: 7pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 2px;
+        }
+
+        .meta-field-value {
+            font-size: 8.5pt;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .management-callout {
+            background-color: #eff6ff;
+            border-left: 3.5px solid var(--accent-color, #2563eb);
+            padding: 10px 14px;
+            border-radius: 0 4px 4px 0;
+            font-size: 8pt;
+            color: #1e3a8a;
+            line-height: 1.45;
+            max-width: 620px;
+            margin: 0 auto 14px auto;
+            text-align: left;
+        }
+
+        .cover-footer {
+            padding: 14px 24px;
+            text-align: center;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .cover-stamp {
+            font-size: 7pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 3px;
+        }
+
+        .cover-disclaimer {
+            font-size: 6.5pt;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* -------------------------------------------------------------------------
+           4. KPI CARDS (FINANCIAL & DOMAIN GRIDS)
+           ------------------------------------------------------------------------- */
+        .kpi-grid-6 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-grid-8 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            position: relative;
+        }
+
+        .kpi-card-top-bar {
+            height: 3px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .bar-blue { background-color: #2563eb; }
+        .bar-green { background-color: #10b981; }
+        .bar-amber { background-color: #f59e0b; }
+        .bar-red { background-color: #ef4444; }
+        .bar-cyan { background-color: #06b6d4; }
+        .bar-purple { background-color: #8b5cf6; }
+        .bar-slate { background-color: #475569; }
+
+        .kpi-title {
+            font-size: 6.5pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            margin-top: 1px;
+        }
+
+        .kpi-value {
+            font-size: 10pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 2px;
+            line-height: 1.15;
+        }
+
+        .kpi-variance {
+            font-size: 7pt;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            margin-bottom: 3px;
+        }
+
+        .variance-positive { color: #16a34a; }
+        .variance-negative { color: #dc2626; }
+        .variance-neutral { color: #64748b; }
+
+        .kpi-source {
+            font-size: 6pt;
+            color: #94a3b8;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 2px;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+
+        /* -------------------------------------------------------------------------
+           5. CHARTS CONTAINERS
+           ------------------------------------------------------------------------- */
+        .chart-box {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 8px;
+            margin-bottom: 12px;
+            text-align: center;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .chart-box-title {
+            font-size: 8.5pt;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: left;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .chart-img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .chart-caption {
+            font-size: 6.5pt;
+            color: #64748b;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        /* -------------------------------------------------------------------------
+           6. STANDARD DATA TABLES & STATEMENTS
+           ------------------------------------------------------------------------- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            overflow: hidden;
+            font-size: 7.5pt;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .data-table th {
+            background-color: #0f172a;
+            color: #ffffff;
+            text-align: left;
+            padding: 6px 8px;
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .data-table th.text-right { text-align: right; }
+        .data-table td.text-right { text-align: right; }
+        .data-table td.font-bold { font-weight: 700; color: #0f172a; }
+
+        .data-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        .data-table tr:nth-child(even) { background-color: #f8fafc; }
+        .data-table tr:last-child td { border-bottom: none; }
+
+        /* Statement Styles (P&L / Balance Sheet) */
+        .statement-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            font-size: 7.5pt;
+            break-inside: avoid;
+        }
+
+        .statement-table th {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 6px 8px;
+            font-size: 7pt;
+            text-transform: uppercase;
+        }
+
+        .statement-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .statement-header-row td {
+            background-color: #f1f5f9;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            font-size: 7pt;
+        }
+
+        .statement-total-row td {
+            background-color: #f8fafc;
+            font-weight: 800;
+            color: #0f172a;
+            border-top: 1.5px solid #cbd5e1;
+            border-bottom: 1.5px solid #cbd5e1;
+        }
+
+        /* Priority Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 6.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            line-height: 1.3;
+            vertical-align: middle;
+        }
+
+        .badge-critical, .badge-danger, .badge-urgent {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .badge-warning, .badge-warn {
+            background-color: #fefce8;
+            color: #ca8a04;
+            border: 1px solid #fef08a;
+        }
+
+        .badge-high {
+            background-color: #fff7ed;
+            color: #ea580c;
+            border: 1px solid #fed7aa;
+        }
+
+        .badge-medium, .badge-moderate {
+            background-color: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+        }
+
+        .badge-good, .badge-healthy, .badge-success {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .badge-info, .badge-note {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* -------------------------------------------------------------------------
+           7. DETAILED ANALYSIS (MARKDOWN BODY)
+           ------------------------------------------------------------------------- */
+        .analysis-body {
+            font-size: 8pt;
+            color: #334155;
+            line-height: 1.5;
+        }
+
+        .analysis-body h2 {
+            font-size: 9.5pt;
+            color: #0f172a;
+            border-left: 3px solid var(--accent-color, #2563eb);
+            padding-left: 5px;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .analysis-body h3 {
+            font-size: 8.5pt;
+            color: #1e293b;
+            margin-top: 8px;
+            margin-bottom: 3px;
+        }
+
+        .analysis-body p {
+            margin: 5px 0;
+            line-height: 1.45;
+        }
+
+        .analysis-body ul, .analysis-body ol {
+            margin: 6px 0 8px 0;
+            padding-left: 18px;
+        }
+
+        .analysis-body li {
+            margin-bottom: 3px;
+            line-height: 1.4;
+            color: #334155;
+        }
+
+        .analysis-body li > p {
+            display: inline;
+            margin: 0;
+            padding: 0;
+        }
+
+        .analysis-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 7pt;
+        }
+
+        .analysis-body th {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 5px 7px;
+            text-align: left;
+        }
+
+        .analysis-body td {
+            padding: 4px 7px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .analysis-body tr:nth-child(even) { background-color: #f8fafc; }
+
+        /* -------------------------------------------------------------------------
+           8. ACCOUNTING & METRIC FOOTER
+           ------------------------------------------------------------------------- */
+        .ref-footer {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 6.5pt;
+            color: #64748b;
+            margin-top: 14px;
+            line-height: 1.4;
+            break-inside: avoid;
+        }
+
+        /* -------------------------------------------------------------------------
+           9. NEXUS LOGO WATERMARK
+           ------------------------------------------------------------------------- */
+        .report-watermark {
+            position: fixed;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-25deg);
+            z-index: -1000;
+            opacity: 0.042;
+            pointer-events: none;
+            text-align: center;
+            width: 550px;
+        }
+
+        .watermark-nexus-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .watermark-svg {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 8px auto;
+            display: block;
+        }
+
+        .watermark-brand-text {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 52pt;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 14px;
+            text-transform: uppercase;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .watermark-sub-text {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--accent-color, #2563eb);
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        .watermark-img {
+            max-width: 320px;
+            max-height: 220px;
+            object-fit: contain;
+            margin: 0 auto;
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+
+<body>
+
+    <!-- =========================================================================
+         NEXUS WATERMARK EMBLEM
+         ========================================================================= -->
+    <div class="report-watermark">
+        {% if logo_b64 %}
+        <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}" class="watermark-img" alt="Logo Watermark" />
+        {% else %}
+        <div class="watermark-nexus-logo">
+            <svg viewBox="0 0 100 100" class="watermark-svg" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="50,4 92,26 92,74 50,96 8,74 8,26" fill="none" stroke="#0f172a" stroke-width="5" />
+                <polygon points="50,14 82,32 82,68 50,86 18,68 18,32" fill="none" stroke="{% block watermark_accent %}{{ accent|default('#2563eb') }}{% endblock %}" stroke-width="2.5" />
+                <text x="50" y="66" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="46" font-weight="900" text-anchor="middle" fill="#0f172a">N</text>
+            </svg>
+            <div class="watermark-brand-text">NEXUS</div>
+            <div class="watermark-sub-text">{% block watermark_title %}EXECUTIVE INTELLIGENCE{% endblock %}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- =========================================================================
+         PAGE 1: COVER PAGE
+         ========================================================================= -->
+    <div class="cover-wrapper page-break">
+        <div class="cover-top">
+            <div class="brand-logo-container">
+                {% if logo_b64 %}
+                <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}" class="header-logo-img" alt="Logo" />
+                {% elif logo_url %}
+                <img src="{{ logo_url }}" class="header-logo-img" alt="Logo" />
+                {% else %}
+                <div class="brand-badge">
+                    <span class="brand-icon">N</span>
+                    <span class="brand-text">NEXUS</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="cover-template-badge">{% block cover_badge %}{{ badge|default("Executive Briefing") }}{% endblock %}</div>
+            <div class="cover-title">{% block cover_title %}{{ title|default("Executive Business Report") }}{% endblock %}</div>
+            <div class="cover-subtitle">{% block cover_subtitle %}{{ subtitle|default("Comprehensive operational and financial analysis.") }}{% endblock %}</div>
+        </div>
+
+        <div class="cover-body">
+            <!-- 6-Field Metadata Grid -->
+            {% block cover_meta_fields %}
+            <div class="meta-card">
+                <table class="meta-grid-table">
+                    <tr>
+                        <td>
+                            <div class="meta-field-label">Company / Group</div>
+                            <div class="meta-field-value">{{ company_name|default(report_data.get('company_name', "All Companies (Consolidated)")) }}</div>
+                        </td>
+                        <td>
+                            <div class="meta-field-label">Reporting Period</div>
+                            <div class="meta-field-value">{{ reporting_period|default(report_data.get('reporting_period', "Current Year-to-Date")) }}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="meta-field-label">View Scope</div>
+                            <div class="meta-field-value">{{ view_type|default(report_data.get('view_type', "Consolidated")) }}</div>
+                        </td>
+                        <td>
+                            <div class="meta-field-label">Comparison Basis</div>
+                            <div class="meta-field-value">{{ comparison_label|default(report_data.get('comparison_label', "Same Period Prior Year")) }}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="meta-field-label">Reporting Currency</div>
+                            <div class="meta-field-value">{{ currency|default(report_data.get('currency', "XAF")) }}</div>
+                        </td>
+                        <td>
+                            <div class="meta-field-label">Data Status / Last Sync</div>
+                            <div class="meta-field-value">{{ last_sync|default("Live Posted Ledger") }}</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            {% endblock %}
+
+            <!-- Management View Note -->
+            {% block cover_callout %}
+            <div class="management-callout">
+                <strong>Management View:</strong> This report provides structured business intelligence allowing executive leadership to assess performance, review vital trends, and determine strategic action priorities.
+            </div>
+            {% endblock %}
+        </div>
+
+        <div class="cover-footer">
+            <div class="cover-stamp">Strictly Confidential &middot; Executive Leadership Briefing</div>
+            <p class="cover-disclaimer">All financial measures reconcile directly to Odoo ERP general ledger records. Data prepared for management decision support.</p>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         REPORT CONTENT PAGES
+         ========================================================================= -->
+    {% block report_body %}
+    {% endblock %}
+
+</body>
+</html>

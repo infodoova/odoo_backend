@@ -409,49 +409,67 @@ class AlertJobManager:
             f"would be INFO.\n\n"
             f"Escalation guard: pre-check anomalies UNRELATED to <user_request> (e.g., "
             f"overdue AR, stockouts) must NOT hijack the primary headline severity. Report "
-            f"them separately under 'Additional Risk Observations'.\n"
             f"</severity_rubric>\n\n"
-
             f"<instructions>\n"
-            f"1. Answer the primary metric or question in <user_request> first and directly.\n"
-            f"2. Apply <severity_rubric> to determine the headline severity.\n"
-            f"3. Quantify impact wherever possible: amounts, percentages, deltas vs. prior "
-            f"periods, and time horizons.\n"
-            f"4. Write for a business owner: no internal sequence IDs, no schema/field names, "
-            f"no statistical jargon (say 'unusually high vs. the last 6 months', not "
-            f"'3-sigma deviation').\n"
-            f"5. Recommended actions must be specific and executable this week — name the "
-            f"action, the owner (role), and the urgency. Avoid vague advice like "
-            f"'monitor closely'.\n"
-            f"6. Before writing your final report, reason step-by-step inside <thinking> tags: "
-            f"restate the user's question, identify the relevant data points, test them "
-            f"against the rubric, and decide severity. Keep this reasoning out of the "
-            f"final report sections.\n"
-            f"7. Then output your final assessment exactly per <output_format>.\n"
+            f"1. Answer the primary metric or question in <user_request> first and directly in simple, everyday language matching the user's language.\n"
+            f"2. Apply <severity_rubric> to determine the headline severity (CRITICAL, WARNING, INFO, or OK).\n"
+            f"3. SIMPLE LANGUAGE & NO UNEXPLAINED ACRONYMS: Write for any business owner, store manager, or non-financial reader in clear, accessible words. Never use isolated acronyms without writing the full term and a simple explanation (e.g. write 'individual products (SKUs)', 'Cost of Goods Sold (COGS)', 'Accounts Receivable / unpaid customer invoices (AR)', etc.).\n"
+            f"4. NO COMPLEX EQUATIONS: Never write raw mathematical formulas — explain the bottom-line takeaway and whether the business is safe, profitable, or at risk.\n"
+            f"5. Quantify impact clearly: amounts, percentages, deltas vs. prior periods, and time horizons.\n"
+            f"6. Write for a business owner: concise, direct, plain-spoken, and grounded in verifiable data.\n"
+            f"7. NO RECOMMENDATIONS OR ADVICE: Alerts are strictly factual disclosures. NEVER include recommendations, advice, next steps, or tool commentary in alerts.\n"
+            f"8. Before writing your final report, reason step-by-step inside <thinking> tags: restate the user's question, identify the relevant data points, test them against the rubric, and decide severity. Keep this reasoning out of the final report sections.\n"
+            f"9. Then output your final assessment exactly per <output_format>.\n"
             f"</instructions>\n\n"
 
+            f"<analysis_quality_standards>\n"
+            f"Apply these quality standards to EVERY alert and analysis response:\n\n"
+
+            f"1. MATERIALITY-FIRST ORDERING:\n"
+            f"   - Always lead with the LARGEST monetary exposure first, not the oldest date or smallest example.\n"
+            f"   - Sort risks, overdue items, and anomalies by financial impact (highest amount → lowest).\n"
+            f"   - Age/duration is secondary context, not the primary sort criterion.\n\n"
+
+            f"2. AGING DISTRIBUTION (whenever time-based exposure exists):\n"
+            f"   - When reporting overdue amounts (receivables, payables, POs, invoices), break them into aging buckets:\n"
+            f"     • Current (0–30 days) • 31–60 days • 61–90 days • 91–180 days • 180–365 days • Over 1 year\n"
+            f"   - Present as a table or bullet list with both count and total amount per bucket.\n"
+            f"   - If exact aging data is unavailable, estimate from available date fields and note the approximation.\n\n"
+
+            f"3. REVENUE-AT-RISK QUANTIFICATION:\n"
+            f"   - When flagging stockouts, low inventory, or supply delays, estimate the potential revenue impact by cross-referencing with recent sales velocity.\n"
+            f"   - Example: 'These 66 out-of-stock items generated XAF 45.2M in sales over the past 12 months — every day of stockout risks ~XAF 124K in lost revenue.'\n"
+            f"   - If exact sales data is not immediately available, state that and recommend pulling it as a follow-up.\n\n"
+
+            f"4. ROOT-CAUSE HYPOTHESES (for data gaps and anomalies):\n"
+            f"   - When data cannot be retrieved, a tool returns empty results, or anomalies appear (negative stock, zero costs, mismatched totals), NEVER just state the gap — always provide a brief probable cause:\n"
+            f"     • 'Expense data not retrieved — likely no journal entries posted for this period yet.'\n"
+            f"     • 'Negative stock of −136K units — typically caused by delivery records processed before purchase receipt was recorded.'\n"
+            f"     • 'Zero cost on 1,729 items — usually means products created without setting a standard cost.'\n\n"
+
+            f"5. VENDOR & COUNTERPARTY CONTEXT:\n"
+            f"   - When reporting vendor-related risks, include the vendor's total business volume, whether they are a sole-source supplier, and any observable trend (improving/stable/deteriorating).\n\n"
+
+            f"6. BENCHMARK COMPARISON:\n"
+            f"   - When presenting ratios or metrics, compare against industry benchmarks and state whether the metric is Healthy, Caution, or Critical.\n"
+            f"</analysis_quality_standards>\n\n"
+
             f"<output_format>\n"
-            f"After the closing </thinking> tag, your report must begin with the severity "
-            f"line. The very first line MUST match exactly one of:\n"
+            f"After the closing </thinking> tag, your report must begin with the severity line. The very first line MUST match exactly one of:\n"
             f"  CRITICAL: <one-line headline>\n"
             f"  WARNING: <one-line headline>\n"
             f"  INFO: <one-line headline>\n"
             f"  OK: <one-line headline>\n\n"
             f"No text, markdown, or greeting may precede the severity line.\n\n"
-            f"Then provide these sections in order:\n"
-            f"1. PRIMARY FINDING — 2-3 sentences answering the user's question with key figures.\n"
-            f"2. BUSINESS IMPACT — what this means for cash, revenue, cost, or operations, "
-            f"quantified where possible.\n"
-            f"3. RECOMMENDED ACTION — 1-3 concrete, prioritized next steps.\n"
-            f"4. ADDITIONAL RISK OBSERVATIONS — only if pre-checks flagged unrelated issues; "
-            f"omit this section entirely if none exist.\n\n"
+            f"Then provide EXACTLY AND ONLY these two sections (do NOT add a recommendations section or next steps):\n"
+            f"1. PRIMARY FINDING — 2-3 concise sentences answering the user's question with key figures and totals.\n"
+            f"2. AFFECTED ENTITIES / COMPONENT BREAKDOWN — A clean markdown table or structured list detailing the specific entity names, categories, products, customers, vendors, or cost components with their amounts, quantities, and percentages.\n\n"
             f"End with a mandatory machine-readable summary block:\n"
             f"```json\n"
             f'{{"condition_triggered": true|false, "severity": "critical|warning|info|success", '
             f'"summary": "<one sentence>", "confidence": "high|medium|low"}}\n'
             f"```\n"
             f"</output_format>\n\n"
-
             f"<user_request>\n"
             f"{effective_prompt}\n"
             f"</user_request>"
@@ -488,7 +506,7 @@ class AlertJobManager:
         """
         Parses LLM response string into (summary: str, condition_triggered: bool, severity: str).
         Guarantees bulletproof parsing with multi-layered fallbacks:
-          Layer 1: Extract JSON snippet (```json { ... } ``` or raw JSON)
+          Layer 1: Extract JSON snippet and retain full rich report body
           Layer 2: Extract explicit severity line prefix (CRITICAL:, WARNING:, INFO:, OK:)
           Layer 3: Strategic Recommendation section search
           Layer 4: Safe default fallback
@@ -497,6 +515,10 @@ class AlertJobManager:
             return "No response generated by AI advisor.", False, "info"
 
         clean_res = result.strip()
+
+        # Extract the full human-readable report body (strip <thinking>...</thinking> and trailing ```json...```)
+        body = re.sub(r'<thinking>[\s\S]*?</thinking>', '', clean_res).strip()
+        body = re.sub(r'```(?:json)?\s*\{[\s\S]*?\}\s*```', '', body).strip()
 
         # Layer 1: JSON block parsing via Pydantic LlmAlertResult schema
         json_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', clean_res, re.IGNORECASE)
@@ -507,7 +529,8 @@ class AlertJobManager:
             try:
                 from doova_one_view.api.alerts.schemas import LlmAlertResult
                 parsed = LlmAlertResult.model_validate_json(json_match.group(1))
-                summary = parsed.summary.strip() or clean_res
+                # Return the full rich report body with tables & action plan if present; fallback to parsed.summary
+                summary = body if len(body) > 30 else (parsed.summary.strip() or clean_res)
                 return summary, parsed.condition_triggered, parsed.severity
             except Exception as e:
                 logger.warning(f"AlertJobManager: Pydantic deserialization of LLM response failed ({e}), using regex fallback.")
@@ -519,14 +542,15 @@ class AlertJobManager:
         info_match = re.search(r'^\*{0,2}INFO:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
         ok_match   = re.search(r'^\*{0,2}OK:\*{0,2}\s*', clean_res, re.IGNORECASE | re.MULTILINE)
 
+        report_content = body or clean_res
         if crit_match:
-            return clean_res[crit_match.end():].strip(), True, "critical"
+            return report_content, True, "critical"
         if warn_match:
-            return clean_res[warn_match.end():].strip(), True, "warning"
+            return report_content, True, "warning"
         if info_match:
-            return clean_res[info_match.end():].strip(), False, "info"
+            return report_content, False, "info"
         if ok_match:
-            return clean_res[ok_match.end():].strip(), False, "success"
+            return report_content, False, "success"
 
         # Layer 3: Strategic Recommendation section fallback search
         rec_match = re.search(r'##\s*STRATEGIC\s+RECOMMENDATION\b', clean_res, re.IGNORECASE)

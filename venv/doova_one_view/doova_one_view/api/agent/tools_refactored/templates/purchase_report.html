@@ -1,0 +1,140 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#7c3aed{% endblock %}
+{% block watermark_accent %}#7c3aed{% endblock %}
+{% block watermark_title %}PROCUREMENT & SUPPLY{% endblock %}
+{% block cover_badge %}Procurement & Supply{% endblock %}
+{% block cover_title %}Procurement & Purchase Report{% endblock %}
+{% block cover_subtitle %}Vendor spend, purchase order velocity, supplier concentration, and payables aging.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Procurement Focus:</strong> Monitor supplier concentration risks, purchase commitments against budget, vendor pricing trends, and overdue trade payables.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Procurement & Purchase Summary</h1>
+
+    <!-- 6 Core Procurement KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Total Purchase Spend</div>
+            <div class="kpi-value">{{ report_data.get('total_purchases', {}).get('formatted', report_data.get('purchase_spend', {}).get('formatted', '—')) }}</div>
+            {% if report_data.get('total_purchases', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('total_purchases', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_purchases', {}).get('arrow', '') }} {{ report_data.get('total_purchases', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Posted Vendor Bills & POs</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Active PO Count</div>
+            <div class="kpi-value">{{ report_data.get('po_count', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('po_count', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('po_count', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('po_count', {}).get('arrow', '') }} {{ report_data.get('po_count', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Confirmed Purchase Orders</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Avg PO Value</div>
+            <div class="kpi-value">{{ report_data.get('avg_po_value', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('avg_po_value', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('avg_po_value', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('avg_po_value', {}).get('arrow', '') }} {{ report_data.get('avg_po_value', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Spend / Total POs</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-red"></div>
+            <div class="kpi-title">Accounts Payable (AP)</div>
+            <div class="kpi-value">{{ report_data.get('accounts_payable', {}).get('formatted', report_data.get('ap', {}).get('formatted', kpis.get('ap', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('accounts_payable', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('accounts_payable', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('accounts_payable', {}).get('arrow', '') }} {{ report_data.get('accounts_payable', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Open Vendor Liabilities</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Overdue Payables %</div>
+            <div class="kpi-value">{{ report_data.get('overdue_payables_pct', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('overdue_payables_pct', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('overdue_payables_pct', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('overdue_payables_pct', {}).get('arrow', '') }} {{ report_data.get('overdue_payables_pct', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Vendor Invoices Past Due Date</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Top Vendor Spend</div>
+            <div class="kpi-value">{{ report_data.get('top_supplier_spend', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('top_supplier_spend', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('top_supplier_spend', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('top_supplier_spend', {}).get('arrow', '') }} {{ report_data.get('top_supplier_spend', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Highest Supplier Share</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Vendor Spend & Procurement Trajectory</div>
+        <img src="data:image/png;base64,{{ chart_1_b64 }}" class="chart-img" alt="Procurement Chart" />
+    </div>
+    {% endif %}
+
+    <!-- Top Suppliers Table -->
+    {% set sups = report_data.get('top_suppliers', []) %}
+    {% if sups %}
+    <h2 class="sub-title">Major Suppliers & Procurement Concentration</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Vendor / Supplier</th>
+                <th class="text-right">PO Count</th>
+                <th class="text-right">Total Invoiced</th>
+                <th class="text-right">Outstanding AP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sups %}
+            <tr>
+                <td class="font-bold">{{ s.get('name', 'Vendor') }}</td>
+                <td class="text-right">{{ s.get('po_count', '—') }}</td>
+                <td class="text-right font-bold">{{ s.get('amount', s.get('total_spent', '—')) }}</td>
+                <td class="text-right">{{ s.get('outstanding', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Procurement Analysis & Supply Strategy</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Procurement Accounting Standards:</strong> Purchase commitments reflect confirmed purchase orders. Trade payables reconcile to posted vendor bills in the General Ledger.
+    </div>
+</div>
+{% endblock %}

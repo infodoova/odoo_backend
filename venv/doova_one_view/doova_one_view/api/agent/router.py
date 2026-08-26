@@ -49,8 +49,9 @@ class RouterNode:
             tokens = [t.strip(".,:;!\"'") for t in raw_upper.split()]
 
             confirm_tokens = {
-                RoutingProtocol.CONFIRM.value, "CONFIRM", "YES", "YE", "YEAH", "YEP", "YUP", "YA", "YESS", "YESSS",
-                "PROCEED", "APPROVE", "ACCEPTED", "AGREED", "SURE", "OK", "OKAY", "K", "KK", "CORRECT",
+                RoutingProtocol.CONFIRM.value, "CONFIRM", "APPROVE", "ACCEPTED", "AGREED",
+                "YES", "YE", "YEAH", "YEP", "YUP", "YA", "YESS", "YESSS",
+                "PROCEED", "SURE", "OK", "OKAY", "K", "KK", "CORRECT",
                 "RIGHT", "FINE", "ALRIGHT", "PERFECT", "AWESOME", "GREAT",
                 "NICE", "GOOD", "SUPER", "COOL", "SI", "OUI", "CLARO", "VALE"
             }

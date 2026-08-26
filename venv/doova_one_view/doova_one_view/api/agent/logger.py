@@ -6,30 +6,40 @@ import json
 from functools import wraps
 
 # Configure the agent logger
+import sys
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 logger = logging.getLogger("doova.agent")
 logger.setLevel(logging.DEBUG)
 logger.propagate = False # Prevent propagation to root logger to avoid encoding errors on standard handlers
 
 # Console handler with structured formatting and UTF-8 safety for Windows
-import sys
 
 class SafeStreamHandler(logging.StreamHandler):
     """A StreamHandler that handles encoding errors gracefully on Windows consoles."""
+    def __init__(self, stream=None):
+        super().__init__(stream or sys.stdout)
+
     def emit(self, record):
         try:
             msg = self.format(record)
             stream = self.stream
-            # Determine stream encoding — default to ascii if unknown
-            enc = getattr(stream, 'encoding', None) or 'ascii'
-            # Proactively encode then decode with 'replace' to strip unencodable chars
+            # Determine stream encoding — default to utf-8 if unknown
+            enc = getattr(stream, 'encoding', None) or 'utf-8'
             if enc.lower().replace('-', '') not in ('utf8', 'utf16', 'utf32'):
                 msg = msg.encode(enc, errors='replace').decode(enc)
             stream.write(msg + self.terminator)
-            self.flush()
+            stream.flush()
         except Exception:
             self.handleError(record)
 
-console_handler = SafeStreamHandler()
+console_handler = SafeStreamHandler(sys.stdout)
 console_handler.setLevel(logging.DEBUG)
 console_formatter = logging.Formatter(
     "\n>>> [%(asctime)s] %(levelname)s | %(name)s\n"

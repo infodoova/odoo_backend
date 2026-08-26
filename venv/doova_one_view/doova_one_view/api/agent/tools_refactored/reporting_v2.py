@@ -51,6 +51,7 @@ from .finance import (
 )
 from .inventory import get_inventory_valuation_tool
 from .common import get_companies_tool, build_currency_case_sql
+from .template_registry import TEMPLATE_REGISTRY, get_template_metadata
 
 
 # ── Formatting Helpers ────────────────────────────────────────────────────────
@@ -422,59 +423,60 @@ def _synthesize_autonomous_insights(
         growth_str = ""
 
     # Overall
-    overall_summary = f"Generated {_fmt_money(rev_val, currency)} across {company_name}{growth_str} for {period_label}, operating with an overall health score of {health_score_val:.0f}/100."
+    status_phrase = "demonstrating strong commercial performance" if health_score_val >= 75 else "maintaining steady business operations" if health_score_val >= 50 else "facing operational and cash flow pressures"
+    overall_summary = f"Generated {_fmt_money(rev_val, currency)} across {company_name}{growth_str} for {period_label}, {status_phrase} with an overall business health score of {health_score_val:.0f}/100."
 
     # Profitability
     net_margin_pct = (net_val / rev_val * 100.0) if rev_val > 0 else 0.0
     if gm_pct >= 35.0:
-        prof_summary = f"Strong gross margin of {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) generating {_fmt_money(ebit_val, currency)} in operating profit (EBIT) with a {net_margin_pct:.1f}% net margin."
+        prof_summary = f"Strong gross profit margin of {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) generating {_fmt_money(ebit_val, currency)} in Operating Profit (EBIT) with a {net_margin_pct:.1f}% net margin, confirming healthy core profitability."
     elif gm_pct >= 15.0:
-        prof_summary = f"Gross margins stand at {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}), yielding an operating profit (EBIT) of {_fmt_money(ebit_val, currency)}."
+        prof_summary = f"Gross profit margin stands at {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}), yielding an Operating Profit (EBIT) of {_fmt_money(ebit_val, currency)} with steady operating margins."
     else:
-        prof_summary = f"Gross margin compressed to {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) yielding {_fmt_money(ebit_val, currency)} in EBIT, reflecting product mix and cost pressures."
+        prof_summary = f"Gross profit margin compressed to {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) yielding {_fmt_money(ebit_val, currency)} in Operating Profit (EBIT), indicating high direct product costs and pricing pressure."
 
     # Positive Driver
     prods = top_prods.get("top_products", []) if isinstance(top_prods, dict) else []
     if prods and len(prods) > 0 and (prods[0].get("revenue") or prods[0].get("total_sales")):
         top_p = prods[0]
-        top_p_name = top_p.get("product_name") or top_p.get("name") or "Core Trading Lines"
+        top_p_name = top_p.get("product_name") or top_p.get("name") or "Core Trading Products"
         top_p_rev = float(top_p.get("revenue", 0) or top_p.get("total_sales", 0) or 0)
-        pos_summary = f"Strong commercial volume in {top_p_name} ({_fmt_money(top_p_rev, currency)}) driving top-line revenue and gross earnings."
+        pos_summary = f"Strong sales volume in {top_p_name} ({_fmt_money(top_p_rev, currency)}) serving as the primary driver for top-line revenue and gross profit."
     elif rev_val > 0:
-        pos_summary = f"Core commercial revenue generation ({_fmt_money(rev_val, currency)}) delivering {_fmt_money(gp_val, currency)} in gross earnings."
+        pos_summary = f"Core commercial sales ({_fmt_money(rev_val, currency)}) successfully delivering {_fmt_money(gp_val, currency)} in gross profit contribution."
     else:
-        pos_summary = f"Liquid asset buffer and baseline trading operations supporting operational continuity."
+        pos_summary = f"Available cash reserves and baseline trading operations supporting ongoing business continuity."
 
     # Negative Driver
     if dormant_line_name:
         neg_summary = f"{dormant_line_name} inactivity with zero sales recorded across the reporting period."
     elif overdue_ratio > 0.20:
-        neg_summary = f"Receivable collection lag with {_fmt_money(overdue_ar_val, currency)} ({overdue_ratio*100:.1f}% of AR) in overdue customer invoices."
+        neg_summary = f"Delayed customer collections with {_fmt_money(overdue_ar_val, currency)} ({overdue_ratio*100:.1f}% of unpaid customer invoices) currently past due."
     elif expenses_data.get("expenses"):
         top_e = expenses_data["expenses"][0]
         e_name = top_e.get("category") or top_e.get("account_name") or "Operating Overhead"
-        e_amt = float(e.get("amount", 0) or 0)
-        neg_summary = f"Direct cost expansion in {e_name} consuming {_fmt_money(e_amt, currency)} in operating cash flow."
+        e_amt = float(top_e.get("amount", 0) or 0)
+        neg_summary = f"Operating cost growth in {e_name} consuming {_fmt_money(e_amt, currency)} of cash flow."
     else:
-        neg_summary = f"Working capital locked in outstanding receivables ({_fmt_money(overdue_ar_val, currency)}) delaying cash flow."
+        neg_summary = f"Working capital locked in unpaid customer invoices ({_fmt_money(overdue_ar_val, currency)}) delaying incoming cash flow."
 
     # Liquidity
     if cur_ratio_val >= 1.5:
-        liq_summary = f"Net Working Capital stands at {_fmt_money(nwc_val, currency)} with a robust Current Ratio of {cur_ratio_val:.2f}x, maintaining an adequate buffer."
+        liq_summary = f"Net Working Capital is {_fmt_money(nwc_val, currency)} with a healthy Current Ratio of {cur_ratio_val:.2f}x (ability to pay short-term bills), maintaining a comfortable safety buffer."
     elif cur_ratio_val >= 1.0:
-        liq_summary = f"Net Working Capital stands at {_fmt_money(nwc_val, currency)} with a Current Ratio of {cur_ratio_val:.2f}x, requiring aligned collections."
+        liq_summary = f"Net Working Capital stands at {_fmt_money(nwc_val, currency)} with a Current Ratio of {cur_ratio_val:.2f}x, requiring prompt customer invoice collections to maintain bill payments."
     else:
-        liq_summary = f"Working capital deficit of {_fmt_money(nwc_val, currency)} (Current Ratio {cur_ratio_val:.2f}x) signals short-term liquidity strain."
+        liq_summary = f"Working capital deficit of {_fmt_money(nwc_val, currency)} (Current Ratio {cur_ratio_val:.2f}x) signals short-term cash flow strain when paying supplier bills."
 
     # Management Action
     if overdue_ratio > 0.25:
-        action_summary = "Enforce automated dunning notices, suspend credit for accounts past 60 days, and prioritize collection on top debtor accounts."
+        action_summary = "Send automated payment reminders to late customers, pause new credit for accounts past 60 days overdue, and prioritize direct outreach on top debtor accounts."
     elif dormant_line_name:
-        action_summary = f"Engage partner and distribution leadership immediately to resolve supply allocation and re-activate the {dormant_line_name} line."
+        action_summary = f"Engage partner and distribution leadership immediately to resolve product supply allocation and restart sales for the {dormant_line_name} line."
     elif cur_ratio_val < 1.1:
-        action_summary = "Accelerate receivable collections and align vendor payment schedules to optimize working capital buffer."
+        action_summary = "Accelerate overdue invoice collections and coordinate vendor payment schedules to protect cash flow reserves."
     else:
-        action_summary = "Maintain periodic credit terms review and monitor category gross margins to sustain operating profitability."
+        action_summary = "Maintain periodic customer credit reviews and monitor product profit margins to sustain long-term business growth."
 
     exec_summary = {
         "overall": overall_summary,
@@ -623,6 +625,115 @@ def _synthesize_autonomous_insights(
     return exec_summary, drivers, alerts
 
 
+# ── Markdown Table Sanitizer ──────────────────────────────────────────────────
+
+def _normalize_markdown_tables(text: str) -> str:
+    """
+    Sanitizes markdown tables emitted by LLMs:
+    1. Detaches inline prefixes on the same line (e.g. 'AR Aging: | Col 1 | Col 2 |' -> 'AR Aging:\n\n| Col 1 | Col 2 |').
+    2. Replaces collapsed row delimiters ('| |' or '||') with proper row newlines ('|\n|').
+    3. Guarantees clean blank lines before and after table blocks so Markdown converts them to HTML <table>.
+    """
+    if not text:
+        return ""
+    # 1. Detach prefixed labels (with optional bullet markers): '- Label: | Header 1 |' -> '- Label:\n\n| Header 1 |'
+    text = re.sub(r'(^|\n)([\s\*\-•]*[^\n\|]+?:\s*)(\|)', r'\1\2\n\n\3', text)
+
+    # 2. Fix collapsed rows: '||' or '| |' or '|   |' -> replace with '|\n|'
+    text = re.sub(r'\|\s*\|\s*', '|\n|', text)
+
+    # 3. Ensure a blank line before any table block starting with | if preceded by non-table text
+    text = re.sub(r'([^\n\|])\n(\|)', r'\1\n\n\2', text)
+
+    # 4. Ensure a blank line after any table block ending with | if followed by non-table text
+    text = re.sub(r'(\|\n)([^\n\|])', r'\1\n\2', text)
+    return text
+
+
+# ── Template Router & Agent-Driven Presentation Helpers ───────────────────────
+
+def _resolve_report_template(report_type: str | None = None, prompt_text: str = "") -> tuple[str, str, dict]:
+    """
+    Selects the Jinja2 template file and returns (template_filename, canonical_key, metadata).
+    Delegates to ReportTypeClassifier (beside RouterNode) with 100% backward compatibility.
+    """
+    if not report_type and not prompt_text:
+        return "report_template.html", "health", TEMPLATE_REGISTRY.get("health", {})
+
+    from ..report_classifier import ReportTypeClassifier
+    canonical_key = ReportTypeClassifier.classify(prompt=prompt_text, raw_type=report_type)
+
+    if canonical_key in TEMPLATE_REGISTRY:
+        meta = TEMPLATE_REGISTRY[canonical_key]
+        return meta["template_file"], canonical_key, meta
+
+    return "report_template.html", "health", TEMPLATE_REGISTRY.get("health", {})
+
+
+def _normalize_report_data(report_data: dict, currency: str) -> dict:
+    """
+    Auto-formats raw numeric KPI values if passed as plain numbers or {raw: ...}.
+    """
+    if not isinstance(report_data, dict):
+        return {}
+
+    normalized = dict(report_data)
+    for key, val in report_data.items():
+        if isinstance(val, (int, float)):
+            normalized[key] = {
+                "raw": float(val),
+                "formatted": _fmt_money(float(val), currency),
+            }
+        elif isinstance(val, dict) and "raw" in val and "formatted" not in val:
+            v_raw = val["raw"]
+            if isinstance(v_raw, (int, float)):
+                val_copy = dict(val)
+                val_copy["formatted"] = _fmt_money(float(v_raw), currency)
+                normalized[key] = val_copy
+
+    return normalized
+
+
+def _render_charts_from_report_data(report_data: dict, currency: str) -> dict:
+    """
+    Generates chart base64 strings from agent-provided data arrays if present.
+    """
+    charts = {}
+    if not isinstance(report_data, dict):
+        return charts
+
+    # 1. Trend Data
+    trend_data = report_data.get("trend_data")
+    if trend_data and isinstance(trend_data, list):
+        try:
+            charts["chart_1_b64"] = _render_trend_chart(trend_data, currency)
+        except Exception as e:
+            logger.warning(f"_render_charts_from_report_data trend error: {e}")
+
+    # 2. Waterfall Data
+    wf_data = report_data.get("waterfall_data")
+    if wf_data and isinstance(wf_data, dict):
+        try:
+            rev_val = float(wf_data.get("revenue", 0) or 0)
+            cogs_val = float(wf_data.get("cogs", 0) or 0)
+            gp_val = float(wf_data.get("gross_profit", rev_val - cogs_val) or 0)
+            opex_val = float(wf_data.get("opex", wf_data.get("operating_expenses", 0)) or 0)
+            ebit_val = float(wf_data.get("ebit", gp_val - opex_val) or 0)
+            tax_val = float(wf_data.get("tax", 0) or 0)
+            net_val = float(wf_data.get("net_profit", ebit_val - tax_val) or 0)
+            charts["chart_2_b64"] = _render_waterfall_chart(rev_val, cogs_val, gp_val, opex_val, ebit_val, tax_val, net_val, currency)
+        except Exception as e:
+            logger.warning(f"_render_charts_from_report_data waterfall error: {e}")
+
+    # 3. Direct pre-rendered chart passthroughs
+    if report_data.get("chart_1_b64"):
+        charts["chart_1_b64"] = report_data["chart_1_b64"]
+    if report_data.get("chart_2_b64"):
+        charts["chart_2_b64"] = report_data["chart_2_b64"]
+
+    return charts
+
+
 # ── Main Report Tool ──────────────────────────────────────────────────────────
 
 def generate_report_tool(
@@ -637,6 +748,7 @@ def generate_report_tool(
     logo_url: str | None = None,
     report_mode: str = "auto",
     report_type: str | None = None,
+    report_data: dict | None = None,
     comparison_type: str = "prior_year",
     **kwargs,
 ) -> dict:
@@ -755,6 +867,140 @@ def generate_report_tool(
         ytd_start = raw_start or f"{current_year}-01-01"
         ytd_end = raw_end or datetime.now().strftime("%Y-%m-%d")
 
+    # Resolve Template Selection
+    template_file, resolved_domain, meta = _resolve_report_template(report_type or report_mode, prompt_text)
+
+    # ── AGENT-DRIVEN PRESENTATION PATH ──────────────────────────────────────────
+    # When report_data is provided OR when a specific domain template is selected,
+    # we render the presentation template using agent-supplied data without internal tool calls.
+    if report_data or template_file != "report_template.html":
+        normalized_data = _normalize_report_data(report_data or {}, currency)
+        agent_charts = _render_charts_from_report_data(normalized_data, currency)
+
+        chart_1_b64 = agent_charts.get("chart_1_b64") or kwargs.get("chart_1_b64")
+        chart_2_b64 = agent_charts.get("chart_2_b64") or kwargs.get("chart_2_b64")
+
+        # Process Markdown Custom Content
+        custom_content = replace_tenant_ids_with_names(custom_content, tenant_ids or ([tenant_id] if tenant_id else None))
+        from .emoji_to_badges import normalize_status_emoji
+        custom_content = normalize_status_emoji(custom_content)
+
+        def _chart_block_replacer_agent(match):
+            json_str = match.group(1)
+            try:
+                cfg = json.loads(json_str)
+                labels = [str(l) for l in cfg.get("labels", [])]
+                values = [float(v) for v in cfg.get("values", [])]
+                title = cfg.get("title", "")
+                if labels and values:
+                    fig, ax = plt.subplots(figsize=(7, 3.2), facecolor='white')
+                    ax.bar(labels, values, color='#2563eb', width=0.55, edgecolor='white', linewidth=1)
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    ax.spines['left'].set_color('#cbd5e1')
+                    ax.spines['bottom'].set_color('#cbd5e1')
+                    ax.tick_params(colors='#64748b', labelsize=7.5)
+                    ax.yaxis.grid(True, linestyle=':', color='#e2e8f0', alpha=0.8)
+                    ax.xaxis.grid(False)
+                    if hasattr(ax.yaxis, "offsetText"):
+                        ax.yaxis.offsetText.set_visible(False)
+                    ax.yaxis.set_major_formatter(ticker.FuncFormatter(_friendly_axis_formatter))
+                    if len(labels) > 4:
+                        plt.xticks(rotation=20, ha='right', fontsize=7.5)
+                    if title:
+                        plt.title(title, fontsize=9.5, fontweight='bold', pad=10, color='#0f172a')
+                    plt.tight_layout()
+                    buf = io.BytesIO()
+                    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+                    buf.seek(0)
+                    b64 = base64.b64encode(buf.read()).decode('utf-8')
+                    plt.close(fig)
+                    return f'<div class="chart-box" style="margin: 10px 0; text-align: center;"><img class="chart-img" style="max-width: 100%; border-radius: 6px;" src="data:image/png;base64,{b64}" /></div>'
+            except Exception as e:
+                logger.warning(f"Custom chart block render failed: {e}")
+            return ""
+
+        custom_content = re.sub(r'```chart\s*\n(.*?)\n```', _chart_block_replacer_agent, custom_content, flags=re.DOTALL | re.IGNORECASE)
+
+        if not custom_content.strip():
+            custom_content = f"## {meta.get('title', 'Executive Report')}\n\n{meta.get('subtitle', 'Comprehensive business performance report.')}"
+
+        custom_content = re.sub(r'^[•\u2022]\s*', '- ', custom_content, flags=re.MULTILINE)
+        custom_content = re.sub(r'^[•\u2022\-\*]\s*$', '', custom_content, flags=re.MULTILINE)
+        custom_content = re.sub(r'^\d+\.\s*$', '', custom_content, flags=re.MULTILINE)
+        custom_content = re.sub(r'([^\n])\s+-\s+([A-Za-z0-9])', r'\1\n- \2', custom_content)
+        custom_content = re.sub(r'\n{3,}', '\n\n', custom_content)
+        custom_content = _normalize_markdown_tables(custom_content)
+
+        md = markdown.Markdown(extensions=['tables', 'fenced_code', 'sane_lists'])
+        body_html = md.convert(custom_content)
+        body_html = normalize_status_emoji(body_html)
+        from .table_layout import add_dynamic_table_widths
+        body_html = add_dynamic_table_widths(body_html)
+
+        template_dir = Path(__file__).parent / "templates"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template(template_file)
+
+        logo_mime = "image/png"
+        if not logo_b64:
+            from ..utils import get_project_logo_b64
+            discovered_b64, discovered_mime = get_project_logo_b64(custom_logo_path=logo_path)
+            if discovered_b64:
+                logo_b64 = discovered_b64
+                logo_mime = discovered_mime or "image/png"
+
+        template_kpis = dict(normalized_data)
+
+        html_out = template.render(
+            company_name=company_name,
+            reporting_period=resolved_period_label,
+            view_type=view_type,
+            comparison_label=resolved_comparison_label,
+            currency=currency,
+            last_sync=f"{datetime.now().strftime('%b %d, %Y')} (Posted Ledger)",
+            kpis=template_kpis,
+            report_data=normalized_data,
+            badge=meta.get("badge", "Executive Report"),
+            title=meta.get("title", "Executive Report"),
+            subtitle=meta.get("subtitle", ""),
+            accent=meta.get("accent", "#2563eb"),
+            template_kpis=meta.get("kpi_slots", []),
+            trend_chart_b64=chart_1_b64,
+            waterfall_chart_b64=chart_2_b64,
+            wc_chart_b64=kwargs.get("wc_chart_b64"),
+            chart_1_b64=chart_1_b64,
+            chart_2_b64=chart_2_b64,
+            body_html=body_html,
+            logo_url=logo_url,
+            logo_b64=logo_b64,
+            logo_mime=logo_mime,
+        )
+
+        reports_dir = _get_reports_dir()
+        filename = f"business_report_{tenant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_v2.pdf"
+        output_path = reports_dir / filename
+        try:
+            HTML(string=html_out).write_pdf(output_path)
+        except Exception as e:
+            logger.error(f"WeasyPrint PDF write failed: {e}", exc_info=True)
+            return {
+                'tool_name': 'generate_report_tool',
+                'status': 'error',
+                'error': f"PDF compilation failed: {str(e)}",
+                'filename': filename,
+            }
+
+        relative_path = f"/financial-advisor/reports/{filename}"
+        return {
+            'tool_name': 'generate_report_tool',
+            'status': 'success',
+            'download_url': make_report_url(filename),
+            'path': relative_path,
+            'filename': filename,
+        }
+
+    # ── EXISTING LEGACY PATH (report_template.html, backward compatibility) ─────
     # Determine prior period date range based on comparison_type
     if comparison_type == "prior_month" or "MoM" in resolved_comparison_label:
         try:
@@ -1172,6 +1418,7 @@ The organization generated **{_fmt_money(rev_val, currency)}** in total revenue 
     custom_content = re.sub(r'^\d+\.\s*$', '', custom_content, flags=re.MULTILINE)
     custom_content = re.sub(r'([^\n])\s+-\s+([A-Za-z0-9])', r'\1\n- \2', custom_content)
     custom_content = re.sub(r'\n{3,}', '\n\n', custom_content)
+    custom_content = _normalize_markdown_tables(custom_content)
 
     md = markdown.Markdown(extensions=['tables', 'fenced_code', 'sane_lists'])
     body_html = md.convert(custom_content)

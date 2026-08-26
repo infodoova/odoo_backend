@@ -1,0 +1,130 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#0f766e{% endblock %}
+{% block watermark_accent %}#0f766e{% endblock %}
+{% block watermark_title %}BALANCE SHEET{% endblock %}
+{% block cover_badge %}Balance Sheet{% endblock %}
+{% block cover_title %}Balance Sheet & Financial Position{% endblock %}
+{% block cover_subtitle %}Asset structure, debt and liabilities profile, working capital, and equity capitalization.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Solvency Assessment:</strong> Assess total enterprise capitalization, working capital adequacy, asset tangibility, short-term liquidity vs current liabilities, and debt ratios.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Financial Position & Solvency KPIs</h1>
+
+    <!-- 6 Core Balance Sheet KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Total Assets</div>
+            <div class="kpi-value">{{ report_data.get('total_assets', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('total_assets', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('total_assets', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_assets', {}).get('arrow', '') }} {{ report_data.get('total_assets', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Current + Fixed Assets</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Current Assets</div>
+            <div class="kpi-value">{{ report_data.get('current_assets', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('current_assets', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('current_assets', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('current_assets', {}).get('arrow', '') }} {{ report_data.get('current_assets', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Cash, Receivables, Stock</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-red"></div>
+            <div class="kpi-title">Total Liabilities</div>
+            <div class="kpi-value">{{ report_data.get('total_liabilities', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('total_liabilities', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('total_liabilities', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_liabilities', {}).get('arrow', '') }} {{ report_data.get('total_liabilities', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Current + Long-Term Obligations</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Total Equity</div>
+            <div class="kpi-value">{{ report_data.get('equity', {}).get('formatted', report_data.get('total_equity', {}).get('formatted', '—')) }}</div>
+            {% if report_data.get('equity', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('equity', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('equity', {}).get('arrow', '') }} {{ report_data.get('equity', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Assets - Liabilities</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Current Ratio</div>
+            <div class="kpi-value">{{ report_data.get('current_ratio', {}).get('formatted', kpis.get('current_ratio', {}).get('formatted', '—')) }}</div>
+            {% if report_data.get('current_ratio', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('current_ratio', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('current_ratio', {}).get('arrow', '') }} {{ report_data.get('current_ratio', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Current Assets / Current Liabilities</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Working Capital</div>
+            <div class="kpi-value">{{ report_data.get('nwc', {}).get('formatted', report_data.get('working_capital', {}).get('formatted', kpis.get('nwc', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('nwc', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('nwc', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('nwc', {}).get('arrow', '') }} {{ report_data.get('nwc', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Current Assets - Current Liab</div>
+        </div>
+    </div>
+
+    <!-- Structured Balance Sheet Table -->
+    {% set bs_rows = report_data.get('balance_sheet', []) %}
+    {% if bs_rows %}
+    <h2 class="sub-title">Statement of Financial Position</h2>
+    <table class="statement-table">
+        <thead>
+            <tr>
+                <th>Classification / Account</th>
+                <th class="text-right">Ending Balance</th>
+                <th class="text-right">Prior Year</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in bs_rows %}
+            <tr class="{% if row.get('is_total') %}statement-total-row{% elif row.get('is_header') %}statement-header-row{% endif %}">
+                <td class="{% if row.get('is_bold') %}font-bold{% endif %}">{{ row.get('name', 'Line Item') }}</td>
+                <td class="text-right font-bold">{{ row.get('current', '—') }}</td>
+                <td class="text-right">{{ row.get('prior', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Capital Structure & Solvency Commentary</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Balance Sheet Accounting Standard:</strong> Asset and Liability positions reflect reconciled ending ledger balances as of the reporting closing date.
+    </div>
+</div>
+{% endblock %}

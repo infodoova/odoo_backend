@@ -554,17 +554,111 @@ def get_purchase_trend_tool(
         params,
     )
 
+# ──────────────────────────────────────────────────────────────
+# 8. PRODUCT PURCHASE HISTORY & UNIT COSTS
+# ──────────────────────────────────────────────────────────────
+
+def get_product_purchase_history_tool(
+    tenant_id: str,
+    product_name: str | None = None,
+    vendor_name: str | None = None,
+    company_id: int | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 50,
+    base_currency: str | None = None,
+    tenant_ids: list[str] | None = None
+) -> dict:
+    """Retrieve detailed purchase order history, unit costs, quantities, and currencies for specific products or vendors."""
+    t_sql_pol, t_params_pol = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="pol.tenant_id", prefix="t_pol")
+    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="pol.company_id")
+    
+    price_col = build_currency_case_sql('pol.price_subtotal', tenant_id, base_currency, 'po.currency_code')
+    unit_price_col = build_currency_case_sql('pol.price_unit', tenant_id, base_currency, 'po.currency_code')
+
+    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params.update(t_params_pol)
+    params.update(f_params)
+
+    filter_sql = ""
+    if product_name:
+        filter_sql += " AND (dp.name ILIKE :p_name OR pol.name ILIKE :p_name)"
+        params["p_name"] = f"%{product_name.strip()}%"
+    if vendor_name:
+        filter_sql += " AND p.name ILIKE :v_name"
+        params["v_name"] = f"%{vendor_name.strip()}%"
+    if start_date:
+        filter_sql += " AND po.date_order >= :start_date"
+        params["start_date"] = start_date
+    if end_date:
+        filter_sql += " AND po.date_order <= :end_date"
+        params["end_date"] = end_date
+
+    rows = run_query(
+        f"""SELECT
+                dp.name AS product_name,
+                dp.default_code AS sku,
+                p.name AS vendor_name,
+                po.odoo_name AS po_reference,
+                po.date_order AS po_date,
+                po.currency_code AS original_currency,
+                pol.product_qty AS quantity_ordered,
+                pol.qty_received AS quantity_received,
+                pol.price_unit AS original_unit_price,
+                pol.price_subtotal AS original_subtotal,
+                COALESCE({unit_price_col}, pol.price_unit) AS unit_price_base,
+                COALESCE({price_col}, pol.price_subtotal) AS subtotal_base,
+                po.state AS po_state
+            FROM fact_purchase_order_lines pol
+            JOIN fact_purchase_orders po ON pol.purchase_order_id = po.id AND pol.tenant_id = po.tenant_id
+            LEFT JOIN dim_products dp ON pol.product_id = dp.id AND pol.tenant_id = dp.tenant_id
+            LEFT JOIN dim_partners p ON po.partner_id = p.id AND po.tenant_id = p.tenant_id
+            WHERE 1=1 {t_sql_pol}
+              AND po.state IN ('purchase', 'done', 'draft', 'sent', 'to approve')
+              {f_sql} {filter_sql}
+            ORDER BY po.date_order DESC NULLS LAST
+            LIMIT :limit""",
+        params,
+    )
+
+    items = []
+    total_qty = 0.0
+    total_spend_base = 0.0
+    for r in rows:
+        qty = float(r.get("quantity_ordered") or 0)
+        unit_p = float(r.get("original_unit_price") or 0)
+        subt_base = float(r.get("subtotal_base") or 0)
+        total_qty += qty
+        total_spend_base += subt_base
+        items.append({
+            "product_name": r.get("product_name") or "Unknown Product",
+            "sku": r.get("sku") or "",
+            "vendor_name": r.get("vendor_name") or "Unknown Vendor",
+            "po_reference": r.get("po_reference") or "",
+            "po_date": str(r.get("po_date") or ""),
+            "quantity_ordered": qty,
+            "quantity_received": float(r.get("quantity_received") or 0),
+            "original_currency": r.get("original_currency") or "XAF",
+            "original_unit_price": unit_p,
+            "unit_price_base": round(float(r.get("unit_price_base") or 0), 2),
+            "subtotal_base": round(subt_base, 2),
+            "status": r.get("po_state") or "",
+        })
+
+    avg_unit_price_base = round(total_spend_base / total_qty, 2) if total_qty > 0 else 0.0
+
     return {
-        "tool_name": "get_purchase_trend_tool",
-        "granularity": granularity,
-        "points": [
-            {
-                "period": str(r.get("period")),
-                "spend": float(r.get("spend")),
-                "po_count": int(r.get("po_count")),
-            }
-            for r in rows
-        ],
+        "tool_name": "get_product_purchase_history_tool",
+        "product_filter": product_name,
+        "vendor_filter": vendor_name,
+        "total_lines_found": len(items),
+        "total_units_ordered": total_qty,
+        "total_spend_base": round(total_spend_base, 2),
+        "average_unit_price_base": avg_unit_price_base,
+        "purchase_orders": items,
     }
+
 
 

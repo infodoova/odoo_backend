@@ -1,0 +1,149 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#be123c{% endblock %}
+{% block watermark_accent %}#be123c{% endblock %}
+{% block watermark_title %}FINANCIAL ANALYSIS{% endblock %}
+{% block cover_badge %}Financial Analysis{% endblock %}
+{% block cover_title %}Financial Ratio & Health Analysis{% endblock %}
+{% block cover_subtitle %}Profitability, liquidity, leverage, efficiency ratios, and multi-factor health index.{%
+endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Diagnostic Objective:</strong> Perform comprehensive multi-dimensional ratio analysis across profitability
+    margins, asset returns, solvency safety, and operational cash cycles.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Financial Health & Ratio Diagnostics</h1>
+
+    <!-- 6 Core Financial Analysis KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Health Score</div>
+            <div class="kpi-value">{{ report_data.get('health_score', {}).get('formatted', kpis.get('health_score',
+                {}).get('formatted', '80')) }} / 100</div>
+            {% if report_data.get('health_score', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('health_score', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('health_score', {}).get('arrow', '') }} {{ report_data.get('health_score',
+                {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Multi-Factor Weighted Index</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Gross Margin %</div>
+            <div class="kpi-value">{{ report_data.get('gross_margin', {}).get('formatted', kpis.get('gross_margin',
+                {}).get('formatted', '—')) }}</div>
+            {% set gm_var = report_data.get('gross_margin', {}).get('var_text', kpis.get('gross_margin',
+            {}).get('var_text', '')) %}
+            {% if gm_var %}
+            <div
+                class="kpi-variance {{ report_data.get('gross_margin', {}).get('var_class', kpis.get('gross_margin', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('gross_margin', {}).get('arrow', kpis.get('gross_margin', {}).get('arrow', '')) }} {{
+                gm_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Gross Profit / Revenue</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Profit Margin %</div>
+            <div class="kpi-value">{{ report_data.get('net_margin', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('net_margin', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('net_margin', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('net_margin', {}).get('arrow', '') }} {{ report_data.get('net_margin',
+                {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Net Profit / Revenue</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Current Ratio</div>
+            <div class="kpi-value">{{ report_data.get('current_ratio', {}).get('formatted', kpis.get('current_ratio',
+                {}).get('formatted', '—')) }}</div>
+            {% if report_data.get('current_ratio', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('current_ratio', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('current_ratio', {}).get('arrow', '') }} {{ report_data.get('current_ratio',
+                {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Current Assets / Current Liab</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Quick Ratio</div>
+            <div class="kpi-value">{{ report_data.get('quick_ratio', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('quick_ratio', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('quick_ratio', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('quick_ratio', {}).get('arrow', '') }} {{ report_data.get('quick_ratio',
+                {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">(Cash + AR) / Current Liab</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Return on Equity (ROE)</div>
+            <div class="kpi-value">{{ report_data.get('roe', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('roe', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('roe', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('roe', {}).get('arrow', '') }} {{ report_data.get('roe', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Net Profit / Total Equity</div>
+        </div>
+    </div>
+
+    <!-- Ratio Summary Tables -->
+    {% set ratios = report_data.get('ratios', []) %}
+    {% if ratios %}
+    <h2 class="sub-title">Financial Ratio Benchmark Matrix</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Metric / Ratio</th>
+                <th class="text-right">Observed Value</th>
+                <th class="text-right">Target Benchmark</th>
+                <th class="text-right">Health Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in ratios %}
+            <tr>
+                <td>{{ r.get('category', 'General') }}</td>
+                <td class="font-bold">{{ r.get('name', 'Ratio') }}</td>
+                <td class="text-right font-bold">{{ r.get('value', '—') }}</td>
+                <td class="text-right">{{ r.get('benchmark', '—') }}</td>
+                <td class="text-right"><span class="badge {{ r.get('badge_class', 'badge-good') }}">{{ r.get('status',
+                        'Healthy') }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. In-Depth Financial Diagnostics & Recommendations</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Financial Analysis Policy:</strong> Ratios are computed using standard corporate finance formulas
+        referencing audited posted ledger periods.
+    </div>
+</div>
+{% endblock %}

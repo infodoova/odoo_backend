@@ -50,6 +50,7 @@ from doova_one_view.api.alerts.routes import router as alerts_router
 from doova_one_view.api.bank_statements.routes import router as bank_statements_router
 from doova_one_view.api.account_journals.routes import router as account_journals_router
 from doova_one_view.api.account_partial_reconciles.routes import router as account_partial_reconciles_router
+from doova_one_view.api.tts.routes import router as tts_router
 logger = logging.getLogger(__name__)
 
 
@@ -119,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(bank_statements_router)
     app.include_router(account_journals_router)
     app.include_router(account_partial_reconciles_router)
+    app.include_router(tts_router)
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])

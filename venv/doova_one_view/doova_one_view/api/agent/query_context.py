@@ -54,18 +54,28 @@ def resolve_tenant_id(tenant_id: Optional[str]) -> Optional[str]:
 
 def normalize_company_ids(
     company_id: Optional[Union[int, str]] = None,
-    companies: Optional[List[Union[int, str]]] = None,
+    companies: Optional[Union[List[Union[int, str]], str]] = None,
 ) -> List[int]:
     """
     Standardizes company identifiers into a unique list of Odoo IDs.
-    Handles single inputs, lists, and string-to-int conversions gracefully.
-    Also silently discards the string "None" / "null" that an LLM may emit.
+    Handles single inputs, lists, comma-separated strings, and string-to-int conversions gracefully.
+    Also silently discards the string "None" / "null" / "" that an LLM may emit.
     """
     processed_ids: List[int] = []
 
     if companies:
-        for val in companies:
-            if isinstance(val, str) and val.lower() in ("none", "null", ""):
+        if isinstance(companies, str):
+            if companies.lower() in ("none", "null", "", "all"):
+                companies_list = []
+            else:
+                companies_list = [c.strip() for c in companies.split(",") if c.strip()]
+        elif isinstance(companies, (list, tuple, set)):
+            companies_list = list(companies)
+        else:
+            companies_list = [companies]
+
+        for val in companies_list:
+            if isinstance(val, str) and val.lower() in ("none", "null", "", "all"):
                 continue
             try:
                 processed_ids.append(int(val))
@@ -73,41 +83,48 @@ def normalize_company_ids(
                 continue
 
     if company_id is not None:
-        if not (isinstance(company_id, str) and company_id.lower() in ("none", "null", "")):
+        if not (isinstance(company_id, str) and company_id.lower() in ("none", "null", "", "all")):
             try:
                 processed_ids.append(int(company_id))
             except (ValueError, TypeError):
                 pass
 
-    # Deduplicate while preserving order (if any)
-    unique_ids = list(dict.fromkeys(processed_ids))
-    return unique_ids if unique_ids else DEFAULT_COMPANY_IDS
+    return sorted(list(set(processed_ids)))
+
 
 def normalize_tenant_ids(
     tenant_id: Optional[str] = None,
-    tenant_ids: Optional[List[str]] = None,
+    tenant_ids: Optional[Union[List[str], str]] = None,
 ) -> List[str]:
     """
     Standardizes tenant identifiers into a unique list of valid UUID strings.
-    Handles single inputs and lists. Returns empty list if no valid tenants are provided
+    Handles single inputs, lists, and comma-separated strings. Returns empty list if no valid tenants are provided
     (meaning all tenants or cross-tenant query).
     """
     processed_ids: List[str] = []
 
     if tenant_ids:
-        for val in tenant_ids:
-            clean = resolve_tenant_id(val)
+        if isinstance(tenant_ids, str):
+            if tenant_ids.lower() in ("none", "null", "", "all"):
+                tenant_list = []
+            else:
+                tenant_list = [t.strip() for t in tenant_ids.split(",") if t.strip()]
+        elif isinstance(tenant_ids, (list, tuple, set)):
+            tenant_list = list(tenant_ids)
+        else:
+            tenant_list = [tenant_ids]
+
+        for val in tenant_list:
+            clean = resolve_tenant_id(str(val))
             if clean:
                 processed_ids.append(clean)
 
     if tenant_id is not None:
-        clean = resolve_tenant_id(tenant_id)
+        clean = resolve_tenant_id(str(tenant_id))
         if clean:
             processed_ids.append(clean)
 
-    # Deduplicate while preserving order
-    unique_ids = list(dict.fromkeys(processed_ids))
-    return unique_ids
+    return sorted(list(set(processed_ids)))
 
 def resolve_company_ids_to_local(tenant_id: str, odoo_ids: List[int]) -> List[int]:
     """

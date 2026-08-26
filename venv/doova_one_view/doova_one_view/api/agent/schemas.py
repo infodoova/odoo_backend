@@ -37,6 +37,8 @@ class AgentChatRequest(BaseModel):
     companies: Optional[List[int]] = None
     context: Optional[str] = None
     plan_action: Optional[str] = None  # null | approve | cancel | edit
+    web_search: Optional[bool] = False
+
 
 class AgentChatResponse(BaseModel):
     session_id: str
@@ -47,6 +49,15 @@ class AgentChatResponse(BaseModel):
     report_ready: bool = False
     report_path: Optional[str] = None
     download_url: Optional[str] = None
+    citations: Optional[List[Dict[str, Any]]] = None
+
+
+class AttachmentItem(BaseModel):
+    name: str
+    type: Optional[str] = "document"  # image | document | spreadsheet | text
+    media_type: Optional[str] = None
+    data: str  # Base64 string or plain text
+    size: Optional[int] = None
 
 
 # ─────────────────────────────
@@ -61,6 +72,8 @@ class FrontendChatRequest(BaseModel):
     companies: Optional[List[int]] = None
     context: Optional[str] = None
     plan_action: Optional[str] = None  # null | approve | cancel | edit
+    attachments: Optional[List[AttachmentItem]] = None
+    web_search: Optional[bool] = False
 
 
 class FrontendChatResponse(BaseModel):
@@ -75,6 +88,7 @@ class FrontendChatResponse(BaseModel):
     report_ready: bool = False
     report_path: Optional[str] = None
     download_url: Optional[str] = None
+    citations: Optional[List[Dict[str, Any]]] = None
 
 
 # ─────────────────────────────
@@ -98,3 +112,21 @@ class DeleteSessionResponse(BaseModel):
     session_id: str
     deleted: bool
     message: str
+
+
+# ─────────────────────────────
+# REPORT DATA JSON CONTRACT SCHEMAS
+# ─────────────────────────────
+from .report_schema import (
+    KPICardValue,
+    ProductRow,
+    CustomerRow,
+    SupplierRow,
+    StockAlertRow,
+    AgingSchedule,
+    ScenarioRow,
+    MonthlyDataPoint,
+    TrendDataPoint,
+    WaterfallData,
+    ReportDataContract,
+)

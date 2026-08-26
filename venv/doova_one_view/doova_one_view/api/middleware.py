@@ -46,23 +46,41 @@ class RateLimiter:
             self.requests.clear()
 
 
-agent_rate_limiter = RateLimiter(requests_per_minute=30)
+# Generative calls (chat / reasoning execution)
+agent_chat_rate_limiter = RateLimiter(requests_per_minute=120)
+# Read-only calls (sessions list, history, stats, reports preview)
+agent_read_rate_limiter = RateLimiter(requests_per_minute=600)
+# Alias for backwards compatibility
+agent_rate_limiter = agent_chat_rate_limiter
 
 
 async def rate_limit_middleware(request: Request, call_next):
     """Rate-limiting middleware for /financial-advisor agent endpoints."""
     path = request.url.path
     if "/financial-advisor" in path:
-        client_key = request.client.host if request.client else "unknown_client"
-        allowed, remaining, reset_sec = agent_rate_limiter.is_allowed(client_key)
+        # Build client key from Auth token / session / IP
+        auth_header = request.headers.get("Authorization", "")
+        tenant_header = request.headers.get("X-Tenant-Id", "")
+        client_ip = request.client.host if request.client else "unknown_client"
+        
+        if auth_header:
+            client_key = f"{auth_header[-16:]}:{tenant_header or client_ip}"
+        else:
+            client_key = f"{client_ip}:{tenant_header}"
+
+        # Use separate limiters for heavy POST (chat) vs lightweight GET (sessions, history)
+        is_write = request.method in ("POST", "PUT", "DELETE", "PATCH")
+        limiter = agent_chat_rate_limiter if is_write else agent_read_rate_limiter
+        
+        allowed, remaining, reset_sec = limiter.is_allowed(client_key)
         
         if not allowed:
-            logger.warning(f"Rate limit exceeded for client {client_key} on {path}")
+            logger.warning(f"Rate limit exceeded ({request.method}) for client {client_key} on {path}")
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"detail": "Rate limit exceeded for Financial Advisor Agent. Please wait before sending more requests."},
+                content={"detail": "Rate limit exceeded for Financial Advisor Agent. Please wait a moment before sending more requests."},
                 headers={
-                    "X-RateLimit-Limit": str(agent_rate_limiter.rpm),
+                    "X-RateLimit-Limit": str(limiter.rpm),
                     "X-RateLimit-Remaining": "0",
                     "X-RateLimit-Reset": str(reset_sec),
                     "Retry-After": str(reset_sec)
@@ -70,7 +88,7 @@ async def rate_limit_middleware(request: Request, call_next):
             )
             
         response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = str(agent_rate_limiter.rpm)
+        response.headers["X-RateLimit-Limit"] = str(limiter.rpm)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Reset"] = str(reset_sec)
         return response

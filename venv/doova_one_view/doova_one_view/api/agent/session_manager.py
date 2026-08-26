@@ -86,6 +86,14 @@ class SessionManager:
         return ChatMessage.objects.filter(session_id=session_id)
 
     def delete_session(self, session_id: str):
+        # 1. Clean up uploaded attachments on disk and metadata in stored_files table
+        try:
+            from .attachment_processor import cleanup_session_attachments
+            cleanup_session_attachments(session_id)
+        except Exception as e:
+            logger.warning(f"Error cleaning up session attachments for {session_id}: {e}")
+
+        # 2. Delete ChatMessages and ChatSession database records
         ChatSession.objects.filter(session_id=session_id).delete()
 
     def reset_session_memory(self, session_id: str):

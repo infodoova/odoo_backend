@@ -10,13 +10,17 @@ class FastPathNode:
     def run(
         self,
         message: str,
-        tenant_id: str | None = None,
+        tenant_id: str,
         company_id: int | None = None,
         company_ids: list[int] | None = None,
         tenant_ids: list[str] | None = None,
         chat_history: list = None,
         memory_summary: str = "",
-        on_summary=None
+        on_summary=None,
+        attachments: list = None,
+        session_id: str | None = None,
+        is_voice: bool = False,
+        language: str | None = None
     ) -> str:
         return self.lc_agent.run(
             message=message,
@@ -26,5 +30,9 @@ class FastPathNode:
             tenant_ids=tenant_ids,
             chat_history=chat_history,
             memory_summary=memory_summary,
-            on_summary=on_summary
+            on_summary=on_summary,
+            attachments=attachments,
+            session_id=session_id,
+            is_voice=is_voice,
+            language=language
         )

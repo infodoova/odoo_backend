@@ -249,13 +249,23 @@ def send_email_tool(
 
     from doova_one_view.api.email.service import EmailService
 
+    # Convert markdown body (tables, bold, lists) to email-safe inline-styled HTML
+    body_html = md_to_html(body)
+
     html_body = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"/></head>
-<body style="font-family: Arial, sans-serif; padding: 20px; color: #374151;">
-  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb;">
-    <h2 style="color: #1e3a5f; margin-top: 0;">{subject}</h2>
-    <div style="white-space: pre-wrap; line-height: 1.6;">{body}</div>
+<body style="font-family: Arial, sans-serif; padding: 20px; color: #374151; background-color: #f9fafb;">
+  <div style="max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+    <div style="background-color: #1e3a5f; padding: 16px 24px; color: #ffffff;">
+      <h2 style="margin: 0; font-size: 18px; font-weight: 700;">{subject}</h2>
+    </div>
+    <div style="padding: 24px; line-height: 1.7; font-size: 14px; color: #374151;">
+      {body_html}
+    </div>
+    <div style="background-color: #f9fafb; padding: 12px 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
+      Sent by Nexus Business Advisor &mdash; Doova
+    </div>
   </div>
 </body>
 </html>"""

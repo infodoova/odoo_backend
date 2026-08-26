@@ -34,12 +34,21 @@ def parse_json_chart_from_text(text: str) -> dict | None:
 
 
 def strip_json_chart_from_text(text: str) -> str:
-    """Remove the JSON chart block (fenced or bare) from text, clean trailing whitespace."""
+    """Remove the JSON chart block (fenced, bare, or trailing fragments) from text, clean trailing whitespace."""
     if not text:
         return ""
-    # Remove ```json ... ``` blocks
-    text = re.sub(r'```json\s*[\s\S]*?\s*```', '', text, flags=re.IGNORECASE)
-    # Collapse excess blank lines
+    # 1. Remove ```json ... ``` blocks containing chart/graph definition
+    text = re.sub(r'```json\s*\{[\s\S]*?"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}\s*```', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'```json\s*[\s\S]*?"chart"\s*:[\s\S]*?```', '', text, flags=re.IGNORECASE)
+
+    # 2. Remove complete bare JSON objects containing "type": "chart" or "graph"
+    text = re.sub(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}(?=\s*$|\s*\n)', '', text)
+    text = re.sub(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}\s*$', '', text)
+
+    # 3. Remove unclosed or truncated chart JSON fragments at the end of the text
+    text = re.sub(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*$', '', text)
+
+    # Collapse excess blank lines and strip trailing whitespace
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 

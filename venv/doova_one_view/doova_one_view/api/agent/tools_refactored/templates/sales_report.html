@@ -1,0 +1,168 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#2563eb{% endblock %}
+{% block watermark_accent %}#2563eb{% endblock %}
+{% block watermark_title %}SALES INTELLIGENCE{% endblock %}
+{% block cover_badge %}Sales & Revenue{% endblock %}
+{% block cover_title %}Sales Performance Report{% endblock %}
+{% block cover_subtitle %}Revenue analysis, customer insights, volume trends, and product performance.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Commercial Priority:</strong> Focus on SKU volume velocities, high-value customer retention, order conversion rates, and gross revenue growth trajectory.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Commercial & Sales Performance</h1>
+
+    <!-- 6 Core Sales KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Gross Revenue</div>
+            <div class="kpi-value">{{ report_data.get('revenue', {}).get('formatted', report_data.get('total_revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—'))) }}</div>
+            {% set rev_var = report_data.get('revenue', {}).get('var_text', kpis.get('revenue', {}).get('var_text', '')) %}
+            {% if rev_var %}
+            <div class="kpi-variance {{ report_data.get('revenue', {}).get('var_class', kpis.get('revenue', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('revenue', {}).get('arrow', kpis.get('revenue', {}).get('arrow', '')) }} {{ rev_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Account Type: Income / Sales Invoices</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Sales Volume / Orders</div>
+            <div class="kpi-value">{{ report_data.get('sales_volume', {}).get('formatted', report_data.get('order_count', {}).get('formatted', '—')) }}</div>
+            {% if report_data.get('sales_volume', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('sales_volume', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('sales_volume', {}).get('arrow', '') }} {{ report_data.get('sales_volume', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Confirmed Orders / Invoices</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Avg Order Value (AOV)</div>
+            <div class="kpi-value">{{ report_data.get('avg_order_value', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('avg_order_value', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('avg_order_value', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('avg_order_value', {}).get('arrow', '') }} {{ report_data.get('avg_order_value', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Revenue / Order Count</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Gross Margin %</div>
+            <div class="kpi-value">{{ report_data.get('gross_margin', {}).get('formatted', kpis.get('gross_margin', {}).get('formatted', '—')) }}</div>
+            {% set gm_var = report_data.get('gross_margin', {}).get('var_text', kpis.get('gross_margin', {}).get('var_text', '')) %}
+            {% if gm_var %}
+            <div class="kpi-variance {{ report_data.get('gross_margin', {}).get('var_class', kpis.get('gross_margin', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('gross_margin', {}).get('arrow', kpis.get('gross_margin', {}).get('arrow', '')) }} {{ gm_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">(Revenue - COGS) / Revenue</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Top Customer Spend</div>
+            <div class="kpi-value">{{ report_data.get('top_customer_revenue', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('top_customer_revenue', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('top_customer_revenue', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('top_customer_revenue', {}).get('arrow', '') }} {{ report_data.get('top_customer_revenue', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Largest Customer Contribution</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Target Achievement</div>
+            <div class="kpi-value">{{ report_data.get('target_achievement', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('target_achievement', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('target_achievement', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('target_achievement', {}).get('arrow', '') }} {{ report_data.get('target_achievement', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Actual vs Commercial Target</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if trend_chart_b64 or chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Revenue Trajectory & Sales Velocity</div>
+        <img src="data:image/png;base64,{{ chart_1_b64|default(trend_chart_b64) }}" class="chart-img" alt="Sales Trend Chart" />
+    </div>
+    {% endif %}
+
+    <!-- Top Products Table -->
+    {% set prods = report_data.get('top_products', top_products_data|default([])) %}
+    {% if prods %}
+    <h2 class="sub-title">Top-Performing Products & Contribution</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product / SKU</th>
+                <th class="text-right">Quantity Sold</th>
+                <th class="text-right">Total Revenue</th>
+                <th class="text-right">Gross Margin</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in prods %}
+            <tr>
+                <td class="font-bold">{{ item.get('name', item.get('product_name', 'Item')) }}</td>
+                <td class="text-right">{{ item.get('qty', item.get('quantity', '—')) }}</td>
+                <td class="text-right font-bold">{{ item.get('revenue', item.get('total_sales', '—')) }}</td>
+                <td class="text-right">{{ item.get('margin', item.get('gross_margin', '—')) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Top Customers Table -->
+    {% set custs = report_data.get('top_customers', []) %}
+    {% if custs %}
+    <h2 class="sub-title">Key Customer Accounts & Contribution</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Customer / Partner</th>
+                <th class="text-right">Order Count</th>
+                <th class="text-right">Total Revenue</th>
+                <th class="text-right">Share of Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in custs %}
+            <tr>
+                <td class="font-bold">{{ c.get('name', 'Partner') }}</td>
+                <td class="text-right">{{ c.get('orders', c.get('order_count', '—')) }}</td>
+                <td class="text-right font-bold">{{ c.get('revenue', c.get('total_spent', '—')) }}</td>
+                <td class="text-right">{{ c.get('share', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Commercial Analysis & Strategy</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Sales Accounting Standards:</strong> Revenue is recognized on posted customer invoices net of credit notes. Tax amounts and intercompany eliminations are applied per Odoo GL configuration.
+    </div>
+</div>
+{% endblock %}

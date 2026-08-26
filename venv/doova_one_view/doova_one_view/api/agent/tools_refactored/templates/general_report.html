@@ -1,0 +1,102 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#2563eb{% endblock %}
+{% block watermark_accent %}#2563eb{% endblock %}
+{% block watermark_title %}EXECUTIVE INTELLIGENCE{% endblock %}
+{% block cover_badge %}Executive Intelligence{% endblock %}
+{% block cover_title %}Business Intelligence Briefing{% endblock %}
+{% block cover_subtitle %}Multi-factor operational overview, executive findings, and management takeaways.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Executive Synthesis:</strong> Structured business briefing providing rapid operational visibility across key enterprise indicators, performance drivers, and priority recommendations.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Operational Vital Signs</h1>
+
+    <!-- 6 Core General KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Gross Revenue</div>
+            <div class="kpi-value">{{ report_data.get('revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—')) }}</div>
+            {% set rev_var = report_data.get('revenue', {}).get('var_text', kpis.get('revenue', {}).get('var_text', '')) %}
+            {% if rev_var %}
+            <div class="kpi-variance {{ report_data.get('revenue', {}).get('var_class', kpis.get('revenue', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('revenue', {}).get('arrow', kpis.get('revenue', {}).get('arrow', '')) }} {{ rev_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Posted Sales Invoices</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Gross Profit</div>
+            <div class="kpi-value">{{ report_data.get('gross_profit', {}).get('formatted', kpis.get('gross_profit', {}).get('formatted', '—')) }}</div>
+            {% set gp_var = report_data.get('gross_profit', {}).get('var_text', kpis.get('gross_profit', {}).get('var_text', '')) %}
+            {% if gp_var %}
+            <div class="kpi-variance {{ report_data.get('gross_profit', {}).get('var_class', kpis.get('gross_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('gross_profit', {}).get('arrow', kpis.get('gross_profit', {}).get('arrow', '')) }} {{ gp_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Revenue - COGS</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Profit</div>
+            <div class="kpi-value">{{ report_data.get('net_profit', {}).get('formatted', kpis.get('net_profit', {}).get('formatted', '—')) }}</div>
+            {% set net_var = report_data.get('net_profit', {}).get('var_text', kpis.get('net_profit', {}).get('var_text', '')) %}
+            {% if net_var %}
+            <div class="kpi-variance {{ report_data.get('net_profit', {}).get('var_class', kpis.get('net_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('net_profit', {}).get('arrow', kpis.get('net_profit', {}).get('arrow', '')) }} {{ net_var }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Net Retained Earnings</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Liquid Cash Reserves</div>
+            <div class="kpi-value">{{ report_data.get('cash_balance', {}).get('formatted', report_data.get('cash', {}).get('formatted', kpis.get('cash', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-source">GL Bank & Cash Accounts</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Accounts Receivable (AR)</div>
+            <div class="kpi-value">{{ report_data.get('accounts_receivable', {}).get('formatted', report_data.get('ar', {}).get('formatted', kpis.get('ar', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-source">Open Customer Debtors</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-red"></div>
+            <div class="kpi-title">Accounts Payable (AP)</div>
+            <div class="kpi-value">{{ report_data.get('accounts_payable', {}).get('formatted', report_data.get('ap', {}).get('formatted', kpis.get('ap', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-source">Open Vendor Liabilities</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if trend_chart_b64 or chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Enterprise Trajectory Overview</div>
+        <img src="data:image/png;base64,{{ chart_1_b64|default(trend_chart_b64) }}" class="chart-img" alt="Overview Chart" />
+    </div>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Executive Analysis & Action Priorities</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Executive Intelligence Governance:</strong> Operational and financial measures reconcile directly to Odoo ERP posted records.
+    </div>
+</div>
+{% endblock %}

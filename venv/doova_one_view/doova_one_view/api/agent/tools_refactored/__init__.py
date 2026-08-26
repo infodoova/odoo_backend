@@ -29,6 +29,7 @@ from .purchasing import (
     get_purchase_vs_sales_margin_tool,
     get_po_fulfillment_tool,
     get_purchase_trend_tool,
+    get_product_purchase_history_tool,
 )
 from .finance import (
     get_receivables_analysis_tool,

@@ -1,0 +1,140 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#ea580c{% endblock %}
+{% block watermark_accent %}#ea580c{% endblock %}
+{% block watermark_title %}INVENTORY & WAREHOUSE{% endblock %}
+{% block cover_badge %}Stock & Warehousing{% endblock %}
+{% block cover_title %}Inventory & Warehouse Health Report{% endblock %}
+{% block cover_subtitle %}Stock valuation, turnover velocity, days on hand, and reorder risk controls.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Supply Chain Focus:</strong> Free trapped working capital from slow-moving stock, minimize stockout risks on high-velocity items, and optimize safety stock thresholds.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Stock Valuation & Inventory Health</h1>
+
+    <!-- 6 Core Inventory KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Total Stock Valuation</div>
+            <div class="kpi-value">{{ report_data.get('inventory_value', {}).get('formatted', report_data.get('inventory', {}).get('formatted', kpis.get('inventory', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('inventory_value', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('inventory_value', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('inventory_value', {}).get('arrow', '') }} {{ report_data.get('inventory_value', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Stock Valuation Layer</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Active SKU Count</div>
+            <div class="kpi-value">{{ report_data.get('sku_count', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('sku_count', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('sku_count', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('sku_count', {}).get('arrow', '') }} {{ report_data.get('sku_count', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Product Variants with Stock</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Inventory Turnover</div>
+            <div class="kpi-value">{{ report_data.get('stock_turnover', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('stock_turnover', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('stock_turnover', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('stock_turnover', {}).get('arrow', '') }} {{ report_data.get('stock_turnover', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">COGS / Avg Stock Valuation</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Days Inventory (DIO)</div>
+            <div class="kpi-value">{{ report_data.get('days_on_hand', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('days_on_hand', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('days_on_hand', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('days_on_hand', {}).get('arrow', '') }} {{ report_data.get('days_on_hand', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">365 / Stock Turnover Ratio</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-red"></div>
+            <div class="kpi-title">Stockout Risk SKUs</div>
+            <div class="kpi-value">{{ report_data.get('low_stock_count', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('low_stock_count', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('low_stock_count', {}).get('var_class', 'variance-negative') }}">
+                {{ report_data.get('low_stock_count', {}).get('arrow', '▼') }} {{ report_data.get('low_stock_count', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Stock &lt; Safety Reorder Point</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Slow / Dead Stock Value</div>
+            <div class="kpi-value">{{ report_data.get('dead_stock_value', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('dead_stock_value', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('dead_stock_value', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('dead_stock_value', {}).get('arrow', '') }} {{ report_data.get('dead_stock_value', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Zero Moves in &gt; 90 Days</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Stock Aging & Warehouse Valuation Breakdown</div>
+        <img src="data:image/png;base64,{{ chart_1_b64 }}" class="chart-img" alt="Inventory Chart" />
+    </div>
+    {% endif %}
+
+    <!-- Low Stock Alerts Table -->
+    {% set alerts = report_data.get('low_stock_alerts', []) %}
+    {% if alerts %}
+    <h2 class="sub-title">Critical Reorder Alerts (Low / Out of Stock)</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product / SKU</th>
+                <th class="text-right">Available Qty</th>
+                <th class="text-right">Min Threshold</th>
+                <th class="text-right">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in alerts %}
+            <tr>
+                <td class="font-bold">{{ a.get('name', 'Item') }}</td>
+                <td class="text-right">{{ a.get('qty', a.get('quantity', 0)) }}</td>
+                <td class="text-right">{{ a.get('min_qty', '—') }}</td>
+                <td class="text-right"><span class="badge badge-critical">Reorder Required</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Warehouse Operations & Stock Strategy</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Inventory Valuation Policy:</strong> Stock valuation layers reflect real-time FIFO / Standard Cost valuations per Odoo stock quant layers.
+    </div>
+</div>
+{% endblock %}

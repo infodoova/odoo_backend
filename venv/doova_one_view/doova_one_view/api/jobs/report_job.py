@@ -247,12 +247,18 @@ class ReportJobManager:
 
             # 4. Generate PDF
             try:
+                from doova_one_view.api.agent.report_classifier import ReportTypeClassifier
+                resolved_report_type = ReportTypeClassifier.classify(
+                    prompt=schedule.prompt or "",
+                    custom_content=custom_content or "",
+                    raw_type=schedule.report_type,
+                )
                 result = await db_sync_to_async(generate_report_tool)(
                     tenant_id=tenant_id,
                     company_ids=company_ids,
                     custom_content=custom_content,
                     tenant_ids=tenant_ids,
-                    report_type=schedule.report_type,
+                    report_type=resolved_report_type,
                     prompt=schedule.prompt,
                 )
                 filename = result['filename']
@@ -362,27 +368,33 @@ class ReportJobManager:
         report content in Markdown, which is then rendered into the PDF.
         """
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
+        from doova_one_view.api.agent.tools_refactored.template_registry import TEMPLATE_REGISTRY, get_template_metadata
+        from doova_one_view.api.agent.report_classifier import ReportTypeClassifier
 
         if company_ids and len(company_ids) > 0:
             company_ctx = f"for selected companies {company_ids}"
         else:
             company_ctx = "across all companies"
 
+        canonical_type = ReportTypeClassifier.normalize_report_type(report_type)
+        meta = get_template_metadata(canonical_type)
+        domain_label = meta.get("title", f"{canonical_type.capitalize()} Report")
+        domain_guidance = meta.get("subtitle", "Comprehensive business performance analysis.")
+
         default_prompt = (
             f"<report_criteria>\n"
-            f"Generate a comprehensive {report_type} business report covering:\n"
-            f"1. Sales performance and revenue breakdown.\n"
-            f"2. Top products and top customers.\n"
-            f"3. Financial health score, receivables, and payables.\n"
-            f"4. Profit & loss overview.\n"
-            f"5. Any notable operational anomalies or risks.\n"
-            f"Focus on actionable insights and clear trend analysis.\n"
+            f"Generate a comprehensive {domain_label} ({domain_guidance}) covering:\n"
+            f"1. Core domain KPIs, vital signs, and operational benchmarks.\n"
+            f"2. Major performance drivers, volume trends, and variances.\n"
+            f"3. Identified operational or financial risks and anomalies.\n"
+            f"4. Concrete, prioritized strategic management recommendations.\n"
+            f"Focus on actionable insights grounded in posted Odoo data.\n"
             f"</report_criteria>"
         )
 
         full_prompt = (
             f"<role>\n"
-            f"You are an automated reporting AI and business analyst, generating a highly structured {report_type} report {company_ctx}.\n"
+            f"You are an automated reporting AI and business analyst, generating a highly structured {domain_label} {company_ctx}.\n"
             f"Your expertise is in synthesizing complex business data into clear, actionable executive summaries.\n"
             f"</role>\n\n"
             f"<instructions>\n"

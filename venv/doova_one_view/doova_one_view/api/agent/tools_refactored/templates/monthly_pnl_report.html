@@ -1,0 +1,144 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#4f46e5{% endblock %}
+{% block watermark_accent %}#4f46e5{% endblock %}
+{% block watermark_title %}MONTHLY PERFORMANCE{% endblock %}
+{% block cover_badge %}Monthly Performance{% endblock %}
+{% block cover_title %}Monthly P&L & Seasonality Grid{% endblock %}
+{% block cover_subtitle %}Month-by-month revenue, expense run-rates, seasonality, and variance trajectories.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Trend & Seasonality Focus:</strong> Review periodic month-over-month revenue dynamics, expense run-rates, peak operating months, and seasonal baseline swings.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Periodic P&L Overview & Run-Rate KPIs</h1>
+
+    <!-- 6 Core Monthly KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">YTD Gross Revenue</div>
+            <div class="kpi-value">{{ report_data.get('ytd_revenue', {}).get('formatted', report_data.get('revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('ytd_revenue', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('ytd_revenue', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('ytd_revenue', {}).get('arrow', '') }} {{ report_data.get('ytd_revenue', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Cumulative YTD Posted Revenue</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">YTD Gross Profit</div>
+            <div class="kpi-value">{{ report_data.get('ytd_gross_profit', {}).get('formatted', report_data.get('gross_profit', {}).get('formatted', kpis.get('gross_profit', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('ytd_gross_profit', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('ytd_gross_profit', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('ytd_gross_profit', {}).get('arrow', '') }} {{ report_data.get('ytd_gross_profit', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Cumulative YTD Margin</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">YTD OpEx Baseline</div>
+            <div class="kpi-value">{{ report_data.get('ytd_opex', {}).get('formatted', report_data.get('opex', {}).get('formatted', kpis.get('opex', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('ytd_opex', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('ytd_opex', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('ytd_opex', {}).get('arrow', '') }} {{ report_data.get('ytd_opex', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Total Operating Overhead</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">YTD Net Profit</div>
+            <div class="kpi-value">{{ report_data.get('ytd_net_profit', {}).get('formatted', report_data.get('net_profit', {}).get('formatted', kpis.get('net_profit', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('ytd_net_profit', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('ytd_net_profit', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('ytd_net_profit', {}).get('arrow', '') }} {{ report_data.get('ytd_net_profit', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Cumulative YTD Net Result</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Avg Monthly Revenue</div>
+            <div class="kpi-value">{{ report_data.get('avg_monthly_rev', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('avg_monthly_rev', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('avg_monthly_rev', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('avg_monthly_rev', {}).get('arrow', '') }} {{ report_data.get('avg_monthly_rev', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Monthly Run-Rate Average</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Peak Revenue Month</div>
+            <div class="kpi-value">{{ report_data.get('best_month', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('best_month', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('best_month', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('best_month', {}).get('arrow', '') }} {{ report_data.get('best_month', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Highest Monthly Volume</div>
+        </div>
+    </div>
+
+    <!-- Monthly Multi-Series Trend Chart -->
+    {% if trend_chart_b64 or chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Monthly Trajectory: Revenue, OpEx, and Net Earnings</div>
+        <img src="data:image/png;base64,{{ chart_1_b64|default(trend_chart_b64) }}" class="chart-img" alt="Monthly Trend Chart" />
+    </div>
+    {% endif %}
+
+    <!-- 12-Month Performance Grid Table -->
+    {% set months = report_data.get('monthly_data', []) %}
+    {% if months %}
+    <h2 class="sub-title">Monthly Performance Grid</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Period / Month</th>
+                <th class="text-right">Revenue</th>
+                <th class="text-right">COGS</th>
+                <th class="text-right">Gross Profit</th>
+                <th class="text-right">OpEx</th>
+                <th class="text-right">Net Profit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in months %}
+            <tr>
+                <td class="font-bold">{{ m.get('period', m.get('month', 'Month')) }}</td>
+                <td class="text-right font-bold">{{ m.get('revenue', '—') }}</td>
+                <td class="text-right">{{ m.get('cogs', '—') }}</td>
+                <td class="text-right">{{ m.get('gross_profit', '—') }}</td>
+                <td class="text-right">{{ m.get('opex', '—') }}</td>
+                <td class="text-right font-bold">{{ m.get('net_profit', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Seasonality Insights & Variance Commentary</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Monthly Aggregation Standard:</strong> Each month reflects closed posted move line transactions within that calendar interval.
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "_report_base.html" %}
+
+{% block cover_accent_color %}#059669{% endblock %}
+{% block watermark_accent %}#059669{% endblock %}
+{% block watermark_title %}LIQUIDITY & TREASURY{% endblock %}
+{% block cover_badge %}Liquidity & Treasury{% endblock %}
+{% block cover_title %}Cash Flow & Treasury Report{% endblock %}
+{% block cover_subtitle %}Operating, investing, and financing cash movements, bank balances, and liquidity runway.{% endblock %}
+
+{% block cover_callout %}
+<div class="management-callout">
+    <strong>Treasury Objective:</strong> Monitor operating cash flow generation, safeguard liquid bank buffers, accelerate customer collections, and control timing of vendor disbursements.
+</div>
+{% endblock %}
+
+{% block report_body %}
+<div class="page-break">
+    <h1 class="section-title">1. Cash & Liquidity Position</h1>
+
+    <!-- 6 Core Cash Flow KPI Cards -->
+    <div class="kpi-grid-6">
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Liquid Cash & Bank</div>
+            <div class="kpi-value">{{ report_data.get('cash_balance', {}).get('formatted', report_data.get('cash', {}).get('formatted', kpis.get('cash', {}).get('formatted', '—'))) }}</div>
+            {% if report_data.get('cash_balance', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cash_balance', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cash_balance', {}).get('arrow', '') }} {{ report_data.get('cash_balance', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">GL Bank & Cash Journals</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-blue"></div>
+            <div class="kpi-title">Operating Cash Flow</div>
+            <div class="kpi-value">{{ report_data.get('cash_from_operations', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('cash_from_operations', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cash_from_operations', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cash_from_operations', {}).get('arrow', '') }} {{ report_data.get('cash_from_operations', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Collections Net of Operating OpEx</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-cyan"></div>
+            <div class="kpi-title">Investing Cash Flow</div>
+            <div class="kpi-value">{{ report_data.get('cash_from_investing', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('cash_from_investing', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cash_from_investing', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cash_from_investing', {}).get('arrow', '') }} {{ report_data.get('cash_from_investing', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">CapEx & Asset Movements</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-purple"></div>
+            <div class="kpi-title">Financing Cash Flow</div>
+            <div class="kpi-value">{{ report_data.get('cash_from_financing', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('cash_from_financing', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cash_from_financing', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cash_from_financing', {}).get('arrow', '') }} {{ report_data.get('cash_from_financing', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Debt & Equity Financing</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-green"></div>
+            <div class="kpi-title">Net Cash Movement</div>
+            <div class="kpi-value">{{ report_data.get('net_cash_movement', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('net_cash_movement', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('net_cash_movement', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('net_cash_movement', {}).get('arrow', '') }} {{ report_data.get('net_cash_movement', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Net Inflows - Outflows</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card-top-bar bar-amber"></div>
+            <div class="kpi-title">Cash Runway</div>
+            <div class="kpi-value">{{ report_data.get('cash_runway', {}).get('formatted', '—') }}</div>
+            {% if report_data.get('cash_runway', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('cash_runway', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('cash_runway', {}).get('arrow', '') }} {{ report_data.get('cash_runway', {}).get('var_text', '') }}
+            </div>
+            {% endif %}
+            <div class="kpi-source">Cash / Monthly Net Burn</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if wc_chart_b64 or chart_1_b64 %}
+    <div class="chart-box">
+        <div class="chart-box-title">Liquidity & Working Capital Distribution</div>
+        <img src="data:image/png;base64,{{ chart_1_b64|default(wc_chart_b64) }}" class="chart-img" alt="Cash Flow Chart" />
+    </div>
+    {% endif %}
+
+    <!-- Bank Balances Table -->
+    {% set banks = report_data.get('bank_balances', []) %}
+    {% if banks %}
+    <h2 class="sub-title">Bank & Financial Account Breakdown</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Account / Institution</th>
+                <th>Currency</th>
+                <th class="text-right">Ending Balance</th>
+                <th class="text-right">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in banks %}
+            <tr>
+                <td class="font-bold">{{ b.get('name', 'Bank Account') }}</td>
+                <td>{{ b.get('currency', currency|default('XAF')) }}</td>
+                <td class="text-right font-bold">{{ b.get('balance', '—') }}</td>
+                <td class="text-right"><span class="badge badge-good">Active</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- AI Detailed Analysis -->
+    <h1 class="section-title">2. Treasury Insights & Cash Forecasting</h1>
+    <div class="analysis-body">
+        {{ body_html|safe }}
+    </div>
+
+    <!-- Accounting Reference Footer -->
+    <div class="ref-footer">
+        <strong>Treasury Accounting Standards:</strong> Cash movements reconcile directly to posted General Ledger bank journal debits and credits under International Financial Reporting Standards.
+    </div>
+</div>
+{% endblock %}

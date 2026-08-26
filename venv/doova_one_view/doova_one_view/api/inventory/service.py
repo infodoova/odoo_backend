@@ -428,29 +428,44 @@ class InventoryService:
         )
         now = timezone.now()
 
-        # 1. Low Stock
+        # 1. Low Stock (Deduplicated by product)
         low_qs = quants.filter(quantity__gt=0, quantity__lte=low_stock_threshold).order_by("quantity")
-        low_cnt = low_qs.count()
-        low_items = [
-            {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
-            for q in low_qs[:limit]
-        ]
+        low_cnt = low_qs.values("product_id").distinct().count()
+        seen_low = set()
+        low_items = []
+        for q in low_qs:
+            pid = q.product_id or q.id
+            if pid not in seen_low and q.product and q.product.name and q.product.name.strip() not in ["/", ""]:
+                seen_low.add(pid)
+                low_items.append({"id": q.product_id or q.id, "title": q.product.name, "description": f"Qty: {q.quantity}"})
+            if len(low_items) >= limit:
+                break
 
-        # 2. Out of Stock
+        # 2. Out of Stock (Deduplicated by product)
         oos_qs = quants.filter(quantity=0).order_by("product__name")
-        oos_cnt = oos_qs.count()
-        oos_items = [
-            {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": "Qty: 0"}
-            for q in oos_qs[:limit]
-        ]
+        oos_cnt = oos_qs.values("product_id").distinct().count()
+        seen_oos = set()
+        oos_items = []
+        for q in oos_qs:
+            pid = q.product_id or q.id
+            if pid not in seen_oos and q.product and q.product.name and q.product.name.strip() not in ["/", ""]:
+                seen_oos.add(pid)
+                oos_items.append({"id": q.product_id or q.id, "title": q.product.name, "description": "Qty: 0"})
+            if len(oos_items) >= limit:
+                break
 
-        # 3. Negative Stock
+        # 3. Negative Stock (Deduplicated by product)
         neg_qs = quants.filter(quantity__lt=0).order_by("quantity")
-        neg_cnt = neg_qs.count()
-        neg_items = [
-            {"id": q.id, "title": q.product.name if q.product else "Unknown", "description": f"Qty: {q.quantity}"}
-            for q in neg_qs[:limit]
-        ]
+        neg_cnt = neg_qs.values("product_id").distinct().count()
+        seen_neg = set()
+        neg_items = []
+        for q in neg_qs:
+            pid = q.product_id or q.id
+            if pid not in seen_neg and q.product and q.product.name and q.product.name.strip() not in ["/", ""]:
+                seen_neg.add(pid)
+                neg_items.append({"id": q.product_id or q.id, "title": q.product.name, "description": f"Qty: {q.quantity}"})
+            if len(neg_items) >= limit:
+                break
 
         # 4. Expiring Soon (lot expiration in 30 days)
         exp_qs = quants.filter(
@@ -574,6 +589,10 @@ class InventoryService:
                 # items in stock with in_date older than 90 days
                 old = timezone.now() - timedelta(days=90)
                 qs = quants.filter(quantity__gt=0, in_date__lt=old).order_by("in_date")
+            elif table_type == "fast_moving":
+                # items in stock with recent movement (in_date within last 30 days), ordered by highest quantity
+                recent = timezone.now() - timedelta(days=30)
+                qs = quants.filter(quantity__gt=0, in_date__gte=recent).order_by("-quantity")
             else:
                 qs = quants.none()
 
