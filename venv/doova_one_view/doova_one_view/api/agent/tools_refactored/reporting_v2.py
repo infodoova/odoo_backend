@@ -410,37 +410,11 @@ def _synthesize_autonomous_insights(
         except Exception:
             pass
 
-    # 2. Extract markdown summary sections from AI custom_content if provided
-    ai_overall = None
-    ai_prof = None
-    ai_pos = None
-    ai_neg = None
-    ai_liq = None
-    ai_action = None
-
-    if custom_content:
-        m_overall = re.search(r'(?:###?\s*(?:Overall Performance|Executive Summary|Overall)|- \*\*Overall(?: Performance)?\*\*:\s*)([^\n#]+)', custom_content, re.IGNORECASE)
-        if m_overall: ai_overall = m_overall.group(1).strip()
-
-        m_prof = re.search(r'(?:###?\s*(?:Profitability|Margins)|- \*\*Profitability\*\*:\s*)([^\n#]+)', custom_content, re.IGNORECASE)
-        if m_prof: ai_prof = m_prof.group(1).strip()
-
-        m_pos = re.search(r'(?:###?\s*(?:Positive Drivers?|Top Drivers?)|- \*\*Positive Drivers?\*\*:\s*)([^\n#]+)', custom_content, re.IGNORECASE)
-        if m_pos: ai_pos = m_pos.group(1).strip()
-
-        m_neg = re.search(r'(?:###?\s*(?:Negative Drivers?|Risks?|Bottlenecks?)|- \*\*Negative Drivers?\*\*:\s*)([^\n#]+)', custom_content, re.IGNORECASE)
-        if m_neg: ai_neg = m_neg.group(1).strip()
-
-        m_liq = re.search(r'(?:###?\s*(?:Liquidity|Working Capital|Cash Position)|- \*\*Liquidity(?:\s*& Working Capital)?\*\*:\s*)([^\n#]+)', custom_content, re.IGNORECASE)
-        if m_liq: ai_liq = m_liq.group(1).strip()
-
-        m_action = re.search(r'(?:###?\s*(?:Management Action|Recommended Action|Immediate Action)|- \*\*Management Action\*\*:\s*)([^\n#]+)', custom_content, re.IGNORECASE)
-        if m_action: ai_action = m_action.group(1).strip()
-
+    # 2. NLP Extraction from custom_content (detecting product names, dormant lines, actions)
     dormant_line_match = re.search(r'\b([A-Z0-9\s\-]+?(?:Cars|Vehicles|Motors|Line|Products))\b[^\.\n]*?\b(?:dormant|inactivity|zero units|0 units|stoppage|stalled|no recorded activity)\b', custom_content, re.IGNORECASE)
     dormant_line_name = dormant_line_match.group(1).strip() if dormant_line_match else None
 
-    # 3. Dynamic Executive Summary Synthesis (used when AI did not supply explicit text)
+    # 3. Dynamic Executive Summary Synthesis
     prior_rev = float(prior_pnl.get("revenue", 0) or prior_pnl.get("total_income", 0) or 0)
     if prior_rev > 0 and rev_val > 0:
         growth_pct = ((rev_val - prior_rev) / prior_rev) * 100.0
@@ -450,17 +424,16 @@ def _synthesize_autonomous_insights(
 
     # Overall
     status_phrase = "demonstrating strong commercial performance" if health_score_val >= 75 else "maintaining steady business operations" if health_score_val >= 50 else "facing operational and cash flow pressures"
-    overall_summary = ai_overall or f"Generated {_fmt_money(rev_val, currency)} across {company_name}{growth_str} for {period_label}, {status_phrase} with an overall business health score of {health_score_val:.0f}/100."
+    overall_summary = f"Generated {_fmt_money(rev_val, currency)} across {company_name}{growth_str} for {period_label}, {status_phrase} with an overall business health score of {health_score_val:.0f}/100."
 
     # Profitability
     net_margin_pct = (net_val / rev_val * 100.0) if rev_val > 0 else 0.0
     if gm_pct >= 35.0:
-        default_prof = f"Strong gross profit margin of {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) generating {_fmt_money(ebit_val, currency)} in Operating Profit (EBIT) with a {net_margin_pct:.1f}% net margin, confirming healthy core profitability."
+        prof_summary = f"Strong gross profit margin of {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) generating {_fmt_money(ebit_val, currency)} in Operating Profit (EBIT) with a {net_margin_pct:.1f}% net margin, confirming healthy core profitability."
     elif gm_pct >= 15.0:
-        default_prof = f"Gross profit margin stands at {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}), yielding an Operating Profit (EBIT) of {_fmt_money(ebit_val, currency)} with steady operating margins."
+        prof_summary = f"Gross profit margin stands at {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}), yielding an Operating Profit (EBIT) of {_fmt_money(ebit_val, currency)} with steady operating margins."
     else:
-        default_prof = f"Gross profit margin compressed to {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) yielding {_fmt_money(ebit_val, currency)} in Operating Profit (EBIT), indicating high direct product costs and pricing pressure."
-    prof_summary = ai_prof or default_prof
+        prof_summary = f"Gross profit margin compressed to {gm_pct:.1f}% ({_fmt_money(gp_val, currency)}) yielding {_fmt_money(ebit_val, currency)} in Operating Profit (EBIT), indicating high direct product costs and pricing pressure."
 
     # Positive Driver
     prods = top_prods.get("top_products", []) if isinstance(top_prods, dict) else []
@@ -468,46 +441,42 @@ def _synthesize_autonomous_insights(
         top_p = prods[0]
         top_p_name = top_p.get("product_name") or top_p.get("name") or "Core Trading Products"
         top_p_rev = float(top_p.get("revenue", 0) or top_p.get("total_sales", 0) or 0)
-        default_pos = f"Strong sales volume in {top_p_name} ({_fmt_money(top_p_rev, currency)}) serving as the primary driver for top-line revenue and gross profit."
+        pos_summary = f"Strong sales volume in {top_p_name} ({_fmt_money(top_p_rev, currency)}) serving as the primary driver for top-line revenue and gross profit."
     elif rev_val > 0:
-        default_pos = f"Core commercial sales ({_fmt_money(rev_val, currency)}) successfully delivering {_fmt_money(gp_val, currency)} in gross profit contribution."
+        pos_summary = f"Core commercial sales ({_fmt_money(rev_val, currency)}) successfully delivering {_fmt_money(gp_val, currency)} in gross profit contribution."
     else:
-        default_pos = f"Available cash reserves and baseline trading operations supporting ongoing business continuity."
-    pos_summary = ai_pos or default_pos
+        pos_summary = f"Available cash reserves and baseline trading operations supporting ongoing business continuity."
 
     # Negative Driver
     if dormant_line_name:
-        default_neg = f"{dormant_line_name} inactivity with zero sales recorded across the reporting period."
+        neg_summary = f"{dormant_line_name} inactivity with zero sales recorded across the reporting period."
     elif overdue_ratio > 0.20:
-        default_neg = f"Delayed customer collections with {_fmt_money(overdue_ar_val, currency)} ({overdue_ratio*100:.1f}% of unpaid customer invoices) currently past due."
+        neg_summary = f"Delayed customer collections with {_fmt_money(overdue_ar_val, currency)} ({overdue_ratio*100:.1f}% of unpaid customer invoices) currently past due."
     elif expenses_data.get("expenses"):
         top_e = expenses_data["expenses"][0]
         e_name = top_e.get("category") or top_e.get("account_name") or "Operating Overhead"
         e_amt = float(top_e.get("amount", 0) or 0)
-        default_neg = f"Operating cost growth in {e_name} consuming {_fmt_money(e_amt, currency)} of cash flow."
+        neg_summary = f"Operating cost growth in {e_name} consuming {_fmt_money(e_amt, currency)} of cash flow."
     else:
-        default_neg = f"Working capital locked in unpaid customer invoices ({_fmt_money(overdue_ar_val, currency)}) delaying incoming cash flow."
-    neg_summary = ai_neg or default_neg
+        neg_summary = f"Working capital locked in unpaid customer invoices ({_fmt_money(overdue_ar_val, currency)}) delaying incoming cash flow."
 
     # Liquidity
     if cur_ratio_val >= 1.5:
-        default_liq = f"Net Working Capital is {_fmt_money(nwc_val, currency)} with a healthy Current Ratio of {cur_ratio_val:.2f}x (ability to pay short-term bills), maintaining a comfortable safety buffer."
+        liq_summary = f"Net Working Capital is {_fmt_money(nwc_val, currency)} with a healthy Current Ratio of {cur_ratio_val:.2f}x (ability to pay short-term bills), maintaining a comfortable safety buffer."
     elif cur_ratio_val >= 1.0:
-        default_liq = f"Net Working Capital stands at {_fmt_money(nwc_val, currency)} with a Current Ratio of {cur_ratio_val:.2f}x, requiring prompt customer invoice collections to maintain bill payments."
+        liq_summary = f"Net Working Capital stands at {_fmt_money(nwc_val, currency)} with a Current Ratio of {cur_ratio_val:.2f}x, requiring prompt customer invoice collections to maintain bill payments."
     else:
-        default_liq = f"Working capital deficit of {_fmt_money(nwc_val, currency)} (Current Ratio {cur_ratio_val:.2f}x) signals short-term cash flow strain when paying supplier bills."
-    liq_summary = ai_liq or default_liq
+        liq_summary = f"Working capital deficit of {_fmt_money(nwc_val, currency)} (Current Ratio {cur_ratio_val:.2f}x) signals short-term cash flow strain when paying supplier bills."
 
     # Management Action
     if overdue_ratio > 0.25:
-        default_action = "Send automated payment reminders to late customers, pause new credit for accounts past 60 days overdue, and prioritize direct outreach on top debtor accounts."
+        action_summary = "Send automated payment reminders to late customers, pause new credit for accounts past 60 days overdue, and prioritize direct outreach on top debtor accounts."
     elif dormant_line_name:
-        default_action = f"Engage partner and distribution leadership immediately to resolve product supply allocation and restart sales for the {dormant_line_name} line."
+        action_summary = f"Engage partner and distribution leadership immediately to resolve product supply allocation and restart sales for the {dormant_line_name} line."
     elif cur_ratio_val < 1.1:
-        default_action = "Accelerate overdue invoice collections and coordinate vendor payment schedules to protect cash flow reserves."
+        action_summary = "Accelerate overdue invoice collections and coordinate vendor payment schedules to protect cash flow reserves."
     else:
-        default_action = "Maintain periodic customer credit reviews and monitor product profit margins to sustain long-term business growth."
-    action_summary = ai_action or default_action
+        action_summary = "Maintain periodic customer credit reviews and monitor product profit margins to sustain long-term business growth."
 
     exec_summary = {
         "overall": overall_summary,
