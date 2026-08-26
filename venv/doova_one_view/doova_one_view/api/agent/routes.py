@@ -612,9 +612,9 @@ async def chat_endpoint(request: Request):
             "مبيعات", "ارباح", "عملاء", "موردين", "مخزون", "فواتير", "منتجات", "mabi3at", "arba7", "omala"
         }
         clean_word_set = {w.lower().strip("!?.,;:'\"") for w in clean_words}
-        # In Voice Mode or ongoing chat session, treat ANY short utterance (<= 20 words) as valid business execution
-        if len(clean_words) <= 20 or is_voice_mode or bool(clean_word_set.intersection(business_keywords)):
-            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for follow-up/voice prompt: '{clean_user_message}'")
+        # Only override REJECT if the utterance contains explicit business keywords or timeframe adjustments
+        if bool(clean_word_set.intersection(business_keywords)):
+            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for business follow-up prompt: '{clean_user_message}'")
             decision = "EXECUTE"
 
     if decision == "REJECT":
