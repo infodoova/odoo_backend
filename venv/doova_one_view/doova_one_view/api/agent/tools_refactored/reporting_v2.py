@@ -656,6 +656,10 @@ def _synthesize_autonomous_insights(
     return exec_summary, drivers, alerts
 
 
+# Backwards compatibility alias
+_build_executive_summary_and_drivers = _synthesize_autonomous_insights
+
+
 # ── Markdown Table Sanitizer ──────────────────────────────────────────────────
 
 def _normalize_markdown_tables(text: str) -> str:
