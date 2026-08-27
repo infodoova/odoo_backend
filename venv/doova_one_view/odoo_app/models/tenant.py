@@ -8,6 +8,7 @@ class Tenant(models.Model):
     name = models.CharField(max_length=255)
     odoo_url = models.URLField(max_length=500)
     odoo_database = models.CharField(max_length=100)
+    odoo_username = models.CharField(max_length=255, blank=True, default='')
     api_key_encrypted = models.BinaryField()
     is_active = models.BooleanField(default=True)
 

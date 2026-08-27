@@ -125,6 +125,49 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
         inferred_type = f"Dynamic {top_sku_type.upper()}-Weighted Catalog Model"
         primary_driver = f"No sales transactions yet. Catalog is lead by '{top_sku_type}' ({catalog_by_type.get(top_sku_type, 0)} SKUs)."
 
+    # 4. Dynamic Customer & Channel Composition Study
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
+    f_sql_o, f_params_o = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="o.company_id")
+    order_params = {**t_params_o, **f_params_o}
+
+    order_stats_rows = []
+    try:
+        order_stats_rows = run_query(
+            f"""SELECT
+                    COUNT(DISTINCT o.id) AS total_orders,
+                    COUNT(DISTINCT o.partner_id) AS unique_customers,
+                    COALESCE(AVG(o.amount_total), 0) AS avg_order_value,
+                    COALESCE(SUM(o.amount_total), 0) AS total_order_revenue
+                FROM fact_sales_orders o
+                WHERE 1=1 {t_sql_o} {f_sql_o} AND o.state IN ('sale', 'done')""",
+            order_params,
+        )
+    except Exception:
+        pass
+
+    total_orders = int(order_stats_rows[0]["total_orders"]) if order_stats_rows and order_stats_rows[0].get("total_orders") else 0
+    unique_customers = int(order_stats_rows[0]["unique_customers"]) if order_stats_rows and order_stats_rows[0].get("unique_customers") else 0
+    avg_order_val = float(order_stats_rows[0]["avg_order_value"]) if order_stats_rows and order_stats_rows[0].get("avg_order_value") else 0.0
+
+    # Determine Commercial Channel & Supply-Chain Tier
+    top_cat_names = [r["category_name"].lower() for r in cat_rev_rows]
+    has_automotive = any(any(k in c for k in ["vehicle", "auto", "car", "jetour", "truck", "suv"]) for c in top_cat_names)
+    has_appliances = any(any(k in c for k in ["air condition", "ac", "appliance", "refrigerator", "tv", "electronic", "cooling"]) for c in top_cat_names)
+
+    commercial_tiers = []
+    if has_automotive:
+        commercial_tiers.append("Official Brand Concessionaire & Automotive Dealership")
+    if has_appliances or total_revenue > 0:
+        commercial_tiers.append("B2B Master Importer & Wholesale Distributor")
+
+    commercial_tier_label = " & ".join(commercial_tiers) if commercial_tiers else "Commercial Trading & Distribution"
+    supply_chain_position = "Upstream Master Importer / Tier-1 Concessionaire"
+    downstream_channel_note = (
+        "Upstream Master Importer & Concessionaire: Downstream retail stores, supermarkets (e.g. Tienda Ideal, Martinez Hermanos), "
+        "and independent appliance shops are downstream distribution channels/clients, NOT peer competitors. "
+        "Direct competitors are fellow master importers, trading conglomerates, and authorized brand concessionaires (e.g. CFAO, EGTC Group)."
+    )
+
     return {
         "tool_name": "get_tenant_profile_tool",
         "companies": [
@@ -132,7 +175,15 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
             for r in rows
         ],
         "inferred_business_model": inferred_type,
+        "commercial_tier": commercial_tier_label,
+        "supply_chain_position": supply_chain_position,
+        "downstream_channel_note": downstream_channel_note,
         "primary_revenue_driver": primary_driver,
+        "customer_and_channel_metrics": {
+            "total_orders_analyzed": total_orders,
+            "unique_customers_count": unique_customers,
+            "average_order_value": avg_order_val,
+        },
         "dynamic_revenue_study": {
             "total_revenue_analyzed": total_revenue,
             "total_sales_lines_analyzed": total_lines,

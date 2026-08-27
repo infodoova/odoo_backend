@@ -23,6 +23,21 @@ class TenantService:
     """Service for tenant operations"""
     
     @staticmethod
+    def _check_access(user_id: Optional[str], tenant: Tenant) -> None:
+        """Check if user has access to tenant (superusers always have access)"""
+        if not user_id:
+            return
+        from odoo_app.models.app_user import AppUser
+        try:
+            user_obj = AppUser.objects.get(id=user_id)
+            if user_obj.is_superuser:
+                return
+            if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
+                raise PermissionError("User does not have access to this tenant")
+        except AppUser.DoesNotExist:
+            raise PermissionError("User does not exist")
+
+    @staticmethod
     async def create_tenant(data: TenantCreate, user_id: str) -> TenantRead:
         """
         Create a new tenant
@@ -46,6 +61,7 @@ class TenantService:
                 name=data.name,
                 odoo_url=str(data.odoo_url).rstrip('/'),
                 odoo_database=data.odoo_database,
+                odoo_username=getattr(data, 'odoo_username', '') or '',
                 api_key_encrypted=api_key_encrypted,
                 is_active=data.is_active,
                 sync_status='pending'
@@ -70,6 +86,7 @@ class TenantService:
                 name=tenant.name,
                 odoo_url=tenant.odoo_url,
                 odoo_database=tenant.odoo_database,
+                odoo_username=tenant.odoo_username or '',
                 is_active=tenant.is_active,
                 sync_status=tenant.sync_status,
                 last_sync_at=tenant.last_sync_at,
@@ -104,9 +121,7 @@ class TenantService:
                 raise NotFoundError("Tenant", tenant_id)
             
             # Check user access if user_id provided
-            if user_id:
-                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
-                    raise PermissionError("User does not have access to this tenant")
+            TenantService._check_access(user_id, tenant)
             
             return tenant
         
@@ -118,6 +133,7 @@ class TenantService:
             name=tenant.name,
             odoo_url=tenant.odoo_url,
             odoo_database=tenant.odoo_database,
+            odoo_username=tenant.odoo_username or '',
             is_active=tenant.is_active,
             sync_status=tenant.sync_status,
             last_sync_at=tenant.last_sync_at,
@@ -145,12 +161,19 @@ class TenantService:
         """
         def _list():
             from django.db.models import Count
+            from odoo_app.models.app_user import AppUser
             if user_id:
-                # Filter by user access
-                access_records = UserTenantAccess.objects.filter(
-                    user_id=user_id
-                ).values_list('tenant_id', flat=True)
-                qs = Tenant.objects.filter(id__in=access_records).order_by('-created_at')
+                try:
+                    user_obj = AppUser.objects.get(id=user_id)
+                    if user_obj.is_superuser:
+                        qs = Tenant.objects.all().order_by('-created_at')
+                    else:
+                        access_records = UserTenantAccess.objects.filter(
+                            user_id=user_id
+                        ).values_list('tenant_id', flat=True)
+                        qs = Tenant.objects.filter(id__in=access_records).order_by('-created_at')
+                except AppUser.DoesNotExist:
+                    qs = Tenant.objects.none()
             else:
                 qs = Tenant.objects.all().order_by('-created_at')
             
@@ -168,6 +191,7 @@ class TenantService:
                     name=t.name,
                     odoo_url=t.odoo_url,
                     odoo_database=t.odoo_database,
+                    odoo_username=t.odoo_username or '',
                     is_active=t.is_active,
                     sync_status=t.sync_status,
                     last_sync_at=t.last_sync_at,
@@ -304,9 +328,7 @@ class TenantService:
                 raise NotFoundError("Tenant", tenant_id)
             
             # Check user access if user_id provided
-            if user_id:
-                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
-                    raise PermissionError("User does not have access to this tenant")
+            TenantService._check_access(user_id, tenant)
             
             # Update fields
             update_data = data.model_dump(exclude_unset=True)
@@ -318,6 +340,8 @@ class TenantService:
                 tenant.odoo_database = update_data['odoo_database']
             if 'odoo_api_key' in update_data:
                 tenant.api_key_encrypted = encrypt_api_key(update_data['odoo_api_key'])
+            if 'odoo_username' in update_data:
+                tenant.odoo_username = update_data['odoo_username'] or ''
             if 'is_active' in update_data:
                 tenant.is_active = update_data['is_active']
             
@@ -333,6 +357,7 @@ class TenantService:
             name=tenant.name,
             odoo_url=tenant.odoo_url,
             odoo_database=tenant.odoo_database,
+            odoo_username=tenant.odoo_username or '',
             is_active=tenant.is_active,
             sync_status=tenant.sync_status,
             last_sync_at=tenant.last_sync_at,
@@ -364,9 +389,7 @@ class TenantService:
                 raise NotFoundError("Tenant", tenant_id)
             
             # Check user access if user_id provided
-            if user_id:
-                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
-                    raise PermissionError("User does not have access to this tenant")
+            TenantService._check_access(user_id, tenant)
             
             logger.info(f"Tenant deleted: {tenant.name} (ID: {tenant.id})")
             tenant.delete()
@@ -396,9 +419,7 @@ class TenantService:
             except Tenant.DoesNotExist:
                 raise NotFoundError("Tenant", tenant_id)
             
-            if user_id:
-                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
-                    raise PermissionError("User does not have access to this tenant")
+            TenantService._check_access(user_id, tenant)
             
             tenant.is_active = False
             tenant.save(update_fields=['is_active', 'updated_at'])
@@ -413,6 +434,7 @@ class TenantService:
             name=tenant.name,
             odoo_url=tenant.odoo_url,
             odoo_database=tenant.odoo_database,
+            odoo_username=tenant.odoo_username or '',
             is_active=tenant.is_active,
             sync_status=tenant.sync_status,
             last_sync_at=tenant.last_sync_at,
@@ -443,9 +465,7 @@ class TenantService:
             except Tenant.DoesNotExist:
                 raise NotFoundError("Tenant", tenant_id)
             
-            if user_id:
-                if not UserTenantAccess.objects.filter(user_id=user_id, tenant=tenant).exists():
-                    raise PermissionError("User does not have access to this tenant")
+            TenantService._check_access(user_id, tenant)
             
             tenant.is_active = True
             tenant.save(update_fields=['is_active', 'updated_at'])
@@ -460,6 +480,7 @@ class TenantService:
             name=tenant.name,
             odoo_url=tenant.odoo_url,
             odoo_database=tenant.odoo_database,
+            odoo_username=tenant.odoo_username or '',
             is_active=tenant.is_active,
             sync_status=tenant.sync_status,
             last_sync_at=tenant.last_sync_at,
@@ -516,7 +537,7 @@ class TenantService:
                 name=tenant.name,
                 odoo_url=tenant.odoo_url,
                 odoo_database=tenant.odoo_database,
-                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_username=tenant.odoo_username or getattr(settings, 'ODOO_USERNAME', ''),
                 odoo_api_key=api_key
             )
             
@@ -601,7 +622,7 @@ class TenantService:
                 name=tenant.name,
                 odoo_url=tenant.odoo_url,
                 odoo_database=tenant.odoo_database,
-                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_username=tenant.odoo_username or getattr(settings, 'ODOO_USERNAME', ''),
                 odoo_api_key=api_key
             )
             
@@ -677,7 +698,7 @@ class TenantService:
                 name=tenant.name,
                 odoo_url=tenant.odoo_url,
                 odoo_database=tenant.odoo_database,
-                odoo_username=getattr(settings, 'ODOO_USERNAME', ''),
+                odoo_username=tenant.odoo_username or getattr(settings, 'ODOO_USERNAME', ''),
                 odoo_api_key=api_key
             )
             

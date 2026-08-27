@@ -294,6 +294,7 @@ STATIC_AGENT_INSTRUCTIONS = """You are Nexus—a knowledgeable business advisor 
       (4) EXACT SYMBOL PROTECTION: Map each row to its exact target currency code (e.g., `USD 344,207.38` for USD; `EUR 320,056.16` for EUR). NEVER repeat the base currency symbol on target currency rows (e.g., write `XAF → USD 0.001639`; NEVER write `XAF → XAF 0.001639` for USD).
       (5) SINGLE-CURRENCY FALLBACK: If the user did NOT request multi-currency, answer natively in the tenant base currency without adding a multi-currency conversion table.
     - If benchmarking or ratio analysis is requested, use the profile to confirm the sector.
+    - COMPETITIVE & MARKET INTELLIGENCE: When asked about competitors or market landscape, ALWAYS check `commercial_tier`, `supply_chain_position`, and `downstream_channel_note` from `tenant_profile`. Compare the business ONLY against direct peer entities operating at the same tier in the supply chain (e.g. fellow Master Importers, Tier-1 Distributors, Authorized Brand Concessionaires, Trading Conglomerates). NEVER classify downstream retail shops, local supermarkets, or independent neighborhood electronics dealers as direct competitors if the business is an upstream B2B importer/distributor — explicitly identify them as downstream distribution channels, target wholesale clients, or retail outlets.
 
     STEP 2 — CHECK WHAT YOU ALREADY KNOW:
     - Validate that you have the data needed before synthesizing. If not, fetch it using the sequences in STEP 3.
@@ -842,7 +843,11 @@ Follow these operational directives strictly:
    - When comparing external data against internal ERP records, fetch the external
      source first, then query internal tools — this gives you the most complete picture.
    - NEVER use web_fetch on internal company URLs or API endpoints.
-   - ALWAYS cite the fetched URL when presenting extracted data."""
+   - ALWAYS cite the fetched URL when presenting extracted data.
 
-
-
+6. SUPPLY-CHAIN TIER & COMPETITOR LANDSCAPE SEPARATION DIRECTIVE (CRITICAL):
+   - When conducting competitive intelligence or market analysis:
+     * Check the tenant's `commercial_tier`, `supply_chain_position`, and `downstream_channel_note` from `tenant_profile`.
+     * UPSTREAM / PEER COMPETITORS: Compare the organization ONLY against peers operating at the same tier in the supply chain (e.g. fellow Master Importers, Tier-1 Distributors, Brand Concessionaires, Trading Conglomerates like CFAO, EGTC Group).
+     * DOWNSTREAM ENTITIES / CHANNELS: NEVER present downstream retail shops, local supermarkets (e.g. Tienda Ideal, Martinez Hermanos), independent electronics stores, or neighborhood dealers as direct competitors if the tenant is an upstream B2B importer/distributor. Explicitly identify them as downstream distribution channels, target wholesale clients, or retail outlets.
+     * MULTI-SECTOR CONGLOMERATES: If the organization has distinct divisions (e.g., Automotive Concessionaire vs. Commercial Appliance Distribution), split peer competitors by commercial division."""

@@ -17,6 +17,7 @@ from .logger import log_session_event, log_error, logger
 
 from .session_manager import SessionManager
 from .query_context import resolve_tenant_id, normalize_tenant_ids, normalize_company_ids
+from .config import AgentConfig
 from doova_one_view.api.auth.permissions import require_permissions
 
 # Initialize Nodes
@@ -307,13 +308,19 @@ async def chat_endpoint(request: Request):
     # Extract message from multiple potential sources
     user_message = req_data.query_alt or req_data.message or req_data.content or req_data.prompt or ""
     
-    # Clean voice mode tags and reply-to metadata immediately
+    # Clean voice mode tags, reply-to metadata, and unicode directional/control marks immediately
     clean_user_message = user_message
     is_voice_mode = bool(req_data.is_voice) or ("[VOICE MODE:" in user_message)
     user_language = req_data.language or None
     if "[VOICE MODE:" in user_message:
         clean_user_message = _re.sub(r'\[VOICE MODE:[^\]]*\]', '', user_message).strip()
     clean_user_message = _re.sub(r'>\s*\[REPLY_TO:[^\]]*\]', '', clean_user_message).strip()
+    clean_user_message = _re.sub(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff\u200b\u200c\u200d]', '', clean_user_message).strip()
+
+    enable_web_search = bool(
+        (getattr(req_data, "web_search", False) or (isinstance(body, dict) and (body.get("web_search") or body.get("webSearch"))))
+        and getattr(AgentConfig, "ENABLE_WEB_SEARCH", False)
+    )
 
     # Extract & normalize all tenant and company ids
     from asgiref.sync import sync_to_async
@@ -501,7 +508,6 @@ async def chat_endpoint(request: Request):
 
     if session.plan_state and (decision == "CONFIRM" or is_affirmative):
         from django.utils import timezone
-        from .config import AgentConfig
         import datetime
         # Enforce plan expiry: stale plans are discarded to prevent accidental re-execution
         plan_age_ok = True
@@ -626,11 +632,12 @@ async def chat_endpoint(request: Request):
         arabic_words = {"مرحبا", "سلام", "شكرا", "كيف", "ماذا", "من", "كم", "هل"}
 
         user_words_lower = set(_re.findall(r'\b\w+\b', clean_user_message.lower()))
-        if user_words_lower.intersection(french_words):
+        is_arabic_text = bool(_re.search(r'[\u0600-\u06FF]', clean_user_message))
+        if user_words_lower.intersection(french_words) or (user_language and user_language.startswith("fr")):
             answer = "Désolé, je ne peux répondre qu'aux questions financières et commerciales liées à vos données Odoo."
-        elif user_words_lower.intersection(spanish_words):
+        elif user_words_lower.intersection(spanish_words) or (user_language and user_language.startswith("es")):
             answer = "Lo siento, solo puedo responder a preguntas financieras y comerciales sobre sus datos de Odoo."
-        elif user_words_lower.intersection(arabic_words):
+        elif user_words_lower.intersection(arabic_words) or is_arabic_text or (user_language and user_language.startswith("ar")):
             answer = "عذراً، يمكنني المساعدة فقط في الأسئلة المالية والتجارية المتعلقة ببيانات Odoo الخاصة بك."
         else:
             answer = "I'm sorry, I can only assist with business and financial questions related to your Odoo data."
@@ -671,13 +678,9 @@ async def chat_endpoint(request: Request):
     if decision == "EXECUTE":
         try:
             from datetime import date
-            from .config import AgentConfig
             today_str = date.today().strftime("%Y-%m-%d")
 
-            use_web_search = bool(
-                (getattr(req_data, "web_search", False) or body.get("web_search") or body.get("webSearch"))
-                and getattr(AgentConfig, "ENABLE_WEB_SEARCH", False)
-            )
+            use_web_search = enable_web_search
 
             citations = None
             if use_web_search:

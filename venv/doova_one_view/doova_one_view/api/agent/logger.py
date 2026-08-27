@@ -30,11 +30,12 @@ class SafeStreamHandler(logging.StreamHandler):
         try:
             msg = self.format(record)
             stream = self.stream
-            # Determine stream encoding — default to utf-8 if unknown
-            enc = getattr(stream, 'encoding', None) or 'utf-8'
-            if enc.lower().replace('-', '') not in ('utf8', 'utf16', 'utf32'):
-                msg = msg.encode(enc, errors='replace').decode(enc)
-            stream.write(msg + self.terminator)
+            try:
+                stream.write(msg + self.terminator)
+            except UnicodeEncodeError:
+                enc = getattr(stream, 'encoding', None) or 'utf-8'
+                safe_msg = msg.encode(enc, errors='replace').decode(enc)
+                stream.write(safe_msg + self.terminator)
             stream.flush()
         except Exception:
             self.handleError(record)

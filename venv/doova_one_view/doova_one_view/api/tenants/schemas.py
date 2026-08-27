@@ -12,6 +12,7 @@ class TenantCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     odoo_url: AnyUrl
     odoo_database: str = Field(..., min_length=1, max_length=100)
+    odoo_username: Optional[str] = Field(default='', max_length=255)
     odoo_api_key: str = Field(..., min_length=1)
     is_active: bool = Field(default=True)
 
@@ -21,6 +22,7 @@ class TenantUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     odoo_url: Optional[AnyUrl] = None
     odoo_database: Optional[str] = Field(None, min_length=1, max_length=100)
+    odoo_username: Optional[str] = Field(None, max_length=255)
     odoo_api_key: Optional[str] = Field(None, min_length=1)
     is_active: Optional[bool] = None
 
@@ -31,6 +33,7 @@ class TenantRead(BaseModel):
     name: str
     odoo_url: str
     odoo_database: str
+    odoo_username: Optional[str] = ''
     is_active: bool
     sync_status: str
     last_sync_at: Optional[datetime]

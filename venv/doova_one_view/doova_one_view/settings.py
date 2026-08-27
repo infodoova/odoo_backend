@@ -193,7 +193,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'class': 'logging.StreamHandler',
+            'class': 'doova_one_view.api.agent.logger.SafeStreamHandler',
             'formatter': 'simple',
         },
         'file': {
@@ -320,6 +320,13 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'True'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Odoo Direct Settings
+ODOO_URL = os.environ.get('ODOO_URL', '')
+ODOO_DB = os.environ.get('ODOO_DB', '')
+ODOO_USERNAME = os.environ.get('ODOO_USERNAME', '')
+ODOO_API_KEY = os.environ.get('ODOO_API_KEY', '')
+ODOO_VERIFY_SSL = os.environ.get('ODOO_VERIFY_SSL', 'True').lower() in ('true', '1', 'yes')
 
 # Collect static files for production use with ASGI
 # Run: python manage.py collectstatic

@@ -123,9 +123,11 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
         upsert_query = """
             INSERT INTO tenant_financial_mappings (
                 tenant_id, accrued_expense_prefixes, short_term_debt_prefixes,
+                min_completeness_threshold_pct, po_matching_tolerance_pct,
+                variance_critical_threshold_pct, variance_warning_threshold_pct,
                 created_at, updated_at
             )
-            VALUES (%s, %s::jsonb, %s::jsonb, NOW(), NOW())
+            VALUES (%s, %s::jsonb, %s::jsonb, 90.00, 1.00, 10.00, 2.00, NOW(), NOW())
             ON CONFLICT (tenant_id) DO UPDATE SET
                 accrued_expense_prefixes = EXCLUDED.accrued_expense_prefixes,
                 short_term_debt_prefixes = EXCLUDED.short_term_debt_prefixes,
