@@ -308,8 +308,8 @@ class WebSearchAgent:
                     if tool_results_content:
                         messages.append({"role": "user", "content": tool_results_content})
                     else:
-                        # If no client tools needed handling, continue
-                        break
+                        # Anthropic executed a server tool internally (e.g. web_search), continue turn
+                        continue
                 else:
                     # Unrecognized stop reason — extract any available text
                     text_parts = [

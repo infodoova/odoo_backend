@@ -39,7 +39,8 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
                 name,
                 'Not Specified' AS industry,
                 'Not Specified' AS company_type,
-                COALESCE(currency_name, currency_code, 'USD') AS currency
+                COALESCE(currency_name, currency_code, 'USD') AS currency,
+                COALESCE(country_name, country_code, 'Not Specified') AS country
             FROM dim_companies
             WHERE 1=1 {t_sql_def} {company_f_sql}
             LIMIT 5""",
@@ -127,7 +128,7 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
     return {
         "tool_name": "get_tenant_profile_tool",
         "companies": [
-            {"name": r.get('name'), "industry": r.get('industry'), "type": r.get('company_type'), "currency": r.get('currency')}
+            {"name": r.get('name'), "country": r.get('country'), "industry": r.get('industry'), "type": r.get('company_type'), "currency": r.get('currency')}
             for r in rows
         ],
         "inferred_business_model": inferred_type,

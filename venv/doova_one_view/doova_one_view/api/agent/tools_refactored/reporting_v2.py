@@ -352,6 +352,92 @@ def _render_working_capital_chart(cash: float, ar: float, overdue_ar: float, ap:
         return ""
 
 
+# ── Direct LLM Executive Summary Synthesis Engine ─────────────────────────────
+
+def _generate_ai_executive_summary_llm(
+    telemetry: dict,
+    prompt: str = "",
+    custom_content: str = "",
+) -> tuple[dict, dict, list] | None:
+    """
+    Direct AI generation for the Executive Summary Table, Performance Drivers, and Alerts.
+    Feeds live financial telemetry to Claude to generate natural, CFO-grade insights.
+    Returns (exec_summary, drivers, alerts) or None if LLM is unavailable.
+    """
+    import json
+    from ..config import AgentConfig
+    if not AgentConfig.ANTHROPIC_API_KEY:
+        return None
+
+    try:
+        from langchain_anthropic import ChatAnthropic
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        llm = ChatAnthropic(
+            model=AgentConfig.FAST_MODEL,
+            anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            max_tokens=2048,
+        )
+
+        system_instruction = (
+            "You are a senior Chief Financial Officer (CFO) synthesizing an Executive Business Report for leadership. "
+            "Analyze the provided live ERP financial telemetry and output a strict JSON object with EXACTLY 3 keys:\n\n"
+            "1. 'exec_summary': An object containing all 6 required string fields:\n"
+            "   - 'overall': 1-2 concise executive sentences describing top-line revenue, period growth vs prior, and overall business health.\n"
+            "   - 'profitability': 1-2 sentences analyzing gross profit margin %, EBIT operating profit, and net profit retention.\n"
+            "   - 'positive_driver': 1 sentence highlighting the #1 revenue-generating product/SKU or strongest commercial force.\n"
+            "   - 'negative_driver': 1 sentence pinpointing the main financial drag, overdue customer receivables, cost creep, or bottleneck.\n"
+            "   - 'liquidity': 1 sentence evaluating Net Working Capital, Current Ratio, cash buffer, and ability to comfortably pay supplier bills.\n"
+            "   - 'action': 1-2 prioritized, realistic leadership decisions.\n\n"
+            "2. 'drivers': An object with 'positive' and 'negative' lists of items (each item has 'name', 'current', 'impact', 'explanation').\n"
+            "3. 'alerts': A list of prioritized management risks (each item has 'priority', 'priority_class', 'title', 'impact', 'action', 'owner', 'status').\n\n"
+            "RULES:\n"
+            "- Ground all metrics, percentages, and currencies strictly in the provided telemetry numbers.\n"
+            "- Write in clear, professional executive language without technical software/code jargon.\n"
+            "- Output ONLY the JSON block inside ```json ... ``` tags."
+        )
+
+        user_content = f"Financial Telemetry:\n```json\n{json.dumps(telemetry, indent=2)}\n```\n"
+        if prompt:
+            user_content += f"\nSpecific User Focus / Prompt: {prompt}\n"
+        if custom_content and len(custom_content.strip()) > 10:
+            user_content += f"\nAdditional Context / Custom Analysis:\n{custom_content[:1200]}\n"
+
+        response = llm.invoke([
+            SystemMessage(content=system_instruction),
+            HumanMessage(content=user_content),
+        ])
+        if hasattr(response, "content"):
+            if isinstance(response.content, list):
+                raw_text = "".join([
+                    c.get("text", "") if isinstance(c, dict) else getattr(c, "text", str(c))
+                    for c in response.content
+                ])
+            else:
+                raw_text = str(response.content)
+        else:
+            raw_text = str(response)
+
+        match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', raw_text)
+        if not match:
+            match = re.search(r'(\{[\s\S]*?"exec_summary"[\s\S]*?\})', raw_text)
+
+        if match:
+            parsed = json.loads(match.group(1))
+            if isinstance(parsed, dict) and "exec_summary" in parsed:
+                exec_summary = parsed.get("exec_summary", {})
+                drivers = parsed.get("drivers", {"positive": [], "negative": []})
+                alerts = parsed.get("alerts", [])
+                required_fields = ["overall", "profitability", "positive_driver", "negative_driver", "liquidity", "action"]
+                if all(field in exec_summary and bool(str(exec_summary[field]).strip()) for field in required_fields):
+                    logger.info("Successfully synthesized executive summary directly via AI LLM reasoning.")
+                    return exec_summary, drivers, alerts
+    except Exception as e:
+        logger.warning(f"_generate_ai_executive_summary_llm error (falling back to deterministic synthesis): {e}")
+
+    return None
+
+
 # ── Universal Autonomous AI Synthesis Engine ─────────────────────────────────
 
 def _synthesize_autonomous_insights(
@@ -391,9 +477,8 @@ def _synthesize_autonomous_insights(
       2. drivers (dict with positive and negative lists: name, current, impact, explanation)
       3. alerts (list of dicts: priority, priority_class, title, impact, action, owner, status)
 
-    Autonomous reasoning engine with zero hardcoding:
-      - Direct JSON payload binding if provided by caller or embedded in custom_content.
-      - Dynamic financial heuristics across live GL telemetry (margin trajectory, overdue concentration, liquidity).
+    Primary: Direct LLM generation from live ERP financial telemetry.
+    Fallback: Resilient deterministic financial heuristics.
     """
     import json
 
@@ -410,14 +495,72 @@ def _synthesize_autonomous_insights(
         except Exception:
             pass
 
-    # 2. NLP Extraction from custom_content (detecting product names, dormant lines, actions)
+    # 2. PRIMARY PATH: Generate narrative directly from AI via LLM
+    prior_rev = float(prior_pnl.get("revenue", 0) or prior_pnl.get("total_income", 0) or 0)
+    growth_pct = ((rev_val - prior_rev) / prior_rev * 100.0) if prior_rev > 0 and rev_val > 0 else 0.0
+
+    prods_list = top_prods.get("top_products", []) if isinstance(top_prods, dict) else []
+    top_products_summary = [
+        {"name": p.get("product_name") or p.get("name"), "revenue": float(p.get("revenue", 0) or p.get("total_sales", 0) or 0)}
+        for p in prods_list[:5]
+    ]
+
+    exps_list = expenses_data.get("expenses", []) if isinstance(expenses_data, dict) else []
+    top_expenses_summary = [
+        {"category": e.get("category") or e.get("account_name"), "amount": float(e.get("amount", 0) or 0)}
+        for e in exps_list[:5]
+    ]
+
+    telemetry = {
+        "company_name": company_name,
+        "reporting_period": period_label,
+        "comparison_basis": comparison_label,
+        "currency": currency,
+        "revenue": rev_val,
+        "cogs": float(pnl.get("cogs", 0) or 0),
+        "gross_profit": gp_val,
+        "gross_margin_pct": gm_pct,
+        "operating_expenses": float(pnl.get("operating_expenses", 0) or 0),
+        "operating_ebit": ebit_val,
+        "net_profit": net_val,
+        "net_margin_pct": (net_val / rev_val * 100.0) if rev_val > 0 else 0.0,
+        "prior_period": {
+            "prior_revenue": prior_rev,
+            "growth_pct": round(growth_pct, 1),
+            "prior_gross_profit": float(prior_pnl.get("gross_profit", 0) or 0),
+            "prior_net_profit": float(prior_pnl.get("net_profit", 0) or 0),
+        },
+        "liquidity_and_solvency": {
+            "cash_and_bank_balance": cash_val,
+            "net_working_capital": nwc_val,
+            "current_ratio": round(cur_ratio_val, 2),
+            "health_score": round(health_score_val, 0),
+        },
+        "receivables_and_payables": {
+            "total_accounts_receivable": float(receivables.get("total_receivables", 0) or 0),
+            "overdue_receivables_amt": overdue_ar_val,
+            "overdue_receivables_ratio_pct": round(overdue_ratio * 100.0, 1),
+            "total_accounts_payable": ap_val,
+        },
+        "inventory_valuation": inv_val,
+        "top_products": top_products_summary,
+        "top_operating_expenses": top_expenses_summary,
+    }
+
+    ai_result = _generate_ai_executive_summary_llm(
+        telemetry=telemetry,
+        prompt=prompt,
+        custom_content=custom_content,
+    )
+    if ai_result:
+        return ai_result[0], ai_result[1], ai_result[2]
+
+    # 3. FALLBACK PATH: Resilient deterministic financial synthesis
+    logger.info("Executing deterministic executive summary fallback...")
     dormant_line_match = re.search(r'\b([A-Z0-9\s\-]+?(?:Cars|Vehicles|Motors|Line|Products))\b[^\.\n]*?\b(?:dormant|inactivity|zero units|0 units|stoppage|stalled|no recorded activity)\b', custom_content, re.IGNORECASE)
     dormant_line_name = dormant_line_match.group(1).strip() if dormant_line_match else None
 
-    # 3. Dynamic Executive Summary Synthesis
-    prior_rev = float(prior_pnl.get("revenue", 0) or prior_pnl.get("total_income", 0) or 0)
     if prior_rev > 0 and rev_val > 0:
-        growth_pct = ((rev_val - prior_rev) / prior_rev) * 100.0
         growth_str = f" ({'+' if growth_pct >= 0 else ''}{growth_pct:.1f}% vs {comparison_label})"
     else:
         growth_str = ""

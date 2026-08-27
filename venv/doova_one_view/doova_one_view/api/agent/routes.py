@@ -593,28 +593,31 @@ async def chat_endpoint(request: Request):
         logger.info(f"ROUTER OVERRIDE | No active plan in session {current_session_id}. Converting CONFIRM/affirmative to EXECUTE for conversational continuation.")
         decision = "EXECUTE"
 
-    # Fail-safe guard against accidental rejections on follow-up phrases or voice mode in active sessions
+    # Fail-safe guard against accidental rejections on follow-up phrases, market research, or active sessions
     clean_words = (clean_user_message or user_message).strip().split()
-    if decision == "REJECT" and (chat_history_from_db or is_voice_mode):
+    if decision == "REJECT":
         business_keywords = {
             # English
             "today", "yesterday", "year", "month", "quarter", "ytd", "week", "now", "company",
             "sales", "revenue", "profit", "margin", "cost", "cogs", "inventory", "stock", "customers",
             "clients", "partners", "receivables", "payables", "invoices", "orders", "top", "best", "total",
+            "competitor", "competitors", "competition", "market", "industry", "area", "region", "benchmarks", "pricing", "share",
             # French
             "aujourd'hui", "hier", "annee", "année", "mois", "trimestre", "semaine", "acteurs", "detaille",
             "produit", "produits", "ventes", "recettes", "benefice", "bénéfice", "marge", "client", "deux",
             "clients", "fournisseurs", "factures", "commandes", "achats", "stock", "chiffre", "affaires",
+            "concurrents", "concurrence", "marché",
             # Spanish
             "hoy", "ayer", "año", "mes", "trimestre", "semana", "ventas", "ingresos", "ganancias", "ambos",
             "clientes", "proveedores", "facturas", "pedidos", "compras", "inventario", "productos", "detalle",
+            "competidores", "competencia", "mercado",
             # Arabic & Transliterated
-            "مبيعات", "ارباح", "عملاء", "موردين", "مخزون", "فواتير", "منتجات", "mabi3at", "arba7", "omala"
+            "مبيعات", "ارباح", "عملاء", "موردين", "مخزون", "فواتير", "منتجات", "منافسين", "المنافسين", "السوق", "mabi3at", "arba7", "omala"
         }
         clean_word_set = {w.lower().strip("!?.,;:'\"") for w in clean_words}
-        # Only override REJECT if the utterance contains explicit business keywords or timeframe adjustments
-        if bool(clean_word_set.intersection(business_keywords)):
-            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for business follow-up prompt: '{clean_user_message}'")
+        # Override REJECT if the utterance contains explicit business keywords, timeframe adjustments, or web search is requested
+        if bool(clean_word_set.intersection(business_keywords)) or (enable_web_search and len(clean_words) >= 2):
+            logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for business/market prompt: '{clean_user_message}'")
             decision = "EXECUTE"
 
     if decision == "REJECT":
@@ -693,7 +696,26 @@ async def chat_endpoint(request: Request):
                         memory_summary=db_summary,
                     )
 
-                answer, citations = await asyncio.to_thread(run_web_search)
+                try:
+                    answer, citations = await asyncio.to_thread(run_web_search)
+                except Exception as ws_err:
+                    logger.warning(f"WebSearchAgent failed ({ws_err}). Falling back to standard business executor.")
+                    def save_summary_to_db(summary_text: str):
+                        session_manager.save_summary(current_session_id, summary_text)
+
+                    def run_fast_path():
+                        return fast_path_node.run(
+                            message=clean_user_message or user_message,
+                            tenant_id=primary_tenant_id,
+                            tenant_ids=resolved_tenant_ids,
+                            company_id=primary_company_id,
+                            company_ids=resolved_company_ids,
+                            chat_history=chat_history_from_db,
+                            memory_summary=db_summary,
+                            on_summary=save_summary_to_db,
+                        )
+
+                    answer = await asyncio.to_thread(run_fast_path)
             else:
                 # Persist summary to DB when agent generates one
                 def save_summary_to_db(summary_text: str):
