@@ -122,29 +122,31 @@ class ReportTypeClassifier:
     ) -> str:
         """
         Classifies user intent into a canonical report type key.
+        PRIORITY 1: User prompt & custom content analysis (ensures prompt intent always governs).
+        PRIORITY 2: Explicit specific raw_type parameter.
+        PRIORITY 3: Fast LLM Classifier fallback.
         """
         start = time.time()
 
-        # 0. If explicit raw_type is provided and valid, normalize and return immediately
-        if raw_type and raw_type not in ("auto", "none", ""):
+        combined_text = f"{prompt} {custom_content}".lower().strip()
+
+        # Tier 1: Fast Rule / Keyword Matcher directly on prompt text (0ms, 0 tokens)
+        if combined_text:
+            tier1_result = cls._keyword_score(combined_text)
+            if tier1_result:
+                duration = (time.time() - start) * 1000
+                logger.debug(f"ReportTypeClassifier Tier 1 Match: {tier1_result} in {duration:.1f}ms")
+                return tier1_result
+
+        # Tier 2: Explicit specific raw_type parameter (if not generic 'auto'/'health'/'general')
+        if raw_type and raw_type not in ("auto", "none", "", "default", "health", "general"):
             norm = cls.normalize_report_type(raw_type)
-            if norm in TEMPLATE_REGISTRY or norm == "health":
+            if norm in TEMPLATE_REGISTRY:
                 return norm
 
-        combined_text = f"{prompt} {custom_content}".lower().strip()
-        if not combined_text:
-            return "health"
-
-        # Tier 1: Fast Rule / Keyword Matcher (0ms, 0 tokens)
-        tier1_result = cls._keyword_score(combined_text)
-        if tier1_result:
-            duration = (time.time() - start) * 1000
-            logger.debug(f"ReportTypeClassifier Tier 1 Match: {tier1_result} in {duration:.1f}ms")
-            return tier1_result
-
-        # Tier 2: Fast LLM Classifier Fallback
+        # Tier 3: Fast LLM Classifier Fallback
         classifier = cls.get_instance()
-        if classifier.llm and classifier.prompt:
+        if classifier.llm and classifier.prompt and combined_text:
             try:
                 history_str = "None"
                 if chat_history and isinstance(chat_history, list):
@@ -166,38 +168,87 @@ class ReportTypeClassifier:
 
                 norm = cls.normalize_report_type(clean_key)
                 duration = (time.time() - start) * 1000
-                logger.info(f"ReportTypeClassifier Tier 2 LLM: {norm} in {duration:.1f}ms")
+                logger.info(f"ReportTypeClassifier Tier 3 LLM: {norm} in {duration:.1f}ms")
                 if norm in TEMPLATE_REGISTRY or norm == "health":
                     return norm
             except Exception as e:
                 log_error("ReportTypeClassifier.classify", e)
 
-        # Default fallback
+        # Default fallback to explicit raw_type if available or health
+        if raw_type and raw_type not in ("auto", "none", ""):
+            return cls.normalize_report_type(raw_type)
+
         return "health"
 
     @staticmethod
     def _keyword_score(text: str) -> Optional[str]:
         """
-        Scans text for weighted domain keywords.
+        Scans text for weighted domain keywords, humanized phrasing, and executive intent.
         Returns canonical key if strong match found.
         """
         scores: Dict[str, int] = {k: 0 for k in TEMPLATE_REGISTRY.keys()}
 
-        # Domain specific high-priority patterns
+        # Domain specific high-priority patterns (including natural executive idioms)
         patterns = {
-            "proforma": [r'\bpro\s*forma\b', r'\bprojections?\b', r'\bforecast(ing|ed)?\b', r'\bscenario(s)?\b', r'\bbull\s*case\b', r'\bbear\s*case\b'],
-            "cashflow": [r'\bcash\s*flow\b', r'\bliquidity\b', r'\btreasury\b', r'\bbank\s*balanc', r'\boperating\s*cash\b'],
-            "inventory": [r'\binventory\b', r'\bstock(s)?\b', r'\bwarehous', r'\bturnover\b', r'\bdays\s*on\s*hand\b', r'\blow\s*stock\b', r'\breorder\b'],
-            "purchase": [r'\bpurchase(s|d|ing)?\b', r'\bprocurement\b', r'\bvendor(s)?\b', r'\bsupplier(s)?\b', r'\bpo(s)?\b', r'\bspend(ing)?\b', r'\bap\s*aging\b'],
-            "sales": [r'\bsales?\b', r'\brevenue\s*trend', r'\btop\s*product', r'\btop\s*customer', r'\bvolume\b', r'\border(s)?\b', r'\bcommercial\b'],
-            "income_statement": [r'\bincome\s*statement\b', r'\bp\s*&\s*l\b', r'\bpnl\b', r'\bprofit\s*and\s*loss\b', r'\bcogs\b', r'\bopex\b', r'\bgross\s*margin\b', r'\bebit\b'],
-            "balance_sheet": [r'\bbalance\s*sheet\b', r'\bassets?\b', r'\bliabilit(y|ies)\b', r'\bequity\b', r'\bsolvency\b'],
-            "monthly_pnl": [r'\bmonthly\s*pnl\b', r'\bmonthly\s*performance\b', r'\bseasonality\b', r'\b12\s*month', r'\brun\s*rate\b'],
-            "consolidated": [r'\bconsolidat(ed|ion)\b', r'\bmulti\s*company\b', r'\bgroup\s*level\b', r'\bparent\s*company\b'],
-            "accounting": [r'\baccounting\b', r'\bgeneral\s*ledger\b', r'\btrial\s*balance\b', r'\bjournal(s)?\b', r'\bar\s*aging\b'],
-            "financial_analysis": [r'\bfinancial\s*analysis\b', r'\bratio(s)?\b', r'\bcurrent\s*ratio\b', r'\bquick\s*ratio\b', r'\broe\b', r'\broa\b'],
-            "health": [r'\bhealth\s*score\b', r'\bvital\s*sign', r'\bhealth\s*report\b', r'\bcheck\s*up\b'],
-            "general": [r'\bgeneral\s*report\b', r'\bexecutive\s*brief\b', r'\boverview\s*report\b'],
+            "sales": [
+                r'\bsales?\b', r'\brevenue\b', r'\bcommercial\b', r'\btop\s*product',
+                r'\bwhich\s*products?\b', r'\bmaking\s*us\s*money\b', r'\bcarrying\s*the\s*business\b',
+                r'\border\s*volume\b', r'\bdeal\s*size\b', r'\baov\b', r'\baverage\s*order\b',
+                r'\btop\s*customer', r'\bcustomers?\s*buying\b', r'\bproduct\s*lines?\b',
+                r'\bsku(s)?\b', r'\bbest\s*selling\b', r'\bcommercial\s*velocity\b',
+            ],
+            "purchase": [
+                r'\bpurchase(s|d|ing)?\b', r'\bprocurement\b', r'\bvendor(s)?\b', r'\bsupplier(s)?\b',
+                r'\bpo(s)?\b', r'\bspend(ing)?\b', r'\bpurchasing\s*budget\b', r'\bwriting\s*the\s*biggest\s*checks\b',
+                r'\bap\s*aging\b', r'\baccounts\s*payable\b', r'\bsupplier\s*commitments\b',
+                r'\bvendor\s*bills\b', r'\bcreditor(s)?\b',
+            ],
+            "accounting": [
+                r'\baccounting\b', r'\bgeneral\s*ledger\b', r'\bledger\s*balances?\b',
+                r'\btrial\s*balance\b', r'\bcost\s*structure\b', r'\boperating\s*expenses\b',
+                r'\baudit(or|ors|ing)?\b', r'\bar\s*aging\b', r'\baccounts\s*receivable\b',
+                r'\bdebtor(s)?\b', r'\bjournal\s*entries\b', r'\bchart\s*of\s*accounts\b',
+            ],
+            "inventory": [
+                r'\binventory\b', r'\bstock(s)?\b', r'\bwarehous(e|ing)?\b', r'\bturnover\b',
+                r'\bdays\s*on\s*hand\b', r'\blow\s*stock\b', r'\breorder\b', r'\bstockout(s)?\b',
+                r'\bquants?\b', r'\bvaluation\b', r'\bslow\s*moving\b',
+            ],
+            "cashflow": [
+                r'\bcash\s*flow\b', r'\bliquidity\b', r'\btreasury\b', r'\bbank\s*balanc',
+                r'\boperating\s*cash\b', r'\bburn\s*rate\b', r'\bcash\s*requirements\b',
+                r'\bcash\s*inflow\b', r'\bcash\s*outflow\b',
+            ],
+            "proforma": [
+                r'\bpro\s*forma\b', r'\bprojections?\b', r'\bforecast(ing|ed)?\b',
+                r'\bscenario(s)?\b', r'\bbull\s*case\b', r'\bbear\s*case\b',
+            ],
+            "income_statement": [
+                r'\bincome\s*statement\b', r'\bp\s*&\s*l\b', r'\bpnl\b', r'\bprofit\s*and\s*loss\b',
+                r'\bcogs\b', r'\bopex\b', r'\bgross\s*margin\b', r'\bebit\b',
+            ],
+            "balance_sheet": [
+                r'\bbalance\s*sheet\b', r'\bassets?\b', r'\bliabilit(y|ies)\b',
+                r'\bequity\b', r'\bsolvency\b',
+            ],
+            "monthly_pnl": [
+                r'\bmonthly\s*pnl\b', r'\bmonthly\s*performance\b', r'\bseasonality\b',
+                r'\b12\s*month', r'\brun\s*rate\b',
+            ],
+            "consolidated": [
+                r'\bconsolidat(ed|ion)\b', r'\bmulti\s*company\b', r'\bgroup\s*level\b',
+                r'\bparent\s*company\b',
+            ],
+            "financial_analysis": [
+                r'\bfinancial\s*analysis\b', r'\bratio(s)?\b', r'\bcurrent\s*ratio\b',
+                r'\bquick\s*ratio\b', r'\broe\b', r'\broa\b',
+            ],
+            "health": [
+                r'\bhealth\s*score\b', r'\bvital\s*sign', r'\bhealth\s*report\b', r'\bcheck\s*up\b',
+            ],
+            "general": [
+                r'\bgeneral\s*report\b', r'\bexecutive\s*brief\b', r'\boverview\s*report\b',
+            ],
         }
 
         for domain, regexes in patterns.items():

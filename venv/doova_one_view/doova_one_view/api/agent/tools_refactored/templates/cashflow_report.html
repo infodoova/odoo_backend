@@ -101,7 +101,7 @@
     {% endif %}
 
     <!-- Bank Balances Table -->
-    {% set banks = report_data.get('bank_balances', []) %}
+    {% set banks = report_data.get('bank_balances', report_data.get('accounts', [])) %}
     {% if banks %}
     <h2 class="sub-title">Bank & Financial Account Breakdown</h2>
     <table class="data-table">
@@ -116,9 +116,9 @@
         <tbody>
             {% for b in banks %}
             <tr>
-                <td class="font-bold">{{ b.get('name', 'Bank Account') }}</td>
+                <td class="font-bold">{{ b.get('account_name', b.get('name', b.get('bank', 'Bank Account'))) }}</td>
                 <td>{{ b.get('currency', currency|default('XAF')) }}</td>
-                <td class="text-right font-bold">{{ b.get('balance', '—') }}</td>
+                <td class="text-right font-bold">{{ b.get('balance', b.get('amount', '—')) }}</td>
                 <td class="text-right"><span class="badge badge-good">Active</span></td>
             </tr>
             {% endfor %}

@@ -42,30 +42,36 @@ _manage = Depends(require_permissions("manage_reports"))
 
 def _serialize_schedule(s) -> dict:
     return {
-        "id":           str(s.id),
-        "tenant_id":    str(s.tenant_id) if s.tenant_id else None,
-        "tenantIds":    getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else []),
-        "recipients":   s.recipients,
-        "frequency":    s.frequency,
-        "timezone":     s.timezone,
-        "companyIds":   getattr(s, "companies", []),
-        "report_type":  s.report_type,
-        "prompt":       s.prompt,
-        "is_enabled":   s.is_enabled,
-        "next_send_at": s.next_send_at,
-        "last_sent_at": s.last_sent_at,
-        "created_at":   s.created_at,
+        "id":               str(s.id),
+        "report_name":      s.report_name or '',
+        "tenant_id":        str(s.tenant_id) if s.tenant_id else None,
+        "tenantIds":        getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else []),
+        "recipients":       s.recipients,
+        "frequency":        s.frequency,
+        "timezone":         s.timezone,
+        "companyIds":       getattr(s, "companies", []),
+        "report_type":      s.report_type,
+        "date_range_start": s.date_range_start,
+        "date_range_end":   s.date_range_end,
+        "prompt":           s.prompt,
+        "is_enabled":       s.is_enabled,
+        "next_send_at":     s.next_send_at,
+        "last_sent_at":     s.last_sent_at,
+        "created_at":       s.created_at,
     }
 
 
 def _serialize_log(lg) -> dict:
     return {
-        "id":            lg.id,
-        "schedule_id":   str(lg.schedule_id),
-        "status":        lg.status,
-        "filename":      lg.filename,
-        "error_message": lg.error_message,
-        "sent_at":       lg.sent_at,
+        "id":               lg.id,
+        "schedule_id":      str(lg.schedule_id),
+        "status":           lg.status,
+        "filename":         lg.filename,
+        "error_message":    lg.error_message,
+        "error_category":   getattr(lg, 'error_category', None),
+        "duration_seconds": getattr(lg, 'duration_seconds', None),
+        "pdf_size_bytes":   getattr(lg, 'pdf_size_bytes', None),
+        "sent_at":          lg.sent_at,
     }
 
 
@@ -111,11 +117,14 @@ async def create_schedule(
         return ReportSchedule.objects.create(
             tenant=tenant,
             tenants=tenant_ids,
+            report_name=payload.report_name,
             recipients=payload.recipients,
             frequency=payload.frequency,
             timezone=payload.timezone,
             companies=payload.companyIds,
             report_type=payload.report_type,
+            date_range_start=payload.date_range_start,
+            date_range_end=payload.date_range_end,
             prompt=payload.prompt,
             is_enabled=payload.is_enabled,
             next_send_at=start_at,
@@ -179,7 +188,10 @@ async def update_schedule(
             return None
 
         update_fields = []
-        for field in ('recipients', 'frequency', 'timezone', 'report_type', 'prompt', 'is_enabled', 'next_send_at'):
+        for field in (
+            'report_name', 'recipients', 'frequency', 'timezone', 'report_type',
+            'date_range_start', 'date_range_end', 'prompt', 'is_enabled', 'next_send_at'
+        ):
             val = getattr(payload, field, None)
             if val is not None:
                 setattr(s, field, val)

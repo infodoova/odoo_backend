@@ -9,8 +9,9 @@ advances next_send_at to the next occurrence.
 import asyncio
 import base64
 import logging
+import re
 import time
-from datetime import datetime, timezone as tz
+from datetime import datetime, timedelta, timezone as tz
 from pathlib import Path
 from django.db import close_old_connections
 from doova_one_view.api.common.utils import db_sync_to_async
@@ -18,6 +19,50 @@ from doova_one_view.api.common.utils import db_sync_to_async
 logger = logging.getLogger(__name__)
 
 _CHECK_INTERVAL_SECONDS = 60  # 1 minute
+
+_FREQUENCY_LOOKBACK = {
+    'daily':       timedelta(days=1),
+    'weekly':      timedelta(weeks=1),
+    'biweekly':    timedelta(weeks=2),
+    'monthly':     timedelta(days=30),
+    'quarterly':   timedelta(days=90),
+    'semi_annual': timedelta(days=180),
+    'annual':      timedelta(days=365),
+}
+
+
+def _resolve_report_period(schedule, now: datetime) -> tuple[str, str, str, str, str]:
+    """
+    Resolve the reporting period for a schedule. Returns:
+        (start_date, end_date, prev_start, prev_end, period_label) as ISO strings and formatted label.
+
+    Priority order:
+      1. Explicit date_range_start / date_range_end on the schedule
+      2. Frequency-based auto-compute lookback
+      3. Fallback: last 30 days
+    """
+    if getattr(schedule, 'date_range_start', None) and getattr(schedule, 'date_range_end', None):
+        start = schedule.date_range_start.isoformat()
+        end = schedule.date_range_end.isoformat()
+        delta = schedule.date_range_end - schedule.date_range_start
+        prev_end = (schedule.date_range_start - timedelta(days=1)).isoformat()
+        prev_start = (schedule.date_range_start - delta - timedelta(days=1)).isoformat()
+        period_label = f"{schedule.date_range_start.strftime('%b %d, %Y')} – {schedule.date_range_end.strftime('%b %d, %Y')}"
+    else:
+        lookback = _FREQUENCY_LOOKBACK.get(schedule.frequency, timedelta(days=30))
+        end = now.strftime('%Y-%m-%d')
+        start = (now - lookback).strftime('%Y-%m-%d')
+        prev_end = (now - lookback - timedelta(days=1)).strftime('%Y-%m-%d')
+        prev_start = (now - lookback - lookback - timedelta(days=1)).strftime('%Y-%m-%d')
+        try:
+            s_dt = datetime.strptime(start, '%Y-%m-%d')
+            e_dt = datetime.strptime(end, '%Y-%m-%d')
+            period_label = f"{s_dt.strftime('%b %d, %Y')} – {e_dt.strftime('%b %d, %Y')}"
+        except Exception:
+            period_label = f"{start} – {end}"
+
+    return start, end, prev_start, prev_end, period_label
+
 
 
 def cleanup_old_reports(retention_days: int = 90, reports_dir: str | None = None) -> int:
@@ -138,9 +183,12 @@ class ReportJobManager:
         from doova_one_view.api.reports.utils import calculate_next_send
         from doova_one_view.api.agent.tools_refactored.reporting_v2 import generate_report_tool
 
-        tenant_id = str(schedule.tenant_id) if schedule.tenant_id else None
+        tenant_ids = [str(t) for t in schedule.tenants] if schedule.tenants else None
+        if tenant_ids and len(tenant_ids) > 0:
+            tenant_id = str(tenant_ids[0])
+        else:
+            tenant_id = str(schedule.tenant_id) if schedule.tenant_id else None
         company_ids = schedule.companies if schedule.companies else None
-        tenant_ids = schedule.tenants if schedule.tenants else None
         next_dt = calculate_next_send(schedule.frequency, now)
 
         # ── Claim immediately ────────────────────────────────────────────────
@@ -193,17 +241,28 @@ class ReportJobManager:
                     await _save_early_failure()
                     return
 
-            # 1. Fetch tenant-specific configurable thresholds
+            # 1. Fetch tenant-specific configurable thresholds & resolve period
             from doova_one_view.api.agent.thresholds import get_tenant_thresholds
             from doova_one_view.api.agent.citation_validator import CitationValidator
             from doova_one_view.api.agent.completeness import CompletenessEvaluator
             thresholds = await db_sync_to_async(get_tenant_thresholds)(tenant_id)
             min_completeness = thresholds.get("min_completeness_threshold_pct", 90.0)
 
-            # 2. Build AI-generated report content using the user's prompt
+            start_date, end_date, prev_start, prev_end, period_label = _resolve_report_period(schedule, now)
+
+            # 2. Build AI-generated report content using the user's prompt and period
             try:
                 custom_content = await ReportJobManager._build_analysis(
-                    tenant_id, schedule.report_type, company_ids, schedule.prompt, tenant_ids=tenant_ids
+                    tenant_id,
+                    schedule.report_type,
+                    company_ids,
+                    schedule.prompt,
+                    tenant_ids=tenant_ids,
+                    start_date=start_date,
+                    end_date=end_date,
+                    prev_start=prev_start,
+                    prev_end=prev_end,
+                    frequency=schedule.frequency,
                 )
             except Exception as ai_err:
                 error_category = "ai_failure"
@@ -216,7 +275,12 @@ class ReportJobManager:
                 from doova_one_view.api.agent.tools_refactored.finance import calculate_pnl_tool
                 ground_truth = {}
                 try:
-                    pnl_data = await db_sync_to_async(calculate_pnl_tool)(tenant_id=tenant_id, company_ids=company_ids)
+                    pnl_data = await db_sync_to_async(calculate_pnl_tool)(
+                        tenant_id=tenant_id,
+                        company_ids=company_ids,
+                        start_date=start_date,
+                        end_date=end_date,
+                    )
                     if isinstance(pnl_data, dict):
                         ground_truth.update(pnl_data)
                 except Exception:
@@ -232,7 +296,16 @@ class ReportJobManager:
                     try:
                         repair_prompt = (schedule.prompt or "") + "\n\n" + (val_res["repair_prompt"] or "")
                         custom_content = await ReportJobManager._build_analysis(
-                            tenant_id, schedule.report_type, company_ids, repair_prompt, tenant_ids=tenant_ids
+                            tenant_id,
+                            schedule.report_type,
+                            company_ids,
+                            repair_prompt,
+                            tenant_ids=tenant_ids,
+                            start_date=start_date,
+                            end_date=end_date,
+                            prev_start=prev_start,
+                            prev_end=prev_end,
+                            frequency=schedule.frequency,
                         )
                         citations_retry = CitationValidator.extract_citations_from_text(custom_content)
                         val_res_retry = CitationValidator.validate_citations(
@@ -260,6 +333,9 @@ class ReportJobManager:
                     tenant_ids=tenant_ids,
                     report_type=resolved_report_type,
                     prompt=schedule.prompt,
+                    start_date=start_date,
+                    end_date=end_date,
+                    reporting_period=period_label,
                 )
                 filename = result['filename']
             except Exception as pdf_err:
@@ -362,10 +438,15 @@ class ReportJobManager:
         company_ids: list | None,
         user_prompt: str,
         tenant_ids: list | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        prev_start: str | None = None,
+        prev_end: str | None = None,
+        frequency: str = "monthly",
     ) -> str:
         """
-        Call the LangChain AI agent with the user's prompt to generate detailed
-        report content in Markdown, which is then rendered into the PDF.
+        Call the LangChain AI agent with the user's prompt and resolved date period to
+        generate detailed report content in Markdown, which is then rendered into the PDF.
         """
         from doova_one_view.api.agent.langchain_agent import DoovaLangChainAgent
         from doova_one_view.api.agent.tools_refactored.template_registry import TEMPLATE_REGISTRY, get_template_metadata
@@ -376,17 +457,46 @@ class ReportJobManager:
         else:
             company_ctx = "across all companies"
 
-        canonical_type = ReportTypeClassifier.normalize_report_type(report_type)
+        canonical_type = ReportTypeClassifier.classify(prompt=user_prompt or "", raw_type=report_type)
         meta = get_template_metadata(canonical_type)
         domain_label = meta.get("title", f"{canonical_type.capitalize()} Report")
         domain_guidance = meta.get("subtitle", "Comprehensive business performance analysis.")
 
+        # Determine date instructions
+        user_has_dates = bool(re.search(
+            r'\b\d{4}[-/]\d{2}[-/]\d{2}\b|'
+            r'\b(?:january|february|march|april|may|june|'
+            r'july|august|september|october|november|december)\s+\d{4}\b|'
+            r'\bQ[1-4]\s*\d{4}\b|'
+            r'\blast\s+(?:month|quarter|year)\b',
+            user_prompt or '', re.IGNORECASE
+        ))
+
+        if user_has_dates:
+            period_block = (
+                f"<reporting_period>\n"
+                f"The user has specified a custom time period in their prompt below.\n"
+                f"Honor the user's specified dates exactly.\n"
+                f"If comparison data is needed, compare against the equivalent prior period.\n"
+                f"</reporting_period>\n\n"
+            )
+        elif start_date and end_date:
+            period_block = (
+                f"<reporting_period>\n"
+                f"Analyze data from {start_date} to {end_date} ({frequency} report).\n"
+                f"Compare against the prior equivalent period ({prev_start} to {prev_end}) where applicable.\n"
+                f"</reporting_period>\n\n"
+            )
+        else:
+            period_block = ""
+
+        date_clause = f" for the period {start_date} to {end_date}" if (start_date and end_date) else ""
         default_prompt = (
             f"<report_criteria>\n"
-            f"Generate a comprehensive {domain_label} ({domain_guidance}) covering:\n"
+            f"Generate a comprehensive {domain_label}{date_clause} ({domain_guidance}) covering:\n"
             f"1. Core domain KPIs, vital signs, and operational benchmarks.\n"
-            f"2. Major performance drivers, volume trends, and variances.\n"
-            f"3. Identified operational or financial risks and anomalies.\n"
+            f"2. Major performance drivers, volume trends, and variances vs prior period.\n"
+            f"3. Identified operational or financial risks, margin leaks, and anomalies.\n"
             f"4. Concrete, prioritized strategic management recommendations.\n"
             f"Focus on actionable insights grounded in posted Odoo data.\n"
             f"</report_criteria>"
@@ -397,6 +507,7 @@ class ReportJobManager:
             f"You are an automated reporting AI and business analyst, generating a highly structured {domain_label} {company_ctx}.\n"
             f"Your expertise is in synthesizing complex business data into clear, actionable executive summaries.\n"
             f"</role>\n\n"
+            f"{period_block}"
             f"<instructions>\n"
             f"1. Use all relevant tools (sales, finance, inventory, receivables, etc.) to gather real data and context.\n"
             f"2. Carefully analyze the data according to the criteria defined in the <user_request>.\n"
@@ -459,7 +570,10 @@ def _build_subject(schedule, tname: str = "Your Business") -> str:
         'annual':      'Annual',
     }
     label = freq_labels.get(schedule.frequency, schedule.frequency.capitalize())
+    if getattr(schedule, 'report_name', None) and schedule.report_name.strip():
+        return f"{schedule.report_name.strip()} — {label} Report — {tname}"
     return f"Your {label} Business Report — {tname}"
+
 
 
 def _build_email_body(schedule, tname: str = "Your Business") -> str:

@@ -118,10 +118,10 @@
         <tbody>
             {% for item in prods %}
             <tr>
-                <td class="font-bold">{{ item.get('name', item.get('product_name', 'Item')) }}</td>
-                <td class="text-right">{{ item.get('qty', item.get('quantity', '—')) }}</td>
+                <td class="font-bold">{{ item.get('product', item.get('name', item.get('product_name', 'Product'))) }}</td>
+                <td class="text-right">{{ item.get('quantity', item.get('qty', '—')) }}</td>
                 <td class="text-right font-bold">{{ item.get('revenue', item.get('total_sales', '—')) }}</td>
-                <td class="text-right">{{ item.get('margin', item.get('gross_margin', '—')) }}</td>
+                <td class="text-right">{{ item.get('gross_margin', item.get('margin', '—')) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -144,7 +144,7 @@
         <tbody>
             {% for c in custs %}
             <tr>
-                <td class="font-bold">{{ c.get('name', 'Partner') }}</td>
+                <td class="font-bold">{{ c.get('customer', c.get('customer_name', c.get('partner', c.get('name', 'Customer')))) }}</td>
                 <td class="text-right">{{ c.get('orders', c.get('order_count', '—')) }}</td>
                 <td class="text-right font-bold">{{ c.get('revenue', c.get('total_spent', '—')) }}</td>
                 <td class="text-right">{{ c.get('share', '—') }}</td>

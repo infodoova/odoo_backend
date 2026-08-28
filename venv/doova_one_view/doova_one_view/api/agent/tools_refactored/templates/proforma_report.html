@@ -101,7 +101,7 @@
     {% endif %}
 
     <!-- Scenarios Table -->
-    {% set scenarios = report_data.get('proforma_scenarios', []) %}
+    {% set scenarios = report_data.get('proforma_scenarios', report_data.get('scenarios', [])) %}
     {% if scenarios %}
     <h2 class="sub-title">Scenario Sensitivity Analysis (Bull / Base / Bear)</h2>
     <table class="data-table">
@@ -117,10 +117,10 @@
         <tbody>
             {% for sc in scenarios %}
             <tr>
-                <td class="font-bold">{{ sc.get('name', 'Scenario') }}</td>
-                <td class="text-right">{{ sc.get('growth', '—') }}</td>
-                <td class="text-right font-bold">{{ sc.get('revenue', '—') }}</td>
-                <td class="text-right font-bold">{{ sc.get('net_profit', '—') }}</td>
+                <td class="font-bold">{{ sc.get('name', sc.get('case', sc.get('scenario', 'Scenario'))) }}</td>
+                <td class="text-right">{{ sc.get('growth', sc.get('growth_rate', '—')) }}</td>
+                <td class="text-right font-bold">{{ sc.get('revenue', sc.get('projected_revenue', '—')) }}</td>
+                <td class="text-right font-bold">{{ sc.get('net_profit', sc.get('projected_net_profit', '—')) }}</td>
                 <td class="text-right"><span class="badge {{ sc.get('badge_class', 'badge-info') }}">{{ sc.get('likelihood', 'Moderate') }}</span></td>
             </tr>
             {% endfor %}

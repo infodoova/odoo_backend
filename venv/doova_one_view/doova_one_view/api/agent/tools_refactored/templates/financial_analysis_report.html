@@ -122,12 +122,11 @@ endblock %}
         <tbody>
             {% for r in ratios %}
             <tr>
-                <td>{{ r.get('category', 'General') }}</td>
-                <td class="font-bold">{{ r.get('name', 'Ratio') }}</td>
-                <td class="text-right font-bold">{{ r.get('value', '—') }}</td>
-                <td class="text-right">{{ r.get('benchmark', '—') }}</td>
-                <td class="text-right"><span class="badge {{ r.get('badge_class', 'badge-good') }}">{{ r.get('status',
-                        'Healthy') }}</span></td>
+                <td>{{ r.get('category', r.get('group', 'General')) }}</td>
+                <td class="font-bold">{{ r.get('name', r.get('ratio', r.get('metric', r.get('label', 'Ratio')))) }}</td>
+                <td class="text-right font-bold">{{ r.get('formatted_value', r.get('value', r.get('observed', '—'))) }}</td>
+                <td class="text-right">{{ r.get('benchmark', r.get('target', '—')) }}</td>
+                <td class="text-right"><span class="badge {{ r.get('badge_class', 'badge-good') }}">{{ r.get('status', 'Healthy') }}</span></td>
             </tr>
             {% endfor %}
         </tbody>

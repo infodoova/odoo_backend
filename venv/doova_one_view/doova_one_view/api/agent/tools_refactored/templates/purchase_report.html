@@ -101,7 +101,7 @@
     {% endif %}
 
     <!-- Top Suppliers Table -->
-    {% set sups = report_data.get('top_suppliers', []) %}
+    {% set sups = report_data.get('top_suppliers', report_data.get('top_vendors', [])) %}
     {% if sups %}
     <h2 class="sub-title">Major Suppliers & Procurement Concentration</h2>
     <table class="data-table">
@@ -116,10 +116,10 @@
         <tbody>
             {% for s in sups %}
             <tr>
-                <td class="font-bold">{{ s.get('name', 'Vendor') }}</td>
-                <td class="text-right">{{ s.get('po_count', '—') }}</td>
-                <td class="text-right font-bold">{{ s.get('amount', s.get('total_spent', '—')) }}</td>
-                <td class="text-right">{{ s.get('outstanding', '—') }}</td>
+                <td class="font-bold">{{ s.get('vendor', s.get('vendor_name', s.get('name', 'Vendor'))) }}</td>
+                <td class="text-right">{{ s.get('po_count', s.get('orders', s.get('quantity', '—'))) }}</td>
+                <td class="text-right font-bold">{{ s.get('amount', s.get('total_spent', s.get('revenue', s.get('total_purchases', '—')))) }}</td>
+                <td class="text-right">{{ s.get('outstanding', s.get('ap', '—')) }}</td>
             </tr>
             {% endfor %}
         </tbody>

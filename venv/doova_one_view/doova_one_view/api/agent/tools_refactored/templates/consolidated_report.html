@@ -112,7 +112,7 @@
         <tbody>
             {% for c in comps %}
             <tr>
-                <td class="font-bold">{{ c.get('name', 'Company') }}</td>
+                <td class="font-bold">{{ c.get('company_name', c.get('name', c.get('company', 'Company'))) }}</td>
                 <td class="text-right font-bold">{{ c.get('revenue', '—') }}</td>
                 <td class="text-right">{{ c.get('gross_profit', '—') }}</td>
                 <td class="text-right">{{ c.get('net_profit', '—') }}</td>
