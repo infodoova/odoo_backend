@@ -154,7 +154,7 @@ TEMPLATE_REGISTRY: Dict[str, Dict[str, Any]] = {
             {"key": "net_margin", "label": "Net Profit Margin %", "bar_class": "bar-green"},
             {"key": "current_ratio", "label": "Current Ratio", "bar_class": "bar-cyan"},
             {"key": "quick_ratio", "label": "Quick / Acid Ratio", "bar_class": "bar-purple"},
-            {"key": "roe", "label": "Return on Equity (ROE)", "bar_class": "bar-amber"},
+            {"key": "roi", "label": "ROI", "bar_class": "bar-amber"},
         ],
         "table_slots": ["profitability_ratios", "liquidity_ratios", "leverage_ratios", "activity_ratios"],
         "chart_types": ["ratio_benchmarks", "health_breakdown"],

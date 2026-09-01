@@ -289,9 +289,11 @@ class DoovaLangChainAgent:
             else:
                 import re as _re
                 if _re.search(r'[\u0600-\u06FF]', message or ""):
-                    target_language_label = "Arabic (Auto-detected from current user query)"
+                    target_language_label = "ARABIC (ar) — STRICT REQUIREMENT: The user's latest query is in Arabic. You MUST reply 100% in Arabic (العربية)."
+                elif _re.search(r'[a-zA-Z]', message or ""):
+                    target_language_label = "ENGLISH (en) — STRICT REQUIREMENT: The user's latest query is in English (e.g. 'let\\'s continue', 'go on', 'what about...'). You MUST switch and reply 100% in ENGLISH. NEVER continue in Arabic or any previous conversation language when the current user utterance is in English."
                 else:
-                    target_language_label = "English (Auto-detected from current user query)"
+                    target_language_label = "English (Default)"
 
             response = self.executor.invoke({
                 "input": input_payload,

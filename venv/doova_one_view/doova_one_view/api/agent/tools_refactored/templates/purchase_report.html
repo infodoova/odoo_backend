@@ -95,7 +95,10 @@
     <!-- Charts -->
     {% if chart_1_b64 %}
     <div class="chart-box">
-        <div class="chart-box-title">Vendor Spend & Procurement Trajectory</div>
+        <div class="chart-box-title">
+            <span>Vendor Spend & Procurement Trajectory</span>
+            <span class="chart-badge">Trailing 12-Month Macro Horizon</span>
+        </div>
         <img src="data:image/png;base64,{{ chart_1_b64 }}" class="chart-img" alt="Procurement Chart" />
     </div>
     {% endif %}
@@ -103,7 +106,10 @@
     <!-- Top Suppliers Table -->
     {% set sups = report_data.get('top_suppliers', report_data.get('top_vendors', [])) %}
     {% if sups %}
-    <h2 class="sub-title">Major Suppliers & Procurement Concentration</h2>
+    <h2 class="sub-title">
+        <span>Major Suppliers & Procurement Concentration</span>
+        <span class="period-subtext">Focus Period: {{ reporting_period }}</span>
+    </h2>
     <table class="data-table">
         <thead>
             <tr>

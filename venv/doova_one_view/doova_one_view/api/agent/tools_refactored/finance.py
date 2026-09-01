@@ -5,6 +5,18 @@ from typing import Optional
 from .common import run_query, normalize_company_ids, build_company_filter_sql, calculate_ratio, build_currency_case_sql
 from .sales import get_sales_summary_tool
 from .inventory import get_inventory_efficiency_tool
+import uuid
+
+
+def _safe_uuids(ids: list) -> list[str]:
+    res = []
+    for x in ids:
+        try:
+            uuid.UUID(str(x))
+            res.append(str(x))
+        except Exception:
+            pass
+    return res
 
 
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -58,12 +70,100 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
     overdue = float(summary.get('overdue'))
     ratio = calculate_ratio(overdue, total)
 
+    def _safe_uuids(ids: list) -> list[str]:
+        import uuid
+        res = []
+        for x in ids:
+            try:
+                uuid.UUID(str(x))
+                res.append(str(x))
+            except Exception:
+                pass
+        return res
+
+    t_ids = tenant_ids or ([tenant_id] if tenant_id else [])
+    valid_t_uuids = _safe_uuids(t_ids)
+    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    from odoo_app.models import AccountPartialReconcile
+    aging = {}
+    if valid_t_uuids and AccountPartialReconcile.objects.filter(tenant_id__in=valid_t_uuids).exists():
+        from django.db import connection
+        t_filter = "AND l.tenant_id IN %s"
+        t_params = [tuple(str(t) for t in valid_t_uuids)]
+        c_filter = "AND l.company_id IN %s" if c_ids else ""
+        c_params = [tuple(int(c) for c in c_ids)] if c_filter else []
+        
+        sql = f"""
+            WITH line_recon AS (
+                SELECT
+                    l.id AS line_id,
+                    m.date AS move_date,
+                    l.debit,
+                    l.credit,
+                    COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                    COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                FROM fact_account_move_lines l
+                JOIN fact_account_moves m ON l.account_move_id = m.id
+                LEFT JOIN fact_account_partial_reconciles pr_deb 
+                    ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= CURRENT_DATE
+                LEFT JOIN fact_account_partial_reconciles pr_cred 
+                    ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= CURRENT_DATE
+                WHERE m.state = 'posted'
+                  AND l.account_type = 'asset_receivable'
+                  AND m.date <= CURRENT_DATE
+                  {t_filter}
+                  {c_filter}
+                GROUP BY l.id, m.date, l.debit, l.credit
+            ),
+            line_residual AS (
+                SELECT
+                    line_id,
+                    move_date,
+                    (CURRENT_DATE - move_date) AS days,
+                    CASE WHEN debit > 0 THEN debit - reconciled_debit ELSE -(credit - reconciled_credit) END AS residual
+                FROM line_recon
+            )
+            SELECT
+                COALESCE(SUM(CASE WHEN days <= 0 THEN residual ELSE 0 END), 0) AS at_date,
+                COALESCE(SUM(CASE WHEN days BETWEEN 1 AND 30 THEN residual ELSE 0 END), 0) AS b_1_30,
+                COALESCE(SUM(CASE WHEN days BETWEEN 31 AND 60 THEN residual ELSE 0 END), 0) AS b_31_60,
+                COALESCE(SUM(CASE WHEN days BETWEEN 61 AND 90 THEN residual ELSE 0 END), 0) AS b_61_90,
+                COALESCE(SUM(CASE WHEN days BETWEEN 91 AND 120 THEN residual ELSE 0 END), 0) AS b_91_120,
+                COALESCE(SUM(CASE WHEN days >= 121 THEN residual ELSE 0 END), 0) AS b_older,
+                COALESCE(SUM(residual), 0) AS total
+            FROM line_residual
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(sql, t_params + c_params)
+            r = cursor.fetchone()
+            aging = {
+                "at_date": float(r[0] or 0),
+                "1-30 days": float(r[1] or 0),
+                "31-60 days": float(r[2] or 0),
+                "61-90 days": float(r[3] or 0),
+                "91-120 days": float(r[4] or 0),
+                "older": float(r[5] or 0),
+            }
+            gl_total = float(r[6] or 0)
+            if gl_total > 0:
+                total = gl_total
+
+    aging_buckets = {
+        "current": float(aging.get("at_date", 0) or 0),
+        "1-30": float(aging.get("1-30 days", 0) or 0),
+        "31-60": float(aging.get("31-60 days", 0) or 0),
+        "61-90": float(aging.get("61-90 days", 0) or 0),
+        "90+": float(aging.get("91-120 days", 0) or 0) + float(aging.get("older", 0) or 0),
+    }
+
     return {
         "tool_name": "get_receivables_analysis_tool",
         "total_receivables": total,
         "overdue_receivables": overdue,
         "overdue_ratio": ratio,
         "risk_level": "High" if ratio >= 0.5 else "Medium" if ratio >= 0.2 else "Low",
+        "aging": aging,
+        "aging_buckets": aging_buckets,
         "top_overdue_customers": [
             {"customer": r.get('partner_name'), "overdue_amount": float(r.get('overdue_amount'))}
             for r in customer_rows
@@ -71,9 +171,9 @@ def get_receivables_analysis_tool(tenant_id: str, company_id: int | None = None,
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ────────────────────────────────────────────────────────────────────────────────
 # 2. ACCOUNTS PAYABLE
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ────────────────────────────────────────────────────────────────────────────────
 
 def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 10, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
 
@@ -119,11 +219,88 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, co
     total = float(summary.get('total_payables'))
     overdue = float(summary.get('overdue'))
 
+    t_ids = tenant_ids or ([tenant_id] if tenant_id else [])
+    valid_t_uuids = _safe_uuids(t_ids)
+    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    from odoo_app.models import AccountPartialReconcile
+    aging = {}
+    if valid_t_uuids and AccountPartialReconcile.objects.filter(tenant_id__in=valid_t_uuids).exists():
+        from django.db import connection
+        t_filter = "AND l.tenant_id IN %s"
+        t_params = [tuple(str(t) for t in valid_t_uuids)]
+        c_filter = "AND l.company_id IN %s" if c_ids else ""
+        c_params = [tuple(int(c) for c in c_ids)] if c_filter else []
+        
+        sql = f"""
+            WITH line_recon AS (
+                SELECT
+                    l.id AS line_id,
+                    m.date AS move_date,
+                    l.debit,
+                    l.credit,
+                    COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                    COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                FROM fact_account_move_lines l
+                JOIN fact_account_moves m ON l.account_move_id = m.id
+                LEFT JOIN fact_account_partial_reconciles pr_deb 
+                    ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= CURRENT_DATE
+                LEFT JOIN fact_account_partial_reconciles pr_cred 
+                    ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= CURRENT_DATE
+                WHERE m.state = 'posted'
+                  AND l.account_type = 'liability_payable'
+                  AND m.date <= CURRENT_DATE
+                  {t_filter}
+                  {c_filter}
+                GROUP BY l.id, m.date, l.debit, l.credit
+            ),
+            line_residual AS (
+                SELECT
+                    line_id,
+                    move_date,
+                    (CURRENT_DATE - move_date) AS days,
+                    CASE WHEN credit > 0 THEN credit - reconciled_credit ELSE -(debit - reconciled_debit) END AS residual
+                FROM line_recon
+            )
+            SELECT
+                COALESCE(SUM(CASE WHEN days <= 0 THEN residual ELSE 0 END), 0) AS at_date,
+                COALESCE(SUM(CASE WHEN days BETWEEN 1 AND 30 THEN residual ELSE 0 END), 0) AS b_1_30,
+                COALESCE(SUM(CASE WHEN days BETWEEN 31 AND 60 THEN residual ELSE 0 END), 0) AS b_31_60,
+                COALESCE(SUM(CASE WHEN days BETWEEN 61 AND 90 THEN residual ELSE 0 END), 0) AS b_61_90,
+                COALESCE(SUM(CASE WHEN days BETWEEN 91 AND 120 THEN residual ELSE 0 END), 0) AS b_91_120,
+                COALESCE(SUM(CASE WHEN days >= 121 THEN residual ELSE 0 END), 0) AS b_older,
+                COALESCE(SUM(residual), 0) AS total
+            FROM line_residual
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(sql, t_params + c_params)
+            r = cursor.fetchone()
+            aging = {
+                "at_date": float(r[0] or 0),
+                "1-30 days": float(r[1] or 0),
+                "31-60 days": float(r[2] or 0),
+                "61-90 days": float(r[3] or 0),
+                "91-120 days": float(r[4] or 0),
+                "older": float(r[5] or 0),
+            }
+            gl_total = float(r[6] or 0)
+            if gl_total > 0:
+                total = gl_total
+
+    aging_buckets = {
+        "current": float(aging.get("at_date", 0) or 0),
+        "1-30": float(aging.get("1-30 days", 0) or 0),
+        "31-60": float(aging.get("31-60 days", 0) or 0),
+        "61-90": float(aging.get("61-90 days", 0) or 0),
+        "90+": float(aging.get("91-120 days", 0) or 0) + float(aging.get("older", 0) or 0),
+    }
+
     return {
         "tool_name": "get_payables_analysis_tool",
         "total_payables": total,
         "overdue_payables": overdue,
         "overdue_ratio": calculate_ratio(overdue, total),
+        "aging": aging,
+        "aging_buckets": aging_buckets,
         "top_overdue_vendors": [
             {"vendor": r.get('partner_name'), "overdue_amount": float(r.get('overdue_amount'))}
             for r in vendor_rows
@@ -138,7 +315,7 @@ def get_payables_analysis_tool(tenant_id: str, company_id: int | None = None, co
 def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 20, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
 
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
     params = {"tenant_id": tenant_id, "limit": limit}
     params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
@@ -158,6 +335,7 @@ def get_expense_breakdown_tool(tenant_id: str, company_id: int | None = None, co
                 COALESCE(SUM({balance_col}), 0) AS amount
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
+            LEFT JOIN dim_companies c ON l.company_id = c.id
             WHERE 1=1 {t_sql_l}
               AND m.state = 'posted'
               AND l.account_type IN ('expenses', 'cost_of_goods_sold', 'depreciation')
@@ -414,7 +592,144 @@ def get_cash_flow_health_tool(tenant_id: str, company_id: int | None = None, com
 # 4. AR/AP AGING BUCKETS
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, direction: str = "receivable", base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, direction: str = "receivable", base_currency: str | None = None, tenant_ids: Optional[list[str]] = None, as_of_date: str | None = None) -> dict:
+
+    def _safe_uuids(ids: list) -> list[str]:
+        import uuid
+        res = []
+        for x in ids:
+            try:
+                uuid.UUID(str(x))
+                res.append(str(x))
+            except Exception:
+                pass
+        return res
+
+    t_ids = tenant_ids or ([tenant_id] if tenant_id else [])
+    valid_t_uuids = _safe_uuids(t_ids)
+    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    account_type = "asset_receivable" if direction == "receivable" else "liability_payable"
+
+    from odoo_app.models import AccountPartialReconcile
+    if valid_t_uuids and AccountPartialReconcile.objects.filter(tenant_id__in=valid_t_uuids).exists():
+        from django.db import connection
+        t_filter = "AND l.tenant_id IN %s"
+        t_params = [tuple(str(t) for t in valid_t_uuids)]
+        c_filter = "AND l.company_id IN %s" if c_ids else ""
+        c_params = [tuple(int(c) for c in c_ids)] if c_filter else []
+
+        target_date_sql = "DATE %s" if as_of_date else "CURRENT_DATE"
+        d_params = [as_of_date, as_of_date, as_of_date] if as_of_date else []
+        d_param_post = [as_of_date] if as_of_date else []
+
+        sql = f"""
+            WITH line_recon AS (
+                SELECT
+                    l.id AS line_id,
+                    m.date AS move_date,
+                    l.debit,
+                    l.credit,
+                    COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                    COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                FROM fact_account_move_lines l
+                JOIN fact_account_moves m ON l.account_move_id = m.id
+                LEFT JOIN fact_account_partial_reconciles pr_deb 
+                    ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= {target_date_sql}
+                LEFT JOIN fact_account_partial_reconciles pr_cred 
+                    ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= {target_date_sql}
+                WHERE m.state = 'posted'
+                  AND l.account_type = '{account_type}'
+                  AND m.date <= {target_date_sql}
+                  {t_filter}
+                  {c_filter}
+                GROUP BY l.id, m.date, l.debit, l.credit
+            ),
+            line_residual AS (
+                SELECT
+                    line_id,
+                    move_date,
+                    ({target_date_sql} - move_date) AS days,
+                    CASE 
+                        WHEN '{account_type}' = 'asset_receivable' THEN
+                            CASE WHEN debit > 0 THEN debit - reconciled_debit ELSE -(credit - reconciled_credit) END
+                        ELSE
+                            CASE WHEN credit > 0 THEN credit - reconciled_credit ELSE -(debit - reconciled_debit) END
+                    END AS residual
+                FROM line_recon
+            )
+            SELECT
+                COALESCE(SUM(CASE WHEN days <= 0 THEN residual ELSE 0 END), 0) AS current_bucket,
+                COALESCE(COUNT(CASE WHEN days <= 0 AND ABS(residual) > 0.01 THEN 1 END), 0) AS current_cnt,
+                COALESCE(SUM(CASE WHEN days BETWEEN 1 AND 30 THEN residual ELSE 0 END), 0) AS b_1_30,
+                COALESCE(COUNT(CASE WHEN days BETWEEN 1 AND 30 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_1_30_cnt,
+                COALESCE(SUM(CASE WHEN days BETWEEN 31 AND 60 THEN residual ELSE 0 END), 0) AS b_31_60,
+                COALESCE(COUNT(CASE WHEN days BETWEEN 31 AND 60 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_31_60_cnt,
+                COALESCE(SUM(CASE WHEN days BETWEEN 61 AND 90 THEN residual ELSE 0 END), 0) AS b_61_90,
+                COALESCE(COUNT(CASE WHEN days BETWEEN 61 AND 90 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_61_90_cnt,
+                COALESCE(SUM(CASE WHEN days BETWEEN 91 AND 120 THEN residual ELSE 0 END), 0) AS b_91_120,
+                COALESCE(COUNT(CASE WHEN days BETWEEN 91 AND 120 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_91_120_cnt,
+                COALESCE(SUM(CASE WHEN days >= 121 THEN residual ELSE 0 END), 0) AS b_older,
+                COALESCE(COUNT(CASE WHEN days >= 121 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_older_cnt,
+                COALESCE(SUM(residual), 0) AS total,
+                COALESCE(COUNT(CASE WHEN ABS(residual) > 0.01 THEN 1 END), 0) AS total_cnt
+            FROM line_residual
+        """
+        all_params = d_params + t_params + c_params + d_param_post
+        with connection.cursor() as cursor:
+            cursor.execute(sql, all_params)
+            r = cursor.fetchone()
+            c_val = float(r[0] or 0)
+            c_cnt = int(r[1] or 0)
+            d1_val = float(r[2] or 0)
+            d1_cnt = int(r[3] or 0)
+            d2_val = float(r[4] or 0)
+            d2_cnt = int(r[5] or 0)
+            d3_val = float(r[6] or 0)
+            d3_cnt = int(r[7] or 0)
+            d4_val = float(r[8] or 0)
+            d4_cnt = int(r[9] or 0)
+            d_older_val = float(r[10] or 0)
+            d_older_cnt = int(r[11] or 0)
+            d90_val = d4_val + d_older_val
+            tot_val = float(r[12] or 0)
+            tot_cnt = int(r[13] or 0)
+            return {
+                "tool_name": "get_aging_analysis_tool",
+                "direction": direction,
+                "current": c_val,
+                "current_cnt": c_cnt,
+                "1_30_days": d1_val,
+                "1_30_days_cnt": d1_cnt,
+                "31_60_days": d2_val,
+                "31_60_days_cnt": d2_cnt,
+                "61_90_days": d3_val,
+                "61_90_days_cnt": d3_cnt,
+                "91_120_days": d4_val,
+                "91_120_days_cnt": d4_cnt,
+                "older": d_older_val,
+                "older_cnt": d_older_cnt,
+                "90_plus_days": d90_val,
+                "total": tot_val,
+                "total_cnt": tot_cnt,
+                "aging_buckets": {
+                    "current": c_val,
+                    "1-30": d1_val,
+                    "31-60": d2_val,
+                    "61-90": d3_val,
+                    "91-120": d4_val,
+                    "older": d_older_val,
+                    "90+": d90_val,
+                },
+                "counts": {
+                    "current": c_cnt,
+                    "1-30": d1_cnt,
+                    "31-60": d2_cnt,
+                    "61-90": d3_cnt,
+                    "91-120": d4_cnt,
+                    "older": d_older_cnt,
+                    "total": tot_cnt,
+                }
+            }
 
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
     residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
@@ -427,10 +742,19 @@ def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, compa
     rows = run_query(
         f"""SELECT
                 COALESCE(SUM(amount_total) FILTER (WHERE invoice_date_due >= CURRENT_DATE), 0) AS current_bucket,
+                COALESCE(COUNT(*) FILTER (WHERE invoice_date_due >= CURRENT_DATE), 0) AS current_cnt,
                 COALESCE(SUM(amount_total) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 1 AND 30), 0) AS bucket_1_30,
+                COALESCE(COUNT(*) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 1 AND 30), 0) AS bucket_1_30_cnt,
                 COALESCE(SUM(amount_total) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 31 AND 60), 0) AS bucket_31_60,
+                COALESCE(COUNT(*) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 31 AND 60), 0) AS bucket_31_60_cnt,
                 COALESCE(SUM(amount_total) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 61 AND 90), 0) AS bucket_61_90,
-                COALESCE(SUM(amount_total) FILTER (WHERE CURRENT_DATE - invoice_date_due > 90), 0) AS bucket_90_plus
+                COALESCE(COUNT(*) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 61 AND 90), 0) AS bucket_61_90_cnt,
+                COALESCE(SUM(amount_total) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 91 AND 120), 0) AS bucket_91_120,
+                COALESCE(COUNT(*) FILTER (WHERE CURRENT_DATE - invoice_date_due BETWEEN 91 AND 120), 0) AS bucket_91_120_cnt,
+                COALESCE(SUM(amount_total) FILTER (WHERE CURRENT_DATE - invoice_date_due >= 121), 0) AS bucket_older,
+                COALESCE(COUNT(*) FILTER (WHERE CURRENT_DATE - invoice_date_due >= 121), 0) AS bucket_older_cnt,
+                COALESCE(SUM(amount_total), 0) AS total,
+                COALESCE(COUNT(*), 0) AS total_cnt
             FROM fact_account_moves
             WHERE 1=1 {t_sql_def}
               AND move_type = '{move_type}'
@@ -441,14 +765,58 @@ def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, compa
     )
 
     row = rows[0] if rows else {}
+    c_val = float(row.get("current_bucket", 0))
+    c_cnt = int(row.get("current_cnt", 0))
+    d1_val = float(row.get("bucket_1_30", 0))
+    d1_cnt = int(row.get("bucket_1_30_cnt", 0))
+    d2_val = float(row.get("bucket_31_60", 0))
+    d2_cnt = int(row.get("bucket_31_60_cnt", 0))
+    d3_val = float(row.get("bucket_61_90", 0))
+    d3_cnt = int(row.get("bucket_61_90_cnt", 0))
+    d4_val = float(row.get("bucket_91_120", 0))
+    d4_cnt = int(row.get("bucket_91_120_cnt", 0))
+    d_older_val = float(row.get("bucket_older", 0))
+    d_older_cnt = int(row.get("bucket_older_cnt", 0))
+    d90_val = d4_val + d_older_val
+    tot_val = float(row.get("total", 0))
+    tot_cnt = int(row.get("total_cnt", 0))
+
     return {
         "tool_name": "get_aging_analysis_tool",
         "direction": direction,
-        "current": float(row.get("current_bucket", 0)),
-        "1_30_days": float(row.get("bucket_1_30", 0)),
-        "31_60_days": float(row.get("bucket_31_60", 0)),
-        "61_90_days": float(row.get("bucket_61_90", 0)),
-        "90_plus_days": float(row.get("bucket_90_plus", 0)),
+        "current": c_val,
+        "current_cnt": c_cnt,
+        "1_30_days": d1_val,
+        "1_30_days_cnt": d1_cnt,
+        "31_60_days": d2_val,
+        "31_60_days_cnt": d2_cnt,
+        "61_90_days": d3_val,
+        "61_90_days_cnt": d3_cnt,
+        "91_120_days": d4_val,
+        "91_120_days_cnt": d4_cnt,
+        "older": d_older_val,
+        "older_cnt": d_older_cnt,
+        "90_plus_days": d90_val,
+        "total": tot_val,
+        "total_cnt": tot_cnt,
+        "aging_buckets": {
+            "current": c_val,
+            "1-30": d1_val,
+            "31-60": d2_val,
+            "61-90": d3_val,
+            "91-120": d4_val,
+            "older": d_older_val,
+            "90+": d90_val,
+        },
+        "counts": {
+            "current": c_cnt,
+            "1-30": d1_cnt,
+            "31-60": d2_cnt,
+            "61-90": d3_cnt,
+            "91-120": d4_cnt,
+            "older": d_older_cnt,
+            "total": tot_cnt,
+        }
     }
 
 
@@ -457,44 +825,22 @@ def get_aging_analysis_tool(tenant_id: str, company_id: int | None = None, compa
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def calculate_pnl_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    params = {"tenant_id": tenant_id}
-    params.update(t_params_l)
-    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
-    params.update(f_params)
-
-    date_sql = ""
-    if start_date:
-        date_sql += " AND m.date >= :start_date"
-        params["start_date"] = start_date
-    if end_date:
-        date_sql += " AND m.date <= :end_date"
-        params["end_date"] = end_date
-
-    rows = run_query(
-        f"""SELECT 
-                SUM(CASE WHEN l.account_type LIKE 'income%' THEN l.balance ELSE 0 END) * -1 AS total_income,
-                SUM(CASE WHEN l.account_type LIKE 'expense%' THEN l.balance ELSE 0 END) AS total_expenses,
-                SUM(CASE WHEN l.account_type = 'expense_direct_cost' THEN l.balance ELSE 0 END) AS cogs,
-                SUM(CASE WHEN l.account_type IN ('expense', 'expense_depreciation') 
-                         AND NOT (l.account_code LIKE '64%' OR l.account_code LIKE '67%' OR l.account_code LIKE '69%') 
-                         THEN l.balance ELSE 0 END) AS opex
-            FROM fact_account_move_lines l
-            JOIN fact_account_moves m ON l.account_move_id = m.id
-            WHERE 1=1 {t_sql_l} AND m.state = 'posted' {f_sql} {date_sql}""",
-        params,
+    from doova_one_view.api.accounting.service import AccountingService
+    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    stats = AccountingService._calc_pnl_sync(
+        tenant_id=tenant_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=c_ids,
+        base_currency=base_currency
     )
-
-    row = rows[0] if rows else {}
-    income = float(row.get("total_income") or 0)
-    expenses = float(row.get("total_expenses") or 0)
-    cogs = float(row.get("cogs") or 0)
-    opex = float(row.get("opex") or 0)
-    
-    gross = income - cogs
-    ebit = gross - opex
-    net = income - expenses
+    income = float(stats.get("revenue") or 0.0)
+    expenses = float(stats.get("total_expenses") or 0.0)
+    cogs = float(stats.get("cogs") or 0.0)
+    opex = float(stats.get("operating_expenses") or 0.0)
+    gross = float(stats.get("gross_profit") or 0.0)
+    ebit = float(stats.get("ebit") or 0.0)
+    net = float(stats.get("net_profit") or 0.0)
 
     from doova_one_view.api.agent.tools_refactored.common import get_multi_currency_conversions
     return {
@@ -531,7 +877,7 @@ def analyze_profitability_tool(tenant_id: str, company_id: int | None = None, co
 def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, as_of_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
 
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
     params = {"tenant_id": tenant_id}
     params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
@@ -544,13 +890,21 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, compan
 
     rows = run_query(
         f"""SELECT
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'asset_cash'), 0) AS bank_cash,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'asset_receivable'), 0) AS receivables,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'asset_prepayments'), 0) AS prepayments,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'asset_fixed'), 0) AS fixed_assets,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'liability_payable'), 0) * -1 AS payables,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_receivable', 'asset_current', 'asset_cash', 'asset_prepayments')), 0) AS current_assets,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('asset_non_current', 'asset_fixed')), 0) AS non_current_assets,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_current', 'liability_payable', 'liability_credit_card')), 0) * -1 AS current_liabilities,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('liability_non_current')), 0) * -1 AS non_current_liabilities,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'equity'), 0) * -1 AS retained_earnings,
+                COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type = 'equity_unaffected' OR l.account_type LIKE 'income%' OR l.account_type LIKE 'expense%'), 0) * -1 AS unallocated_earnings,
                 COALESCE(SUM({balance_col}) FILTER (WHERE l.account_type IN ('equity', 'equity_unaffected') OR l.account_type LIKE 'income%' OR l.account_type LIKE 'expense%'), 0) * -1 AS total_equity
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
+            LEFT JOIN dim_companies c ON l.company_id = c.id
             WHERE 1=1 {t_sql_l}
               AND m.state = 'posted'
               {f_sql} {date_sql}""",
@@ -558,26 +912,45 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, compan
     )
 
     row = rows[0] if rows else {}
+    bc = float(row.get("bank_cash") or 0)
+    rec = float(row.get("receivables") or 0)
+    prep = float(row.get("prepayments") or 0)
+    fa = float(row.get("fixed_assets") or 0)
+    pay = float(row.get("payables") or 0)
     ca = float(row.get("current_assets") or 0)
     nca = float(row.get("non_current_assets") or 0)
     cl = float(row.get("current_liabilities") or 0)
     ncl = float(row.get("non_current_liabilities") or 0)
+    re = float(row.get("retained_earnings") or 0)
+    ue = float(row.get("unallocated_earnings") or 0)
     eq = float(row.get("total_equity") or 0)
 
     total_assets = ca + nca
     total_liabilities = cl + ncl
+    net_assets = total_assets - total_liabilities
+    current_ratio = round(ca / cl, 2) if cl else 0.0
     balance_check = round(total_assets - total_liabilities - eq, 2)
 
     return {
         "tool_name": "get_balance_sheet_tool",
         "as_of_date": as_of_date or "Current",
+        "bank_and_cash_accounts": bc,
+        "receivables": rec,
+        "prepayments": prep,
         "current_assets": ca,
+        "fixed_assets": fa,
         "non_current_assets": nca,
         "total_assets": total_assets,
+        "payables": pay,
         "current_liabilities": cl,
         "non_current_liabilities": ncl,
         "total_liabilities": total_liabilities,
+        "retained_earnings": re,
+        "unallocated_earnings": ue,
         "total_equity": eq,
+        "net_assets": net_assets,
+        "current_assets_to_liabilities": current_ratio,
+        "current_ratio": current_ratio,
         "integrity_check": "BALANCED" if abs(balance_check) < 0.01 else f"IMBALANCED by {balance_check}",
     }
 
@@ -586,16 +959,48 @@ def get_balance_sheet_tool(tenant_id: str, company_id: int | None = None, compan
 # 7. TRIAL BALANCE
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int = 50, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, limit: int | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None, date_from: str | None = None, date_to: str | None = None, as_of_date: str | None = None) -> dict:
 
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
-    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
-    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
-    params = {"tenant_id": tenant_id, "limit": limit}
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
+    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'c.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'c.currency_code')
+    
+    date_sql = ""
+    date_params = {}
+    if date_from:
+        date_sql += " AND m.date >= :date_from"
+        date_params["date_from"] = date_from
+    if date_to or as_of_date:
+        date_sql += " AND m.date <= :date_to"
+        date_params["date_to"] = date_to or as_of_date
+
+    params = {"tenant_id": tenant_id}
     params.update(t_params_l)
+    params.update(date_params)
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
     params.update(f_params)
+
+    tot_row = run_query(
+        f"""SELECT
+                COALESCE(SUM({debit_col}), 0) AS total_debit,
+                COALESCE(SUM({credit_col}), 0) AS total_credit,
+                COALESCE(SUM({balance_col}), 0) AS balance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            LEFT JOIN dim_companies c ON l.company_id = c.id
+            WHERE 1=1 {t_sql_l}
+              AND m.state = 'posted'
+              {f_sql}
+              {date_sql}""",
+        params,
+    )
+    tot = tot_row[0] if tot_row else {}
+    grand_total_debit = float(tot.get("total_debit") or 0)
+    grand_total_credit = float(tot.get("total_credit") or 0)
+    variance = round(grand_total_debit - grand_total_credit, 2)
+
+    limit_sql = f"LIMIT {int(limit)}" if limit else ""
 
     rows = run_query(
         f"""SELECT
@@ -606,18 +1011,16 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, compan
                 COALESCE(SUM({balance_col}), 0) AS balance
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
+            LEFT JOIN dim_companies c ON l.company_id = c.id
             WHERE 1=1 {t_sql_l}
               AND m.state = 'posted'
               {f_sql}
+              {date_sql}
             GROUP BY l.account_code, l.account_name
             ORDER BY l.account_code
-            LIMIT :limit""",
+            {limit_sql}""",
         params,
     )
-
-    total_debit = sum(float(r.get("total_debit", 0)) for r in rows)
-    total_credit = sum(float(r.get("total_credit", 0)) for r in rows)
-    variance = round(total_debit - total_credit, 2)
 
     return {
         "tool_name": "get_trial_balance_tool",
@@ -631,8 +1034,9 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, compan
             }
             for r in rows
         ],
-        "total_debit": total_debit,
-        "total_credit": total_credit,
+        "total_accounts_count": len(rows),
+        "total_debit": grand_total_debit,
+        "total_credit": grand_total_credit,
         "variance": variance,
         "integrity_check": "BALANCED" if abs(variance) < 0.01 else f"VARIANCE of {variance}",
     }
@@ -642,12 +1046,9 @@ def get_trial_balance_tool(tenant_id: str, company_id: int | None = None, compan
 # 8. FINANCIAL RATIOS DASHBOARD
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
-    residual_col = build_currency_case_sql('amount_residual', tenant_id, base_currency)
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
-    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids)
+def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, as_of_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids, as_of_date=as_of_date or end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
     inv_data = get_inventory_efficiency_tool(tenant_id, company_id=company_id, company_ids=company_ids)
     inventory_value = inv_data.get("total_inventory_value", 0)
 
@@ -664,6 +1065,8 @@ def get_financial_ratios_tool(tenant_id: str, company_id: int | None = None, com
         "debt_to_equity": round(debt_to_equity, 2),
         "return_on_equity_pct": round(roe * 100, 2),
         "return_on_assets_pct": round(roa * 100, 2),
+        "return_on_investment_pct": round(roa * 100, 2),
+        "roi_pct": round(roa * 100, 2),
         "gross_margin_pct": pnl.get('gross_margin_pct'),
         "net_margin_pct": pnl.get('net_margin_pct'),
         "assessment": _assess_ratios(current_ratio, debt_to_equity),
@@ -684,10 +1087,11 @@ def _assess_ratios(current_ratio: float, debt_to_equity: float) -> str:
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def get_working_capital_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
-    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids)
-    wc = bs.get('current_assets') - bs.get('current_liabilities')
-    wc_ratio = calculate_ratio(bs.get('current_assets'), bs.get('current_liabilities'))
+    bs = get_balance_sheet_tool(tenant_id, company_id=company_id, company_ids=company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+    ca = float(bs.get('current_assets') or 0)
+    cl = float(bs.get('current_liabilities') or 0)
+    wc = ca - cl
+    wc_ratio = calculate_ratio(ca, cl)
 
     return {
         "tool_name": "get_working_capital_tool",
@@ -695,6 +1099,7 @@ def get_working_capital_tool(tenant_id: str, company_id: int | None = None, comp
         "current_liabilities": bs.get('current_liabilities'),
         "working_capital": wc,
         "working_capital_ratio": round(wc_ratio, 2),
+        "current_ratio": round(wc_ratio, 2),
         "status": "Positive" if wc > 0 else "Negative Ã¢â‚¬â€ liquidity risk",
     }
 
@@ -788,6 +1193,481 @@ def get_customer_metrics_tool(tenant_id: str, company_id: int | None = None, com
             {"name": r.get('partner_name'), "orders": int(r.get('orders')), "revenue": float(r.get('revenue'))}
             for r in top
         ],
+    }
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 12. UNREALIZED CURRENCY GAINS / LOSSES (BALANCE SHEET REVALUATION)
+# ────────────────────────────────────────────────────────────────────────────────
+
+def get_unrealized_currency_gains_losses_tool(
+    tenant_id: str,
+    company_id: int | None = None,
+    company_ids: list[int] | None = None,
+    as_of_date: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+) -> dict:
+    """
+    Computes statutory Unrealized Currency Gains/Losses (Balance Sheet Revaluation) matching Odoo.
+    Evaluates foreign-currency-denominated accounts (Payables, Receivables, Cash, Bank) at the 
+    operation rate vs current market rate as of the given date, and computes the required adjustment.
+    """
+    def _safe_uuids(ids: list) -> list[str]:
+        import uuid
+        res = []
+        for x in ids:
+            try:
+                uuid.UUID(str(x))
+                res.append(str(x))
+            except Exception:
+                pass
+        return res
+
+    t_ids = tenant_ids or ([tenant_id] if tenant_id else [])
+    valid_t_uuids = _safe_uuids(t_ids)
+    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+
+    from django.db import connection
+    from datetime import date
+    target_date = as_of_date or date.today().isoformat()
+
+    rate_map = {}
+    if valid_t_uuids:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT ON (c.code) c.code, cr.rate
+                FROM dim_currency_rates cr
+                JOIN dim_currencies c ON cr.currency_id = c.id AND cr.tenant_id = c.tenant_id
+                WHERE cr.tenant_id IN %s
+                  AND cr.name <= %s
+                ORDER BY c.code, cr.name DESC
+            """, [tuple(str(t) for t in valid_t_uuids), target_date])
+            for code, rate in cursor.fetchall():
+                rate_map[code] = float(rate) if rate else 1.0
+
+    t_filter = "AND l.tenant_id IN %s" if valid_t_uuids else ""
+    t_params = [tuple(str(t) for t in valid_t_uuids)] if valid_t_uuids else []
+    c_filter = "AND l.company_id IN %s" if c_ids else ""
+    c_params = [tuple(int(c) for c in c_ids)] if c_filter else []
+
+    sql = f"""
+        SELECT 
+            l.account_code,
+            l.account_name,
+            l.account_type,
+            l.currency_code as line_currency,
+            c.currency_code as company_currency,
+            COALESCE(SUM(l.amount_currency), 0) as foreign_balance,
+            COALESCE(SUM(l.balance), 0) as operation_balance
+        FROM fact_account_move_lines l
+        JOIN fact_account_moves m ON l.account_move_id = m.id
+        JOIN dim_companies c ON l.company_id = c.id
+        WHERE 1=1 {t_filter} {c_filter}
+          AND m.state = 'posted'
+          AND m.date <= %s
+          AND l.currency_code IS NOT NULL 
+          AND l.currency_code != c.currency_code 
+          AND l.currency_code != 'COMPANY_BASE'
+          AND l.account_type IN ('asset_receivable', 'liability_payable', 'asset_cash', 'liability_current', 'asset_current')
+        GROUP BY l.account_code, l.account_name, l.account_type, l.currency_code, c.currency_code
+        HAVING ABS(SUM(l.amount_currency)) > 0.001 OR ABS(SUM(l.balance)) > 0.001
+        ORDER BY l.currency_code, l.account_code
+    """
+    params = t_params + c_params + [target_date]
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+
+    accounts_to_adjust = []
+    total_adjustment = 0.0
+
+    for r in rows:
+        acct_code, acct_name, acct_type, line_curr, comp_curr, f_bal, op_bal = r
+        f_bal = float(f_bal)
+        op_bal = float(op_bal)
+        rate = float(rate_map.get(line_curr, 1.0))
+
+        if rate > 0:
+            curr_bal = abs(f_bal) / rate
+        else:
+            curr_bal = 0.0
+
+        adj = curr_bal - abs(op_bal)
+        total_adjustment += adj
+
+        accounts_to_adjust.append({
+            "account_code": acct_code,
+            "account_name": acct_name,
+            "account_type": acct_type,
+            "currency": line_curr,
+            "rate_info": f"1 {comp_curr} = {rate:.8f} {line_curr}" if rate else "",
+            "balance_foreign_currency": round(abs(f_bal), 2),
+            "balance_operation_rate": round(abs(op_bal), 2),
+            "balance_current_rate": round(curr_bal, 2),
+            "adjustment": round(adj, 2),
+        })
+
+    return {
+        "tool_name": "get_unrealized_currency_gains_losses_tool",
+        "as_of_date": target_date,
+        "accounts_to_adjust": accounts_to_adjust,
+        "total_accounts_count": len(accounts_to_adjust),
+        "total_net_adjustment": round(total_adjustment, 2),
+        "status": "Net Unrealized Loss" if total_adjustment > 0 else "Net Unrealized Gain",
+    }
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 13. GENERAL LEDGER
+# ────────────────────────────────────────────────────────────────────────────────
+
+def get_general_ledger_tool(
+    tenant_id: str,
+    company_id: int | None = None,
+    company_ids: list[int] | None = None,
+    account_code: str | None = None,
+    account_name: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    as_of_date: str | None = None,
+    include_lines: bool = False,
+    limit_accounts: int | None = None,
+    limit_lines_per_account: int = 25,
+    base_currency: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+) -> dict:
+    """
+    Generates the complete General Ledger matching Odoo.
+    Returns account-level Debit, Credit, and Net Balance for all accounts across active companies,
+    along with grand totals, integrity verification (Debit == Credit), and optional granular move lines.
+    """
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
+
+    date_sql = ""
+    date_params = {}
+    if date_from:
+        date_sql += " AND m.date >= :date_from"
+        date_params["date_from"] = date_from
+    if date_to or as_of_date:
+        date_sql += " AND m.date <= :date_to"
+        date_params["date_to"] = date_to or as_of_date
+
+    acct_sql = ""
+    acct_params = {}
+    if account_code:
+        acct_sql += " AND (l.account_code ILIKE :acct_code OR l.account_name ILIKE :acct_code)"
+        acct_params["acct_code"] = f"%{account_code}%"
+    if account_name:
+        acct_sql += " AND (l.account_name ILIKE :acct_name OR l.account_code ILIKE :acct_name)"
+        acct_params["acct_name"] = f"%{account_name}%"
+
+    params = {"tenant_id": tenant_id}
+    params.update(t_params_l)
+    params.update(date_params)
+    params.update(acct_params)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
+    params.update(f_params)
+
+    # 1. Grand totals across the entire ledger
+    tot_row = run_query(
+        f"""SELECT
+                COALESCE(SUM({debit_col}), 0) AS total_debit,
+                COALESCE(SUM({credit_col}), 0) AS total_credit,
+                COALESCE(SUM({balance_col}), 0) AS net_balance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            WHERE 1=1 {t_sql_l}
+              AND m.state = 'posted'
+              {f_sql}
+              {date_sql}""",
+        params,
+    )
+    tot = tot_row[0] if tot_row else {}
+    grand_total_debit = float(tot.get("total_debit") or 0)
+    grand_total_credit = float(tot.get("total_credit") or 0)
+    variance = round(grand_total_debit - grand_total_credit, 2)
+
+    limit_sql = f"LIMIT {int(limit_accounts)}" if limit_accounts else ""
+
+    # 2. Account level breakdown
+    rows = run_query(
+        f"""SELECT
+                c.name AS company_name,
+                l.account_code,
+                l.account_name,
+                l.account_type,
+                c.currency_code AS base_currency,
+                COALESCE(SUM({debit_col}), 0) AS total_debit,
+                COALESCE(SUM({credit_col}), 0) AS total_credit,
+                COALESCE(SUM({balance_col}), 0) AS balance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            JOIN dim_companies c ON l.company_id = c.id
+            WHERE 1=1 {t_sql_l}
+              AND m.state = 'posted'
+              {f_sql}
+              {date_sql}
+              {acct_sql}
+            GROUP BY c.name, l.account_code, l.account_name, l.account_type, c.currency_code
+            ORDER BY l.account_code, c.name
+            {limit_sql}""",
+        params,
+    )
+
+    accounts = []
+    for r in rows:
+        acc_dict = {
+            "company": r.get('company_name'),
+            "code": r.get('account_code'),
+            "name": r.get('account_name'),
+            "account_type": r.get('account_type'),
+            "currency": r.get('base_currency'),
+            "debit": float(r.get('total_debit')),
+            "credit": float(r.get('total_credit')),
+            "balance": float(r.get('balance')),
+        }
+
+        if include_lines or account_code:
+            line_params = params.copy()
+            line_params["acc_code"] = r.get('account_code')
+            line_params["comp_name"] = r.get('company_name')
+            line_params["line_limit"] = int(limit_lines_per_account)
+            lines_data = run_query(
+                f"""SELECT
+                        m.date AS entry_date,
+                        COALESCE(m.odoo_name, m.ref, l.name, '') AS move_number,
+                        l.name AS communication,
+                        p.name AS partner_name,
+                        l.currency_code,
+                        COALESCE({debit_col}, 0) AS debit,
+                        COALESCE({credit_col}, 0) AS credit,
+                        COALESCE({balance_col}, 0) AS balance
+                    FROM fact_account_move_lines l
+                    JOIN fact_account_moves m ON l.account_move_id = m.id
+                    JOIN dim_companies c ON l.company_id = c.id
+                    LEFT JOIN dim_partners p ON l.partner_id = p.id AND l.tenant_id = p.tenant_id
+                    WHERE 1=1 {t_sql_l}
+                      AND m.state = 'posted'
+                      AND l.account_code = :acc_code
+                      AND c.name = :comp_name
+                      {date_sql}
+                    ORDER BY m.date DESC, l.id DESC
+                    LIMIT :line_limit""",
+                line_params,
+            )
+            acc_dict["lines"] = [
+                {
+                    "date": str(line.get('entry_date')),
+                    "move_number": line.get('move_number'),
+                    "communication": line.get('communication') or "",
+                    "partner": line.get('partner_name') or "—",
+                    "currency": line.get('currency_code') or r.get('base_currency'),
+                    "debit": float(line.get('debit') or 0),
+                    "credit": float(line.get('credit') or 0),
+                    "balance": float(line.get('balance') or 0),
+                }
+                for line in lines_data
+            ]
+        accounts.append(acc_dict)
+
+    return {
+        "tool_name": "get_general_ledger_tool",
+        "date_from": date_from,
+        "date_to": date_to or as_of_date,
+        "total_accounts_count": len(accounts),
+        "total_debit": grand_total_debit,
+        "total_credit": grand_total_credit,
+        "net_balance": round(grand_total_debit - grand_total_credit, 2),
+        "integrity_check": "BALANCED" if abs(variance) < 0.01 else f"VARIANCE of {variance}",
+        "accounts": accounts,
+    }
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 14. PARTNER LEDGER
+# ────────────────────────────────────────────────────────────────────────────────
+
+def get_partner_ledger_tool(
+    tenant_id: str,
+    company_id: int | None = None,
+    company_ids: list[int] | None = None,
+    partner_name: str | None = None,
+    partner_id: int | None = None,
+    account_type: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    as_of_date: str | None = None,
+    include_lines: bool = False,
+    limit_partners: int | None = None,
+    limit_lines_per_partner: int = 25,
+    base_currency: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+) -> dict:
+    """
+    Generates the complete Partner Ledger (Grand Livre des Tiers) matching Odoo.
+    Returns partner-level Debit, Credit, and Net Balance for all customers and vendors across active companies,
+    along with grand totals, status flags (Net Receivable / Net Payable / Settled), and optional granular move lines.
+    """
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'l.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'l.currency_code')
+
+    date_sql = ""
+    date_params = {}
+    if date_from:
+        date_sql += " AND m.date >= :date_from"
+        date_params["date_from"] = date_from
+    if date_to or as_of_date:
+        date_sql += " AND m.date <= :date_to"
+        date_params["date_to"] = date_to or as_of_date
+
+    partner_sql = ""
+    partner_params = {}
+    if partner_id:
+        partner_sql += " AND l.partner_id = :partner_id"
+        partner_params["partner_id"] = partner_id
+    if partner_name:
+        partner_sql += " AND p.name ILIKE :partner_name"
+        partner_params["partner_name"] = f"%{partner_name}%"
+
+    acct_type_filter = ""
+    if account_type:
+        acct_type_filter = f"AND l.account_type = '{account_type}'"
+    else:
+        acct_type_filter = "AND l.account_type IN ('asset_receivable', 'liability_payable')"
+
+    params = {"tenant_id": tenant_id}
+    params.update(t_params_l)
+    params.update(date_params)
+    params.update(partner_params)
+    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="l.company_id")
+    params.update(f_params)
+
+    # 1. Grand totals across the partner ledger
+    tot_row = run_query(
+        f"""SELECT
+                COALESCE(SUM({debit_col}), 0) AS total_debit,
+                COALESCE(SUM({credit_col}), 0) AS total_credit,
+                COALESCE(SUM({balance_col}), 0) AS net_balance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            LEFT JOIN dim_partners p ON l.partner_id = p.id AND l.tenant_id = p.tenant_id
+            WHERE 1=1 {t_sql_l}
+              AND m.state = 'posted'
+              {acct_type_filter}
+              {f_sql}
+              {date_sql}
+              {partner_sql}""",
+        params,
+    )
+    tot = tot_row[0] if tot_row else {}
+    grand_total_debit = float(tot.get("total_debit") or 0)
+    grand_total_credit = float(tot.get("total_credit") or 0)
+    grand_net_balance = float(tot.get("net_balance") or 0)
+
+    limit_sql = f"LIMIT {int(limit_partners)}" if limit_partners else ""
+
+    # 2. Partner level breakdown
+    rows = run_query(
+        f"""SELECT
+                COALESCE(p.name, 'Unknown Partner') AS partner_name,
+                l.partner_id,
+                c.currency_code AS base_currency,
+                COALESCE(SUM({debit_col}), 0) AS total_debit,
+                COALESCE(SUM({credit_col}), 0) AS total_credit,
+                COALESCE(SUM({balance_col}), 0) AS balance
+            FROM fact_account_move_lines l
+            JOIN fact_account_moves m ON l.account_move_id = m.id
+            JOIN dim_companies c ON l.company_id = c.id
+            LEFT JOIN dim_partners p ON l.partner_id = p.id AND l.tenant_id = p.tenant_id
+            WHERE 1=1 {t_sql_l}
+              AND m.state = 'posted'
+              {acct_type_filter}
+              {f_sql}
+              {date_sql}
+              {partner_sql}
+            GROUP BY p.name, l.partner_id, c.currency_code
+            ORDER BY p.name NULLS LAST
+            {limit_sql}""",
+        params,
+    )
+
+    partners = []
+    for r in rows:
+        bal = float(r.get('balance') or 0)
+        p_dict = {
+            "partner_name": r.get('partner_name'),
+            "partner_id": r.get('partner_id'),
+            "currency": r.get('base_currency'),
+            "debit": float(r.get('total_debit') or 0),
+            "credit": float(r.get('total_credit') or 0),
+            "balance": bal,
+            "status": "Net Receivable" if bal > 0.01 else "Net Payable" if bal < -0.01 else "Settled",
+        }
+
+        if include_lines or partner_name or partner_id:
+            line_params = params.copy()
+            line_params["p_id"] = r.get('partner_id')
+            line_params["line_limit"] = int(limit_lines_per_partner)
+            p_filter = "AND l.partner_id = :p_id" if r.get('partner_id') else "AND l.partner_id IS NULL"
+            lines_data = run_query(
+                f"""SELECT
+                        m.date AS entry_date,
+                        COALESCE(m.odoo_name, m.ref, l.name, '') AS move_number,
+                        m.invoice_date,
+                        m.invoice_date_due AS due_date,
+                        l.account_code,
+                        l.name AS communication,
+                        l.currency_code,
+                        l.amount_currency,
+                        COALESCE({debit_col}, 0) AS debit,
+                        COALESCE({credit_col}, 0) AS credit,
+                        COALESCE({balance_col}, 0) AS balance
+                    FROM fact_account_move_lines l
+                    JOIN fact_account_moves m ON l.account_move_id = m.id
+                    JOIN dim_companies c ON l.company_id = c.id
+                    WHERE 1=1 {t_sql_l}
+                      AND m.state = 'posted'
+                      {acct_type_filter}
+                      {p_filter}
+                      {f_sql}
+                      {date_sql}
+                    ORDER BY m.date DESC, l.id DESC
+                    LIMIT :line_limit""",
+                line_params,
+            )
+            p_dict["lines"] = [
+                {
+                    "date": str(line.get('entry_date')),
+                    "move_number": line.get('move_number'),
+                    "invoice_date": str(line.get('invoice_date')) if line.get('invoice_date') else None,
+                    "due_date": str(line.get('due_date')) if line.get('due_date') else None,
+                    "account_code": line.get('account_code'),
+                    "communication": line.get('communication') or "",
+                    "currency": line.get('currency_code') or r.get('base_currency'),
+                    "amount_currency": float(line.get('amount_currency')) if line.get('amount_currency') is not None else None,
+                    "debit": float(line.get('debit') or 0),
+                    "credit": float(line.get('credit') or 0),
+                    "balance": float(line.get('balance') or 0),
+                }
+                for line in lines_data
+            ]
+        partners.append(p_dict)
+
+    return {
+        "tool_name": "get_partner_ledger_tool",
+        "date_from": date_from,
+        "date_to": date_to or as_of_date,
+        "total_partners_count": len(partners),
+        "total_debit": grand_total_debit,
+        "total_credit": grand_total_credit,
+        "net_balance": grand_net_balance,
+        "status": "Net Receivable" if grand_net_balance > 0 else "Net Payable",
+        "partners": partners,
     }
 
 

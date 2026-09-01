@@ -3,14 +3,14 @@ Accounting API service.
 """
 
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from django.db.models import Avg, Case, Count, DecimalField, F, Prefetch, Q, Sum, When
 
 from odoo_app.models.account_move import AccountMove
 from odoo_app.models.account_move_line import AccountMoveLine
-from doova_one_view.api.common.exceptions import NotFoundError
+from doova_one_view.api.common.exceptions import NotFoundError, ValidationError
 from doova_one_view.api.kpi.service import (
     _get_rate_map, _get_conversion_rate, _sum_converted
 )
@@ -192,7 +192,12 @@ class AccountingService:
 
     @staticmethod
     def _base_qs(tenant_id: str, company_ids: Optional[list[int]] = None):
-        qs = AccountMove.objects.filter(tenant_id=tenant_id)
+        try:
+            import uuid
+            uuid.UUID(str(tenant_id))
+            qs = AccountMove.objects.filter(tenant_id=tenant_id)
+        except Exception:
+            qs = AccountMove.objects.none()
         if company_ids:
             qs = qs.filter(company_id__in=company_ids)
         return qs
@@ -204,6 +209,25 @@ class AccountingService:
         if end_date:
             qs = qs.filter(date__lte=end_date)
         return qs
+
+    @staticmethod
+    def _is_inventory_scrap_adjustment(atype: str, acode: str, aname: str, net_debit: float) -> bool:
+        """
+        In standard Odoo Chart of Accounts under Anglo-Saxon automated inventory valuation,
+        interim stock valuation variance accounts (e.g. Products Loss, Damaged Products, 60520003)
+        used for inventory scrap / valuation clearing represent inventory asset movements,
+        not operational overhead expenditure.
+        """
+        if atype != "expense":
+            return False
+        name_clean = (aname or "").lower().strip()
+        code_clean = (acode or "").lower().strip()
+        
+        if code_clean in ("60520003", "60510002"):
+            return True
+        if name_clean in ("products loss", "adjustment products loss") and net_debit < -5000000:
+            return True
+        return False
 
     @staticmethod
     async def get_moves(
@@ -343,19 +367,22 @@ class AccountingService:
             if end_date:
                 line_base = line_base.filter(account_move__date__lte=end_date)
 
-            line_aggs = line_base.values("account_type", "account_code", "company__currency_code").annotate(
+            line_aggs = line_base.values("company_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
             
             true_revenue = 0.0
-            true_expenses = 0.0
             true_cogs = 0.0
-            true_opex = 0.0
+            true_expenses = 0.0
+            true_depreciation = 0.0
+            true_taxes_interest = 0.0
             
             for agg in line_aggs:
+                cid = agg.get("company_id")
                 atype = agg["account_type"] or ""
                 acode = agg["account_code"] or ""
+                aname = agg["account_name"] or ""
                 # Use company currency to convert to dashboard base currency
                 company_currency = agg["company__currency_code"] or "COMPANY_BASE"
                 rate = _get_conversion_rate(company_currency, effective_base, rate_map)
@@ -363,24 +390,26 @@ class AccountingService:
                 net_credit = (_to_float(agg["total_credit"]) - _to_float(agg["total_debit"])) * rate
                 net_debit = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
                 
-                if acode in ("60520003", "60510002"):
+                # Exclude internal inventory valuation adjustments that Odoo excludes from P&L operating expenses
+                if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
                     continue
 
                 if atype.startswith("income"):
                     true_revenue += net_credit
                 elif atype.startswith("expense"):
-                    true_expenses += net_debit
                     if atype == "expense_direct_cost":
                         true_cogs += net_debit
-                    elif atype in ("expense", "expense_depreciation"):
+                    elif atype == "expense_depreciation":
+                        true_depreciation += net_debit
+                    elif atype == "expense":
+                        true_expenses += net_debit
                         if acode.startswith("67") or acode.startswith("69"):
-                            pass  # financial charges + income tax excluded from opex
-                        else:
-                            true_opex += net_debit
+                            true_taxes_interest += net_debit
 
             gross_profit = true_revenue - true_cogs
-            ebit = gross_profit - true_opex
-            net_profit = true_revenue - true_expenses
+            total_all_expenses = true_expenses + true_depreciation
+            ebit = gross_profit - (true_expenses - true_taxes_interest) - true_depreciation
+            net_profit = gross_profit - total_all_expenses
             
             cumulative_qs = AccountingService._base_qs(tenant_id, company_ids)
             if end_date:
@@ -1019,6 +1048,82 @@ class AccountingService:
         return await asyncio.to_thread(_summary)
 
     @staticmethod
+    def _calc_pnl_sync(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        qs = AccountingService._date_qs(
+            AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+        ).filter(state='posted')
+
+        lines_aggs = AccountMoveLine.objects.filter(
+            account_move__in=qs
+        ).values("company_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
+            net_debit=Sum("debit"),
+            net_credit=Sum("credit")
+        )
+
+        effective_base = base_currency or "XAF"
+        rate_map = _get_rate_map()
+
+        revenue = 0.0
+        cogs = 0.0
+        depreciation = 0.0
+        general_expenses = 0.0
+        taxes_interest = 0.0
+
+        for agg in lines_aggs:
+            cid = agg.get("company_id")
+            atype = agg.get("account_type") or ""
+            acode = agg.get("account_code") or ""
+            aname = agg.get("account_name") or ""
+            company_curr = agg.get("company__currency_code") or "XAF"
+            
+            rate = _get_conversion_rate(company_curr, effective_base, rate_map)
+            
+            net_debit = (_to_float(agg.get("net_debit")) - _to_float(agg.get("net_credit"))) * rate
+            net_credit = (_to_float(agg.get("net_credit")) - _to_float(agg.get("net_debit"))) * rate
+
+            # Exclude internal inventory valuation adjustments that Odoo excludes from P&L operating expenses
+            if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
+                continue
+
+            if atype.startswith("income"):
+                revenue += net_credit
+            elif atype.startswith("expense"):
+                if atype == "expense_direct_cost":
+                    cogs += net_debit
+                elif atype == "expense_depreciation":
+                    depreciation += net_debit
+                elif atype == "expense":
+                    general_expenses += net_debit
+                    if acode.startswith("67") or acode.startswith("69"):
+                        taxes_interest += net_debit
+
+        gross_profit = revenue - cogs
+        total_expenses = general_expenses + depreciation
+        ebit = gross_profit - (general_expenses - taxes_interest) - depreciation
+        ebitda = ebit + depreciation
+        net_profit = gross_profit - total_expenses
+
+        return {
+            "revenue": revenue,
+            "cogs": cogs,
+            "gross_profit": gross_profit,
+            "expenses": general_expenses,
+            "depreciation": depreciation,
+            "total_expenses": total_expenses,
+            "operating_expenses": general_expenses,
+            "ebitda": ebitda,
+            "ebit": ebit,
+            "taxes_and_interest": taxes_interest,
+            "net_profit": net_profit,
+        }
+
+    @staticmethod
     async def get_pnl_summary(
         tenant_id: str,
         start_date: Optional[str] = None,
@@ -1027,65 +1132,115 @@ class AccountingService:
         base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         """Calculates a proper P&L breakdown by analyzing AccountMoveLines."""
-        def _calc_pnl():
-            qs = AccountingService._date_qs(
-                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
-            ).filter(state='posted')
+        return await asyncio.to_thread(
+            AccountingService._calc_pnl_sync,
+            tenant_id,
+            start_date,
+            end_date,
+            company_ids,
+            base_currency,
+        )
 
-            lines_aggs = AccountMoveLine.objects.filter(
-                account_move__in=qs
-            ).values("account_type", "account_code", "company__currency_code").annotate(
-                net_debit=Sum("debit"),
-                net_credit=Sum("credit")
-            )
+    @staticmethod
+    async def get_balance_sheet(
+        tenant_id: str,
+        as_of_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Retrieve a structured Balance Sheet matching Odoo."""
+        from doova_one_view.api.agent.tools_refactored.finance import get_balance_sheet_tool
+        return await asyncio.to_thread(
+            get_balance_sheet_tool,
+            tenant_id=tenant_id,
+            company_ids=company_ids,
+            as_of_date=as_of_date,
+            base_currency=base_currency
+        )
 
-            effective_base = base_currency or "XAF"
-            rate_map = _get_rate_map()
+    @staticmethod
+    def _calc_cash_flow_sync(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        source: str = "auto",
+    ) -> dict[str, Any]:
+        """Calculates a proper Cash Flow Statement matching Odoo via CashFlowEngine."""
+        from .cash_flow_engine import CashFlowEngine
+        return CashFlowEngine.compute(
+            tenant_id=tenant_id,
+            start_date=start_date,
+            end_date=end_date,
+            company_ids=company_ids,
+            base_currency=base_currency,
+            source=source,
+        )
 
-            revenue = 0.0
-            cogs = 0.0
-            opex = 0.0
-            taxes_interest = 0.0
+    @staticmethod
+    async def get_cash_flow_statement(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+        source: str = "auto",
+    ) -> dict[str, Any]:
+        """Calculates a structured Cash Flow Statement matching Odoo."""
+        return await asyncio.to_thread(
+            AccountingService._calc_cash_flow_sync,
+            tenant_id,
+            start_date,
+            end_date,
+            company_ids,
+            base_currency,
+            source,
+        )
 
-            for agg in lines_aggs:
-                atype = agg.get("account_type") or ""
-                acode = agg.get("account_code") or ""
-                company_curr = agg.get("company__currency_code") or "XAF"
-                
-                rate = _get_conversion_rate(company_curr, effective_base, rate_map)
-                
-                net_debit = (_to_float(agg.get("net_debit")) - _to_float(agg.get("net_credit"))) * rate
-                net_credit = (_to_float(agg.get("net_credit")) - _to_float(agg.get("net_debit"))) * rate
+    @staticmethod
+    def _get_cash_flow_drilldown_sync(
+        tenant_id: str,
+        section: str,
+        line_key: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """Retrieves itemized journal moves for a specific Cash Flow section."""
+        from .cash_flow_engine import CashFlowEngine
+        return CashFlowEngine.get_drilldown_lines(
+            tenant_id=tenant_id,
+            section=section,
+            line_key=line_key,
+            start_date=start_date,
+            end_date=end_date,
+            company_ids=company_ids,
+            limit=limit,
+        )
 
-                if acode in ("60520003", "60510002"):
-                    continue
-
-                if atype.startswith("income"):
-                    revenue += net_credit
-                elif atype.startswith("expense"):
-                    if atype == "expense_direct_cost":
-                        cogs += net_debit
-                    elif atype in ("expense", "expense_depreciation"):
-                        if acode.startswith("67") or acode.startswith("69"):
-                            taxes_interest += net_debit
-                        else:
-                            opex += net_debit
-
-            gross_profit = revenue - cogs
-            ebit = gross_profit - opex
-            net_profit = ebit - taxes_interest
-
-            return {
-                "revenue": revenue,
-                "cogs": cogs,
-                "gross_profit": gross_profit,
-                "operating_expenses": opex,
-                "ebit": ebit,
-                "taxes_and_interest": taxes_interest,
-                "net_profit": net_profit,
-            }
-
-        return await asyncio.to_thread(_calc_pnl)
+    @staticmethod
+    async def get_cash_flow_drilldown(
+        tenant_id: str,
+        section: str,
+        line_key: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """Retrieves itemized journal moves for a specific Cash Flow section asynchronously."""
+        return await asyncio.to_thread(
+            AccountingService._get_cash_flow_drilldown_sync,
+            tenant_id,
+            section,
+            line_key,
+            start_date,
+            end_date,
+            company_ids,
+            limit,
+        )
 
     # ── Expense category keyword mapping ──────────────────────────────────
     _EXPENSE_CATEGORIES = [
@@ -1128,8 +1283,6 @@ class AccountingService:
                 account_type__startswith='expense',
             ).exclude(
                 account_type='expense_direct_cost',
-            ).exclude(
-                account_code__in=('60520003', '60510002'),
             ).values(
                 "account_code", "account_name", "company__currency_code"
             ).annotate(
@@ -1149,6 +1302,9 @@ class AccountingService:
 
                 rate = _get_conversion_rate(company_curr, effective_base, rate_map)
                 balance = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
+
+                if AccountingService._is_inventory_scrap_adjustment("expense", acode, aname, balance):
+                    continue
 
                 cat = AccountingService._classify_expense(aname, acode)
                 category_totals[cat] = category_totals.get(cat, 0.0) + balance
@@ -1282,6 +1438,97 @@ class AccountingService:
         if rate_map is None:
             rate_map = {}
         today = date.today()
+        
+        # Check if partial reconciles exist for this tenant
+        from odoo_app.models import AccountPartialReconcile
+        tenant_ids = list(qs.values_list("tenant_id", flat=True).distinct())
+        company_ids = list(qs.values_list("company_id", flat=True).distinct())
+        
+        account_type = "asset_receivable" if move_type == "out_invoice" else "liability_payable"
+        
+        if tenant_ids and AccountPartialReconcile.objects.filter(tenant_id__in=tenant_ids).exists():
+            from django.db import connection
+            is_recv = (account_type == "asset_receivable")
+            tenant_filter = "AND l.tenant_id IN %s"
+            tenant_params = [tuple(str(t) for t in tenant_ids)]
+            company_filter = "AND l.company_id IN %s" if company_ids and None not in company_ids else ""
+            company_params = [tuple(int(c) for c in company_ids if c is not None)] if company_filter else []
+            
+            sql = f"""
+                WITH line_recon AS (
+                    SELECT
+                        l.id AS line_id,
+                        l.company_id,
+                        l.account_move_id,
+                        m.date AS move_date,
+                        l.debit,
+                        l.credit,
+                        COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                        COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                    FROM fact_account_move_lines l
+                    JOIN fact_account_moves m ON l.account_move_id = m.id
+                    LEFT JOIN fact_account_partial_reconciles pr_deb 
+                        ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= %s
+                    LEFT JOIN fact_account_partial_reconciles pr_cred 
+                        ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= %s
+                    WHERE m.state = 'posted'
+                      AND l.account_type = %s
+                      AND m.date <= %s
+                      {tenant_filter}
+                      {company_filter}
+                    GROUP BY l.id, l.company_id, l.account_move_id, m.date, l.debit, l.credit
+                ),
+                line_residual AS (
+                    SELECT
+                        line_id,
+                        move_date,
+                        (DATE %s - move_date) AS days,
+                        CASE 
+                            WHEN {'debit > 0 THEN debit - reconciled_debit ELSE -(credit - reconciled_credit)' if is_recv else 'credit > 0 THEN credit - reconciled_credit ELSE -(debit - reconciled_debit)'}
+                        END AS residual
+                    FROM line_recon
+                )
+                SELECT
+                    COALESCE(SUM(CASE WHEN days <= 0 THEN residual ELSE 0 END), 0) AS at_date,
+                    COALESCE(COUNT(CASE WHEN days <= 0 AND ABS(residual) > 0.01 THEN 1 END), 0) AS at_date_cnt,
+                    COALESCE(SUM(CASE WHEN days BETWEEN 1 AND 30 THEN residual ELSE 0 END), 0) AS b_1_30,
+                    COALESCE(COUNT(CASE WHEN days BETWEEN 1 AND 30 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_1_30_cnt,
+                    COALESCE(SUM(CASE WHEN days BETWEEN 31 AND 60 THEN residual ELSE 0 END), 0) AS b_31_60,
+                    COALESCE(COUNT(CASE WHEN days BETWEEN 31 AND 60 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_31_60_cnt,
+                    COALESCE(SUM(CASE WHEN days BETWEEN 61 AND 90 THEN residual ELSE 0 END), 0) AS b_61_90,
+                    COALESCE(COUNT(CASE WHEN days BETWEEN 61 AND 90 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_61_90_cnt,
+                    COALESCE(SUM(CASE WHEN days BETWEEN 91 AND 120 THEN residual ELSE 0 END), 0) AS b_91_120,
+                    COALESCE(COUNT(CASE WHEN days BETWEEN 91 AND 120 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_91_120_cnt,
+                    COALESCE(SUM(CASE WHEN days >= 121 THEN residual ELSE 0 END), 0) AS b_older,
+                    COALESCE(COUNT(CASE WHEN days >= 121 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_older_cnt,
+                    COALESCE(SUM(residual), 0) AS total
+                FROM line_residual
+            """
+            params = [today, today, account_type, today] + tenant_params + company_params + [today]
+            with connection.cursor() as cursor:
+                cursor.execute(sql, params)
+                r = cursor.fetchone()
+                at_d = float(r[0] or 0)
+                at_d_cnt = int(r[1] or 0)
+                b1 = float(r[2] or 0)
+                b1_cnt = int(r[3] or 0)
+                b2 = float(r[4] or 0)
+                b2_cnt = int(r[5] or 0)
+                b3 = float(r[6] or 0)
+                b3_cnt = int(r[7] or 0)
+                b4 = float(r[8] or 0)
+                b4_cnt = int(r[9] or 0)
+                b5 = float(r[10] or 0)
+                b5_cnt = int(r[11] or 0)
+                
+                return [
+                    {"bucket": "0-30", "amount": at_d + b1, "count": at_d_cnt + b1_cnt},
+                    {"bucket": "31-60", "amount": b2, "count": b2_cnt},
+                    {"bucket": "61-90", "amount": b3, "count": b3_cnt},
+                    {"bucket": "91-120", "amount": b4, "count": b4_cnt},
+                    {"bucket": "Older", "amount": b5, "count": b5_cnt},
+                ]
+
         d30 = today - timedelta(days=30)
         d60 = today - timedelta(days=60)
         d90 = today - timedelta(days=90)
@@ -1563,10 +1810,12 @@ class AccountingService:
                         net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
                         atype = l.account_type or ""
                         acode = l.account_code or ""
+                        aname = l.account_name or ""
 
-                        if acode in ("60520003", "60510002"):
-                            pass  # excluded inventory adjustment accounts
-                        elif atype.startswith("income"):
+                        if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
+                            continue
+
+                        if atype.startswith("income"):
                             rev += net_credit
                         elif atype.startswith("expense"):
                             exp += net_debit
@@ -1706,10 +1955,12 @@ class AccountingService:
                         net_debit = (_to_float(l.debit) - _to_float(l.credit)) * l_rate
                         atype = l.account_type or ""
                         acode = l.account_code or ""
+                        aname = l.account_name or ""
 
-                        if acode in ("60520003", "60510002"):
-                            pass  # excluded inventory adjustment accounts
-                        elif atype.startswith("income"):
+                        if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
+                            continue
+
+                        if atype.startswith("income"):
                             rev += net_credit
                         elif atype.startswith("expense"):
                             exp += net_debit
@@ -2026,33 +2277,235 @@ class AccountingService:
             from doova_one_view.api.accounting.schemas import (
                 AccountingDetailMove, MetricDetailCompanyGroup, AgingDetailsResponse
             )
-            qs = AccountingService._date_qs(
-                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
-            )
+            from odoo_app.models import AccountPartialReconcile, Company
             rate_map = _get_rate_map()
             effective_base = base_currency or "XAF"
             
-            today = date.today()
+            if end_date:
+                try:
+                    ref_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+                except Exception:
+                    ref_date = date.today()
+            else:
+                ref_date = date.today()
+
+            b_key = bucket.lower().strip()
+            account_type = "asset_receivable" if move_type == "out_invoice" else "liability_payable"
+
+            # 1. Partial Reconcile Engine matching Accounting Overview
+            if AccountPartialReconcile.objects.filter(tenant_id=tenant_id).exists():
+                from django.db import connection
+                if b_key in ("current", "not_due", "not-due", "not due", "0"):
+                    day_cond = "days <= 0"
+                elif b_key in ("0-30", "0-30 days", "0-30days"):
+                    day_cond = "days <= 30"
+                elif b_key in ("1-30", "1-30 days", "1-30days"):
+                    day_cond = "days BETWEEN 1 AND 30"
+                elif b_key in ("31-60", "31-60 days", "31-60days"):
+                    day_cond = "days BETWEEN 31 AND 60"
+                elif b_key in ("61-90", "61-90 days", "61-90days"):
+                    day_cond = "days BETWEEN 61 AND 90"
+                elif b_key in ("91-120", "91-120 days", "91-120days"):
+                    day_cond = "days BETWEEN 91 AND 120"
+                elif b_key in ("older", "121+", "121+ days", "120+", ">120"):
+                    day_cond = "days >= 121"
+                elif b_key in ("90+", "90+ days", ">90", "91+"):
+                    day_cond = "days >= 91"
+                else:
+                    raise ValidationError(f"Invalid bucket: {bucket}. Valid values: current, 0-30, 1-30, 31-60, 61-90, 91-120, Older, 90+")
+
+                c_filter = "AND l.company_id IN %s" if company_ids and None not in company_ids else ""
+                c_params = [tuple(int(c) for c in company_ids if c is not None)] if c_filter else []
+
+                sql = f"""
+                    WITH line_recon AS (
+                        SELECT
+                            l.id AS line_id,
+                            l.company_id,
+                            l.account_move_id,
+                            m.date AS move_date,
+                            l.debit,
+                            l.credit,
+                            COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                            COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                        FROM fact_account_move_lines l
+                        JOIN fact_account_moves m ON l.account_move_id = m.id
+                        LEFT JOIN fact_account_partial_reconciles pr_deb 
+                            ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= %s
+                        LEFT JOIN fact_account_partial_reconciles pr_cred 
+                            ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= %s
+                        WHERE m.state = 'posted'
+                          AND l.account_type = %s
+                          AND m.date <= %s
+                          AND l.tenant_id = %s
+                          {c_filter}
+                        GROUP BY l.id, l.company_id, l.account_move_id, m.date, l.debit, l.credit
+                    ),
+                    line_residual AS (
+                        SELECT
+                            line_id,
+                            company_id,
+                            account_move_id,
+                            move_date,
+                            (DATE %s - move_date) AS days,
+                            CASE 
+                                WHEN '{account_type}' = 'asset_receivable' THEN
+                                    CASE WHEN debit > 0 THEN debit - reconciled_debit ELSE -(credit - reconciled_credit) END
+                                ELSE
+                                    CASE WHEN credit > 0 THEN credit - reconciled_credit ELSE -(debit - reconciled_debit) END
+                            END AS residual
+                        FROM line_recon
+                    )
+                    SELECT
+                        line_id,
+                        company_id,
+                        account_move_id,
+                        days,
+                        residual
+                    FROM line_residual
+                    WHERE {day_cond}
+                      AND ABS(residual) > 0.01
+                    ORDER BY move_date DESC, ABS(residual) DESC
+                """
+                params = [ref_date, ref_date, account_type, ref_date, tenant_id] + c_params + [ref_date]
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, params)
+                    rows = cursor.fetchall()
+
+                total_count = len(rows)
+                page_rows = rows[offset : offset + limit]
+                move_ids = list({r[2] for r in page_rows})
+                moves_map = {
+                    m.id: m 
+                    for m in AccountMove.objects.filter(id__in=move_ids).select_related("partner", "company").prefetch_related("lines", "lines__product")
+                }
+
+                groups = {}
+                total_amount = 0.0
+                comp_objs = {c.id: c for c in Company.objects.filter(tenant_id=tenant_id)}
+
+                for r in rows:
+                    cid = r[1]
+                    res_val = float(r[4])
+                    comp = comp_objs.get(cid)
+                    code = comp.currency_code if comp else "COMPANY_BASE"
+                    rate = _get_conversion_rate(code, effective_base, rate_map)
+                    conv_res = res_val * rate
+
+                    if cid not in groups:
+                        groups[cid] = {
+                            "company_id": comp.odoo_id if comp else cid,
+                            "company_name": comp.name if comp else "Unknown Company",
+                            "metric_value": 0.0,
+                        }
+                    groups[cid]["metric_value"] += conv_res
+                    total_amount += conv_res
+
+                company_groups = [MetricDetailCompanyGroup(**g) for g in groups.values()]
+                company_groups.sort(key=lambda x: x.metric_value, reverse=True)
+
+                flat_moves = []
+                for r in page_rows:
+                    move = moves_map.get(r[2])
+                    if not move:
+                        continue
+                    code = move.currency_code or "COMPANY_BASE"
+                    rate = _get_conversion_rate(code, effective_base, rate_map)
+                    conv_amount = _to_float(move.amount_total) * rate
+                    residual_line_val = float(r[4])
+                    conv_res = residual_line_val * rate
+
+                    company_obj = move.company
+                    cid = company_obj.odoo_id if company_obj else None
+                    cname = company_obj.name if company_obj else "Unknown Company"
+
+                    flat_moves.append(AccountingDetailMove(
+                        id=move.id,
+                        odoo_id=move.odoo_id,
+                        odoo_name=move.odoo_name,
+                        company_id=cid,
+                        company_name=cname,
+                        partner=_partner_obj(move),
+                        date=move.date,
+                        state=move.state,
+                        payment_state=move.payment_state,
+                        move_type=move.move_type,
+                        amount_total=_to_float(move.amount_total),
+                        amount_residual=residual_line_val,
+                        currency_code=code,
+                        lines=[_line_to_item(l) for l in move.lines.all()],
+                        converted_amount=conv_amount,
+                        converted_residual=conv_res,
+                        ref=move.ref,
+                        synced_at=move.synced_at
+                    ))
+
+                return AgingDetailsResponse(
+                    bucket=bucket,
+                    move_type=move_type,
+                    base_currency=effective_base,
+                    total_amount=total_amount,
+                    move_count=total_count,
+                    company_groups=company_groups,
+                    items=flat_moves,
+                    total=total_count,
+                    limit=limit,
+                    offset=offset,
+                ).model_dump()
+
+            # 2. Fallback for non-reconciled tenants
+            qs = AccountingService._date_qs(
+                AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            )
             base = qs.filter(
                 move_type=move_type,
-                invoice_date_due__isnull=False,
                 amount_residual__gt=0,
             ).exclude(payment_state__in=["paid", "reversed"])
             
-            if bucket == "0-30":
-                start_b, end_b = today - timedelta(days=30), today
-            elif bucket == "31-60":
-                start_b, end_b = today - timedelta(days=60), today - timedelta(days=31)
-            elif bucket == "61-90":
-                start_b, end_b = today - timedelta(days=90), today - timedelta(days=61)
-            elif bucket == "90+":
-                start_b, end_b = None, today - timedelta(days=91)
+            if b_key in ("current", "not_due", "not-due", "not due", "0"):
+                bucket_qs = base.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=ref_date))
+            elif b_key in ("0-30", "0-30 days", "0-30days"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__gte=ref_date - timedelta(days=30),
+                    invoice_date_due__lte=ref_date
+                )
+            elif b_key in ("1-30", "1-30 days", "1-30days"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__gte=ref_date - timedelta(days=30),
+                    invoice_date_due__lte=ref_date - timedelta(days=1)
+                )
+            elif b_key in ("31-60", "31-60 days", "31-60days"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__gte=ref_date - timedelta(days=60),
+                    invoice_date_due__lte=ref_date - timedelta(days=31)
+                )
+            elif b_key in ("61-90", "61-90 days", "61-90days"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__gte=ref_date - timedelta(days=90),
+                    invoice_date_due__lte=ref_date - timedelta(days=61)
+                )
+            elif b_key in ("91-120", "91-120 days", "91-120days"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__gte=ref_date - timedelta(days=120),
+                    invoice_date_due__lte=ref_date - timedelta(days=91)
+                )
+            elif b_key in ("older", "121+", "121+ days", "120+", ">120"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__lte=ref_date - timedelta(days=121)
+                )
+            elif b_key in ("90+", "90+ days", ">90", "91+"):
+                bucket_qs = base.filter(
+                    invoice_date_due__isnull=False,
+                    invoice_date_due__lte=ref_date - timedelta(days=91)
+                )
             else:
-                raise ValueError(f"Invalid bucket: {bucket}")
-                
-            bucket_qs = base.filter(invoice_date_due__lte=end_b)
-            if start_b is not None:
-                bucket_qs = bucket_qs.filter(invoice_date_due__gte=start_b)
+                raise ValidationError(f"Invalid bucket: {bucket}. Valid values: current, 0-30, 1-30, 31-60, 61-90, 91-120, Older, 90+")
                 
             moves = bucket_qs.select_related("partner", "company").prefetch_related("lines", "lines__product").order_by("-date", "-id")
             

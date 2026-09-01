@@ -23,6 +23,7 @@ from odoo_app.etl.syncs.stock_quant_synchronizer import StockQuantSynchronizer
 from odoo_app.etl.syncs.accounting_synchronizer import AccountMoveSynchronizer
 from odoo_app.etl.syncs.purchase_synchronizer import PurchaseOrderSynchronizer
 from odoo_app.etl.syncs.chart_of_accounts_synchronizer import ChartOfAccountsSynchronizer
+from odoo_app.etl.syncs.account_tag_synchronizer import AccountTagSynchronizer
 from odoo_app.etl.syncs.currency_rate_synchronizer import CurrencyRateSynchronizer
 from odoo_app.etl.syncs.bank_statement_synchronizer import BankStatementSynchronizer
 from odoo_app.etl.syncs.account_partial_reconcile_synchronizer import AccountPartialReconcileSynchronizer
@@ -63,6 +64,7 @@ class ETLOrchestrator:
         self.sales_order_sync = SalesOrderSynchronizer(self.odoo, self.db)
         self.purchase_order_sync = PurchaseOrderSynchronizer(self.odoo, self.db)
         self.account_move_sync = AccountMoveSynchronizer(self.odoo, self.db)
+        self.account_tag_sync = AccountTagSynchronizer(self.odoo, self.db)
         self.chart_of_accounts_sync = ChartOfAccountsSynchronizer(self.odoo, self.db)
         self.currency_rate_sync = CurrencyRateSynchronizer(self.odoo, self.db)
         from odoo_app.etl.syncs.journal_synchronizer import JournalSynchronizer
@@ -120,6 +122,7 @@ class ETLOrchestrator:
                 ('users', 'res.users', self.user_sync),
                 ('lots', 'stock.lot', self.lot_sync),
                 ('currencies', 'res.currency', self.currency_sync),
+                ('account_tags', 'account.account.tag', self.account_tag_sync),
                 ('chart_of_accounts', 'account.account', self.chart_of_accounts_sync),
                 ('currency_rates', 'res.currency.rate', self.currency_rate_sync),
                 ('journals', 'account.journal', self.journal_sync)
@@ -206,6 +209,7 @@ class ETLOrchestrator:
                 ('users', 'res.users', self.user_sync),
                 ('lots', 'stock.lot', self.lot_sync),
                 ('currencies', 'res.currency', self.currency_sync),
+                ('account_tags', 'account.account.tag', self.account_tag_sync),
                 ('chart_of_accounts', 'account.account', self.chart_of_accounts_sync),
                 ('currency_rates', 'res.currency.rate', self.currency_rate_sync),
                 ('journals', 'account.journal', self.journal_sync),

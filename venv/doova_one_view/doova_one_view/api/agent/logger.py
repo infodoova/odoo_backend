@@ -19,26 +19,35 @@ logger = logging.getLogger("doova.agent")
 logger.setLevel(logging.DEBUG)
 logger.propagate = False # Prevent propagation to root logger to avoid encoding errors on standard handlers
 
-# Console handler with structured formatting and UTF-8 safety for Windows
+# Patch logging.StreamHandler.emit globally to prevent UnicodeEncodeError on Windows cp1252 consoles
+_orig_stream_emit = logging.StreamHandler.emit
 
+def _safe_stream_emit(self, record):
+    try:
+        msg = self.format(record)
+        stream = self.stream
+        try:
+            stream.write(msg + self.terminator)
+        except UnicodeEncodeError:
+            enc = getattr(stream, 'encoding', None) or 'utf-8'
+            safe_msg = msg.encode(enc, errors='replace').decode(enc, errors='replace')
+            stream.write(safe_msg + self.terminator)
+        stream.flush()
+    except Exception:
+        self.handleError(record)
+
+logging.StreamHandler.emit = _safe_stream_emit
+
+# Console handler with structured formatting and UTF-8 safety for Windows
 class SafeStreamHandler(logging.StreamHandler):
     """A StreamHandler that handles encoding errors gracefully on Windows consoles."""
     def __init__(self, stream=None):
         super().__init__(stream or sys.stdout)
 
     def emit(self, record):
-        try:
-            msg = self.format(record)
-            stream = self.stream
-            try:
-                stream.write(msg + self.terminator)
-            except UnicodeEncodeError:
-                enc = getattr(stream, 'encoding', None) or 'utf-8'
-                safe_msg = msg.encode(enc, errors='replace').decode(enc)
-                stream.write(safe_msg + self.terminator)
-            stream.flush()
-        except Exception:
-            self.handleError(record)
+        _safe_stream_emit(self, record)
+
+logger.handlers.clear()
 
 console_handler = SafeStreamHandler(sys.stdout)
 console_handler.setLevel(logging.DEBUG)

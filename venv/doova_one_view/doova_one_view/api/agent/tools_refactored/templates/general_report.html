@@ -83,7 +83,10 @@
     <!-- Charts -->
     {% if trend_chart_b64 or chart_1_b64 %}
     <div class="chart-box">
-        <div class="chart-box-title">Enterprise Trajectory Overview</div>
+        <div class="chart-box-title">
+            <span>Enterprise Trajectory Overview</span>
+            <span class="chart-badge">Trailing 12-Month Macro Horizon</span>
+        </div>
         <img src="data:image/png;base64,{{ chart_1_b64|default(trend_chart_b64) }}" class="chart-img" alt="Overview Chart" />
     </div>
     {% endif %}

@@ -13,65 +13,80 @@ def get_cash_flow_statement_tool(
     company_ids: list[int] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    source: str = "auto"
 ) -> dict:
-    """Generate a high-level cash flow statement (Operating, Investing, Financing)."""
-
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
-    params: dict = {"tenant_id": tenant_id}
-    params.update(t_params_m)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="m.company_id")
-    params.update(f_params)
-
-    date_sql = ""
-    if start_date:
-        date_sql += " AND m.date >= :start_date"
-        params["start_date"] = start_date
-    if end_date:
-        date_sql += " AND m.date <= :end_date"
-        params["end_date"] = end_date
-
-    # Using indirect method buckets:
-    # Operating: income, expense, current assets, current liabilities
-    # Investing: non-current assets
-    # Financing: non-current liabilities, equity
-    query = f"""
-        SELECT 
-            CASE 
-                WHEN l.account_type IN ('asset_non_current') THEN 'investing'
-                WHEN l.account_type IN ('liability_non_current', 'equity', 'equity_unallocated') THEN 'financing'
-                WHEN l.account_type IN ('asset_cash') THEN 'cash'
-                ELSE 'operating'
-            END AS cf_category,
-            COALESCE(SUM({amount_col}), 0) AS net_change
-        FROM fact_account_move_lines l
-        JOIN fact_account_moves m ON l.account_move_id = m.id AND l.tenant_id = m.tenant_id
-        
-        WHERE 1=1 {t_sql_m}
-          AND m.state = 'posted'
-          {f_sql} {date_sql}
-        GROUP BY cf_category
-    """
-    rows = run_query(query, params)
+    """Generate the structured Cash Flow Statement (Operating, Investing, Financing, Unclassified) matching Odoo with full itemized details."""
+    from doova_one_view.api.accounting.service import AccountingService
+    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+    cf = AccountingService._calc_cash_flow_sync(
+        tenant_id=tenant_id,
+        start_date=start_date,
+        end_date=end_date,
+        company_ids=c_ids,
+        base_currency=base_currency,
+        source=source
+    )
+    op = cf.get("operating_activities", {})
+    inv = cf.get("investing_activities", {})
+    fin = cf.get("financing_activities", {})
+    unclass = cf.get("unclassified_activities", {})
+    raw_hierarchy = cf.get("raw_hierarchy") or []
     
-    cf = {"operating": 0.0, "investing": 0.0, "financing": 0.0, "cash": 0.0}
-    for r in rows:
-        cat = r.get("cf_category")
-        if cat in cf:
-            cf[cat] = float(r.get("net_change"))
-            
-    # In accounting, an increase in asset balance (debit) is a cash OUTFLOW.
-    # An increase in liability/equity balance (credit, so negative balance) is a cash INFLOW.
-    # Therefore, Net Cash Flow = -(balance). For income/expense, balance is credit (negative) for net income, 
-    # so -(balance) = positive cash inflow.
+    details = []
+    if raw_hierarchy:
+        for item in raw_hierarchy:
+            details.append({
+                "name": item.get("name"),
+                "level": item.get("level"),
+                "amount": item.get("amount"),
+                "line_id": item.get("line_id"),
+            })
+
+    cust_adv = op.get("customer_advances", op.get("customer_payments", 0.0))
+    supp_adv = op.get("supplier_advances", op.get("supplier_payments", 0.0))
+    direct_rec = op.get("cash_received_from_operating_activities", op.get("direct_receipts", 0.0))
+    direct_paid = op.get("cash_paid_for_operating_activities", op.get("direct_payments", 0.0))
+
     return {
         "tool_name": "get_cash_flow_statement_tool",
-        "net_cash_from_operating": -cf["operating"],
-        "net_cash_from_investing": -cf["investing"],
-        "net_cash_from_financing": -cf["financing"],
-        "net_change_in_cash": -(cf["operating"] + cf["investing"] + cf["financing"])
+        "beginning_balance": cf.get("beginning_balance", 0.0),
+        "operating_activities": {
+            "customer_advances": cust_adv,
+            "customer_payments": cust_adv,
+            "supplier_advances": supp_adv,
+            "supplier_payments": supp_adv,
+            "cash_received_from_operating_activities": direct_rec,
+            "cash_paid_for_operating_activities": direct_paid,
+            "direct_receipts": direct_rec,
+            "direct_payments": direct_paid,
+            "total": op.get("total", 0.0),
+        },
+        "customer_advances": cust_adv,
+        "customer_payments": cust_adv,
+        "supplier_advances": supp_adv,
+        "supplier_payments": supp_adv,
+        "cash_received_from_operating_activities": direct_rec,
+        "cash_paid_for_operating_activities": direct_paid,
+        "direct_receipts": direct_rec,
+        "direct_payments": direct_paid,
+        "net_cash_from_operating": op.get("total", 0.0),
+        "investing_activities": inv,
+        "net_cash_from_investing": inv.get("total", 0.0),
+        "financing_activities": fin,
+        "net_cash_from_financing": fin.get("total", 0.0),
+        "unclassified_activities": unclass,
+        "net_cash_from_unclassified": unclass.get("total", 0.0),
+        "net_increase": cf.get("net_increase", 0.0),
+        "net_change_in_cash": cf.get("net_increase", 0.0),
+        "actual_net_change_in_cash": cf.get("actual_net_change_in_cash", cf.get("net_increase", 0.0)),
+        "unexplained_difference": cf.get("unexplained_difference", 0.0),
+        "closing_balance": cf.get("closing_balance", 0.0),
+        "details": details,
+        "raw_hierarchy": raw_hierarchy,
+        "source_engine": cf.get("source_engine", "odoo_enterprise_live"),
+        "execution_time_ms": cf.get("execution_time_ms"),
     }
 
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬

@@ -1,9 +1,10 @@
+
 """
 Accounting API schemas
 """
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Any, Optional, List, Union
+from typing import Any, Optional, List, Union, Dict
 from datetime import datetime, date
 from doova_one_view.api.common.schemas import (
     PartnerRead, CompanyRead, ProductRead, PaginatedResponse
@@ -78,15 +79,102 @@ class ProfitAndLossSummary(BaseModel):
     revenue: float = Field(..., description="Total operating revenue (income)")
     cogs: float = Field(..., description="Cost of Goods Sold (direct costs)")
     gross_profit: float = Field(..., description="Revenue minus COGS")
+    expenses: Optional[float] = Field(0.0, description="General operating expenses (matching Odoo Expenses)")
+    depreciation: Optional[float] = Field(0.0, description="Depreciation and amortization (matching Odoo Depreciation)")
+    total_expenses: Optional[float] = Field(0.0, description="Total expenses including depreciation")
     operating_expenses: float = Field(..., description="General operating expenses and depreciation")
+    ebitda: Optional[float] = Field(0.0, description="Earnings Before Interest, Taxes, Depreciation, and Amortization")
     ebit: float = Field(..., description="Earnings Before Interest and Taxes (Gross Profit - Operating Expenses)")
     taxes_and_interest: float = Field(..., description="Taxes, duties, and financial interest expenses")
-    net_profit: float = Field(..., description="Final net profit (EBIT - Taxes and Interest)")
+    net_profit: float = Field(..., description="Final net profit (Gross Profit - All Expenses)")
+
+
+class BalanceSheetResponse(BaseModel):
+    """Structured Balance Sheet breakdown matching Odoo."""
+    as_of_date: Optional[str] = Field("Current", description="As of date for the balance sheet")
+    bank_and_cash_accounts: Optional[float] = Field(None, description="Bank and Cash Accounts (asset_cash)")
+    receivables: float = Field(..., description="Accounts Receivable (asset_receivable)")
+    prepayments: Optional[float] = Field(None, description="Prepayments (asset_prepayments)")
+    current_assets: float = Field(..., description="Current Assets (cash, receivables, prepayments, current)")
+    fixed_assets: Optional[float] = Field(None, description="Fixed Assets (asset_fixed)")
+    non_current_assets: float = Field(..., description="Non-Current Assets (fixed assets, non-current)")
+    total_assets: float = Field(..., description="Total Assets")
+    payables: float = Field(..., description="Accounts Payable (liability_payable)")
+    current_liabilities: float = Field(..., description="Current Liabilities (payables, current liabilities)")
+    non_current_liabilities: float = Field(..., description="Non-Current Liabilities")
+    total_liabilities: float = Field(..., description="Total Liabilities")
+    retained_earnings: Optional[float] = Field(None, description="Retained Earnings")
+    unallocated_earnings: Optional[float] = Field(None, description="Unallocated Earnings")
+    total_equity: float = Field(..., description="Total Equity")
+    net_assets: float = Field(..., description="Net Assets (Total Assets - Total Liabilities)")
+    current_assets_to_liabilities: Optional[float] = Field(None, description="Current Ratio: Current Assets / Current Liabilities")
+    current_ratio: Optional[float] = Field(None, description="Current Assets / Current Liabilities")
+    integrity_check: str = Field("BALANCED", description="Balance check (Assets - Liabilities - Equity)")
 
 
 class CashFlowBreakdownItem(BaseModel):
     category: str
     value: float
+
+
+class OperatingActivities(BaseModel):
+    customer_advances: float = Field(0.0, description="Advance Payments received from customers")
+    customer_payments: float = Field(0.0, description="Advance Payments received from customers alias")
+    supplier_advances: float = Field(0.0, description="Advance payments made to suppliers")
+    supplier_payments: float = Field(0.0, description="Advance payments made to suppliers alias")
+    cash_received_from_operating_activities: float = Field(0.0, description="Cash received from operating activities")
+    cash_paid_for_operating_activities: float = Field(0.0, description="Cash paid for operating activities")
+    direct_receipts: float = Field(0.0, description="Cash received from operating activities alias")
+    direct_payments: float = Field(0.0, description="Cash paid for operating activities alias")
+    total: float = Field(0.0, description="Total cash flows from operating activities")
+
+
+class ActivityFlow(BaseModel):
+    cash_in: float = Field(0.0, description="Cash In")
+    cash_out: float = Field(0.0, description="Cash Out")
+    total: float = Field(0.0, description="Net cash flow")
+
+
+class CashFlowStatementResponse(BaseModel):
+    """Cash Flow Statement matching Odoo."""
+    beginning_balance: float = Field(..., description="Cash and cash equivalents, beginning of period")
+    operating_activities: OperatingActivities = Field(..., description="Operating activities")
+    investing_activities: ActivityFlow = Field(..., description="Investing activities")
+    financing_activities: ActivityFlow = Field(..., description="Financing activities")
+    unclassified_activities: ActivityFlow = Field(..., description="Unclassified activities")
+    net_increase: float = Field(..., description="Net increase in cash and cash equivalents")
+    net_change_in_cash: Optional[float] = Field(None, description="Net change in cash alias")
+    actual_net_change_in_cash: Optional[float] = Field(None, description="Actual bank/cash change")
+    unexplained_difference: Optional[float] = Field(0.0, description="Audit difference")
+    closing_balance: float = Field(..., description="Cash and cash equivalents, closing balance")
+    details: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Itemized report line hierarchy with levels and balances")
+    raw_hierarchy: Optional[List[Dict[str, Any]]] = Field(default=None, description="Original report hierarchy if live fetch")
+    source_engine: Optional[str] = Field("odoo_enterprise_live", description="Engine used (odoo_enterprise_live or local_ias7_reconciler)")
+    execution_time_ms: Optional[float] = Field(None, description="Computation time in ms")
+
+
+class CashFlowDrilldownItem(BaseModel):
+    """Itemized transaction contributing to a cash flow section."""
+    move_id: int
+    move_name: str
+    date: str
+    partner_name: Optional[str] = None
+    account_code: Optional[str] = None
+    account_name: Optional[str] = None
+    account_type: Optional[str] = None
+    debit: float
+    credit: float
+    balance: float
+    company_name: Optional[str] = None
+
+
+class CashFlowDrilldownResponse(BaseModel):
+    """Drilldown response for Cash Flow Statement."""
+    tenant_id: str
+    section: str
+    line_key: Optional[str] = None
+    total_records: int
+    records: List[CashFlowDrilldownItem]
 
 
 class BankCashSummaryResponse(BaseModel):
@@ -130,8 +218,6 @@ class SearchRequest(BaseModel):
     companies: Optional[Union[str, int, List[Union[str, int]]]] = None
 
 
-# ---------------------------------------------------------------------------
-# Today's Expenses response schemas
 # ---------------------------------------------------------------------------
 
 class ExpenseProduct(BaseModel):

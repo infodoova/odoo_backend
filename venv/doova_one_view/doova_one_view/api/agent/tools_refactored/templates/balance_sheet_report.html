@@ -22,7 +22,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-blue"></div>
             <div class="kpi-title">Total Assets</div>
-            <div class="kpi-value">{{ report_data.get('total_assets', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('total_assets', {}).get('formatted', report_data.get('assets', {}).get('formatted', kpis.get('total_assets', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('total_assets', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('total_assets', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('total_assets', {}).get('arrow', '') }} {{ report_data.get('total_assets', {}).get('var_text', '') }}
@@ -34,7 +34,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-cyan"></div>
             <div class="kpi-title">Current Assets</div>
-            <div class="kpi-value">{{ report_data.get('current_assets', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('current_assets', {}).get('formatted', report_data.get('ca', {}).get('formatted', kpis.get('current_assets', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('current_assets', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('current_assets', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('current_assets', {}).get('arrow', '') }} {{ report_data.get('current_assets', {}).get('var_text', '') }}
@@ -46,7 +46,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-red"></div>
             <div class="kpi-title">Total Liabilities</div>
-            <div class="kpi-value">{{ report_data.get('total_liabilities', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('total_liabilities', {}).get('formatted', report_data.get('liabilities', {}).get('formatted', kpis.get('total_liabilities', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('total_liabilities', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('total_liabilities', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('total_liabilities', {}).get('arrow', '') }} {{ report_data.get('total_liabilities', {}).get('var_text', '') }}
@@ -58,7 +58,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-green"></div>
             <div class="kpi-title">Total Equity</div>
-            <div class="kpi-value">{{ report_data.get('equity', {}).get('formatted', report_data.get('total_equity', {}).get('formatted', '—')) }}</div>
+            <div class="kpi-value">{{ report_data.get('equity', {}).get('formatted', report_data.get('total_equity', {}).get('formatted', kpis.get('equity', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('equity', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('equity', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('equity', {}).get('arrow', '') }} {{ report_data.get('equity', {}).get('var_text', '') }}
@@ -70,7 +70,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-purple"></div>
             <div class="kpi-title">Current Ratio</div>
-            <div class="kpi-value">{{ report_data.get('current_ratio', {}).get('formatted', kpis.get('current_ratio', {}).get('formatted', '—')) }}</div>
+            <div class="kpi-value">{{ report_data.get('current_ratio', {}).get('formatted', report_data.get('working_capital_ratio', {}).get('formatted', kpis.get('current_ratio', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('current_ratio', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('current_ratio', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('current_ratio', {}).get('arrow', '') }} {{ report_data.get('current_ratio', {}).get('var_text', '') }}

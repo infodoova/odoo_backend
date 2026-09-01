@@ -70,6 +70,7 @@
         <thead>
             <tr>
                 <th>Aging Bracket</th>
+                <th class="text-center">Invoices / Items</th>
                 <th class="text-right">Outstanding Amount</th>
                 <th class="text-right">Share of Total</th>
                 <th class="text-right">Risk Level</th>
@@ -78,27 +79,45 @@
         <tbody>
             {% if ar_aging is mapping %}
             <tr>
-                <td class="font-bold">Current (0–30 Days)</td>
+                <td class="font-bold">current</td>
+                <td class="text-center">{{ ar_aging.get('current_cnt_formatted', ar_aging.get('current_cnt', '0 Invoices')) }}</td>
                 <td class="text-right font-bold">{{ ar_aging.get('current', '—') }}</td>
                 <td class="text-right">{{ ar_aging.get('current_share', '—') }}</td>
                 <td class="text-right"><span class="badge badge-success">Low</span></td>
             </tr>
             <tr>
-                <td class="font-bold">31–60 Days</td>
-                <td class="text-right font-bold">{{ ar_aging.get('days_30', '—') }}</td>
-                <td class="text-right">{{ ar_aging.get('days_30_share', '—') }}</td>
+                <td class="font-bold">1-30 days</td>
+                <td class="text-center">{{ ar_aging.get('days_1_30_cnt_formatted', ar_aging.get('days_1_30_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_1_30', ar_aging.get('days_30', '—')) }}</td>
+                <td class="text-right">{{ ar_aging.get('days_1_30_share', ar_aging.get('days_30_share', '—')) }}</td>
                 <td class="text-right"><span class="badge badge-info">Normal</span></td>
             </tr>
             <tr>
-                <td class="font-bold">61–90 Days</td>
-                <td class="text-right font-bold">{{ ar_aging.get('days_60', '—') }}</td>
-                <td class="text-right">{{ ar_aging.get('days_60_share', '—') }}</td>
+                <td class="font-bold">31-60 days</td>
+                <td class="text-center">{{ ar_aging.get('days_31_60_cnt_formatted', ar_aging.get('days_31_60_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_31_60', ar_aging.get('days_60', '—')) }}</td>
+                <td class="text-right">{{ ar_aging.get('days_31_60_share', ar_aging.get('days_60_share', '—')) }}</td>
+                <td class="text-right"><span class="badge badge-warning">Moderate</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">61-90 days</td>
+                <td class="text-center">{{ ar_aging.get('days_61_90_cnt_formatted', ar_aging.get('days_61_90_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_61_90', ar_aging.get('days_90', '—')) }}</td>
+                <td class="text-right">{{ ar_aging.get('days_61_90_share', ar_aging.get('days_90_share', '—')) }}</td>
                 <td class="text-right"><span class="badge badge-warning">Watch</span></td>
             </tr>
             <tr>
-                <td class="font-bold">90+ Days (Overdue)</td>
-                <td class="text-right font-bold">{{ ar_aging.get('days_90_plus', '—') }}</td>
-                <td class="text-right">{{ ar_aging.get('days_90_plus_share', '—') }}</td>
+                <td class="font-bold">91-120 days</td>
+                <td class="text-center">{{ ar_aging.get('days_91_120_cnt_formatted', ar_aging.get('days_91_120_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ar_aging.get('days_91_120', '—') }}</td>
+                <td class="text-right">{{ ar_aging.get('days_91_120_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-warning">Elevated</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">Older</td>
+                <td class="text-center">{{ ar_aging.get('older_cnt_formatted', ar_aging.get('older_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ar_aging.get('older', ar_aging.get('days_90_plus', '—')) }}</td>
+                <td class="text-right">{{ ar_aging.get('older_share', ar_aging.get('days_90_plus_share', '—')) }}</td>
                 <td class="text-right"><span class="badge badge-danger">High Risk</span></td>
             </tr>
             {% else %}
@@ -106,12 +125,105 @@
             {% if row is mapping %}
             <tr>
                 <td class="font-bold">{{ row.get('bracket', row.get('period', 'Bracket')) }}</td>
+                <td class="text-center">{{ row.get('count_formatted', row.get('count', '—')) }}</td>
                 <td class="text-right font-bold">{{ row.get('amount', '—') }}</td>
                 <td class="text-right">{{ row.get('share', '—') }}</td>
                 <td class="text-right"><span class="badge {{ row.get('badge_class', 'badge-info') }}">{{ row.get('risk', 'Normal') }}</span></td>
             </tr>
             {% endif %}
             {% endfor %}
+            {% endif %}
+            {% if report_data.get('total_receivables_formatted') %}
+            <tr style="border-top: 2px solid #cbd5e1; background: #f8fafc; font-weight: 700;">
+                <td class="font-bold">Total Accounts Receivable</td>
+                <td class="text-center font-bold">{{ report_data.get('total_ar_count_formatted', '—') }}</td>
+                <td class="text-right font-bold">{{ report_data.get('total_receivables_formatted') }}</td>
+                <td class="text-right">100.0%</td>
+                <td class="text-right"><span class="badge badge-primary">Ledger Total</span></td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% set ap_aging = report_data.get('ap_aging', []) %}
+    {% if ap_aging %}
+    <h2 class="sub-title" style="margin-top: 24px;">Accounts Payable Aging Schedule</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Aging Bracket</th>
+                <th class="text-center">Bills / Items</th>
+                <th class="text-right">Outstanding Amount</th>
+                <th class="text-right">Share of Total</th>
+                <th class="text-right">Risk Level</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if ap_aging is mapping %}
+            <tr>
+                <td class="font-bold">current</td>
+                <td class="text-center">{{ ap_aging.get('current_cnt_formatted', ap_aging.get('current_cnt', '0 Bills')) }}</td>
+                <td class="text-right font-bold">{{ ap_aging.get('current', '—') }}</td>
+                <td class="text-right">{{ ap_aging.get('current_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-success">Low</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">1-30 days</td>
+                <td class="text-center">{{ ap_aging.get('days_1_30_cnt_formatted', ap_aging.get('days_1_30_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ap_aging.get('days_1_30', ap_aging.get('days_30', '—')) }}</td>
+                <td class="text-right">{{ ap_aging.get('days_1_30_share', ap_aging.get('days_30_share', '—')) }}</td>
+                <td class="text-right"><span class="badge badge-info">Normal</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">31-60 days</td>
+                <td class="text-center">{{ ap_aging.get('days_31_60_cnt_formatted', ap_aging.get('days_31_60_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ap_aging.get('days_31_60', ap_aging.get('days_60', '—')) }}</td>
+                <td class="text-right">{{ ap_aging.get('days_31_60_share', ap_aging.get('days_60_share', '—')) }}</td>
+                <td class="text-right"><span class="badge badge-warning">Moderate</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">61-90 days</td>
+                <td class="text-center">{{ ap_aging.get('days_61_90_cnt_formatted', ap_aging.get('days_61_90_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ap_aging.get('days_61_90', ap_aging.get('days_90', '—')) }}</td>
+                <td class="text-right">{{ ap_aging.get('days_61_90_share', ap_aging.get('days_90_share', '—')) }}</td>
+                <td class="text-right"><span class="badge badge-warning">Watch</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">91-120 days</td>
+                <td class="text-center">{{ ap_aging.get('days_91_120_cnt_formatted', ap_aging.get('days_91_120_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ap_aging.get('days_91_120', '—') }}</td>
+                <td class="text-right">{{ ap_aging.get('days_91_120_share', '—') }}</td>
+                <td class="text-right"><span class="badge badge-warning">Elevated</span></td>
+            </tr>
+            <tr>
+                <td class="font-bold">Older</td>
+                <td class="text-center">{{ ap_aging.get('older_cnt_formatted', ap_aging.get('older_cnt', '—')) }}</td>
+                <td class="text-right font-bold">{{ ap_aging.get('older', ap_aging.get('days_90_plus', '—')) }}</td>
+                <td class="text-right">{{ ap_aging.get('older_share', ap_aging.get('days_90_plus_share', '—')) }}</td>
+                <td class="text-right"><span class="badge badge-danger">High Risk</span></td>
+            </tr>
+            {% else %}
+            {% for row in ap_aging %}
+            {% if row is mapping %}
+            <tr>
+                <td class="font-bold">{{ row.get('bracket', row.get('period', 'Bracket')) }}</td>
+                <td class="text-center">{{ row.get('count_formatted', row.get('count', '—')) }}</td>
+                <td class="text-right font-bold">{{ row.get('amount', '—') }}</td>
+                <td class="text-right">{{ row.get('share', '—') }}</td>
+                <td class="text-right"><span class="badge {{ row.get('badge_class', 'badge-info') }}">{{ row.get('risk', 'Normal') }}</span></td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+            {% if report_data.get('total_payables_formatted') %}
+            <tr style="border-top: 2px solid #cbd5e1; background: #f8fafc; font-weight: 700;">
+                <td class="font-bold">Total Accounts Payable</td>
+                <td class="text-center font-bold">{{ report_data.get('total_ap_count_formatted', '—') }}</td>
+                <td class="text-right font-bold">{{ report_data.get('total_payables_formatted') }}</td>
+                <td class="text-right">100.0%</td>
+                <td class="text-right"><span class="badge badge-primary">Ledger Total</span></td>
+            </tr>
             {% endif %}
         </tbody>
     </table>

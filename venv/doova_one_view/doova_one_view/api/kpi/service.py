@@ -351,7 +351,7 @@ class KPIService:
 
             inventory_value = _calculate_inventory_value(company_ids)
 
-            # Net Working Capital Additions (balances are in COMPANY_BASE)
+            # ── Net Working Capital (General Ledger Balance Sheet synchronized) ───────
             cash_moves = _apply_tenant_company_filter(
                 AccountMoveLine.objects.filter(
                     account_type='asset_cash',
@@ -363,13 +363,67 @@ class KPIService:
             )
             cash_value = _sum(cash_moves, "balance") * base_multiplier
 
+            # GL Receivables Moves (asset_receivable)
+            ar_gl_moves = _apply_tenant_company_filter(
+                AccountMoveLine.objects.filter(
+                    account_type='asset_receivable',
+                    account_move__state='posted',
+                    tenant__is_active=True,
+                    account_move__date__lte=as_of_date,
+                ),
+                tenant_ids, company_ids, company_field="account_move__company_id"
+            )
+            nwc_ar_value = _sum(ar_gl_moves, "balance") * base_multiplier if ar_gl_moves.exists() else receivables_value
+
+            # GL Inventory & Other Current Assets (asset_current, asset_prepayments)
+            inv_gl_moves = _apply_tenant_company_filter(
+                AccountMoveLine.objects.filter(
+                    account_type__in=['asset_current', 'asset_prepayments'],
+                    account_move__state='posted',
+                    tenant__is_active=True,
+                    account_move__date__lte=as_of_date,
+                ),
+                tenant_ids, company_ids, company_field="account_move__company_id"
+            )
+            nwc_inv_value = _sum(inv_gl_moves, "balance") * base_multiplier if inv_gl_moves.exists() else inventory_value
+
+            # GL Payables Moves (liability_payable)
+            ap_gl_moves = _apply_tenant_company_filter(
+                AccountMoveLine.objects.filter(
+                    account_type='liability_payable',
+                    account_move__state='posted',
+                    tenant__is_active=True,
+                    account_move__date__lte=as_of_date,
+                ),
+                tenant_ids, company_ids, company_field="account_move__company_id"
+            )
+            nwc_ap_value = -1 * _sum(ap_gl_moves, "balance") * base_multiplier if ap_gl_moves.exists() else payables_value
+
             # Batched Cash by Company
             cash_by_comp = {
                 r["account_move__company_id"]: _to_float(r["tot"]) * base_multiplier
                 for r in cash_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
             }
 
-            # Batched Receivables & Overdue by Company
+            # Batched GL Receivables by Company
+            ar_gl_by_comp = {
+                r["account_move__company_id"]: _to_float(r["tot"]) * base_multiplier
+                for r in ar_gl_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+            }
+
+            # Batched GL Inventory/Other Assets by Company
+            inv_gl_by_comp = {
+                r["account_move__company_id"]: _to_float(r["tot"]) * base_multiplier
+                for r in inv_gl_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+            }
+
+            # Batched GL Payables by Company
+            ap_gl_by_comp = {
+                r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
+                for r in ap_gl_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
+            }
+
+            # Batched Receivables & Overdue by Company (from Invoices)
             ar_by_comp_curr = list(
                 receivables.values("company_id", "currency_code")
                 .annotate(tot=Coalesce(Sum("amount_residual"), Decimal("0")))
@@ -381,6 +435,19 @@ class KPIService:
                 val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
                 ar_map[cid] = ar_map.get(cid, 0.0) + val
 
+            # Batched Payables by Company (from Bills)
+            ap_by_comp_curr = list(
+                payables.values("company_id", "currency_code")
+                .annotate(tot=Coalesce(Sum("amount_residual"), Decimal("0")))
+            )
+            ap_map: dict[Optional[int], float] = {}
+            for r in ap_by_comp_curr:
+                cid = r["company_id"]
+                code = r["currency_code"] or "COMPANY_BASE"
+                val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
+                ap_map[cid] = ap_map.get(cid, 0.0) + val
+
+            # Overdue invoices by Company
             ar_overdue_by_comp_curr = list(
                 receivables.filter(invoice_date_due__lt=as_of_date)
                 .values("company_id", "currency_code")
@@ -392,18 +459,6 @@ class KPIService:
                 code = r["currency_code"] or "COMPANY_BASE"
                 val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
                 ar_overdue_map[cid] = ar_overdue_map.get(cid, 0.0) + val
-
-            # Batched Payables by Company
-            ap_by_comp_curr = list(
-                payables.values("company_id", "currency_code")
-                .annotate(tot=Coalesce(Sum("amount_residual"), Decimal("0")))
-            )
-            ap_map: dict[Optional[int], float] = {}
-            for r in ap_by_comp_curr:
-                cid = r["company_id"]
-                code = r["currency_code"] or "COMPANY_BASE"
-                val = _to_float(r["tot"]) * _get_conversion_rate(code, effective_base, rate_map)
-                ap_map[cid] = ap_map.get(cid, 0.0) + val
             
             from odoo_app.models import TenantFinancialMapping, Company
             
@@ -422,7 +477,7 @@ class KPIService:
 
             other_liabilities_moves = _apply_tenant_company_filter(
                 AccountMoveLine.objects.filter(
-                    account_type='liability_current',
+                    account_type__in=['liability_current', 'liability_credit_card'],
                     account_move__state='posted',
                     tenant__is_active=True,
                     account_move__date__lte=as_of_date,
@@ -442,12 +497,12 @@ class KPIService:
 
             other_liabilities_value = total_other_liabilities - accrued_expenses_value - short_term_debt_value
             
-            current_assets = cash_value + receivables_value + inventory_value
-            current_liabilities = payables_value + accrued_expenses_value + short_term_debt_value + other_liabilities_value
+            current_assets = cash_value + nwc_ar_value + nwc_inv_value
+            current_liabilities = nwc_ap_value + accrued_expenses_value + short_term_debt_value + other_liabilities_value
             net_working_capital = current_assets - current_liabilities
 
             working_capital_ratio = round(current_assets / current_liabilities, 2) if current_liabilities > 0 else 0.0
-            quick_ratio = round((cash_value + receivables_value) / current_liabilities, 2) if current_liabilities > 0 else 0.0
+            quick_ratio = round((cash_value + nwc_ar_value) / current_liabilities, 2) if current_liabilities > 0 else 0.0
             health_status = "healthy" if working_capital_ratio >= 1.5 else ("warning" if working_capital_ratio >= 1.0 else "critical")
 
             # Batched Other Liabilities by Company
@@ -478,10 +533,10 @@ class KPIService:
             company_breakdown = []
             for comp in company_qs:
                 c_cash = cash_by_comp.get(comp.id, 0.0)
-                c_ar_val = ar_map.get(comp.id, 0.0)
+                c_ar_val = ar_gl_by_comp.get(comp.id, ar_map.get(comp.id, 0.0))
                 c_ar_overdue = ar_overdue_map.get(comp.id, 0.0)
-                c_inv_val = _calculate_inventory_value([comp.id])
-                c_ap_val = ap_map.get(comp.id, 0.0)
+                c_inv_val = inv_gl_by_comp.get(comp.id, _calculate_inventory_value([comp.id]))
+                c_ap_val = ap_gl_by_comp.get(comp.id, ap_map.get(comp.id, 0.0))
                 c_tot_other_liab = tot_other_liab_by_comp.get(comp.id, 0.0)
                 c_accrued = accrued_by_comp.get(comp.id, 0.0)
                 c_debt = debt_by_comp.get(comp.id, 0.0)
@@ -687,12 +742,12 @@ class KPIService:
                             "current_assets": {
                                 "total": current_assets,
                                 "cash_and_equivalents": cash_value,
-                                "accounts_receivable": {"value": receivables_value, "overdue": overdue_value},
-                                "inventory": inventory_value,
+                                "accounts_receivable": {"value": nwc_ar_value, "overdue": overdue_value},
+                                "inventory": nwc_inv_value,
                             },
                             "current_liabilities": {
                                 "total": current_liabilities,
-                                "accounts_payable": payables_value,
+                                "accounts_payable": nwc_ap_value,
                                 "accrued_expenses": accrued_expenses_value,
                                 "short_term_debt": short_term_debt_value,
                                 "other_current_liabilities": other_liabilities_value,
@@ -789,12 +844,12 @@ class KPIService:
                         "current_assets": {
                             "total": current_assets,
                             "cash_and_equivalents": cash_value,
-                            "accounts_receivable": {"value": receivables_value, "overdue": overdue_value},
-                            "inventory": inventory_value,
+                            "accounts_receivable": {"value": nwc_ar_value, "overdue": overdue_value},
+                            "inventory": nwc_inv_value,
                         },
                         "current_liabilities": {
                             "total": current_liabilities,
-                            "accounts_payable": payables_value,
+                            "accounts_payable": nwc_ap_value,
                             "accrued_expenses": accrued_expenses_value,
                             "short_term_debt": short_term_debt_value,
                             "other_current_liabilities": other_liabilities_value,
@@ -1389,6 +1444,104 @@ class KPIService:
                     today = date.fromisoformat(as_of_date)
                 except ValueError:
                     pass
+
+            from odoo_app.models import AccountPartialReconcile
+            if tenant_ids and AccountPartialReconcile.objects.filter(tenant_id__in=tenant_ids).exists():
+                from django.db import connection
+                tenant_filter = "AND l.tenant_id IN %s"
+                tenant_params = [tuple(str(t) for t in tenant_ids)]
+                company_filter = "AND l.company_id IN %s" if company_ids and None not in company_ids else ""
+                company_params = [tuple(int(c) for c in company_ids if c is not None)] if company_filter else []
+
+                sql = f"""
+                    WITH line_recon AS (
+                        SELECT
+                            l.id AS line_id,
+                            l.company_id,
+                            l.account_move_id,
+                            m.date AS move_date,
+                            l.debit,
+                            l.credit,
+                            COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                            COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                        FROM fact_account_move_lines l
+                        JOIN fact_account_moves m ON l.account_move_id = m.id
+                        LEFT JOIN fact_account_partial_reconciles pr_deb 
+                            ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= %s
+                        LEFT JOIN fact_account_partial_reconciles pr_cred 
+                            ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= %s
+                        WHERE m.state = 'posted'
+                          AND l.account_type = 'asset_receivable'
+                          AND m.date <= %s
+                          {tenant_filter}
+                          {company_filter}
+                        GROUP BY l.id, l.company_id, l.account_move_id, m.date, l.debit, l.credit
+                    ),
+                    line_residual AS (
+                        SELECT
+                            line_id,
+                            move_date,
+                            (DATE %s - move_date) AS days,
+                            CASE 
+                                WHEN debit > 0 THEN debit - reconciled_debit 
+                                ELSE -(credit - reconciled_credit)
+                            END AS residual
+                        FROM line_recon
+                    )
+                    SELECT
+                        COALESCE(SUM(CASE WHEN days <= 0 THEN residual ELSE 0 END), 0) AS at_date,
+                        COALESCE(COUNT(CASE WHEN days <= 0 AND ABS(residual) > 0.01 THEN 1 END), 0) AS at_date_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 1 AND 30 THEN residual ELSE 0 END), 0) AS b_1_30,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 1 AND 30 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_1_30_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 31 AND 60 THEN residual ELSE 0 END), 0) AS b_31_60,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 31 AND 60 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_31_60_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 61 AND 90 THEN residual ELSE 0 END), 0) AS b_61_90,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 61 AND 90 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_61_90_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 91 AND 120 THEN residual ELSE 0 END), 0) AS b_91_120,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 91 AND 120 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_91_120_cnt,
+                        COALESCE(SUM(CASE WHEN days >= 121 THEN residual ELSE 0 END), 0) AS b_older,
+                        COALESCE(COUNT(CASE WHEN days >= 121 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_older_cnt,
+                        COALESCE(SUM(residual), 0) AS total
+                    FROM line_residual
+                """
+                params = [today, today, today] + tenant_params + company_params + [today]
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, params)
+                    r = cursor.fetchone()
+                    at_d = float(r[0] or 0)
+                    at_d_cnt = int(r[1] or 0)
+                    b1 = float(r[2] or 0)
+                    b1_cnt = int(r[3] or 0)
+                    b2 = float(r[4] or 0)
+                    b2_cnt = int(r[5] or 0)
+                    b3 = float(r[6] or 0)
+                    b3_cnt = int(r[7] or 0)
+                    b4 = float(r[8] or 0)
+                    b4_cnt = int(r[9] or 0)
+                    b5 = float(r[10] or 0)
+                    b5_cnt = int(r[11] or 0)
+                    tot = float(r[12] or 0)
+
+                    buckets = [
+                        {"bucket": "current", "amount": at_d, "count": at_d_cnt},
+                        {"bucket": "1-30 days", "amount": b1, "count": b1_cnt},
+                        {"bucket": "31-60 days", "amount": b2, "count": b2_cnt},
+                        {"bucket": "61-90 days", "amount": b3, "count": b3_cnt},
+                        {"bucket": "91-120 days", "amount": b4, "count": b4_cnt},
+                        {"bucket": "Older", "amount": b5, "count": b5_cnt},
+                    ]
+                    overdue_total = b1 + b2 + b3 + b4 + b5
+                    return {
+                        "buckets": buckets,
+                        "total_receivables": tot,
+                        "overdue_total": overdue_total,
+                        "applied_filters": {
+                            "tenant_ids": tenant_ids or [],
+                            "company_ids": company_ids or [],
+                            "as_of_date": as_of_date or today.isoformat(),
+                        },
+                    }
+
             receivables = AccountMove.objects.filter(
                 state="posted",
                 move_type="out_invoice",
@@ -1431,20 +1584,209 @@ class KPIService:
         tenant_ids: Optional[list[str]] = None,
         company_ids: Optional[list[int]] = None,
         as_of_date: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Return paginated invoices for a specific receivables aging bucket, grouped by tenant.
         """
-        VALID_BUCKETS = ("current", "1-30", "31-60", "61-90", "90+")
+        VALID_BUCKETS = ("current", "1-30", "31-60", "61-90", "91-120", "older", "90+")
 
         def _get():
-            from odoo_app.models import Tenant
+            from odoo_app.models import Tenant, AccountPartialReconcile
             today = date.today()
-            if as_of_date:
+            ref_date = as_of_date or date_to or date_from
+            if ref_date:
                 try:
-                    today = date.fromisoformat(as_of_date)
+                    today = date.fromisoformat(ref_date)
                 except ValueError:
                     pass
+
+            bucket_key = bucket.lower().strip()
+            if bucket_key not in VALID_BUCKETS:
+                return {
+                    "error": f"Invalid bucket '{bucket}'. Valid values: {', '.join(VALID_BUCKETS)}",
+                    "bucket": bucket,
+                    "limit": limit,
+                    "offset": offset,
+                    "tenants": [],
+                }
+
+            def _safe_uuids(ids: list) -> list[str]:
+                import uuid
+                res = []
+                for x in ids:
+                    try:
+                        uuid.UUID(str(x))
+                        res.append(str(x))
+                    except Exception:
+                        pass
+                return res
+
+            valid_t_uuids = _safe_uuids(tenant_ids or [])
+
+            # Check if ledger partial reconciles exist
+            if valid_t_uuids and AccountPartialReconcile.objects.filter(tenant_id__in=valid_t_uuids).exists():
+                from django.db import connection
+                if bucket_key == "current":
+                    day_cond = "days <= 0"
+                elif bucket_key == "1-30":
+                    day_cond = "days BETWEEN 1 AND 30"
+                elif bucket_key == "31-60":
+                    day_cond = "days BETWEEN 31 AND 60"
+                elif bucket_key == "61-90":
+                    day_cond = "days BETWEEN 61 AND 90"
+                elif bucket_key == "91-120":
+                    day_cond = "days BETWEEN 91 AND 120"
+                elif bucket_key in ("older", "121+"):
+                    day_cond = "days >= 121"
+                elif bucket_key == "90+":
+                    day_cond = "days >= 91"
+                else:
+                    day_cond = "1=1"
+
+                tenant_filter = "AND l.tenant_id IN %s"
+                tenant_params = [tuple(str(t) for t in valid_t_uuids)]
+                company_filter = "AND l.company_id IN %s" if company_ids and None not in company_ids else ""
+                company_params = [tuple(int(c) for c in company_ids if c is not None)] if company_filter else []
+
+                sql = f"""
+                    WITH line_recon AS (
+                        SELECT
+                            l.id AS line_id,
+                            l.company_id,
+                            l.tenant_id,
+                            l.account_move_id,
+                            m.date AS move_date,
+                            l.debit,
+                            l.credit,
+                            COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                            COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                        FROM fact_account_move_lines l
+                        JOIN fact_account_moves m ON l.account_move_id = m.id
+                        LEFT JOIN fact_account_partial_reconciles pr_deb 
+                            ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= %s
+                        LEFT JOIN fact_account_partial_reconciles pr_cred 
+                            ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= %s
+                        WHERE m.state = 'posted'
+                          AND l.account_type = 'asset_receivable'
+                          AND m.date <= %s
+                          {tenant_filter}
+                          {company_filter}
+                        GROUP BY l.id, l.company_id, l.tenant_id, l.account_move_id, m.date, l.debit, l.credit
+                    ),
+                    line_residual AS (
+                        SELECT
+                            line_id,
+                            company_id,
+                            tenant_id,
+                            account_move_id,
+                            move_date,
+                            (DATE %s - move_date) AS days,
+                            CASE 
+                                WHEN debit > 0 THEN debit - reconciled_debit 
+                                ELSE -(credit - reconciled_credit)
+                            END AS residual
+                        FROM line_recon
+                    )
+                    SELECT
+                        line_id,
+                        tenant_id,
+                        account_move_id,
+                        days,
+                        residual
+                    FROM line_residual
+                    WHERE {day_cond}
+                      AND ABS(residual) > 0.01
+                    ORDER BY move_date DESC, ABS(residual) DESC
+                """
+                params = [today, today, today] + tenant_params + company_params + [today]
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, params)
+                    rows = cursor.fetchall()
+
+                tenant_map = {str(t.id): t for t in Tenant.objects.filter(is_active=True)}
+                by_tenant = {}
+                for r in rows:
+                    t_id = str(r[1])
+                    if t_id not in by_tenant:
+                        by_tenant[t_id] = []
+                    by_tenant[t_id].append(r)
+
+                active_tenants = list(Tenant.objects.filter(is_active=True))
+                if valid_t_uuids:
+                    active_tenants = [t for t in active_tenants if str(t.id) in valid_t_uuids]
+
+                tenants_res = []
+                for t in active_tenants:
+                    t_id = str(t.id)
+                    t_rows = by_tenant.get(t_id, [])
+                    total = len(t_rows)
+                    if total == 0:
+                        continue
+                    page_rows = t_rows[offset : offset + limit]
+                    move_ids = [r[2] for r in page_rows]
+                    moves = {m.id: m for m in AccountMove.objects.filter(id__in=move_ids).select_related("partner", "company", "tenant")}
+
+                    items = []
+                    for r in page_rows:
+                        m = moves.get(r[2])
+                        if not m:
+                            continue
+                        partner = m.partner
+                        company = m.company
+                        residual_val = float(r[4])
+                        days_val = int(r[3])
+                        items.append({
+                            "id": m.id,
+                            "odoo_id": m.odoo_id,
+                            "invoice_number": m.odoo_name or "",
+                            "invoice_reference": m.ref or "",
+                            "invoice_origin": m.invoice_origin or "",
+                            "amount_total": _to_float(m.amount_total),
+                            "amount_untaxed": _to_float(m.amount_untaxed),
+                            "amount_tax": _to_float(m.amount_tax),
+                            "amount_residual": residual_val,
+                            "currency_code": m.currency_code or "XAF",
+                            "invoice_date": m.invoice_date.isoformat() if m.invoice_date else (m.date.isoformat() if m.date else None),
+                            "invoice_date_due": m.invoice_date_due.isoformat() if m.invoice_date_due else None,
+                            "days_overdue": days_val,
+                            "payment_state": m.payment_state or "",
+                            "client": {
+                                "id": partner.id if partner else None,
+                                "name": partner.name if partner else "Unknown",
+                                "email": getattr(partner, "email", "") or "",
+                                "phone": getattr(partner, "phone", "") or "",
+                                "mobile": getattr(partner, "mobile", "") or "",
+                                "street": getattr(partner, "street", "") or "",
+                                "city": getattr(partner, "city", "") or "",
+                                "country": getattr(partner, "country_name", "") or "",
+                            },
+                            "partner_name": partner.name if partner else "",
+                            "company_name": company.name if company else "",
+                            "tenant_id": t_id,
+                            "tenant_name": t.name,
+                        })
+
+                    tenants_res.append({
+                        "tenant_id": t_id,
+                        "tenant_name": t.name,
+                        "total": total,
+                        "items": items,
+                    })
+
+                return {
+                    "bucket": bucket_key,
+                    "limit": limit,
+                    "offset": offset,
+                    "tenants": tenants_res,
+                    "applied_filters": {
+                        "tenant_ids": tenant_ids or [],
+                        "company_ids": company_ids or [],
+                        "as_of_date": ref_date or today.isoformat(),
+                    },
+                }
 
             base_qs = AccountMove.objects.filter(
                 state="posted",
@@ -1454,8 +1796,6 @@ class KPIService:
                 date__lte=today,
             ).select_related("partner", "company", "tenant")
             base_qs = _apply_tenant_company_filter(base_qs, tenant_ids, company_ids)
-
-            bucket_key = bucket.lower().strip()
 
             if bucket_key == "current":
                 qs = base_qs.filter(
@@ -1481,17 +1821,21 @@ class KPIService:
                     invoice_date_due__lte=cutoff_to,
                     invoice_date_due__gte=cutoff_from,
                 )
+            elif bucket_key == "91-120":
+                cutoff_to = today - timedelta(days=91)
+                cutoff_from = today - timedelta(days=120)
+                qs = base_qs.filter(
+                    invoice_date_due__lte=cutoff_to,
+                    invoice_date_due__gte=cutoff_from,
+                )
+            elif bucket_key in ("older", "121+"):
+                cutoff = today - timedelta(days=121)
+                qs = base_qs.filter(invoice_date_due__lte=cutoff)
             elif bucket_key == "90+":
                 cutoff = today - timedelta(days=90)
                 qs = base_qs.filter(invoice_date_due__lt=cutoff)
             else:
-                return {
-                    "error": f"Invalid bucket '{bucket}'. Valid values: {', '.join(VALID_BUCKETS)}",
-                    "bucket": bucket,
-                    "limit": limit,
-                    "offset": offset,
-                    "tenants": [],
-                }
+                qs = base_qs
 
             def _move_to_item(m) -> dict[str, Any]:
                 partner = m.partner
@@ -1510,7 +1854,7 @@ class KPIService:
                     "amount_residual": _to_float(m.amount_residual),
                     "currency_code": m.currency_code or "",
                     # Dates
-                    "invoice_date": m.invoice_date.isoformat() if m.invoice_date else None,
+                    "invoice_date": m.invoice_date.isoformat() if m.invoice_date else (m.date.isoformat() if m.date else None),
                     "invoice_date_due": m.invoice_date_due.isoformat() if m.invoice_date_due else None,
                     "days_overdue": days_overdue,
                     "payment_state": m.payment_state or "",
@@ -1557,7 +1901,501 @@ class KPIService:
                 "applied_filters": {
                     "tenant_ids": tenant_ids or [],
                     "company_ids": company_ids or [],
+                    "as_of_date": ref_date or today.isoformat(),
+                },
+            }
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_payables_aging(
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+        as_of_date: Optional[str] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Return the Accounts Payable aging schedule across all tenants/companies.
+        Uses ledger partial reconciliations if available; otherwise falls back to fact_account_moves.
+        """
+        def _get():
+            from odoo_app.models import Tenant, AccountPartialReconcile
+            today = date.today()
+            if as_of_date:
+                try:
+                    today = date.fromisoformat(as_of_date)
+                except ValueError:
+                    pass
+
+            def _safe_uuids(ids: list) -> list[str]:
+                import uuid
+                res = []
+                for x in ids:
+                    try:
+                        uuid.UUID(str(x))
+                        res.append(str(x))
+                    except Exception:
+                        pass
+                return res
+
+            valid_t_uuids = _safe_uuids(tenant_ids or [])
+
+            # 1. Partial Reconcile Engine for Payables
+            if valid_t_uuids and AccountPartialReconcile.objects.filter(tenant_id__in=valid_t_uuids).exists():
+                from django.db import connection
+                tenant_filter = "AND l.tenant_id IN %s"
+                tenant_params = [tuple(str(t) for t in valid_t_uuids)]
+                company_filter = "AND l.company_id IN %s" if company_ids and None not in company_ids else ""
+                company_params = [tuple(int(c) for c in company_ids if c is not None)] if company_filter else []
+
+                sql = f"""
+                    WITH line_recon AS (
+                        SELECT
+                            l.id AS line_id,
+                            l.company_id,
+                            l.account_move_id,
+                            m.date AS move_date,
+                            l.debit,
+                            l.credit,
+                            COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                            COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                        FROM fact_account_move_lines l
+                        JOIN fact_account_moves m ON l.account_move_id = m.id
+                        LEFT JOIN fact_account_partial_reconciles pr_deb 
+                            ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= %s
+                        LEFT JOIN fact_account_partial_reconciles pr_cred 
+                            ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= %s
+                        WHERE m.state = 'posted'
+                          AND l.account_type = 'liability_payable'
+                          AND m.date <= %s
+                          {tenant_filter}
+                          {company_filter}
+                        GROUP BY l.id, l.company_id, l.account_move_id, m.date, l.debit, l.credit
+                    ),
+                    line_residual AS (
+                        SELECT
+                            line_id,
+                            move_date,
+                            (DATE %s - move_date) AS days,
+                            CASE 
+                                WHEN credit > 0 THEN credit - reconciled_credit 
+                                ELSE -(debit - reconciled_debit)
+                            END AS residual
+                        FROM line_recon
+                    )
+                    SELECT
+                        COALESCE(SUM(CASE WHEN days <= 0 THEN residual ELSE 0 END), 0) AS at_date,
+                        COALESCE(COUNT(CASE WHEN days <= 0 AND ABS(residual) > 0.01 THEN 1 END), 0) AS at_date_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 1 AND 30 THEN residual ELSE 0 END), 0) AS b_1_30,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 1 AND 30 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_1_30_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 31 AND 60 THEN residual ELSE 0 END), 0) AS b_31_60,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 31 AND 60 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_31_60_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 61 AND 90 THEN residual ELSE 0 END), 0) AS b_61_90,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 61 AND 90 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_61_90_cnt,
+                        COALESCE(SUM(CASE WHEN days BETWEEN 91 AND 120 THEN residual ELSE 0 END), 0) AS b_91_120,
+                        COALESCE(COUNT(CASE WHEN days BETWEEN 91 AND 120 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_91_120_cnt,
+                        COALESCE(SUM(CASE WHEN days >= 121 THEN residual ELSE 0 END), 0) AS b_older,
+                        COALESCE(COUNT(CASE WHEN days >= 121 AND ABS(residual) > 0.01 THEN 1 END), 0) AS b_older_cnt,
+                        COALESCE(SUM(residual), 0) AS total
+                    FROM line_residual
+                """
+                params = [today, today, today] + tenant_params + company_params + [today]
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, params)
+                    r = cursor.fetchone()
+                    at_d = float(r[0] or 0)
+                    at_d_cnt = int(r[1] or 0)
+                    b1 = float(r[2] or 0)
+                    b1_cnt = int(r[3] or 0)
+                    b2 = float(r[4] or 0)
+                    b2_cnt = int(r[5] or 0)
+                    b3 = float(r[6] or 0)
+                    b3_cnt = int(r[7] or 0)
+                    b4 = float(r[8] or 0)
+                    b4_cnt = int(r[9] or 0)
+                    b5 = float(r[10] or 0)
+                    b5_cnt = int(r[11] or 0)
+                    tot = float(r[12] or 0)
+
+                    buckets = [
+                        {"bucket": "current", "amount": at_d, "count": at_d_cnt},
+                        {"bucket": "1-30 days", "amount": b1, "count": b1_cnt},
+                        {"bucket": "31-60 days", "amount": b2, "count": b2_cnt},
+                        {"bucket": "61-90 days", "amount": b3, "count": b3_cnt},
+                        {"bucket": "91-120 days", "amount": b4, "count": b4_cnt},
+                        {"bucket": "Older", "amount": b5, "count": b5_cnt},
+                    ]
+                    overdue_total = b1 + b2 + b3 + b4 + b5
+                    return {
+                        "buckets": buckets,
+                        "total_payables": tot,
+                        "overdue_total": overdue_total,
+                        "applied_filters": {
+                            "tenant_ids": tenant_ids or [],
+                            "company_ids": company_ids or [],
+                            "as_of_date": as_of_date or today.isoformat(),
+                        },
+                    }
+
+            # 2. Fallback to FactAccountMoves
+            payables = AccountMove.objects.filter(
+                state="posted",
+                move_type="in_invoice",
+                payment_state__in=["not_paid", "partial", "in_payment"],
+                tenant__is_active=True,
+                date__lte=today,
+            )
+            payables = _apply_tenant_company_filter(payables, tenant_ids, company_ids)
+            buckets = [
+                {"bucket": "current", "amount": _sum(payables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)), "amount_residual"), "count": payables.filter(Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)).count()},
+                {"bucket": "1-30 days", "amount": 0.0, "count": 0},
+                {"bucket": "31-60 days", "amount": 0.0, "count": 0},
+                {"bucket": "61-90 days", "amount": 0.0, "count": 0},
+                {"bucket": "90+ days", "amount": 0.0, "count": 0},
+            ]
+            for move in payables.filter(invoice_date_due__lt=today).only("invoice_date_due", "amount_residual"):
+                days = (today - move.invoice_date_due).days
+                idx = 1 if days <= 30 else 2 if days <= 60 else 3 if days <= 90 else 4
+                buckets[idx]["amount"] += _to_float(move.amount_residual)
+                buckets[idx]["count"] += 1
+            overdue_total = sum(bucket["amount"] for bucket in buckets[1:])
+            return {
+                "buckets": buckets,
+                "total_payables": sum(bucket["amount"] for bucket in buckets),
+                "overdue_total": overdue_total,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
                     "as_of_date": as_of_date or today.isoformat(),
+                },
+            }
+
+        return await asyncio.to_thread(_get)
+
+    @staticmethod
+    async def get_payables_aging_detail(
+        bucket: str,
+        limit: int = 50,
+        offset: int = 0,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+        as_of_date: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Return paginated vendor bills for a specific payables aging bucket, grouped by tenant.
+        """
+        VALID_BUCKETS = ("current", "1-30", "31-60", "61-90", "91-120", "older", "90+", "0-30")
+
+        def _get():
+            from odoo_app.models import Tenant, AccountPartialReconcile
+            today = date.today()
+            ref_date = as_of_date or date_to or date_from
+            if ref_date:
+                try:
+                    today = date.fromisoformat(ref_date)
+                except ValueError:
+                    pass
+
+            bucket_key = bucket.lower().strip()
+            if bucket_key not in VALID_BUCKETS:
+                return {
+                    "error": f"Invalid bucket '{bucket}'. Valid values: {', '.join(VALID_BUCKETS)}",
+                    "bucket": bucket,
+                    "limit": limit,
+                    "offset": offset,
+                    "tenants": [],
+                }
+
+            def _safe_uuids(ids: list) -> list[str]:
+                import uuid
+                res = []
+                for x in ids:
+                    try:
+                        uuid.UUID(str(x))
+                        res.append(str(x))
+                    except Exception:
+                        pass
+                return res
+
+            valid_t_uuids = _safe_uuids(tenant_ids or [])
+
+            # Check if ledger partial reconciles exist
+            if valid_t_uuids and AccountPartialReconcile.objects.filter(tenant_id__in=valid_t_uuids).exists():
+                from django.db import connection
+                if bucket_key in ("current", "0"):
+                    day_cond = "days <= 0"
+                elif bucket_key in ("1-30", "0-30"):
+                    day_cond = "days BETWEEN 1 AND 30"
+                elif bucket_key == "31-60":
+                    day_cond = "days BETWEEN 31 AND 60"
+                elif bucket_key == "61-90":
+                    day_cond = "days BETWEEN 61 AND 90"
+                elif bucket_key == "91-120":
+                    day_cond = "days BETWEEN 91 AND 120"
+                elif bucket_key in ("older", "121+"):
+                    day_cond = "days >= 121"
+                elif bucket_key == "90+":
+                    day_cond = "days >= 91"
+                else:
+                    day_cond = "1=1"
+
+                tenant_filter = "AND l.tenant_id IN %s"
+                tenant_params = [tuple(str(t) for t in valid_t_uuids)]
+                company_filter = "AND l.company_id IN %s" if company_ids and None not in company_ids else ""
+                company_params = [tuple(int(c) for c in company_ids if c is not None)] if company_filter else []
+
+                sql = f"""
+                    WITH line_recon AS (
+                        SELECT
+                            l.id AS line_id,
+                            l.company_id,
+                            l.tenant_id,
+                            l.account_move_id,
+                            m.date AS move_date,
+                            l.debit,
+                            l.credit,
+                            COALESCE(SUM(pr_deb.amount), 0) AS reconciled_debit,
+                            COALESCE(SUM(pr_cred.amount), 0) AS reconciled_credit
+                        FROM fact_account_move_lines l
+                        JOIN fact_account_moves m ON l.account_move_id = m.id
+                        LEFT JOIN fact_account_partial_reconciles pr_deb 
+                            ON pr_deb.debit_move_line_id = l.id AND pr_deb.max_date <= %s
+                        LEFT JOIN fact_account_partial_reconciles pr_cred 
+                            ON pr_cred.credit_move_line_id = l.id AND pr_cred.max_date <= %s
+                        WHERE m.state = 'posted'
+                          AND l.account_type = 'liability_payable'
+                          AND m.date <= %s
+                          {tenant_filter}
+                          {company_filter}
+                        GROUP BY l.id, l.company_id, l.tenant_id, l.account_move_id, m.date, l.debit, l.credit
+                    ),
+                    line_residual AS (
+                        SELECT
+                            line_id,
+                            company_id,
+                            tenant_id,
+                            account_move_id,
+                            move_date,
+                            (DATE %s - move_date) AS days,
+                            CASE 
+                                WHEN credit > 0 THEN credit - reconciled_credit 
+                                ELSE -(debit - reconciled_debit)
+                            END AS residual
+                        FROM line_recon
+                    )
+                    SELECT
+                        line_id,
+                        tenant_id,
+                        account_move_id,
+                        days,
+                        residual
+                    FROM line_residual
+                    WHERE {day_cond}
+                      AND ABS(residual) > 0.01
+                    ORDER BY move_date DESC, ABS(residual) DESC
+                """
+                params = [today, today, today] + tenant_params + company_params + [today]
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, params)
+                    rows = cursor.fetchall()
+
+                tenant_map = {str(t.id): t for t in Tenant.objects.filter(is_active=True)}
+                by_tenant = {}
+                for r in rows:
+                    t_id = str(r[1])
+                    if t_id not in by_tenant:
+                        by_tenant[t_id] = []
+                    by_tenant[t_id].append(r)
+
+                active_tenants = list(Tenant.objects.filter(is_active=True))
+                if valid_t_uuids:
+                    active_tenants = [t for t in active_tenants if str(t.id) in valid_t_uuids]
+
+                tenants_res = []
+                for t in active_tenants:
+                    t_id = str(t.id)
+                    t_rows = by_tenant.get(t_id, [])
+                    total = len(t_rows)
+                    if total == 0:
+                        continue
+                    page_rows = t_rows[offset : offset + limit]
+                    move_ids = [r[2] for r in page_rows]
+                    moves = {m.id: m for m in AccountMove.objects.filter(id__in=move_ids).select_related("partner", "company", "tenant")}
+
+                    items = []
+                    for r in page_rows:
+                        m = moves.get(r[2])
+                        if not m:
+                            continue
+                        partner = m.partner
+                        company = m.company
+                        residual_val = float(r[4])
+                        days_val = int(r[3])
+                        items.append({
+                            "id": m.id,
+                            "odoo_id": m.odoo_id,
+                            "invoice_number": m.odoo_name or "",
+                            "invoice_reference": m.ref or "",
+                            "invoice_origin": m.invoice_origin or "",
+                            "amount_total": _to_float(m.amount_total),
+                            "amount_untaxed": _to_float(m.amount_untaxed),
+                            "amount_tax": _to_float(m.amount_tax),
+                            "amount_residual": residual_val,
+                            "currency_code": m.currency_code or "XAF",
+                            "invoice_date": m.invoice_date.isoformat() if m.invoice_date else (m.date.isoformat() if m.date else None),
+                            "invoice_date_due": m.invoice_date_due.isoformat() if m.invoice_date_due else None,
+                            "days_overdue": days_val,
+                            "payment_state": m.payment_state or "",
+                            "client": {
+                                "id": partner.id if partner else None,
+                                "name": partner.name if partner else "Unknown",
+                                "email": getattr(partner, "email", "") or "",
+                                "phone": getattr(partner, "phone", "") or "",
+                                "mobile": getattr(partner, "mobile", "") or "",
+                                "street": getattr(partner, "street", "") or "",
+                                "city": getattr(partner, "city", "") or "",
+                                "country": getattr(partner, "country_name", "") or "",
+                            },
+                            "partner_name": partner.name if partner else "",
+                            "company_name": company.name if company else "",
+                            "tenant_id": t_id,
+                            "tenant_name": t.name,
+                        })
+
+                    tenants_res.append({
+                        "tenant_id": t_id,
+                        "tenant_name": t.name,
+                        "total": total,
+                        "items": items,
+                    })
+
+                return {
+                    "bucket": bucket_key,
+                    "limit": limit,
+                    "offset": offset,
+                    "tenants": tenants_res,
+                    "applied_filters": {
+                        "tenant_ids": tenant_ids or [],
+                        "company_ids": company_ids or [],
+                        "as_of_date": ref_date or today.isoformat(),
+                    },
+                }
+
+            # Fallback
+            base_qs = AccountMove.objects.filter(
+                state="posted",
+                move_type="in_invoice",
+                payment_state__in=["not_paid", "partial", "in_payment"],
+                tenant__is_active=True,
+                date__lte=today,
+            ).select_related("partner", "company", "tenant")
+            base_qs = _apply_tenant_company_filter(base_qs, tenant_ids, company_ids)
+
+            if bucket_key == "current":
+                qs = base_qs.filter(
+                    Q(invoice_date_due__isnull=True) | Q(invoice_date_due__gte=today)
+                )
+            elif bucket_key in ("1-30", "0-30"):
+                cutoff_from = today - timedelta(days=30)
+                qs = base_qs.filter(
+                    invoice_date_due__lt=today,
+                    invoice_date_due__gte=cutoff_from,
+                )
+            elif bucket_key == "31-60":
+                cutoff_to = today - timedelta(days=31)
+                cutoff_from = today - timedelta(days=60)
+                qs = base_qs.filter(
+                    invoice_date_due__lte=cutoff_to,
+                    invoice_date_due__gte=cutoff_from,
+                )
+            elif bucket_key == "61-90":
+                cutoff_to = today - timedelta(days=61)
+                cutoff_from = today - timedelta(days=90)
+                qs = base_qs.filter(
+                    invoice_date_due__lte=cutoff_to,
+                    invoice_date_due__gte=cutoff_from,
+                )
+            elif bucket_key == "91-120":
+                cutoff_to = today - timedelta(days=91)
+                cutoff_from = today - timedelta(days=120)
+                qs = base_qs.filter(
+                    invoice_date_due__lte=cutoff_to,
+                    invoice_date_due__gte=cutoff_from,
+                )
+            elif bucket_key in ("older", "121+"):
+                cutoff = today - timedelta(days=121)
+                qs = base_qs.filter(invoice_date_due__lte=cutoff)
+            elif bucket_key == "90+":
+                cutoff = today - timedelta(days=90)
+                qs = base_qs.filter(invoice_date_due__lt=cutoff)
+            else:
+                qs = base_qs
+
+            def _move_to_item(m) -> dict[str, Any]:
+                partner = m.partner
+                company = m.company
+                days_overdue = (today - m.invoice_date_due).days if m.invoice_date_due and m.invoice_date_due < today else 0
+                return {
+                    "id": m.id,
+                    "odoo_id": m.odoo_id,
+                    "invoice_number": m.odoo_name or "",
+                    "invoice_reference": m.ref or "",
+                    "invoice_origin": m.invoice_origin or "",
+                    "amount_total": _to_float(m.amount_total),
+                    "amount_untaxed": _to_float(m.amount_untaxed),
+                    "amount_tax": _to_float(m.amount_tax),
+                    "amount_residual": _to_float(m.amount_residual),
+                    "currency_code": m.currency_code or "",
+                    "invoice_date": m.invoice_date.isoformat() if m.invoice_date else (m.date.isoformat() if m.date else None),
+                    "invoice_date_due": m.invoice_date_due.isoformat() if m.invoice_date_due else None,
+                    "days_overdue": days_overdue,
+                    "payment_state": m.payment_state or "",
+                    "client": {
+                        "id": partner.id if partner else None,
+                        "name": partner.name if partner else "Unknown",
+                        "email": getattr(partner, "email", "") or "",
+                        "phone": getattr(partner, "phone", "") or "",
+                        "mobile": getattr(partner, "mobile", "") or "",
+                        "street": getattr(partner, "street", "") or "",
+                        "city": getattr(partner, "city", "") or "",
+                        "country": getattr(partner, "country_name", "") or "",
+                    },
+                    "partner_name": partner.name if partner else "",
+                    "company_name": company.name if company else "",
+                    "tenant_id": str(m.tenant_id),
+                    "tenant_name": m.tenant.name if m.tenant else "",
+                }
+
+            active_tenants = list(Tenant.objects.filter(is_active=True))
+            if tenant_ids:
+                active_tenants = [t for t in active_tenants if str(t.id) in tenant_ids]
+            tenants_res = []
+
+            for t in active_tenants:
+                t_qs = qs.filter(tenant=t)
+                total = t_qs.count()
+                if total == 0:
+                    continue
+                page = list(t_qs.order_by("invoice_date_due", "-amount_residual")[offset: offset + limit])
+                tenants_res.append({
+                    "tenant_id": str(t.id),
+                    "tenant_name": t.name,
+                    "total": total,
+                    "items": [_move_to_item(m) for m in page],
+                })
+
+            return {
+                "bucket": bucket_key,
+                "limit": limit,
+                "offset": offset,
+                "tenants": tenants_res,
+                "applied_filters": {
+                    "tenant_ids": tenant_ids or [],
+                    "company_ids": company_ids or [],
+                    "as_of_date": ref_date or today.isoformat(),
                 },
             }
 

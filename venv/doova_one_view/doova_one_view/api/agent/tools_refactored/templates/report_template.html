@@ -383,6 +383,16 @@
             line-height: 1.15;
         }
 
+        .kpi-value.neg-val,
+        .neg-val,
+        .negative-val,
+        .negative-number,
+        .text-danger,
+        span.neg-val {
+            color: #dc2626 !important;
+            font-weight: 800 !important;
+        }
+
         .kpi-variance {
             font-size: 7pt;
             font-weight: 700;
@@ -435,6 +445,21 @@
             margin-bottom: 5px;
             padding-bottom: 3px;
             border-bottom: 1px solid #f1f5f9;
+        }
+
+        .chart-badge {
+            display: inline-block;
+            font-size: 6.5pt;
+            font-weight: 600;
+            color: #475569;
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 1px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            float: right;
+            margin-top: 1px;
         }
 
         .chart-img {
@@ -1010,7 +1035,10 @@
         <!-- Multi-series Performance Trend Chart -->
         {% if trend_chart_b64 %}
         <div class="chart-box">
-            <div class="chart-box-title">Revenue, Operating Expenses & Net Profit Trend</div>
+            <div class="chart-box-title">
+                <span>Revenue, Operating Expenses & Net Profit Trend</span>
+                <span class="chart-badge">Trailing 12-Month Macro Horizon</span>
+            </div>
             <img class="chart-img" src="data:image/png;base64,{{ trend_chart_b64 }}" alt="Performance Trend" />
             <div class="chart-caption">Monthly performance trajectory across key financial layers.</div>
         </div>

@@ -193,6 +193,10 @@ def _is_credit_balance_error(e: Exception) -> bool:
     error_msg = str(e).lower()
     return any(k in error_msg for k in ["credit balance", "insufficient credits", "billing", "plans & billing", "balance is too low", "purchase credits"])
 
+def get_user_facing_error_message(e: Exception | None = None) -> str:
+    """Standardized user-facing error message for all agent errors."""
+    return "⚠️ An error occurred while processing your request. Please try again later or contact support if the problem persists."
+
 async def background_retry_executor(
     session_id: str,
     tenant_id: str | None,
@@ -271,7 +275,7 @@ async def background_retry_executor(
             
         except Exception as e:
             if _is_credit_balance_error(e):
-                err_text = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+                err_text = get_user_facing_error_message(e)
                 await sync_to_async(session_manager.save_message)(session_id, "assistant", err_text)
                 return
 
@@ -283,7 +287,7 @@ async def background_retry_executor(
                 delay *= 2.0  # exponential backoff
             else:
                 logger.error(f"BACKGROUND RETRY FAILED PERMANENTLY | Session: {session_id} | Error: {e}")
-                err_text = "I attempted to process your request in the background but ran into persistent issues with the AI provider. Please try sending your message again shortly."
+                err_text = get_user_facing_error_message(e)
                 await sync_to_async(session_manager.save_message)(session_id, "assistant", err_text)
                 return
 
@@ -408,7 +412,7 @@ async def chat_endpoint(request: Request):
     # Handle empty messages / simple social phrases before hitting the router (only if no attachments)
     if not req_data.attachments and (not user_message or not user_message.strip() or is_arabic_greeting or is_french_greeting or is_spanish_greeting or is_english_greeting):
         if is_arabic_greeting:
-            answer = "أهلاً وسهلاً بك! أنا Nexus، مساعدك الذكي في Doova One View. كيف يمكنني مساعدتك في بيانات أعمالك اليوم؟"
+            answer = "أهلاً وسهلاً بك! أنا Nexus. كيف يمكنني مساعدتك في بيانات أعمالك اليوم؟"
         elif is_french_greeting:
             answer = "Bonjour ! Je suis Nexus. Comment puis-je vous aider avec vos données d'entreprise aujourd'hui ?"
         elif is_spanish_greeting:
@@ -474,7 +478,11 @@ async def chat_endpoint(request: Request):
             logger.info(f"PRE-ROUTER FAST PATH | Short affirmative, no plan → EXECUTE | msg='{clean_user_message}'")
     else:
         # 2. Routing (pass recent chat history for context-aware intent resolution)
-        decision = await asyncio.to_thread(router_node.classify, clean_user_message or user_message, chat_history_from_db)
+        try:
+            decision = await asyncio.to_thread(router_node.classify, clean_user_message or user_message, chat_history_from_db)
+        except Exception as e:
+            log_error("router_node.classify", e)
+            decision = "EXECUTE"
 
     # 2.1 Handle Plan Approval (CONFIRM path with deterministic affirmative matching)
     REJECTION_KEYWORDS = {"no", "nope", "nah", "cancel", "stop", "abort", "dont", "don't", "refuse", "reject", "nevermind", "nvm"}
@@ -554,13 +562,13 @@ async def chat_endpoint(request: Request):
         except Exception as e:
             log_error("chat_endpoint.CONFIRM_EXECUTE", e)
             if _is_credit_balance_error(e):
-                answer = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+                answer = get_user_facing_error_message(e)
                 await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
                 return make_chat_response(
                     answer,
                     "ERROR",
                     current_session_id,
-                    session.title,
+                    session.title if session else "New Chat",
                     user_message
                 )
             error_msg = str(e).lower()
@@ -590,7 +598,15 @@ async def chat_endpoint(request: Request):
                     session.title,
                     user_message
                 )
-            raise HTTPException(status_code=500, detail=str(e))
+            answer = get_user_facing_error_message(e)
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+            return make_chat_response(
+                answer,
+                "ERROR",
+                current_session_id,
+                session.title if session else "New Chat",
+                user_message
+            )
 
     # 2.2 Conversational Continuation Handling:
     # If the user gives an affirmative reply ("yes", "ok", "sure", "proceed") or router returned CONFIRM,
@@ -760,13 +776,13 @@ async def chat_endpoint(request: Request):
         except Exception as e:
             log_error("chat_endpoint.EXECUTE", e)
             if _is_credit_balance_error(e):
-                answer = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+                answer = get_user_facing_error_message(e)
                 await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
                 return make_chat_response(
                     answer,
                     "ERROR",
                     current_session_id,
-                    session.title,
+                    session.title if session else "New Chat",
                     user_message
                 )
             
@@ -795,7 +811,15 @@ async def chat_endpoint(request: Request):
                     user_message
                 )
                 
-            raise HTTPException(status_code=500, detail=str(e))
+            answer = get_user_facing_error_message(e)
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+            return make_chat_response(
+                answer,
+                "ERROR",
+                current_session_id,
+                session.title if session else "New Chat",
+                user_message
+            )
     
     # 4. Planning Path (High-Stakes Architecture)
     try:
@@ -856,13 +880,13 @@ async def chat_endpoint(request: Request):
     except Exception as e:
         log_error("chat_endpoint.PLAN", e)
         if _is_credit_balance_error(e):
-            answer = "❌ **AI Provider Credit Balance Low**: Your credit balance is too low to access the Anthropic API. Please go to Anthropic Console > Plans & Billing to upgrade or purchase credits."
+            answer = get_user_facing_error_message(e)
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
             return make_chat_response(
                 answer,
                 "ERROR",
                 current_session_id,
-                session.title,
+                session.title if session else "New Chat",
                 user_message
             )
         # Friendly message for API quota/limit/overloaded issues
@@ -890,7 +914,15 @@ async def chat_endpoint(request: Request):
                 user_message
             )
             
-        raise HTTPException(status_code=500, detail=str(e))
+        answer = get_user_facing_error_message(e)
+        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+        return make_chat_response(
+            answer,
+            "ERROR",
+            current_session_id,
+            session.title if session else "New Chat",
+            user_message
+        )
 
 
 # ── Structured AI Feature Endpoints ─────────────
@@ -1355,7 +1387,16 @@ async def approve_plan(request: ChatRequest, plan: dict):
                 user_message,
                 status="BACKGROUND_PROCESSING"
             )
-        raise HTTPException(status_code=500, detail=str(e))
+        answer = get_user_facing_error_message(e)
+        session_manager.save_message(request.session_id, "assistant", answer)
+        return make_chat_response(
+            answer,
+            "ERROR",
+            request.session_id,
+            "Plan Approved",
+            user_message,
+            status="ERROR"
+        )
 
 
 @router.get("/reports/{filename}", tags=["Agent Reports"])

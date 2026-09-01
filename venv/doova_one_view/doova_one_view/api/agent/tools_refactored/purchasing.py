@@ -522,7 +522,10 @@ def get_purchase_trend_tool(
     company_id: int | None = None,
     company_ids: list[int] | None = None,
     granularity: str = "month",
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> dict:
     """Purchase spend time series broken down by period."""
 
@@ -539,6 +542,14 @@ def get_purchase_trend_tool(
     if granularity not in allowed:
         granularity = "month"
 
+    date_filter = ""
+    if start_date:
+        date_filter += " AND date_order >= :start_date"
+        params["start_date"] = start_date
+    if end_date:
+        date_filter += " AND date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+
     rows = run_query(
         f"""SELECT
                 DATE_TRUNC('{granularity}', date_order) AS period,
@@ -548,11 +559,24 @@ def get_purchase_trend_tool(
             WHERE 1=1 {t_sql_def}
               AND state IN ('purchase', 'done')
               AND date_order IS NOT NULL
+              {date_filter}
               {f_sql}
             GROUP BY period
             ORDER BY period ASC""",
         params,
     )
+    return {
+        "tool_name": "get_purchase_trend_tool",
+        "points": [
+            {
+                "period": str(r.get("period", ""))[:10],
+                "spend": float(r.get("spend", 0) or 0),
+                "revenue": float(r.get("spend", 0) or 0),
+                "po_count": int(r.get("po_count", 0) or 0),
+            }
+            for r in rows
+        ],
+    }
 
 # ──────────────────────────────────────────────────────────────
 # 8. PRODUCT PURCHASE HISTORY & UNIT COSTS

@@ -30,7 +30,7 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
         try:
             model_fields = self.with_retry(self.odoo.get_fields, 'account.account').keys()
             requested_fields = [
-                'id', 'code', 'name', 'account_type', 'reconcile', 'deprecated', 'company_id', 'write_date'
+                'id', 'code', 'name', 'account_type', 'reconcile', 'deprecated', 'tag_ids', 'company_id', 'write_date'
             ]
             available_fields = [f for f in requested_fields if f in model_fields]
 
@@ -42,6 +42,10 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
 
             for account in self.fetch_paginated('account.account', domain, available_fields):
                 try:
+                    import json
+                    raw_tags = account.get('tag_ids') or []
+                    tags_json = json.dumps(raw_tags if isinstance(raw_tags, list) else [])
+
                     params_list.append((
                         tenant_id,
                         account['id'],
@@ -50,6 +54,7 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
                         account.get('account_type'),
                         account.get('reconcile', False),
                         account.get('deprecated', False),
+                        tags_json,
                         self.get_internal_id(
                             'dim_companies', tenant_id,
                             self.transformer.parse_odoo_many2one(account.get('company_id'))
@@ -65,15 +70,16 @@ class ChartOfAccountsSynchronizer(BaseSynchronizer):
             query = """
                 INSERT INTO dim_chart_of_accounts (
                     tenant_id, odoo_id, code, name, account_type,
-                    reconcile, deprecated, company_id, odoo_write_date, synced_at
+                    reconcile, deprecated, tag_ids, company_id, odoo_write_date, synced_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, NOW())
                 ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
                     code = EXCLUDED.code,
                     name = EXCLUDED.name,
                     account_type = EXCLUDED.account_type,
                     reconcile = EXCLUDED.reconcile,
                     deprecated = EXCLUDED.deprecated,
+                    tag_ids = EXCLUDED.tag_ids,
                     company_id = EXCLUDED.company_id,
                     odoo_write_date = EXCLUDED.odoo_write_date,
                     synced_at = NOW()

@@ -24,12 +24,10 @@ endblock %}
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-green"></div>
             <div class="kpi-title">Health Score</div>
-            <div class="kpi-value">{{ report_data.get('health_score', {}).get('formatted', kpis.get('health_score',
-                {}).get('formatted', '80')) }} / 100</div>
+            <div class="kpi-value">{{ report_data.get('health_score', {}).get('formatted', report_data.get('business_health_score', {}).get('formatted', kpis.get('health_score', {}).get('formatted', '80'))) }} / 100</div>
             {% if report_data.get('health_score', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('health_score', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('health_score', {}).get('arrow', '') }} {{ report_data.get('health_score',
-                {}).get('var_text', '') }}
+                {{ report_data.get('health_score', {}).get('arrow', '') }} {{ report_data.get('health_score', {}).get('var_text', '') }}
             </div>
             {% endif %}
             <div class="kpi-source">Multi-Factor Weighted Index</div>
@@ -38,15 +36,11 @@ endblock %}
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-blue"></div>
             <div class="kpi-title">Gross Margin %</div>
-            <div class="kpi-value">{{ report_data.get('gross_margin', {}).get('formatted', kpis.get('gross_margin',
-                {}).get('formatted', '—')) }}</div>
-            {% set gm_var = report_data.get('gross_margin', {}).get('var_text', kpis.get('gross_margin',
-            {}).get('var_text', '')) %}
+            <div class="kpi-value">{{ report_data.get('gross_margin', {}).get('formatted', report_data.get('gross_margin_pct', {}).get('formatted', kpis.get('gross_margin', {}).get('formatted', '—'))) }}</div>
+            {% set gm_var = report_data.get('gross_margin', {}).get('var_text', kpis.get('gross_margin', {}).get('var_text', '')) %}
             {% if gm_var %}
-            <div
-                class="kpi-variance {{ report_data.get('gross_margin', {}).get('var_class', kpis.get('gross_margin', {}).get('var_class', 'variance-neutral')) }}">
-                {{ report_data.get('gross_margin', {}).get('arrow', kpis.get('gross_margin', {}).get('arrow', '')) }} {{
-                gm_var }}
+            <div class="kpi-variance {{ report_data.get('gross_margin', {}).get('var_class', kpis.get('gross_margin', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('gross_margin', {}).get('arrow', kpis.get('gross_margin', {}).get('arrow', '')) }} {{ gm_var }}
             </div>
             {% endif %}
             <div class="kpi-source">Gross Profit / Revenue</div>
@@ -55,11 +49,10 @@ endblock %}
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-green"></div>
             <div class="kpi-title">Net Profit Margin %</div>
-            <div class="kpi-value">{{ report_data.get('net_margin', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('net_margin', {}).get('formatted', report_data.get('net_margin_pct', {}).get('formatted', report_data.get('net_profit_margin', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('net_margin', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('net_margin', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('net_margin', {}).get('arrow', '') }} {{ report_data.get('net_margin',
-                {}).get('var_text', '') }}
+                {{ report_data.get('net_margin', {}).get('arrow', '') }} {{ report_data.get('net_margin', {}).get('var_text', '') }}
             </div>
             {% endif %}
             <div class="kpi-source">Net Profit / Revenue</div>
@@ -68,12 +61,10 @@ endblock %}
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-cyan"></div>
             <div class="kpi-title">Current Ratio</div>
-            <div class="kpi-value">{{ report_data.get('current_ratio', {}).get('formatted', kpis.get('current_ratio',
-                {}).get('formatted', '—')) }}</div>
+            <div class="kpi-value">{{ report_data.get('current_ratio', {}).get('formatted', report_data.get('working_capital_ratio', {}).get('formatted', kpis.get('current_ratio', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('current_ratio', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('current_ratio', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('current_ratio', {}).get('arrow', '') }} {{ report_data.get('current_ratio',
-                {}).get('var_text', '') }}
+                {{ report_data.get('current_ratio', {}).get('arrow', '') }} {{ report_data.get('current_ratio', {}).get('var_text', '') }}
             </div>
             {% endif %}
             <div class="kpi-source">Current Assets / Current Liab</div>
@@ -82,11 +73,10 @@ endblock %}
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-purple"></div>
             <div class="kpi-title">Quick Ratio</div>
-            <div class="kpi-value">{{ report_data.get('quick_ratio', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('quick_ratio', {}).get('formatted', report_data.get('acid_test_ratio', {}).get('formatted', '—')) }}</div>
             {% if report_data.get('quick_ratio', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('quick_ratio', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('quick_ratio', {}).get('arrow', '') }} {{ report_data.get('quick_ratio',
-                {}).get('var_text', '') }}
+                {{ report_data.get('quick_ratio', {}).get('arrow', '') }} {{ report_data.get('quick_ratio', {}).get('var_text', '') }}
             </div>
             {% endif %}
             <div class="kpi-source">(Cash + AR) / Current Liab</div>
@@ -94,14 +84,15 @@ endblock %}
 
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-amber"></div>
-            <div class="kpi-title">Return on Equity (ROE)</div>
-            <div class="kpi-value">{{ report_data.get('roe', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('roe', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('roe', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('roe', {}).get('arrow', '') }} {{ report_data.get('roe', {}).get('var_text', '') }}
+            <div class="kpi-title">ROI</div>
+            <div class="kpi-value">{{ report_data.get('roi', {}).get('formatted', report_data.get('roi_pct', {}).get('formatted', report_data.get('return_on_investment', {}).get('formatted', report_data.get('roe', {}).get('formatted', '—')))) }}</div>
+            {% set roi_var = report_data.get('roi', {}).get('var_text', report_data.get('roe', {}).get('var_text', '')) %}
+            {% if roi_var %}
+            <div class="kpi-variance {{ report_data.get('roi', {}).get('var_class', report_data.get('roe', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('roi', {}).get('arrow', report_data.get('roe', {}).get('arrow', '')) }} {{ roi_var }}
             </div>
             {% endif %}
-            <div class="kpi-source">Net Profit / Total Equity</div>
+            <div class="kpi-source">Net Profit / Total Assets</div>
         </div>
     </div>
 

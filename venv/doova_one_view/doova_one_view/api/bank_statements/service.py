@@ -163,9 +163,11 @@ class BankStatementService:
         return await asyncio.to_thread(_get)
 
     @staticmethod
-    async def get_statement_lines(tenant_id: str, limit: int = 50, offset: int = 0, search: Optional[str] = None, company_ids: Optional[list[int]] = None, start_date: Optional[str] = None, end_date: Optional[str] = None) -> PaginatedResponse[BankStatementLineRead]:
+    async def get_statement_lines(tenant_id: str, statement_id: Optional[int] = None, limit: int = 50, offset: int = 0, search: Optional[str] = None, company_ids: Optional[list[int]] = None, start_date: Optional[str] = None, end_date: Optional[str] = None) -> PaginatedResponse[BankStatementLineRead]:
         def _search():
             qs = _date_filter(_company_filter(BankStatementLine.objects.filter(tenant_id=tenant_id), company_ids), start_date, end_date)
+            if statement_id is not None:
+                qs = qs.filter(statement_id=statement_id)
             if search:
                 qs = qs.filter(Q(name__icontains=search) | Q(ref__icontains=search))
             total = qs.count()

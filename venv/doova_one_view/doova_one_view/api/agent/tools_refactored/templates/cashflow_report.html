@@ -22,7 +22,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-green"></div>
             <div class="kpi-title">Liquid Cash & Bank</div>
-            <div class="kpi-value">{{ report_data.get('cash_balance', {}).get('formatted', report_data.get('cash', {}).get('formatted', kpis.get('cash', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-value">{{ report_data.get('cash_balance', {}).get('formatted', report_data.get('cash', {}).get('formatted', report_data.get('liquid_cash', {}).get('formatted', kpis.get('cash', {}).get('formatted', '—')))) }}</div>
             {% if report_data.get('cash_balance', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('cash_balance', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('cash_balance', {}).get('arrow', '') }} {{ report_data.get('cash_balance', {}).get('var_text', '') }}
@@ -34,7 +34,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-blue"></div>
             <div class="kpi-title">Operating Cash Flow</div>
-            <div class="kpi-value">{{ report_data.get('cash_from_operations', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('cash_from_operations', {}).get('formatted', report_data.get('operating_cash_flow', {}).get('formatted', report_data.get('operating_cashflow', {}).get('formatted', kpis.get('operating_cash_flow', {}).get('formatted', '—')))) }}</div>
             {% if report_data.get('cash_from_operations', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('cash_from_operations', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('cash_from_operations', {}).get('arrow', '') }} {{ report_data.get('cash_from_operations', {}).get('var_text', '') }}
@@ -46,7 +46,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-cyan"></div>
             <div class="kpi-title">Investing Cash Flow</div>
-            <div class="kpi-value">{{ report_data.get('cash_from_investing', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('cash_from_investing', {}).get('formatted', report_data.get('investing_cash_flow', {}).get('formatted', kpis.get('investing_cash_flow', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('cash_from_investing', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('cash_from_investing', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('cash_from_investing', {}).get('arrow', '') }} {{ report_data.get('cash_from_investing', {}).get('var_text', '') }}
@@ -58,7 +58,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-purple"></div>
             <div class="kpi-title">Financing Cash Flow</div>
-            <div class="kpi-value">{{ report_data.get('cash_from_financing', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('cash_from_financing', {}).get('formatted', report_data.get('financing_cash_flow', {}).get('formatted', kpis.get('financing_cash_flow', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('cash_from_financing', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('cash_from_financing', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('cash_from_financing', {}).get('arrow', '') }} {{ report_data.get('cash_from_financing', {}).get('var_text', '') }}
@@ -70,7 +70,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-green"></div>
             <div class="kpi-title">Net Cash Movement</div>
-            <div class="kpi-value">{{ report_data.get('net_cash_movement', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('net_cash_movement', {}).get('formatted', report_data.get('net_cash_flow', {}).get('formatted', kpis.get('net_cash_flow', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('net_cash_movement', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('net_cash_movement', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('net_cash_movement', {}).get('arrow', '') }} {{ report_data.get('net_cash_movement', {}).get('var_text', '') }}
@@ -82,7 +82,7 @@
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-amber"></div>
             <div class="kpi-title">Cash Runway</div>
-            <div class="kpi-value">{{ report_data.get('cash_runway', {}).get('formatted', '—') }}</div>
+            <div class="kpi-value">{{ report_data.get('cash_runway', {}).get('formatted', report_data.get('runway', {}).get('formatted', kpis.get('cash_runway', {}).get('formatted', '—'))) }}</div>
             {% if report_data.get('cash_runway', {}).get('var_text') %}
             <div class="kpi-variance {{ report_data.get('cash_runway', {}).get('var_class', 'variance-neutral') }}">
                 {{ report_data.get('cash_runway', {}).get('arrow', '') }} {{ report_data.get('cash_runway', {}).get('var_text', '') }}
@@ -98,6 +98,28 @@
         <div class="chart-box-title">Liquidity & Working Capital Distribution</div>
         <img src="data:image/png;base64,{{ chart_1_b64|default(wc_chart_b64) }}" class="chart-img" alt="Cash Flow Chart" />
     </div>
+    {% endif %}
+
+    <!-- Structured Statement of Cash Flows Table -->
+    {% set cf_rows = report_data.get('cash_flow_statement', []) %}
+    {% if cf_rows %}
+    <h2 class="sub-title">Statement of Cash Flows</h2>
+    <table class="statement-table">
+        <thead>
+            <tr>
+                <th>Cash Flow Activity / Category</th>
+                <th class="text-right">Net Flow Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in cf_rows %}
+            <tr class="{% if row.get('is_total') %}statement-total-row{% elif row.get('is_header') %}statement-header-row{% endif %}">
+                <td class="{% if row.get('is_bold') %}font-bold{% endif %}">{{ row.get('name', 'Activity') }}</td>
+                <td class="text-right font-bold">{{ row.get('amount', '—') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% endif %}
 
     <!-- Bank Balances Table -->
@@ -119,7 +141,7 @@
                 <td class="font-bold">{{ b.get('account_name', b.get('name', b.get('bank', 'Bank Account'))) }}</td>
                 <td>{{ b.get('currency', currency|default('XAF')) }}</td>
                 <td class="text-right font-bold">{{ b.get('balance', b.get('amount', '—')) }}</td>
-                <td class="text-right"><span class="badge badge-good">Active</span></td>
+                <td class="text-right"><span class="badge {% if b.get('status') == 'Overdrawn' or '-' in b.get('balance', '') or '(' in b.get('balance', '') %}badge-danger{% else %}badge-success{% endif %}">{{ b.get('status', 'Active') }}</span></td>
             </tr>
             {% endfor %}
         </tbody>

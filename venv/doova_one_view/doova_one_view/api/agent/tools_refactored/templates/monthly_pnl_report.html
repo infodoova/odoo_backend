@@ -95,7 +95,10 @@
     <!-- Monthly Multi-Series Trend Chart -->
     {% if trend_chart_b64 or chart_1_b64 %}
     <div class="chart-box">
-        <div class="chart-box-title">Monthly Trajectory: Revenue, OpEx, and Net Earnings</div>
+        <div class="chart-box-title">
+            <span>Monthly Trajectory: Revenue, OpEx, and Net Earnings</span>
+            <span class="chart-badge">Trailing 12-Month Macro Horizon</span>
+        </div>
         <img src="data:image/png;base64,{{ chart_1_b64|default(trend_chart_b64) }}" class="chart-img" alt="Monthly Trend Chart" />
     </div>
     {% endif %}

@@ -18,6 +18,7 @@ class ChartOfAccounts(models.Model):
     account_type = models.CharField(max_length=64, null=True, blank=True)
     reconcile = models.BooleanField(default=False)
     deprecated = models.BooleanField(default=False)
+    tag_ids = models.JSONField(default=list, blank=True)
 
     odoo_write_date = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)

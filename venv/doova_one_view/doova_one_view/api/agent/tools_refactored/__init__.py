@@ -48,6 +48,9 @@ from .finance import (
     get_tax_summary_tool,
     detect_anomalies_tool,
     get_period_comparison_tool,
+    get_unrealized_currency_gains_losses_tool,
+    get_general_ledger_tool,
+    get_partner_ledger_tool,
 )
 from .finance_v2 import (
     get_cash_flow_statement_tool,

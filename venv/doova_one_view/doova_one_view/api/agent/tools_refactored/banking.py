@@ -44,19 +44,22 @@ def get_dashboard_impl(
         
         line_aggs = AccountMoveLine.objects.filter(
             account_move__in=posted_qs
-        ).values("account_type", "account_code", "company__currency_code").annotate(
+        ).values("company_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
             total_debit=Sum("debit"),
             total_credit=Sum("credit")
         )
         
         true_revenue = 0.0
-        true_expenses = 0.0
         true_cogs = 0.0
-        true_opex = 0.0
+        true_expenses = 0.0
+        true_depreciation = 0.0
+        true_taxes_interest = 0.0
         
         for agg in line_aggs:
+            cid = agg.get("company_id")
             atype = agg["account_type"] or ""
             acode = agg["account_code"] or ""
+            aname = agg["account_name"] or ""
             # Use company currency to convert to dashboard base currency
             company_currency = agg["company__currency_code"] or "COMPANY_BASE"
             rate = _get_conversion_rate(company_currency, effective_base, rate_map)
@@ -64,24 +67,28 @@ def get_dashboard_impl(
             net_credit = (_to_float(agg["total_credit"]) - _to_float(agg["total_debit"])) * rate
             net_debit = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
             
-            if acode in ("60520003", "60510002"):
+            # Exclude internal inventory valuation adjustments that Odoo excludes from P&L operating expenses
+            name_clean = (aname or "").lower().strip()
+            code_clean = (acode or "").lower().strip()
+            if atype == "expense" and (code_clean in ("60520003", "60510002") or (name_clean in ("products loss", "adjustment products loss", "damaged products") and net_debit < -1000000)):
                 continue
 
             if atype.startswith("income"):
                 true_revenue += net_credit
             elif atype.startswith("expense"):
-                true_expenses += net_debit
                 if atype == "expense_direct_cost":
                     true_cogs += net_debit
-                elif atype in ("expense", "expense_depreciation"):
+                elif atype == "expense_depreciation":
+                    true_depreciation += net_debit
+                elif atype == "expense":
+                    true_expenses += net_debit
                     if acode.startswith("67") or acode.startswith("69"):
-                        pass  # financial charges + income tax excluded from opex
-                    else:
-                        true_opex += net_debit
+                        true_taxes_interest += net_debit
 
         gross_profit = true_revenue - true_cogs
-        ebit = gross_profit - true_opex
-        net_profit = true_revenue - true_expenses
+        total_all_expenses = true_expenses + true_depreciation
+        ebit = gross_profit - (true_expenses - true_taxes_interest) - true_depreciation
+        net_profit = gross_profit - total_all_expenses
         
         cumulative_qs = _local_base_qs(company_ids)
         if end_date:
@@ -799,7 +806,11 @@ def get_bank_cash_summary_tool(
     base_currency: Optional[str] = None,
     tenant_ids: Optional[list[str]] = None
 ) -> dict:
+    from doova_one_view.api.agent.tools_refactored.finance import get_balance_sheet_tool
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    bs = get_balance_sheet_tool(tenant_id=tenant_id, company_ids=selected, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+    total_balance = float(bs.get("bank_and_cash_accounts", 0.0) or 0.0)
+
     data = get_dashboard_impl(
         tenant_id=tenant_id,
         start_date=start_date,
@@ -810,11 +821,12 @@ def get_bank_cash_summary_tool(
     )
     return {
         "tool_name": "get_bank_cash_summary_tool",
+        "total_balance": total_balance,
         "opening_cash_balance": data.get("opening_cash_balance", 0.0),
         "cash_in": data.get("cash_in", 0.0),
         "cash_out": data.get("cash_out", 0.0),
-        "closing_cash_balance": data.get("closing_cash_balance", 0.0),
-        "bank_balance": data.get("bank_balance", 0.0),
+        "closing_cash_balance": total_balance,
+        "bank_balance": total_balance,
         "cash_flow_breakdown": data.get("cash_flow_breakdown", [])
     }
 

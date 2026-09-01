@@ -417,7 +417,7 @@ def get_multi_currency_conversions(
         applied_rates = {}
 
         # If multiple companies (or all companies) are involved, perform 2-step per-company conversion & sum matching KPI _sum_converted pattern
-        if len(selected_cids) != 1 and not base_currency:
+        if len(selected_cids) != 1 and not base_currency and domain in ("sales", "purchasing"):
             table_name = "fact_sales_orders"
             state_filter = "state IN ('sale', 'done')"
             date_col = "date_order"
@@ -426,11 +426,6 @@ def get_multi_currency_conversions(
                 table_name = "fact_purchase_orders"
                 state_filter = "state IN ('purchase', 'done')"
                 date_col = "date_order"
-                amount_col_name = "amount_total"
-            elif domain == "finance":
-                table_name = "fact_account_moves"
-                state_filter = "state = 'posted'"
-                date_col = "date"
                 amount_col_name = "amount_total"
 
             t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="t.tenant_id", prefix="t_multi")

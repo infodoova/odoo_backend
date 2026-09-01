@@ -41,10 +41,12 @@ from odoo_app.models.bank_statement import *
 from odoo_app.models.bank_statement_line import *
 from odoo_app.models.account_journal import *
 from odoo_app.models.account_partial_reconcile import *
+from odoo_app.models.account_account_tag import *
 
 __all__ = [
     'PurchaseOrderLine',
     'ChartOfAccounts',
+    'AccountAccountTag',
     'BankStatement',
     'BankStatementLine',
     'AccountJournal',

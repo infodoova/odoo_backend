@@ -37,6 +37,9 @@ from .tools_refactored import (
     get_tax_summary_tool,
     detect_anomalies_tool,
     get_period_comparison_tool,
+    get_unrealized_currency_gains_losses_tool,
+    get_general_ledger_tool,
+    get_partner_ledger_tool,
     generate_report_tool,
     get_last_report_tool,
     send_alert_tool,
@@ -196,12 +199,28 @@ def balance_sheet(tenant_id: Optional[str], company_id: CompanyIdType = None, co
     return get_balance_sheet_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
 
 @tool
-def trial_balance(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
+def trial_balance(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, base_currency: str = None, tenant_ids: TenantIdsType = None, date_from: str = None, date_to: str = None, as_of_date: str = None):
     """Generate the Trial Balance with account-level debit and credit totals.
     Includes an integrity check verifying total debits = total credits.
-    Use for: accounting accuracy verification, ledger review, pre-audit checks.
+    Use for: accounting accuracy verification, ledger review, pre-audit checks, multi-company trial balances.
     If the trial balance is unbalanced, call detect_anomalies immediately."""
-    return get_trial_balance_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
+    return get_trial_balance_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency, date_from=date_from, date_to=date_to, as_of_date=as_of_date)
+
+@tool
+def general_ledger(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, account_code: str = None, account_name: str = None, date_from: str = None, date_to: str = None, as_of_date: str = None, include_lines: bool = False, limit_accounts: int = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
+    """Generate the complete General Ledger matching Odoo.
+    Returns account-level Debit, Credit, and Net Balance for all accounts across active companies,
+    along with grand totals (e.g. 68.92B FCFA), integrity checks (Debit == Credit), and optional granular move lines.
+    Use for: 'general ledger', 'grand livre', 'account breakdown', 'ledger balances', 'full accounting statements'."""
+    return get_general_ledger_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, account_code=account_code, account_name=account_name, date_from=date_from, date_to=date_to, as_of_date=as_of_date, include_lines=include_lines, limit_accounts=limit_accounts, base_currency=base_currency)
+
+@tool
+def partner_ledger(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, partner_name: str = None, partner_id: int = None, account_type: str = None, date_from: str = None, date_to: str = None, as_of_date: str = None, include_lines: bool = False, limit_partners: int = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
+    """Generate the complete Partner Ledger (Grand Livre des Tiers) matching Odoo.
+    Returns partner-level Debit, Credit, and Net Balance for all customers and suppliers across companies,
+    along with grand totals, Net Receivable / Net Payable status, and optional move lines (invoices, matching, currency).
+    Use for: 'partner ledger', 'grand livre des tiers', 'customer ledger', 'vendor ledger', 'partner balances', 'who owes what per partner'."""
+    return get_partner_ledger_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, partner_name=partner_name, partner_id=partner_id, account_type=account_type, date_from=date_from, date_to=date_to, as_of_date=as_of_date, include_lines=include_lines, limit_partners=limit_partners, base_currency=base_currency)
 
 @tool
 def financial_ratios(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
@@ -237,14 +256,21 @@ def payables_analysis(tenant_id: Optional[str], company_id: CompanyIdType = None
     return get_payables_analysis_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, base_currency=base_currency)
 
 @tool
-def aging_analysis(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, direction: str = "receivable", base_currency: str = None, tenant_ids: TenantIdsType = None):
+def aging_analysis(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, direction: str = "receivable", base_currency: str = None, tenant_ids: TenantIdsType = None, as_of_date: str = None):
     """Get AR or AP aging bucket distribution: Current, 1–30, 31–60, 61–90, and 90+ days overdue.
     direction='receivable' for customer AR aging (default).
     direction='payable' for supplier AP aging.
     Use for: overdue collections risk, vendor payment stress, aging-based cash flow projections.
     Prefer this over receivables_analysis/payables_analysis when you need the bucket breakdown,
     not just totals. Critical for identifying if overdue concentration is in the 90+ bucket."""
-    return get_aging_analysis_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, direction=direction, base_currency=base_currency)
+    return get_aging_analysis_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, direction=direction, base_currency=base_currency, as_of_date=as_of_date)
+@tool
+def unrealized_currency_gains_losses(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, as_of_date: str = None, tenant_ids: TenantIdsType = None):
+    """Compute statutory Unrealized Currency Gains/Losses (Balance Sheet Revaluation) matching Odoo.
+    Evaluates foreign-currency-denominated accounts (Payables, Receivables, Cash, Bank) at the 
+    operation rate vs current market rate as of the given date, and computes required balance adjustments.
+    Use for: 'unrealized currency gains losses', 'FX balance sheet revaluation', 'foreign currency adjustment', 'gain ou perte de change latente'."""
+    return get_unrealized_currency_gains_losses_tool(tenant_id=tenant_id, tenant_ids=tenant_ids, company_id=company_id, company_ids=company_ids, as_of_date=as_of_date)
 
 @tool
 def cash_flow_health(tenant_id: Optional[str], company_id: CompanyIdType = None, company_ids: CompanyIdsType = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
@@ -469,14 +495,16 @@ def create_report(
     base_currency: Optional[str] = None,
     report_type: Optional[str] = "health",
     report_data: Optional[dict] = None,
+    prompt: Optional[str] = None,
 ):
     """MANDATORY: When the user asks to 'generate a report' or 'create a report', you MUST call this tool.
     Generate a professional branded PDF executive report including vital signs and your analysis.
     Pass your full markdown report analysis into the `custom_content` parameter if available.
-    Pass explicit `start_date` and `end_date` (YYYY-MM-DD) or `reporting_period` (e.g. 'Q2 2026') if analyzing a specific timeframe.
+    Pass explicit `start_date` and `end_date` (YYYY-MM-DD) or `reporting_period` (e.g. 'Q2 2026') ONLY if the user explicitly requested a specific timeframe. Otherwise leave them None to default to Year-to-Date (YTD).
     Pass `base_currency` (e.g. 'USD', 'EUR') if the user requested a specific currency.
     Pass `report_type` (e.g. 'sales', 'purchase', 'inventory', 'cashflow', 'health', 'financial_analysis', etc.) if applicable.
     Pass `report_data` dictionary with structured KPIs, table rows, and charts if available.
+    Pass original user message or intent into `prompt` if available.
     Do NOT output the report directly in the chat text. Pass it ALL into `custom_content`.
     Do NOT call this before you have gathered the data — the report cannot be regenerated mid-session."""
     
@@ -495,6 +523,7 @@ def create_report(
         base_currency=base_currency,
         report_type=report_type,
         report_data=report_data,
+        prompt=prompt,
     )
     url = result.get("download_url", "")
     
@@ -637,11 +666,11 @@ agent_tools = [
     sales_summary, top_products, sales_trend, variance_analysis, sales_forecast,
     salesperson_performance, sales_pipeline, discount_leakage, customer_lifetime_value, order_to_cash_cycle, revenue_by_category,
     # Finance — Core Statements
-    calculate_pnl, balance_sheet, trial_balance, cash_flow_statement,
+    calculate_pnl, balance_sheet, trial_balance, general_ledger, partner_ledger, cash_flow_statement,
     # Finance — Analysis
     financial_ratios, working_capital, profitability_analysis, expense_breakdown, working_capital_efficiency, interest_coverage, period_comparison_pnl,
     # Finance — AR/AP & Cash
-    receivables_analysis, payables_analysis, aging_analysis, cash_flow_health, payment_reconciliation,
+    receivables_analysis, payables_analysis, aging_analysis, unrealized_currency_gains_losses, cash_flow_health, payment_reconciliation,
     # Finance — Tax & Audit
     tax_summary, detect_anomalies,
     # Finance — Intelligence

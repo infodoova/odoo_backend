@@ -235,11 +235,11 @@ async def get_receivables_aging(
     description=(
         "Returns paginated invoices for a specific aging bucket as of the specified date. "
         "Includes invoice amount, dates, and full client details. "
-        "**bucket** values: `current`, `1-30`, `31-60`, `61-90`, `90+`"
+        "**bucket** values: `current`, `1-30`, `31-60`, `61-90`, `91-120`, `older`, `90+`"
     ),
 )
 async def get_receivables_aging_detail(
-    bucket: str = Query(..., description="Aging bucket: current | 1-30 | 31-60 | 61-90 | 90+"),
+    bucket: str = Query(..., description="Aging bucket: current | 1-30 | 31-60 | 61-90 | 91-120 | older | 90+"),
     limit: Optional[Any] = Query(50, description="Number of invoices to return"),
     offset: Optional[Any] = Query(0, description="Number of invoices to skip"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
@@ -247,12 +247,66 @@ async def get_receivables_aging_detail(
     as_of_date: Optional[str] = Query(None, description="Aging reference date (YYYY-MM-DD)"),
     tenant_ids: Optional[str] = Query(None, description="Comma-separated list of tenant UUIDs"),
     company_ids: Optional[str] = Query(None, description="Comma-separated list of company integer IDs"),
+    base_currency: Optional[str] = Query(None, description="Target base currency (e.g. XAF, EUR, USD)"),
 ) -> AgingBucketDetailResponse:
     return await KPIService.get_receivables_aging_detail(
         str(bucket), _val_int(limit, 50), _val_int(offset, 0),
         tenant_ids=_parse_csv_str(tenant_ids),
         company_ids=_parse_csv_int(company_ids),
         as_of_date=_val_str(as_of_date) or _val_str(date_to) or _val_str(date_from),
+        date_from=_val_str(date_from),
+        date_to=_val_str(date_to),
+        base_currency=_val_str(base_currency),
+    )
+
+
+@router.get("/payables-aging", dependencies=[_view_kpi])
+async def get_payables_aging(
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date / As of date (YYYY-MM-DD). Defaults to today."),
+    as_of_date: Optional[str] = Query(None, description="Aging reference date (YYYY-MM-DD)"),
+    tenant_ids: Optional[str] = Query(None, description="Comma-separated list of tenant UUIDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated list of company integer IDs"),
+    base_currency: Optional[str] = Query(None, description="Target base currency (e.g. XAF, EUR, USD)"),
+) -> dict[str, Any]:
+    return await KPIService.get_payables_aging(
+        tenant_ids=_parse_csv_str(tenant_ids),
+        company_ids=_parse_csv_int(company_ids),
+        as_of_date=_val_str(as_of_date) or _val_str(date_to) or _val_str(date_from),
+        base_currency=_val_str(base_currency),
+    )
+
+
+@router.get(
+    "/payables-aging/detail",
+    dependencies=[_view_kpi],
+    response_model=AgingBucketDetailResponse,
+    summary="Payables aging bucket detail",
+    description=(
+        "Returns paginated vendor bills for a specific aging bucket as of the specified date. "
+        "Includes bill amount, dates, and vendor details. "
+        "**bucket** values: `current`, `1-30`, `31-60`, `61-90`, `91-120`, `older`, `90+`"
+    ),
+)
+async def get_payables_aging_detail(
+    bucket: str = Query(..., description="Aging bucket: current | 1-30 | 31-60 | 61-90 | 91-120 | older | 90+"),
+    limit: Optional[Any] = Query(50, description="Number of vendor bills to return"),
+    offset: Optional[Any] = Query(0, description="Number of vendor bills to skip"),
+    date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date / As of date (YYYY-MM-DD). Defaults to today."),
+    as_of_date: Optional[str] = Query(None, description="Aging reference date (YYYY-MM-DD)"),
+    tenant_ids: Optional[str] = Query(None, description="Comma-separated list of tenant UUIDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated list of company integer IDs"),
+    base_currency: Optional[str] = Query(None, description="Target base currency (e.g. XAF, EUR, USD)"),
+) -> AgingBucketDetailResponse:
+    return await KPIService.get_payables_aging_detail(
+        str(bucket), _val_int(limit, 50), _val_int(offset, 0),
+        tenant_ids=_parse_csv_str(tenant_ids),
+        company_ids=_parse_csv_int(company_ids),
+        as_of_date=_val_str(as_of_date) or _val_str(date_to) or _val_str(date_from),
+        date_from=_val_str(date_from),
+        date_to=_val_str(date_to),
+        base_currency=_val_str(base_currency),
     )
 
 

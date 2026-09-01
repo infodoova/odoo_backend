@@ -72,16 +72,33 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
         "products": [{"product": r.get('product_name'), "revenue": float(r.get('revenue')), "quantity": float(r.get('quantity'))} for r in rows]
     }
 
-def get_time_series_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_time_series_data_tool(
+    tenant_id: str,
+    company_id: int | None = None,
+    company_ids: list[int] | None = None,
+    granularity: str = "month",
+    base_currency: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict:
 
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
     amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    query = f"SELECT DATE_TRUNC('{granularity}', date_order) AS period, COALESCE(SUM({amount_col}), 0) AS revenue, COUNT(*) AS order_count FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done') AND date_order IS NOT NULL"
     params = {"tenant_id": tenant_id}
     params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
-    query += f_sql + f" GROUP BY period ORDER BY period ASC"
     params.update(f_params)
+
+    date_filter = ""
+    if start_date:
+        date_filter += " AND date_order >= :start_date"
+        params["start_date"] = start_date
+    if end_date:
+        date_filter += " AND date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+
+    query = f"SELECT DATE_TRUNC('{granularity}', date_order) AS period, COALESCE(SUM({amount_col}), 0) AS revenue, COUNT(*) AS order_count FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done') AND date_order IS NOT NULL {date_filter} {f_sql} GROUP BY period ORDER BY period ASC"
     rows = run_query(query, params)
     return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r.get('period')), "revenue": float(r.get('revenue')), "order_count": int(r.get('order_count'))} for r in rows]}
 

@@ -46,6 +46,7 @@ from .finance import (
     get_balance_sheet_tool,
     get_receivables_analysis_tool,
     get_payables_analysis_tool,
+    get_aging_analysis_tool,
     get_working_capital_tool,
     get_expense_breakdown_tool,
 )
@@ -53,15 +54,15 @@ from .finance_v2 import (
     get_cash_flow_statement_tool,
 )
 from .inventory import get_inventory_valuation_tool, get_inventory_alerts_tool, get_inventory_efficiency_tool
-from .purchasing import get_purchase_summary_tool, get_top_vendors_tool
+from .purchasing import get_purchase_summary_tool, get_top_vendors_tool, get_purchase_trend_tool
 from .common import get_companies_tool, build_currency_case_sql
 from .template_registry import TEMPLATE_REGISTRY, get_template_metadata
 
 
 # ── Formatting Helpers ────────────────────────────────────────────────────────
 
-def _fmt_money(val: float | int | None, currency: str = "XAF", parens: bool = True, is_diff: bool = False) -> str:
-    """Format monetary numbers with thousand separators and parenthetical negatives."""
+def _fmt_money(val: float | int | None, currency: str = "XAF", parens: bool = False, is_diff: bool = False) -> str:
+    """Format monetary numbers with thousand separators and minus sign for negatives."""
     if val is None:
         return f"— {currency}"
     val = float(val)
@@ -71,10 +72,48 @@ def _fmt_money(val: float | int | None, currency: str = "XAF", parens: bool = Tr
     if val < 0:
         pos_val = abs(val)
         formatted = f"{pos_val:,.0f} {currency}"
-        return f"({formatted})" if parens else f"-{formatted}"
+        return f"-{formatted}" if not parens else f"({formatted})"
     else:
         prefix = "+" if is_diff else ""
         return f"{prefix}{val:,.0f} {currency}"
+
+
+def _highlight_negative_numbers_html(html: str) -> str:
+    """
+    Transforms any negative parenthesized numbers into minus format
+    (e.g., (26,239,082 XAF) -> -26,239,082 XAF, ($82,405,168) -> -$82,405,168)
+    and ensures all negative values in KPI cards and table cells are styled bold and red.
+    """
+    if not html:
+        return html
+
+    # 1. Convert parenthesized currencies and percentages into minus format
+    html = re.sub(r'\(([0-9,]+(?:\.[0-9]+)?\s*(?:[A-Z]{3}|\$|€|£|%))\)', r'-\1', html)
+    html = re.sub(r'\(([A-Z]{3}|\$|€|£)\s*([0-9,]+(?:\.[0-9]+)?)\)', r'-\1\2', html)
+
+    # 2. In KPI values, add 'neg-val' class if value begins with a minus
+    html = re.sub(
+        r'(<div\s+class="kpi-value)([^"]*">)\s*(-[0-9$€£A-Za-z])',
+        r'\1 neg-val\2\3',
+        html
+    )
+
+    # 3. In table cells (<td>), wrap negative amounts / percentages in <span class="neg-val">
+    def _wrap_td_neg(match):
+        open_tag = match.group(1)
+        val = match.group(2).strip()
+        close_tag = match.group(3)
+        if '<span' in val:
+            return match.group(0)
+        return f'{open_tag}<span class="neg-val">{val}</span>{close_tag}'
+
+    html = re.sub(
+        r'(<td[^>]*>)\s*(-(?:\$|€|£|[A-Z]{3}\s*)?[0-9,]+(?:\.[0-9]+)?(?:\s*[A-Z]{3}|%)?)\s*(</td>)',
+        _wrap_td_neg,
+        html
+    )
+
+    return html
 
 
 def _fmt_pct(val: float | int | None, is_diff: bool = False) -> str:
@@ -126,7 +165,7 @@ def _get_monthly_pnl_series(
 ) -> list[dict]:
     """Query real monthly income, expenses, and net profit from the GL scoped to date range."""
     t_sql_ts, t_params_ts = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_ts")
-    balance_col_ts = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+    balance_col_ts = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
     f_sql_ts, f_params_ts = build_company_filter_sql(tenant_id, company_ids, column_name="l.company_id")
     params = {"tenant_id": tenant_id}
     params.update(t_params_ts)
@@ -147,6 +186,7 @@ def _get_monthly_pnl_series(
                 COALESCE(SUM(CASE WHEN l.account_type LIKE 'expense%%' THEN {balance_col_ts} ELSE 0 END), 0) AS expenses
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
+            LEFT JOIN dim_companies c ON l.company_id = c.id
             WHERE 1=1 {t_sql_ts}
               AND m.state = 'posted'
               AND m.date IS NOT NULL
@@ -167,31 +207,153 @@ def _get_monthly_pnl_series(
     ]
 
 
+def _get_domain_trend_series(
+    domain: str,
+    tenant_id: str,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    tenant_ids: Optional[list[str]] = None,
+) -> list[dict]:
+    """
+    Returns monthly time series data scoped to the specific domain and date range.
+    - sales / commercial: queries fact_sales_orders matching sales KPI data sources
+    - purchase / purchasing: queries fact_purchase_orders matching procurement KPI data sources
+    - inventory / stock: returns empty (domain uses dedicated stock valuation/aging visualizers)
+    - accounting / pnl / health / general / cashflow: queries fact_account_move_lines (GL-based P&L series)
+    """
+    domain = (domain or "general").lower()
+    if domain in ("sales", "commercial"):
+        t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_def")
+        amount_col = build_currency_case_sql('o.amount_total', tenant_id, base_currency)
+        params: dict = {"tenant_id": tenant_id}
+        params.update(t_params_def)
+        f_sql, f_params = build_company_filter_sql(tenant_id, company_ids, column_name="o.company_id")
+        params.update(f_params)
+
+        date_filter = ""
+        if start_date:
+            date_filter += " AND o.date_order >= :start_date"
+            params["start_date"] = start_date
+        if end_date:
+            date_filter += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+            params["end_date"] = end_date
+
+        rows = run_query(
+            f"""SELECT 
+                    DATE_TRUNC('month', o.date_order) AS period, 
+                    COALESCE(SUM({amount_col}), 0) AS revenue, 
+                    COUNT(o.id) AS order_count 
+                FROM fact_sales_orders o
+                WHERE 1=1 {t_sql_def} 
+                  AND o.state IN ('sale', 'done') 
+                  AND o.date_order IS NOT NULL
+                  {date_filter}
+                  {f_sql}
+                GROUP BY period 
+                ORDER BY period ASC""",
+            params,
+        )
+        return [
+            {
+                "period": str(r.get("period", ""))[:10],
+                "revenue": float(r.get("revenue", 0) or 0),
+                "order_count": int(r.get("order_count", 0) or 0),
+            }
+            for r in rows
+        ]
+
+    elif domain in ("purchase", "purchasing", "procurement"):
+        t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_def")
+        amount_col = build_currency_case_sql('po.amount_total', tenant_id, base_currency)
+        params = {"tenant_id": tenant_id}
+        params.update(t_params_def)
+        f_sql, f_params = build_company_filter_sql(tenant_id, company_ids, column_name="po.company_id")
+        params.update(f_params)
+
+        date_filter = ""
+        if start_date:
+            date_filter += " AND po.date_order >= :start_date"
+            params["start_date"] = start_date
+        if end_date:
+            date_filter += " AND po.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+            params["end_date"] = end_date
+
+        rows = run_query(
+            f"""SELECT 
+                    DATE_TRUNC('month', po.date_order) AS period, 
+                    COALESCE(SUM({amount_col}), 0) AS revenue, 
+                    COUNT(po.id) AS order_count 
+                FROM fact_purchase_orders po
+                WHERE 1=1 {t_sql_def} 
+                  AND po.state IN ('purchase', 'done') 
+                  AND po.date_order IS NOT NULL
+                  {date_filter}
+                  {f_sql}
+                GROUP BY period 
+                ORDER BY period ASC""",
+            params,
+        )
+        return [
+            {
+                "period": str(r.get("period", ""))[:10],
+                "revenue": float(r.get("revenue", 0) or 0),
+                "order_count": int(r.get("order_count", 0) or 0),
+            }
+            for r in rows
+        ]
+
+    elif domain in ("inventory", "stock"):
+        return []
+
+    else:
+        return _get_monthly_pnl_series(
+            tenant_id=tenant_id,
+            company_ids=company_ids,
+            start_date=start_date,
+            end_date=end_date,
+            base_currency=base_currency,
+            tenant_ids=tenant_ids,
+        )
+
+
 # ── Chart Rendering Engines ───────────────────────────────────────────────────
 
-def _render_trend_chart(ts_data: list, currency: str = "XAF") -> str:
-    """Multi-series Performance Trend Chart (Revenue, OpEx, Net Profit)."""
+def _render_trend_chart(ts_data: list, currency: str = "XAF", domain: str = "general") -> str:
+    """Multi-series Performance Trend Chart (Revenue, Procurement Spend, OpEx, Net Profit)."""
     if not ts_data:
         return ""
     try:
         labels = [str(d.get("period", ""))[:7] for d in ts_data]
-        revenues = [float(d.get("revenue", 0)) for d in ts_data]
+        revenues = [float(d.get("revenue", d.get("spend", 0))) for d in ts_data]
         
-        # Use real expenses & net profit if available from P&L series, else fallback
-        has_real_expenses = any("expenses" in d for d in ts_data)
-        if has_real_expenses:
-            expenses = [float(d.get("expenses", 0)) for d in ts_data]
-            net_profits = [float(d.get("net_profit", 0)) for d in ts_data]
+        domain_lower = (domain or "general").lower()
+        if domain_lower in ("purchase", "purchasing", "procurement"):
+            primary_label = "Procurement Spend"
+            primary_color = "#0284c7"
+            primary_fill = "#f0f9ff"
+        elif domain_lower in ("inventory", "stock"):
+            primary_label = "Stock Valuation"
+            primary_color = "#0d9488"
+            primary_fill = "#f0fdfa"
         else:
-            expenses = [float(d.get("revenue", 0)) * 0.65 for d in ts_data]
-            net_profits = [r - e for r, e in zip(revenues, expenses)]
+            primary_label = "Revenue"
+            primary_color = "#2563eb"
+            primary_fill = "#eff6ff"
+
+        # Use real expenses & net profit if available from P&L series; do NOT fabricate fake expenses
+        has_real_expenses = any("expenses" in d and d.get("expenses") is not None for d in ts_data)
 
         fig, ax = plt.subplots(figsize=(8, 3.2), facecolor='white')
-        ax.plot(labels, revenues, marker='o', color='#2563eb', linewidth=2.2, label='Revenue', markersize=5)
-        ax.fill_between(labels, revenues, color='#eff6ff', alpha=0.5)
+        ax.plot(labels, revenues, marker='o', color=primary_color, linewidth=2.2, label=primary_label, markersize=5)
+        ax.fill_between(labels, revenues, color=primary_fill, alpha=0.5)
 
-        ax.plot(labels, expenses, marker='s', color='#ea580c', linewidth=1.8, linestyle='--', label='Operating Expenses', markersize=4)
-        ax.plot(labels, net_profits, marker='^', color='#10b981', linewidth=2.0, label='Net Profit', markersize=4)
+        if has_real_expenses and domain_lower not in ("purchase", "purchasing", "procurement", "inventory", "stock", "sales", "commercial"):
+            expenses = [float(d.get("expenses", 0) or 0) for d in ts_data]
+            net_profits = [float(d.get("net_profit", 0) or 0) for d in ts_data]
+            ax.plot(labels, expenses, marker='s', color='#ea580c', linewidth=1.8, linestyle='--', label='Operating Expenses', markersize=4)
+            ax.plot(labels, net_profits, marker='^', color='#10b981', linewidth=2.0, label='Net Profit', markersize=4)
 
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -482,7 +644,6 @@ def _generate_ai_domain_analysis(
             model=AgentConfig.FAST_MODEL,
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
             max_tokens=4096,
-            temperature=0.1,
         )
 
         title = (meta or {}).get("title", f"{domain.capitalize()} Executive Report")
@@ -882,23 +1043,29 @@ def _synthesize_autonomous_insights(
 def _normalize_markdown_tables(text: str) -> str:
     """
     Sanitizes markdown tables emitted by LLMs:
-    1. Detaches inline prefixes on the same line (e.g. 'AR Aging: | Col 1 | Col 2 |' -> 'AR Aging:\n\n| Col 1 | Col 2 |').
-    2. Replaces collapsed row delimiters ('| |' or '||') with proper row newlines ('|\n|').
+    1. Replaces collapsed row delimiters ('| |' or '||') with proper row newlines ('|\n|').
+    2. Detaches any prefix on the same line before a table header (e.g. '3. Section Name | Col 1 | Col 2 |' -> '3. Section Name\n\n| Col 1 | Col 2 |').
     3. Guarantees clean blank lines before and after table blocks so Markdown converts them to HTML <table>.
     """
     if not text:
         return ""
-    # 1. Detach prefixed labels (with optional bullet markers): '- Label: | Header 1 |' -> '- Label:\n\n| Header 1 |'
-    text = re.sub(r'(^|\n)([\s\*\-•]*[^\n\|]+?:\s*)(\|)', r'\1\2\n\n\3', text)
 
-    # 2. Fix collapsed rows: '||' or '| |' or '|   |' -> replace with '|\n|'
+    # 1. Fix collapsed rows on a single line separated by '| |' or '||'
     text = re.sub(r'\|\s*\|\s*', '|\n|', text)
 
+    # 2. Split any prefix preceding a table header on the same line (numbered items, headings, bullet points, labels)
+    text = re.sub(
+        r'(^|\n)([^\n\|]+?)(\|[^|\n]+\|[^|\n]+\|)',
+        lambda m: f"{m.group(1)}{m.group(2).strip()}\n\n{m.group(3)}" if m.group(2).strip() else m.group(0),
+        text
+    )
+
     # 3. Ensure a blank line before any table block starting with | if preceded by non-table text
-    text = re.sub(r'([^\n\|])\n(\|)', r'\1\n\n\2', text)
+    text = re.sub(r'([^\n\|])\n+(\|)', r'\1\n\n\2', text)
 
     # 4. Ensure a blank line after any table block ending with | if followed by non-table text
-    text = re.sub(r'(\|\n)([^\n\|])', r'\1\n\2', text)
+    text = re.sub(r'(\|\n+)([^\n\|])', r'\1\n\n\2', text)
+
     return text
 
 
@@ -935,12 +1102,16 @@ def _normalize_report_data(report_data: dict, currency: str) -> dict:
         k_lower = key.lower()
         if isinstance(val, (int, float)):
             f_val = float(val)
-            if any(p in k_lower for p in ["margin", "pct", "rate", "percent", "achievement", "share"]):
+            if any(p in k_lower for p in ["margin", "pct", "rate", "percent", "achievement", "share", "roe", "roa", "roi"]):
                 fmt_str = f"{f_val:.1f}%"
-            elif any(r in k_lower for r in ["ratio", "turnover", "multiplier"]):
-                fmt_str = f"{f_val:.2f}x"
+            elif any(s in k_lower for s in ["score", "health"]):
+                fmt_str = f"{f_val:.0f}"
             elif any(c in k_lower for c in ["count", "volume", "orders", "pos", "skus", "items"]):
                 fmt_str = f"{int(f_val):,}"
+            elif re.search(r'(?:^|_)(?:current_ratio|quick_ratio|ratio|turnover|multiplier)(?:_|$)', k_lower) or k_lower in ("ratio", "current_ratio", "quick_ratio", "stock_turnover", "inventory_turnover", "working_capital_ratio"):
+                fmt_str = f"{f_val:.2f}"
+            elif "runway" in k_lower:
+                fmt_str = f"{f_val:.1f} Mos" if f_val > 0 else "0.0 Mos"
             else:
                 fmt_str = _fmt_money(f_val, currency)
             normalized[key] = {
@@ -952,12 +1123,16 @@ def _normalize_report_data(report_data: dict, currency: str) -> dict:
             if isinstance(v_raw, (int, float)):
                 f_val = float(v_raw)
                 val_copy = dict(val)
-                if any(p in k_lower for p in ["margin", "pct", "rate", "percent", "achievement", "share"]):
+                if any(p in k_lower for p in ["margin", "pct", "rate", "percent", "achievement", "share", "roe", "roa", "roi"]):
                     fmt_str = f"{f_val:.1f}%"
-                elif any(r in k_lower for r in ["ratio", "turnover", "multiplier"]):
-                    fmt_str = f"{f_val:.2f}x"
+                elif any(s in k_lower for s in ["score", "health"]):
+                    fmt_str = f"{f_val:.0f}"
                 elif any(c in k_lower for c in ["count", "volume", "orders", "pos", "skus", "items"]):
                     fmt_str = f"{int(f_val):,}"
+                elif re.search(r'(?:^|_)(?:current_ratio|quick_ratio|ratio|turnover|multiplier)(?:_|$)', k_lower) or k_lower in ("ratio", "current_ratio", "quick_ratio", "stock_turnover", "inventory_turnover", "working_capital_ratio"):
+                    fmt_str = f"{f_val:.2f}"
+                elif "runway" in k_lower:
+                    fmt_str = f"{f_val:.1f} Mos" if f_val > 0 else "0.0 Mos"
                 else:
                     fmt_str = _fmt_money(f_val, currency)
                 val_copy["formatted"] = fmt_str
@@ -966,7 +1141,7 @@ def _normalize_report_data(report_data: dict, currency: str) -> dict:
     return normalized
 
 
-def _render_charts_from_report_data(report_data: dict, currency: str) -> dict:
+def _render_charts_from_report_data(report_data: dict, currency: str, domain: str = "general") -> dict:
     """
     Generates chart base64 strings from agent-provided data arrays if present.
     """
@@ -978,7 +1153,7 @@ def _render_charts_from_report_data(report_data: dict, currency: str) -> dict:
     trend_data = report_data.get("trend_data")
     if trend_data and isinstance(trend_data, list):
         try:
-            charts["chart_1_b64"] = _render_trend_chart(trend_data, currency)
+            charts["chart_1_b64"] = _render_trend_chart(trend_data, currency, domain=domain)
         except Exception as e:
             logger.warning(f"_render_charts_from_report_data trend error: {e}")
 
@@ -1053,35 +1228,183 @@ def _fetch_domain_report_data(
         try:
             receivables = get_receivables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
             payables = get_payables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+            ar_aging_data = get_aging_analysis_tool(tenant_id, direction="receivable", company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+            ap_aging_data = get_aging_analysis_tool(tenant_id, direction="payable", company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
             expenses_data = get_expense_breakdown_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+            bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
             wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
 
-            ar_total = float(receivables.get("total_receivables", 0) or 0)
-            ar_buckets = receivables.get("aging_buckets", {})
-            ap_total = float(payables.get("total_payables", 0) or 0)
-            ap_buckets = payables.get("aging_buckets", {})
+            ar_total = float(bs.get("accounts_receivable", 0) or receivables.get("total_receivables", 0) or ar_aging_data.get("total", 0) or 0)
+            ap_total = float(bs.get("accounts_payable", 0) or payables.get("total_payables", 0) or ap_aging_data.get("total", 0) or 0)
+
+            # 6-Bucket AR Aging Calculation
+            ar_c = float(ar_aging_data.get("current", 0) or 0.0)
+            ar_c_cnt = int(ar_aging_data.get("current_cnt", 0) or 0)
+            ar_d1 = float(ar_aging_data.get("1_30_days", 0) or 0.0)
+            ar_d1_cnt = int(ar_aging_data.get("1_30_days_cnt", 0) or 0)
+            ar_d2 = float(ar_aging_data.get("31_60_days", 0) or 0.0)
+            ar_d2_cnt = int(ar_aging_data.get("31_60_days_cnt", 0) or 0)
+            ar_d3 = float(ar_aging_data.get("61_90_days", 0) or 0.0)
+            ar_d3_cnt = int(ar_aging_data.get("61_90_days_cnt", 0) or 0)
+            ar_d4 = float(ar_aging_data.get("91_120_days", 0) or 0.0)
+            ar_d4_cnt = int(ar_aging_data.get("91_120_days_cnt", 0) or 0)
+            ar_older = float(ar_aging_data.get("older", 0) or 0.0)
+            ar_older_cnt = int(ar_aging_data.get("older_cnt", 0) or 0)
+            
+            ar_calc_total = ar_c + ar_d1 + ar_d2 + ar_d3 + ar_d4 + ar_older
+            if ar_total == 0:
+                ar_total = ar_calc_total
+            total_ar_cnt = ar_c_cnt + ar_d1_cnt + ar_d2_cnt + ar_d3_cnt + ar_d4_cnt + ar_older_cnt
+
+            ar_aging_rows = [
+                {
+                    "bracket": "current",
+                    "count": ar_c_cnt,
+                    "count_formatted": f"{ar_c_cnt:,} Invoices",
+                    "amount": _fmt_money(ar_c, currency),
+                    "share": f"{(ar_c / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
+                    "risk": "Low",
+                    "badge_class": "badge-success",
+                },
+                {
+                    "bracket": "1-30 days",
+                    "count": ar_d1_cnt,
+                    "count_formatted": f"{ar_d1_cnt:,} Invoices",
+                    "amount": _fmt_money(ar_d1, currency),
+                    "share": f"{(ar_d1 / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
+                    "risk": "Normal",
+                    "badge_class": "badge-info",
+                },
+                {
+                    "bracket": "31-60 days",
+                    "count": ar_d2_cnt,
+                    "count_formatted": f"{ar_d2_cnt:,} Invoices",
+                    "amount": _fmt_money(ar_d2, currency),
+                    "share": f"{(ar_d2 / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
+                    "risk": "Moderate",
+                    "badge_class": "badge-warning",
+                },
+                {
+                    "bracket": "61-90 days",
+                    "count": ar_d3_cnt,
+                    "count_formatted": f"{ar_d3_cnt:,} Invoices",
+                    "amount": _fmt_money(ar_d3, currency),
+                    "share": f"{(ar_d3 / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
+                    "risk": "Watch",
+                    "badge_class": "badge-warning",
+                },
+                {
+                    "bracket": "91-120 days",
+                    "count": ar_d4_cnt,
+                    "count_formatted": f"{ar_d4_cnt:,} Invoices",
+                    "amount": _fmt_money(ar_d4, currency),
+                    "share": f"{(ar_d4 / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
+                    "risk": "Elevated",
+                    "badge_class": "badge-warning",
+                },
+                {
+                    "bracket": "Older",
+                    "count": ar_older_cnt,
+                    "count_formatted": f"{ar_older_cnt:,} Invoices",
+                    "amount": _fmt_money(ar_older, currency),
+                    "share": f"{(ar_older / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
+                    "risk": "High Risk",
+                    "badge_class": "badge-danger",
+                },
+            ]
+
+            # 6-Bucket AP Aging Calculation
+            ap_c = float(ap_aging_data.get("current", 0) or 0.0)
+            ap_c_cnt = int(ap_aging_data.get("current_cnt", 0) or 0)
+            ap_d1 = float(ap_aging_data.get("1_30_days", 0) or 0.0)
+            ap_d1_cnt = int(ap_aging_data.get("1_30_days_cnt", 0) or 0)
+            ap_d2 = float(ap_aging_data.get("31_60_days", 0) or 0.0)
+            ap_d2_cnt = int(ap_aging_data.get("31_60_days_cnt", 0) or 0)
+            ap_d3 = float(ap_aging_data.get("61_90_days", 0) or 0.0)
+            ap_d3_cnt = int(ap_aging_data.get("61_90_days_cnt", 0) or 0)
+            ap_d4 = float(ap_aging_data.get("91_120_days", 0) or 0.0)
+            ap_d4_cnt = int(ap_aging_data.get("91_120_days_cnt", 0) or 0)
+            ap_older = float(ap_aging_data.get("older", 0) or 0.0)
+            ap_older_cnt = int(ap_aging_data.get("older_cnt", 0) or 0)
+
+            ap_calc_total = ap_c + ap_d1 + ap_d2 + ap_d3 + ap_d4 + ap_older
+            if ap_total == 0:
+                ap_total = ap_calc_total
+            total_ap_cnt = ap_c_cnt + ap_d1_cnt + ap_d2_cnt + ap_d3_cnt + ap_d4_cnt + ap_older_cnt
+
+            ap_aging_rows = [
+                {
+                    "bracket": "current",
+                    "count": ap_c_cnt,
+                    "count_formatted": f"{ap_c_cnt:,} Bills",
+                    "amount": _fmt_money(ap_c, currency),
+                    "share": f"{(ap_c / ap_total * 100):.1f}%" if ap_total > 0 else "0.0%",
+                    "risk": "Low",
+                    "badge_class": "badge-success",
+                },
+                {
+                    "bracket": "1-30 days",
+                    "count": ap_d1_cnt,
+                    "count_formatted": f"{ap_d1_cnt:,} Bills",
+                    "amount": _fmt_money(ap_d1, currency),
+                    "share": f"{(ap_d1 / ap_total * 100):.1f}%" if ap_total > 0 else "0.0%",
+                    "risk": "Normal",
+                    "badge_class": "badge-info",
+                },
+                {
+                    "bracket": "31-60 days",
+                    "count": ap_d2_cnt,
+                    "count_formatted": f"{ap_d2_cnt:,} Bills",
+                    "amount": _fmt_money(ap_d2, currency),
+                    "share": f"{(ap_d2 / ap_total * 100):.1f}%" if ap_total > 0 else "0.0%",
+                    "risk": "Moderate",
+                    "badge_class": "badge-warning",
+                },
+                {
+                    "bracket": "61-90 days",
+                    "count": ap_d3_cnt,
+                    "count_formatted": f"{ap_d3_cnt:,} Bills",
+                    "amount": _fmt_money(ap_d3, currency),
+                    "share": f"{(ap_d3 / ap_total * 100):.1f}%" if ap_total > 0 else "0.0%",
+                    "risk": "Watch",
+                    "badge_class": "badge-warning",
+                },
+                {
+                    "bracket": "91-120 days",
+                    "count": ap_d4_cnt,
+                    "count_formatted": f"{ap_d4_cnt:,} Bills",
+                    "amount": _fmt_money(ap_d4, currency),
+                    "share": f"{(ap_d4 / ap_total * 100):.1f}%" if ap_total > 0 else "0.0%",
+                    "risk": "Elevated",
+                    "badge_class": "badge-warning",
+                },
+                {
+                    "bracket": "Older",
+                    "count": ap_older_cnt,
+                    "count_formatted": f"{ap_older_cnt:,} Bills",
+                    "amount": _fmt_money(ap_older, currency),
+                    "share": f"{(ap_older / ap_total * 100):.1f}%" if ap_total > 0 else "0.0%",
+                    "risk": "High Risk",
+                    "badge_class": "badge-danger",
+                },
+            ]
 
             data.update({
                 "accounts_receivable": ar_total,
                 "ar": ar_total,
+                "total_receivables_formatted": _fmt_money(ar_total, currency),
+                "total_ar_count_formatted": f"{total_ar_cnt:,} Invoices",
                 "accounts_payable": ap_total,
                 "ap": ap_total,
-                "cash": float(wc.get("cash_and_bank", 0) or 0),
+                "total_payables_formatted": _fmt_money(ap_total, currency),
+                "total_ap_count_formatted": f"{total_ap_cnt:,} Bills",
+                "cash": float(bs.get("bank_and_cash_accounts", 0) or 0),
                 "working_capital": float(wc.get("working_capital", 0) or 0),
                 "current_ratio": float(wc.get("current_ratio", 0) or 0),
-                "total_assets": float(wc.get("total_current_assets", 0) or 0),
+                "total_assets": float(bs.get("total_assets", 0) or bs.get("current_assets", 0) or 0),
                 "expense_breakdown": expenses_data.get("expenses", []),
-                "ar_aging": {
-                    "current": _fmt_money(float(ar_buckets.get("0-30", 0) or 0), currency),
-                    "current_share": f"{(float(ar_buckets.get('0-30', 0) or 0) / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
-                    "days_30": _fmt_money(float(ar_buckets.get("31-60", 0) or 0), currency),
-                    "days_30_share": f"{(float(ar_buckets.get('31-60', 0) or 0) / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
-                    "days_60": _fmt_money(float(ar_buckets.get("61-90", 0) or 0), currency),
-                    "days_60_share": f"{(float(ar_buckets.get('61-90', 0) or 0) / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
-                    "days_90_plus": _fmt_money(float(ar_buckets.get("90+", 0) or 0), currency),
-                    "days_90_plus_share": f"{(float(ar_buckets.get('90+', 0) or 0) / ar_total * 100):.1f}%" if ar_total > 0 else "0.0%",
-                },
-                "ap_aging": ap_buckets,
+                "ar_aging": ar_aging_rows,
+                "ap_aging": ap_aging_rows,
             })
         except Exception as e:
             logger.warning(f"Accounting domain query error: {e}")
@@ -1155,6 +1478,31 @@ def _fetch_domain_report_data(
             po_cnt = int(purch.get("po_count", purch.get("order_count", 0)) or 0)
             avg_po = float(purch.get("avg_po_value", purch.get("average_order_value", 0)) or (total_purch / po_cnt if po_cnt > 0 else 0))
 
+            ap_aging_tool = get_aging_analysis_tool(tenant_id, direction="payable", company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+            ap_c = float(ap_aging_tool.get("current", 0) or 0.0)
+            ap_c_cnt = int(ap_aging_tool.get("current_cnt", 0) or 0)
+            ap_d1 = float(ap_aging_tool.get("1_30_days", 0) or 0.0)
+            ap_d1_cnt = int(ap_aging_tool.get("1_30_days_cnt", 0) or 0)
+            ap_d2 = float(ap_aging_tool.get("31_60_days", 0) or 0.0)
+            ap_d2_cnt = int(ap_aging_tool.get("31_60_days_cnt", 0) or 0)
+            ap_d3 = float(ap_aging_tool.get("61_90_days", 0) or 0.0)
+            ap_d3_cnt = int(ap_aging_tool.get("61_90_days_cnt", 0) or 0)
+            ap_d4 = float(ap_aging_tool.get("91_120_days", 0) or 0.0)
+            ap_d4_cnt = int(ap_aging_tool.get("91_120_days_cnt", 0) or 0)
+            ap_older = float(ap_aging_tool.get("older", 0) or 0.0)
+            ap_older_cnt = int(ap_aging_tool.get("older_cnt", 0) or 0)
+
+            ap_t = ap_c + ap_d1 + ap_d2 + ap_d3 + ap_d4 + ap_older or 1.0
+
+            ap_aging_rows = [
+                {"bracket": "current", "count": ap_c_cnt, "count_formatted": f"{ap_c_cnt:,} Bills", "amount": _fmt_money(ap_c, currency), "share": f"{(ap_c / ap_t * 100):.1f}%", "risk": "Low", "badge_class": "badge-success"},
+                {"bracket": "1-30 days", "count": ap_d1_cnt, "count_formatted": f"{ap_d1_cnt:,} Bills", "amount": _fmt_money(ap_d1, currency), "share": f"{(ap_d1 / ap_t * 100):.1f}%", "risk": "Normal", "badge_class": "badge-info"},
+                {"bracket": "31-60 days", "count": ap_d2_cnt, "count_formatted": f"{ap_d2_cnt:,} Bills", "amount": _fmt_money(ap_d2, currency), "share": f"{(ap_d2 / ap_t * 100):.1f}%", "risk": "Moderate", "badge_class": "badge-warning"},
+                {"bracket": "61-90 days", "count": ap_d3_cnt, "count_formatted": f"{ap_d3_cnt:,} Bills", "amount": _fmt_money(ap_d3, currency), "share": f"{(ap_d3 / ap_t * 100):.1f}%", "risk": "Watch", "badge_class": "badge-warning"},
+                {"bracket": "91-120 days", "count": ap_d4_cnt, "count_formatted": f"{ap_d4_cnt:,} Bills", "amount": _fmt_money(ap_d4, currency), "share": f"{(ap_d4 / ap_t * 100):.1f}%", "risk": "Elevated", "badge_class": "badge-warning"},
+                {"bracket": "Older", "count": ap_older_cnt, "count_formatted": f"{ap_older_cnt:,} Bills", "amount": _fmt_money(ap_older, currency), "share": f"{(ap_older / ap_t * 100):.1f}%", "risk": "High Risk", "badge_class": "badge-danger"},
+            ]
+
             data.update({
                 "total_purchases": total_purch,
                 "total_purchase_spend": total_purch,
@@ -1164,7 +1512,7 @@ def _fetch_domain_report_data(
                 "top_supplier_spend": top_v_spend,
                 "top_vendors": formatted_vendors,
                 "top_suppliers": formatted_vendors,
-                "ap_aging": payables.get("aging_buckets", {}),
+                "ap_aging": ap_aging_rows,
             })
         except Exception as e:
             logger.warning(f"Purchase domain query error: {e}")
@@ -1193,9 +1541,9 @@ def _fetch_domain_report_data(
                 })
 
             data.update({
-                "inventory_valuation": float(inv_val.get("total_valuation", 0) or 0),
-                "inventory_value": float(inv_val.get("total_valuation", 0) or 0),
-                "sku_count": int(inv_val.get("sku_count", len(raw_alerts)) or len(raw_alerts)),
+                "inventory_valuation": float(inv_val.get("total_value", inv_val.get("total_valuation", 0)) or 0),
+                "inventory_value": float(inv_val.get("total_value", inv_val.get("total_valuation", 0)) or 0),
+                "sku_count": int(inv_val.get("total_products_in_stock", inv_val.get("sku_count", len(raw_alerts))) or len(raw_alerts)),
                 "low_stock_count": len(raw_alerts),
                 "low_stock_items": formatted_alerts,
                 "low_stock_alerts": formatted_alerts,
@@ -1209,39 +1557,275 @@ def _fetch_domain_report_data(
     if resolved_domain in ("cashflow", "liquidity"):
         try:
             cf = get_cash_flow_statement_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-            wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
-            cash_val = float(wc.get("cash_and_bank", 0) or 0)
-            data.update({
-                "cash_balance": cash_val,
-                "cash": cash_val,
-                "cash_and_bank": cash_val,
-                "cash_from_operations": float(cf.get("operating_cash_flow", 0) or 0),
-                "operating_cashflow": float(cf.get("operating_cash_flow", 0) or 0),
-                "net_cash_flow": float(cf.get("net_cash_flow", 0) or 0),
-                "net_cash_movement": float(cf.get("net_cash_flow", 0) or 0),
-                "bank_balances": [
+            bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+            
+            op_val = float(cf.get("net_cash_from_operating", 0) or cf.get("operating_activities", {}).get("total", 0) or 0)
+            inv_val = float(cf.get("net_cash_from_investing", 0) or cf.get("investing_activities", {}).get("total", 0) or 0)
+            fin_val = float(cf.get("net_cash_from_financing", 0) or cf.get("financing_activities", {}).get("total", 0) or 0)
+            unclass_val = float(cf.get("net_cash_from_unclassified", 0) or cf.get("unclassified_activities", {}).get("total", 0) or 0)
+            net_mov = float(cf.get("net_change_in_cash", 0) or (op_val + inv_val + fin_val + unclass_val) or 0)
+            beg_bal = float(cf.get("beginning_balance", 0) or 0)
+            end_bal = float(cf.get("closing_balance", 0.0))
+            cash_val = end_bal
+
+            # Cash Runway Calculation based on monthly operating burn
+            monthly_burn = max(0.0, opex_f / 8.0) if opex_f > 0 else 0.0
+            if cash_val > 0 and monthly_burn > 0:
+                runway_val = cash_val / monthly_burn
+                runway_str = f"{runway_val:.1f} Mos"
+            elif cash_val <= 0:
+                runway_val = 0.0
+                runway_str = "0.0 Mos (Overdrawn)"
+            else:
+                runway_val = 12.0
+                runway_str = "12.0+ Mos"
+
+            # Query real granular bank & cash accounts matching Cash Flow liquidity definition
+            from doova_one_view.api.accounting.cash_flow_engine import CashFlowEngine
+            from odoo_app.models import AccountMoveLine
+            liq_filter = CashFlowEngine.get_liquidity_filter(tenant_id)
+            end_date_str = end_date or "2099-12-31"
+
+            liq_qs = AccountMoveLine.objects.filter(
+                liq_filter,
+                tenant_id=tenant_id,
+                account_move__state="posted",
+                account_move__date__lte=end_date_str
+            )
+            if resolved_company_ids:
+                liq_qs = liq_qs.filter(company_id__in=resolved_company_ids)
+
+            from django.db.models import Sum
+            acct_aggs = liq_qs.values("account_code", "account_name", "company__currency_code").annotate(
+                ending_balance=Sum("balance")
+            ).order_by("ending_balance")
+
+            bank_accounts_list = []
+            for r in acct_aggs:
+                b_bal = float(r.get("ending_balance") or 0)
+                if abs(b_bal) < 0.01:
+                    continue
+                b_name = r.get("account_name") or "Cash / Bank Account"
+                b_code = r.get("account_code")
+                display_name = f"{b_code} - {b_name}" if b_code and b_code not in b_name else b_name
+                bank_accounts_list.append({
+                    "account_name": display_name,
+                    "name": display_name,
+                    "currency": r.get("company__currency_code") or currency,
+                    "balance": _fmt_money(b_bal, currency),
+                    "raw_balance": b_bal,
+                    "status": "Active" if b_bal >= 0 else "Overdrawn",
+                })
+
+            if not bank_accounts_list:
+                bank_accounts_list = [
                     {
                         "account_name": "General Operating & Bank Accounts",
                         "name": "General Operating & Bank Accounts",
                         "currency": currency,
                         "balance": _fmt_money(cash_val, currency),
+                        "status": "Active" if cash_val >= 0 else "Overdrawn",
                     }
-                ],
+                ]
+
+            # Structured Statement of Cash Flows table
+            op_dict = cf.get("operating_activities", {})
+            cf_statement_rows = [
+                {"name": "OPERATING ACTIVITIES", "is_header": True, "is_bold": True, "amount": ""},
+                {"name": "Customer Receipts & Collections", "amount": _fmt_money(float(op_dict.get("customer_payments", 0) or 0), currency)},
+                {"name": "Supplier & Vendor Payments", "amount": _fmt_money(float(op_dict.get("supplier_payments", 0) or 0), currency)},
+                {"name": "Direct Cash Receipts", "amount": _fmt_money(float(op_dict.get("direct_receipts", 0) or 0), currency)},
+                {"name": "Direct Operating Disbursements", "amount": _fmt_money(float(op_dict.get("direct_payments", 0) or 0), currency)},
+                {"name": "Net Cash from Operating Activities", "is_total": True, "is_bold": True, "amount": _fmt_money(op_val, currency)},
+                {"name": "INVESTING ACTIVITIES", "is_header": True, "is_bold": True, "amount": ""},
+                {"name": "Capital Expenditures & Asset Investments", "amount": _fmt_money(inv_val, currency)},
+                {"name": "Net Cash from Investing Activities", "is_total": True, "is_bold": True, "amount": _fmt_money(inv_val, currency)},
+                {"name": "FINANCING ACTIVITIES", "is_header": True, "is_bold": True, "amount": ""},
+                {"name": "Debt, Borrowings & Equity Financing Movements", "amount": _fmt_money(fin_val, currency)},
+                {"name": "Net Cash from Financing Activities", "is_total": True, "is_bold": True, "amount": _fmt_money(fin_val, currency)},
+                {"name": "OTHER / UNCLASSIFIED ACTIVITIES", "is_header": True, "is_bold": True, "amount": ""},
+                {"name": "Net Inter-Company & Unclassified Transfers", "amount": _fmt_money(unclass_val, currency)},
+                {"name": "NET INCREASE / (DECREASE) IN CASH", "is_total": True, "is_bold": True, "amount": _fmt_money(net_mov, currency)},
+                {"name": "Beginning Cash Balance", "is_bold": True, "amount": _fmt_money(beg_bal, currency)},
+                {"name": "Ending Cash Balance", "is_total": True, "is_bold": True, "amount": _fmt_money(end_bal, currency)},
+            ]
+
+            data.update({
+                "cash_balance": end_bal,
+                "cash": end_bal,
+                "cash_and_bank": end_bal,
+                "liquid_cash": end_bal,
+                "cash_from_operations": op_val,
+                "operating_cash_flow": op_val,
+                "operating_cashflow": op_val,
+                "cash_from_investing": inv_val,
+                "investing_cash_flow": inv_val,
+                "cash_from_financing": fin_val,
+                "financing_cash_flow": fin_val,
+                "net_cash_flow": net_mov,
+                "net_cash_movement": net_mov,
+                "cash_runway": {"raw": runway_val, "formatted": runway_str},
+                "runway": {"raw": runway_val, "formatted": runway_str},
+                "bank_balances": bank_accounts_list,
+                "cash_flow_statement": cf_statement_rows,
             })
         except Exception as e:
             logger.warning(f"Cashflow domain query error: {e}")
 
     # Domain: Balance Sheet & Solvency
-    if resolved_domain in ("balance_sheet", "solvency"):
+    if resolved_domain in ("balance_sheet", "solvency", "financial_position"):
         try:
             bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+            wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+            
+            # Prior Period Balance Sheet for Comparison
+            prior_bs = {}
+            try:
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+                prior_as_of = (end_dt.replace(year=end_dt.year - 1)).strftime("%Y-%m-%d")
+                prior_bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=prior_as_of, base_currency=base_currency, tenant_ids=tenant_ids)
+            except Exception:
+                pass
+
+            total_assets = float(bs.get("total_assets", 0) or 0)
+            current_assets = float(bs.get("current_assets", 0) or 0)
+            non_current_assets = float(bs.get("non_current_assets", 0) or 0)
+            fixed_assets = float(bs.get("fixed_assets", 0) or 0)
+            total_liabilities = float(bs.get("total_liabilities", 0) or 0)
+            current_liabilities = float(bs.get("current_liabilities", 0) or 0)
+            non_current_liabilities = float(bs.get("non_current_liabilities", 0) or 0)
+            total_equity = float(bs.get("total_equity", 0) or 0)
+            retained_earnings = float(bs.get("retained_earnings", 0) or 0)
+            unallocated_earnings = float(bs.get("unallocated_earnings", 0) or 0)
+            cash = float(bs.get("bank_and_cash_accounts", 0) or 0)
+            receivables = float(bs.get("receivables", 0) or 0)
+            prepayments = float(bs.get("prepayments", 0) or 0)
+            payables = float(bs.get("payables", 0) or 0)
+            cur_ratio = float(bs.get("current_ratio") or wc.get("current_ratio") or (current_assets / current_liabilities if current_liabilities else 0.0))
+            nwc_val = float(wc.get("working_capital") or (current_assets - current_liabilities))
+
+            prior_ta = float(prior_bs.get("total_assets", 0) or 0)
+            prior_ca = float(prior_bs.get("current_assets", 0) or 0)
+            prior_nca = float(prior_bs.get("non_current_assets", 0) or 0)
+            prior_fa = float(prior_bs.get("fixed_assets", 0) or 0)
+            prior_tl = float(prior_bs.get("total_liabilities", 0) or 0)
+            prior_cl = float(prior_bs.get("current_liabilities", 0) or 0)
+            prior_ncl = float(prior_bs.get("non_current_liabilities", 0) or 0)
+            prior_eq = float(prior_bs.get("total_equity", 0) or 0)
+            prior_re = float(prior_bs.get("retained_earnings", 0) or 0)
+            prior_ue = float(prior_bs.get("unallocated_earnings", 0) or 0)
+            prior_cash = float(prior_bs.get("bank_and_cash_accounts", 0) or 0)
+            prior_rec = float(prior_bs.get("receivables", 0) or 0)
+            prior_prep = float(prior_bs.get("prepayments", 0) or 0)
+            prior_pay = float(prior_bs.get("payables", 0) or 0)
+
+            has_prior = prior_ta > 0 or prior_tl > 0 or prior_eq > 0
+
+            bs_statement = [
+                {"name": "ASSETS", "is_header": True, "is_bold": True, "current": "", "prior": ""},
+                {"name": "Cash & Cash Equivalents", "current": _fmt_money(cash, currency), "prior": _fmt_money(prior_cash, currency) if has_prior else "—"},
+                {"name": "Accounts Receivable", "current": _fmt_money(receivables, currency), "prior": _fmt_money(prior_rec, currency) if has_prior else "—"},
+                {"name": "Prepayments & Other Current Assets", "current": _fmt_money(prepayments, currency), "prior": _fmt_money(prior_prep, currency) if has_prior else "—"},
+                {"name": "Total Current Assets", "is_bold": True, "current": _fmt_money(current_assets, currency), "prior": _fmt_money(prior_ca, currency) if has_prior else "—"},
+                {"name": "Property, Plant & Equipment / Fixed Assets", "current": _fmt_money(fixed_assets, currency), "prior": _fmt_money(prior_fa, currency) if has_prior else "—"},
+                {"name": "Other Non-Current Assets", "current": _fmt_money(non_current_assets - fixed_assets, currency), "prior": _fmt_money(prior_nca - prior_fa, currency) if has_prior else "—"},
+                {"name": "Total Non-Current Assets", "is_bold": True, "current": _fmt_money(non_current_assets, currency), "prior": _fmt_money(prior_nca, currency) if has_prior else "—"},
+                {"name": "TOTAL ASSETS", "is_total": True, "is_bold": True, "current": _fmt_money(total_assets, currency), "prior": _fmt_money(prior_ta, currency) if has_prior else "—"},
+                {"name": "LIABILITIES", "is_header": True, "is_bold": True, "current": "", "prior": ""},
+                {"name": "Accounts Payable", "current": _fmt_money(payables, currency), "prior": _fmt_money(prior_pay, currency) if has_prior else "—"},
+                {"name": "Other Current Liabilities", "current": _fmt_money(current_liabilities - payables, currency), "prior": _fmt_money(prior_cl - prior_pay, currency) if has_prior else "—"},
+                {"name": "Total Current Liabilities", "is_bold": True, "current": _fmt_money(current_liabilities, currency), "prior": _fmt_money(prior_cl, currency) if has_prior else "—"},
+                {"name": "Non-Current Liabilities", "current": _fmt_money(non_current_liabilities, currency), "prior": _fmt_money(prior_ncl, currency) if has_prior else "—"},
+                {"name": "TOTAL LIABILITIES", "is_total": True, "is_bold": True, "current": _fmt_money(total_liabilities, currency), "prior": _fmt_money(prior_tl, currency) if has_prior else "—"},
+                {"name": "EQUITY", "is_header": True, "is_bold": True, "current": "", "prior": ""},
+                {"name": "Retained Earnings", "current": _fmt_money(retained_earnings, currency), "prior": _fmt_money(prior_re, currency) if has_prior else "—"},
+                {"name": "Unallocated Earnings", "current": _fmt_money(unallocated_earnings, currency), "prior": _fmt_money(prior_ue, currency) if has_prior else "—"},
+                {"name": "TOTAL EQUITY", "is_total": True, "is_bold": True, "current": _fmt_money(total_equity, currency), "prior": _fmt_money(prior_eq, currency) if has_prior else "—"},
+                {"name": "TOTAL LIABILITIES & EQUITY", "is_total": True, "is_bold": True, "current": _fmt_money(total_liabilities + total_equity, currency), "prior": _fmt_money(prior_tl + prior_eq, currency) if has_prior else "—"},
+            ]
+
             data.update({
-                "total_assets": float(bs.get("total_assets", 0) or 0),
-                "total_liabilities": float(bs.get("total_liabilities", 0) or 0),
-                "total_equity": float(bs.get("total_equity", 0) or 0),
+                "total_assets": total_assets,
+                "current_assets": current_assets,
+                "non_current_assets": non_current_assets,
+                "fixed_assets": fixed_assets,
+                "total_liabilities": total_liabilities,
+                "current_liabilities": current_liabilities,
+                "non_current_liabilities": non_current_liabilities,
+                "total_equity": total_equity,
+                "equity": total_equity,
+                "retained_earnings": retained_earnings,
+                "unallocated_earnings": unallocated_earnings,
+                "current_ratio": cur_ratio,
+                "working_capital": nwc_val,
+                "nwc": nwc_val,
+                "cash": cash,
+                "bank_and_cash_accounts": cash,
+                "receivables": receivables,
+                "accounts_receivable": receivables,
+                "payables": payables,
+                "accounts_payable": payables,
+                "balance_sheet": bs_statement,
             })
         except Exception as e:
             logger.warning(f"Balance sheet domain query error: {e}")
+
+    # Domain: Financial Health & Ratio Analysis
+    if resolved_domain in ("financial_analysis", "financial_health", "ratios"):
+        try:
+            health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+            bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+            wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+
+            ca_val = float(bs.get("current_assets", 0) or 0)
+            cl_val = float(bs.get("current_liabilities", 0) or 0)
+            cash_val = float(bs.get("bank_and_cash_accounts", 0) or 0)
+            ar_val = float(bs.get("receivables", 0) or 0)
+            eq_val = float(bs.get("total_equity", 0) or 0)
+            ta_val = float(bs.get("total_assets", 0) or 0)
+            tl_val = float(bs.get("total_liabilities", 0) or 0)
+
+            cur_ratio = float(bs.get("current_ratio") or wc.get("current_ratio") or (ca_val / cl_val if cl_val else 0.0))
+            quick_ratio = ((cash_val + ar_val) / cl_val) if cl_val > 0 else 0.0
+            roe_val = (net_f / eq_val * 100.0) if eq_val > 0 else 0.0
+            roi_val = (net_f / ta_val * 100.0) if ta_val > 0 else 0.0
+            gross_margin_pct = (gp_f / rev_f * 100.0) if rev_f > 0 else 0.0
+            net_margin_pct = (net_f / rev_f * 100.0) if rev_f > 0 else 0.0
+            ebit_margin_pct = (ebit_f / rev_f * 100.0) if rev_f > 0 else 0.0
+            d_to_e = (tl_val / eq_val * 100.0) if eq_val > 0 else 0.0
+            equity_ratio = (eq_val / ta_val * 100.0) if ta_val > 0 else 0.0
+            health_score_val = float(health.get("business_health_score", 0.0) or 80.0)
+
+            ratio_benchmark_matrix = [
+                {"category": "Profitability", "name": "Gross Profit Margin", "formatted_value": f"{gross_margin_pct:.1f}%", "benchmark": "> 40.0%", "status": "Moderate" if gross_margin_pct >= 30 else "Low", "badge_class": "badge-info" if gross_margin_pct >= 30 else "badge-warning"},
+                {"category": "Profitability", "name": "Net Profit Margin", "formatted_value": f"{net_margin_pct:.1f}%", "benchmark": "> 10.0%", "status": "Healthy" if net_margin_pct > 0 else "Loss", "badge_class": "badge-success" if net_margin_pct > 0 else "badge-danger"},
+                {"category": "Profitability", "name": "Operating / EBIT Margin", "formatted_value": f"{ebit_margin_pct:.1f}%", "benchmark": "> 15.0%", "status": "Healthy" if ebit_margin_pct > 0 else "Negative", "badge_class": "badge-success" if ebit_margin_pct > 0 else "badge-danger"},
+                {"category": "Profitability", "name": "Return on Investment (ROI)", "formatted_value": f"{roi_val:.1f}%", "benchmark": "> 10.0%", "status": "Healthy" if roi_val > 0 else "Deficit", "badge_class": "badge-success" if roi_val > 0 else "badge-danger"},
+                {"category": "Profitability", "name": "Return on Equity (ROE)", "formatted_value": f"{roe_val:.1f}%", "benchmark": "> 15.0%", "status": "Healthy" if roe_val > 0 else "Deficit", "badge_class": "badge-success" if roe_val > 0 else "badge-danger"},
+                {"category": "Liquidity", "name": "Current Ratio", "formatted_value": f"{cur_ratio:.2f}", "benchmark": "1.50 – 2.50x", "status": "Adequate" if cur_ratio >= 1.5 else ("Tight" if cur_ratio >= 1.0 else "Critical"), "badge_class": "badge-success" if cur_ratio >= 1.5 else "badge-warning"},
+                {"category": "Liquidity", "name": "Quick / Acid Ratio", "formatted_value": f"{quick_ratio:.2f}", "benchmark": "> 1.00x", "status": "Adequate" if quick_ratio >= 1.0 else "Tight", "badge_class": "badge-success" if quick_ratio >= 1.0 else "badge-warning"},
+                {"category": "Leverage", "name": "Debt-to-Equity", "formatted_value": f"{d_to_e:.1f}%", "benchmark": "< 100.0%", "status": "Acceptable" if d_to_e <= 100 else "High Leverage", "badge_class": "badge-info" if d_to_e <= 100 else "badge-warning"},
+                {"category": "Leverage", "name": "Equity Ratio", "formatted_value": f"{equity_ratio:.1f}%", "benchmark": "> 50.0%", "status": "Sound" if equity_ratio >= 50 else "Leveraged", "badge_class": "badge-success" if equity_ratio >= 50 else "badge-warning"},
+            ]
+
+            data.update({
+                "health_score": health_score_val,
+                "gross_margin": gross_margin_pct,
+                "net_margin": net_margin_pct,
+                "ebit_margin": ebit_margin_pct,
+                "current_ratio": cur_ratio,
+                "quick_ratio": round(quick_ratio, 2),
+                "roi": round(roi_val, 1),
+                "roi_pct": round(roi_val, 1),
+                "return_on_investment": round(roi_val, 1),
+                "roe": round(roe_val, 1),
+                "return_on_equity": round(roe_val, 1),
+                "nwc": float(wc.get("working_capital", 0) or (ca_val - cl_val)),
+                "working_capital": float(wc.get("working_capital", 0) or (ca_val - cl_val)),
+                "ratios": ratio_benchmark_matrix,
+            })
+        except Exception as e:
+            logger.warning(f"Financial analysis domain query error: {e}")
 
     return data
 
@@ -1264,6 +1848,8 @@ def generate_report_tool(
     comparison_type: str = "prior_year",
     **kwargs,
 ) -> dict:
+    if not report_type and kwargs.get("domain"):
+        report_type = kwargs.get("domain")
     if report_type and report_mode == "auto":
         report_mode = report_type
     from ..utils import get_tenant_currency
@@ -1284,20 +1870,20 @@ def generate_report_tool(
     
     # Resolve Comparison Basis Dynamically
     resolved_comparison_label = kwargs.get("comparison_label")
+    search_text = prompt_text.lower() if prompt_text else (custom_content.lower() if custom_content else "")
     if not resolved_comparison_label:
-        combined_text = f"{prompt_text} {custom_content.lower()}"
-        if any(w in combined_text for w in ["previous month", "prior month", "past month", "month before", "month against the previous", "mom"]):
-            resolved_comparison_label = "Prior Month (MoM)"
-        elif any(w in combined_text for w in ["previous quarter", "prior quarter", "quarter against the previous", "qoq"]):
+        if any(w in search_text for w in ["previous quarter", "prior quarter", "last quarter", "past quarter", "quarter against the previous", "qoq", "quarterly"]):
             resolved_comparison_label = "Prior Quarter (QoQ)"
-        elif any(w in combined_text for w in ["budget", "target", "plan"]):
-            resolved_comparison_label = "Budget / Target Baseline"
-        elif any(w in combined_text for w in ["sequential", "prior period"]):
-            resolved_comparison_label = "Prior Sequential Period"
-        elif comparison_type == "prior_month":
+        elif any(w in search_text for w in ["previous month", "prior month", "past month", "month before", "month against the previous", "mom"]):
             resolved_comparison_label = "Prior Month (MoM)"
+        elif any(w in search_text for w in ["budget", "target", "plan"]):
+            resolved_comparison_label = "Budget / Target Baseline"
+        elif any(w in search_text for w in ["sequential", "prior period"]):
+            resolved_comparison_label = "Prior Sequential Period"
         elif comparison_type == "prior_quarter":
             resolved_comparison_label = "Prior Quarter (QoQ)"
+        elif comparison_type == "prior_month":
+            resolved_comparison_label = "Prior Month (MoM)"
         else:
             resolved_comparison_label = "Same Period Prior Year (YoY)"
 
@@ -1309,19 +1895,30 @@ def generate_report_tool(
     elif len(resolved_company_ids) == 1:
         company_name = "Financial Overview"
         view_type = "Individual"
-    else:
-        company_name = f"Multi-Company ({len(resolved_company_ids)} Companies)"
-        view_type = "Comparison"
-
-    try:
-        if len(resolved_company_ids) == 1:
-            comp_res = get_companies_tool(tenant_id)
+        try:
+            comp_res = get_companies_tool(tenant_id, tenant_ids=tenant_ids)
             comps = comp_res.get("companies", []) if isinstance(comp_res, dict) else []
             for c in comps:
                 if isinstance(c, dict) and c.get("id") == resolved_company_ids[0]:
                     company_name = c.get("name", company_name)
-    except Exception:
-        pass
+                    break
+        except Exception:
+            pass
+    else:
+        view_type = "Comparison"
+        try:
+            comp_res = get_companies_tool(tenant_id, tenant_ids=tenant_ids)
+            comps = comp_res.get("companies", []) if isinstance(comp_res, dict) else []
+            selected_names = [c.get("name") for c in comps if c.get("id") in resolved_company_ids and c.get("name")]
+            if selected_names:
+                if len(selected_names) <= 3:
+                    company_name = ", ".join(selected_names)
+                else:
+                    company_name = f"{', '.join(selected_names[:2])} (+{len(selected_names)-2} more)"
+            else:
+                company_name = f"Multi-Company ({len(resolved_company_ids)} Companies)"
+        except Exception:
+            company_name = f"Multi-Company ({len(resolved_company_ids)} Companies)"
 
     # 2. Resolve Reporting Period & Core Financial Dates Dynamically
     current_year = datetime.now().year
@@ -1329,8 +1926,16 @@ def generate_report_tool(
     raw_end = kwargs.get("end_date") or kwargs.get("to_date")
     resolved_period_label = kwargs.get("reporting_period")
 
+    # Check if prompt explicitly asks for a macro period, custom date range, or N days
+    is_explicit_macro_prompt = bool(
+        prompt_text and re.search(
+            r'\b(?:from|between)\s+\d{4}-\d{2}-\d{2}\b|\b\d+\s+days?\b|\blast\s+quarter\b|\bpast\s+quarter\b|\bprevious\s+quarter\b|\bprior\s+quarter\b|\bqoq\b|\bquarterly\b|\bq1\b|\bq2\b|\bq3\b|\bq4\b|\bfirst quarter\b|\bsecond quarter\b|\bthird quarter\b|\bfourth quarter\b|\b(?:past|last|previous)\s+\d+\s+months?\b|\b\d+\s+months?\s+(?:before|prior|ago)\b|\bpast\s+6\s+months\b|\blast\s+6\s+months\b|\bh1\b|\bfirst half\b|\blast\s+year\b|\bpast\s+year\b|\bprior\s+year\b|\bfy\s*(\d{4})',
+            search_text
+        )
+    )
+
     if not resolved_period_label:
-        if raw_start and raw_end:
+        if raw_start and raw_end and not is_explicit_macro_prompt:
             try:
                 s_dt = datetime.strptime(raw_start, "%Y-%m-%d")
                 e_dt = datetime.strptime(raw_end, "%Y-%m-%d")
@@ -1340,18 +1945,50 @@ def generate_report_tool(
             ytd_start = raw_start
             ytd_end = raw_end
         else:
-            # Check prompt first to prioritize user intent over historical text mentions in custom_content
-            search_text = prompt_text if prompt_text else custom_content.lower()
-            if any(w in search_text for w in ["past month", "this past month", "previous month", "prior month", "month before", "mom"]) or comparison_type == "prior_month":
-                # For monthly reporting, default to the most recent active/closed month (June or prior calendar month)
+            # 1. Check for explicit date ranges: 'from YYYY-MM-DD to YYYY-MM-DD' or 'between YYYY-MM-DD and YYYY-MM-DD'
+            m_range = re.search(r'\b(?:from|between)\s+(\d{4}-\d{2}-\d{2})\s+(?:to|and)\s+(\d{4}-\d{2}-\d{2})\b', search_text)
+            # 2. Check for N days before a specific date: '20 days before 2026-08-31'
+            m_days_date = re.search(r'\b(\d+)\s+days?\s+before\s+(\d{4}-\d{2}-\d{2})\b', search_text)
+            # 3. Check for past/last N days or N days before today
+            m_days = re.search(r'\b(?:past|last|previous)\s+(\d+)\s+days?\b|\b(\d+)\s+days?\s+(?:before today|prior|ago)\b', search_text)
+
+            if m_range:
+                ytd_start = m_range.group(1)
+                ytd_end = m_range.group(2)
+                try:
+                    s_dt = datetime.strptime(ytd_start, "%Y-%m-%d")
+                    e_dt = datetime.strptime(ytd_end, "%Y-%m-%d")
+                    resolved_period_label = f"{s_dt.strftime('%b %d, %Y')} – {e_dt.strftime('%b %d, %Y')}"
+                except Exception:
+                    resolved_period_label = f"{ytd_start} – {ytd_end}"
+            elif m_days_date:
+                n_days = int(m_days_date.group(1))
+                e_dt = datetime.strptime(m_days_date.group(2), "%Y-%m-%d")
+                s_dt = e_dt - timedelta(days=n_days)
+                ytd_start = s_dt.strftime("%Y-%m-%d")
+                ytd_end = e_dt.strftime("%Y-%m-%d")
+                resolved_period_label = f"{s_dt.strftime('%b %d, %Y')} – {e_dt.strftime('%b %d, %Y')} ({n_days} Days)"
+            elif m_days:
+                n_days = int(m_days.group(1) or m_days.group(2) or 30)
                 now = datetime.now()
-                first_of_this_month = now.replace(day=1)
-                last_month_end = first_of_this_month - timedelta(days=1)
-                last_month_start = last_month_end.replace(day=1)
-                ytd_start = last_month_start.strftime("%Y-%m-%d")
-                ytd_end = last_month_end.strftime("%Y-%m-%d")
-                resolved_period_label = f"{last_month_start.strftime('%b 01, %Y')} – {last_month_end.strftime('%b %d, %Y')}"
-            elif re.search(r'\blast\s+quarter\b|\bpast\s+quarter\b|\bprevious\s+quarter\b|\bprior\s+quarter\b|\bqoq\b', search_text):
+                s_dt = now - timedelta(days=n_days)
+                ytd_start = s_dt.strftime("%Y-%m-%d")
+                ytd_end = now.strftime("%Y-%m-%d")
+                resolved_period_label = f"{s_dt.strftime('%b %d, %Y')} – {now.strftime('%b %d, %Y')} ({n_days} Days)"
+            elif re.search(r'\b(?:past|last|previous)\s+(\d+)\s+months?\b|\b(\d+)\s+months?\s+(?:before|prior|ago)\b', search_text):
+                m_match = re.search(r'\b(?:past|last|previous)\s+(\d+)\s+months?\b|\b(\d+)\s+months?\s+(?:before|prior|ago)\b', search_text)
+                n_months = int(m_match.group(1) or m_match.group(2) or 5)
+                now = datetime.now()
+                start_month = now.month - n_months + 1
+                start_year = now.year
+                while start_month <= 0:
+                    start_month += 12
+                    start_year -= 1
+                start_dt = datetime(start_year, start_month, 1)
+                ytd_start = start_dt.strftime("%Y-%m-%d")
+                ytd_end = now.strftime("%Y-%m-%d")
+                resolved_period_label = f"{start_dt.strftime('%b 01, %Y')} – {now.strftime('%b %d, %Y')} ({n_months} Months)"
+            elif re.search(r'\blast\s+quarter\b|\bpast\s+quarter\b|\bprevious\s+quarter\b|\bprior\s+quarter\b|\bqoq\b|\bquarterly\b', search_text):
                 # Calculate previous closed quarter based on current month
                 now = datetime.now()
                 curr_q = (now.month - 1) // 3 + 1
@@ -1389,6 +2026,15 @@ def generate_report_tool(
                 ytd_start = f"{current_year}-10-01"
                 ytd_end = f"{current_year}-12-31"
                 resolved_period_label = f"Oct 01, {current_year} – Dec 31, {current_year} (Q4)"
+            elif any(w in search_text for w in ["past month", "this past month", "previous month", "prior month", "month before", "mom"]) or comparison_type == "prior_month":
+                # For monthly reporting, default to the most recent active/closed month (June or prior calendar month)
+                now = datetime.now()
+                first_of_this_month = now.replace(day=1)
+                last_month_end = first_of_this_month - timedelta(days=1)
+                last_month_start = last_month_end.replace(day=1)
+                ytd_start = last_month_start.strftime("%Y-%m-%d")
+                ytd_end = last_month_end.strftime("%Y-%m-%d")
+                resolved_period_label = f"{last_month_start.strftime('%b 01, %Y')} – {last_month_end.strftime('%b %d, %Y')}"
             else:
                 ytd_start = f"{current_year}-01-01"
                 ytd_end = datetime.now().strftime("%Y-%m-%d")
@@ -1414,9 +2060,19 @@ def generate_report_tool(
             tenant_ids=tenant_ids,
             currency=currency,
         )
+        _DB_PROTECTED_FIELDS = {
+            "top_products", "top_customers", "top_suppliers", "top_vendors",
+            "low_stock_items", "low_stock_alerts",
+            "expense_breakdown", "bank_balances",
+        }
         merged_report_data = dict(db_domain_data)
         if report_data and isinstance(report_data, dict):
-            merged_report_data.update(report_data)
+            for key, val in report_data.items():
+                if key in _DB_PROTECTED_FIELDS and key in merged_report_data:
+                    db_val = merged_report_data[key]
+                    if isinstance(db_val, list) and len(db_val) > 0:
+                        continue
+                merged_report_data[key] = val
         report_data = merged_report_data
 
         normalized_data = _normalize_report_data(report_data or {}, currency)
@@ -1428,11 +2084,57 @@ def generate_report_tool(
         # Automatically build trend and waterfall charts if not supplied by agent
         if not chart_1_b64:
             try:
-                m_pnl = _get_monthly_pnl_series(tenant_id, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency, tenant_ids=tenant_ids)
-                if m_pnl:
-                    chart_1_b64 = _render_trend_chart(m_pnl[-12:], currency)
-            except Exception:
-                pass
+                trend_end = ytd_end or datetime.now().strftime("%Y-%m-%d")
+                try:
+                    end_dt = datetime.strptime(trend_end, "%Y-%m-%d")
+                    trend_start = (end_dt - timedelta(days=365)).replace(day=1).strftime("%Y-%m-%d")
+                except Exception:
+                    trend_start = f"{current_year - 1}-01-01"
+
+                trend_data_pts = _get_domain_trend_series(
+                    domain=resolved_domain,
+                    tenant_id=tenant_id,
+                    company_ids=resolved_company_ids,
+                    start_date=trend_start,
+                    end_date=trend_end,
+                    base_currency=base_currency,
+                    tenant_ids=tenant_ids,
+                )
+                if not trend_data_pts and resolved_domain in ("sales", "commercial"):
+                    try:
+                        ts_res = get_time_series_data_tool(
+                            tenant_id=tenant_id,
+                            company_ids=resolved_company_ids,
+                            start_date=trend_start,
+                            end_date=trend_end,
+                            granularity="month",
+                            base_currency=base_currency,
+                            tenant_ids=tenant_ids,
+                        )
+                        trend_data_pts = ts_res.get("points", []) if isinstance(ts_res, dict) else []
+                    except Exception:
+                        pass
+                elif not trend_data_pts and resolved_domain in ("purchase", "purchasing", "procurement"):
+                    try:
+                        ts_res = get_purchase_trend_tool(
+                            tenant_id=tenant_id,
+                            company_ids=resolved_company_ids,
+                            start_date=trend_start,
+                            end_date=trend_end,
+                            granularity="month",
+                            base_currency=base_currency,
+                            tenant_ids=tenant_ids,
+                        )
+                        trend_data_pts = ts_res.get("points", []) if isinstance(ts_res, dict) else []
+                    except Exception:
+                        pass
+
+                if trend_data_pts:
+                    if len(trend_data_pts) > 12:
+                        trend_data_pts = trend_data_pts[-12:]
+                    chart_1_b64 = _render_trend_chart(trend_data_pts, currency, domain=resolved_domain)
+            except Exception as e:
+                logger.warning(f"Domain trend chart generation failed: {e}")
 
         if not chart_2_b64:
             try:
@@ -1573,6 +2275,7 @@ def generate_report_tool(
         reports_dir = _get_reports_dir()
         filename = f"{resolved_domain}_report_{tenant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]}_v2.pdf"
         output_path = reports_dir / filename
+        html_out = _highlight_negative_numbers_html(html_out)
         try:
             HTML(string=html_out).write_pdf(output_path)
         except Exception as e:
@@ -1714,7 +2417,7 @@ def generate_report_tool(
     cash_val = 0.0
     try:
         t_sql_cash, t_params_cash = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_cash")
-        balance_col_cash = build_currency_case_sql('l.balance', tenant_id, base_currency, 'l.currency_code')
+        balance_col_cash = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
         cash_params = {"tenant_id": tenant_id}
         cash_params.update(t_params_cash)
         f_sql_cash, f_params_cash = build_company_filter_sql(tenant_id, resolved_company_ids, column_name="l.company_id")
@@ -1723,6 +2426,7 @@ def generate_report_tool(
             f"""SELECT COALESCE(SUM({balance_col_cash}), 0) AS cash_balance
                 FROM fact_account_move_lines l
                 JOIN fact_account_moves m ON l.account_move_id = m.id
+                LEFT JOIN dim_companies c ON l.company_id = c.id
                 WHERE 1=1 {t_sql_cash}
                   AND m.state = 'posted'
                   AND l.account_type = 'asset_cash'
@@ -1733,7 +2437,7 @@ def generate_report_tool(
             cash_val = float(cash_rows[0].get("cash_balance"))
     except Exception as e:
         logger.warning(f"Real cash balance query error: {e}")
-        cash_val = float(bs.get("current_assets", 0) * 0.25)
+        cash_val = float(bs.get("bank_and_cash_accounts", 0.0) or 0.0)
 
     ar_val = float(receivables.get("total_receivables", 0) or 0)
     overdue_ar_val = float(receivables.get("overdue_receivables", 0) or 0)
@@ -1741,8 +2445,8 @@ def generate_report_tool(
     ap_val = float(payables.get("total_payables", 0) or 0)
     inv_val = float(inv.get("total_valuation", 0) or inv.get("inventory_value", 0) or 0)
     nwc_val = float(wc.get("working_capital", 0) or (float(bs.get("current_assets", 0)) - float(bs.get("current_liabilities", 0))))
-    cur_ratio_val = float(wc.get("current_ratio", 0) or 1.5)
-    health_score_val = float(health.get("business_health_score", 0) or 80)
+    cur_ratio_val = float(wc.get("current_ratio") or wc.get("working_capital_ratio") or bs.get("current_ratio") or (float(bs.get("current_assets", 0)) / float(bs.get("current_liabilities", 1)) if float(bs.get("current_liabilities", 0)) else 0.0))
+    health_score_val = float(health.get("business_health_score", 0.0) or 0.0)
 
     # Extract Prior Values and Compute Real Variances
     prior_rev = float(prior_pnl.get("total_income", 0) or prior_pnl.get("revenue", 0) or 0)
@@ -2090,6 +2794,7 @@ The organization generated **{_fmt_money(rev_val, currency)}** in total revenue 
     reports_dir = _get_reports_dir()
     filename = f"health_report_{tenant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]}_v2.pdf"
     output_path = reports_dir / filename
+    html_out = _highlight_negative_numbers_html(html_out)
     try:
         HTML(string=html_out).write_pdf(output_path)
     except Exception as e:

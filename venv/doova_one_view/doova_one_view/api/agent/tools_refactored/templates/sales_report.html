@@ -97,7 +97,10 @@
     <!-- Charts -->
     {% if trend_chart_b64 or chart_1_b64 %}
     <div class="chart-box">
-        <div class="chart-box-title">Revenue Trajectory & Sales Velocity</div>
+        <div class="chart-box-title">
+            <span>Revenue Trajectory & Sales Velocity</span>
+            <span class="chart-badge">Trailing 12-Month Macro Horizon</span>
+        </div>
         <img src="data:image/png;base64,{{ chart_1_b64|default(trend_chart_b64) }}" class="chart-img" alt="Sales Trend Chart" />
     </div>
     {% endif %}
@@ -105,7 +108,10 @@
     <!-- Top Products Table -->
     {% set prods = report_data.get('top_products', top_products_data|default([])) %}
     {% if prods %}
-    <h2 class="sub-title">Top-Performing Products & Contribution</h2>
+    <h2 class="sub-title">
+        <span>Top-Performing Products & Contribution</span>
+        <span class="period-subtext">Focus Period: {{ reporting_period }}</span>
+    </h2>
     <table class="data-table">
         <thead>
             <tr>

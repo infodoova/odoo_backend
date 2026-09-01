@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from odoo_app.models import AppUser
-from doova_one_view.api.accounting.schemas import SearchRequest, ProfitAndLossSummary, ExpenseBreakdownResponse
+from doova_one_view.api.accounting.schemas import SearchRequest, ProfitAndLossSummary, ExpenseBreakdownResponse, BalanceSheetResponse, CashFlowStatementResponse
 from doova_one_view.api.accounting.service import AccountingService
 from doova_one_view.api.common.utils import parse_company_ids
 from doova_one_view.api.dependencies import get_current_user
@@ -155,6 +155,54 @@ async def get_profit_and_loss(
         base_currency,
     )
     return ProfitAndLossSummary(**data)
+
+
+@router.get("/{tenant_id}/balance-sheet", response_model=BalanceSheetResponse)
+async def get_balance_sheet(
+    tenant_id: str,
+    as_of_date: Optional[str] = Query(None, description="As of date for the balance sheet (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Alternative as of date"),
+    date_to: Optional[str] = Query(None, description="Alternative as of date"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    user: AppUser = _view_accounting_overview,
+) -> BalanceSheetResponse:
+    """Retrieve a structured Balance Sheet matching Odoo."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    data = await AccountingService.get_balance_sheet(
+        tenant_id,
+        as_of_date=as_of_date or end_date or date_to,
+        company_ids=_company_ids(company_id, companies),
+        base_currency=base_currency,
+    )
+    return BalanceSheetResponse(**data)
+
+
+@router.get("/{tenant_id}/cash-flow-statement", response_model=CashFlowStatementResponse)
+async def get_cash_flow_statement(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    date_from: Optional[str] = Query(None, description="Alternative start date"),
+    date_to: Optional[str] = Query(None, description="Alternative end date"),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    source: str = Query("auto", description="Source engine: 'auto' | 'odoo_live' | 'local_engine'"),
+    user: AppUser = _view_accounting_overview,
+) -> CashFlowStatementResponse:
+    """Retrieve a structured Cash Flow Statement matching Odoo."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    data = await AccountingService.get_cash_flow_statement(
+        tenant_id,
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_ids=_company_ids(company_id, companies),
+        base_currency=base_currency,
+        source=source,
+    )
+    return CashFlowStatementResponse(**data)
 
 
 @router.get("/{tenant_id}/expense-breakdown", response_model=ExpenseBreakdownResponse)
@@ -425,7 +473,7 @@ async def get_product_moves_details(
 @router.get("/{tenant_id}/dashboard/aging-details")
 async def get_aging_details(
     tenant_id: str,
-    bucket: str = Query(..., description="Aging bucket: '0-30', '31-60', '61-90', '90+'"),
+    bucket: str = Query(..., description="Aging bucket: 'current', '0-30', '1-30', '31-60', '61-90', '91-120', 'Older', '90+'"),
     move_type: str = Query(..., description="'out_invoice' for receivables, 'in_invoice' for payables"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
@@ -472,4 +520,65 @@ async def get_dashboard_journals(
         base_currency=base_currency,
         limit=limit,
         offset=offset
+    )
+
+
+from doova_one_view.api.accounting.schemas import CashFlowDrilldownResponse
+
+@router.get("/{tenant_id}/cash-flow", response_model=CashFlowStatementResponse)
+async def get_cash_flow_statement(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_id: Optional[int] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    source: str = Query("auto", description="Source engine: 'auto' | 'odoo_live' | 'local_engine'"),
+    user: AppUser = _view_accounting_overview,
+) -> CashFlowStatementResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = _company_ids(company_id, companies)
+    return await AccountingService.get_cash_flow_statement(
+        tenant_id=tenant_id,
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_ids=company_ids,
+        base_currency=base_currency,
+        source=source,
+    )
+
+
+@router.get("/{tenant_id}/cash-flow/drilldown", response_model=CashFlowDrilldownResponse)
+async def get_cash_flow_drilldown(
+    tenant_id: str,
+    section: str = Query(..., description="Cash flow section: 'operating', 'investing', 'financing', 'unclassified'"),
+    line_key: Optional[str] = Query(None, description="Line key: 'customer_advances', 'supplier_advances', 'direct_receipts', 'direct_payments', 'cash_in', 'cash_out'"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_id: Optional[int] = Query(None),
+    limit: int = Query(200, ge=1, le=1000),
+    user: AppUser = _view_accounting_overview,
+) -> CashFlowDrilldownResponse:
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    company_ids = _company_ids(company_id, companies)
+    records = await AccountingService.get_cash_flow_drilldown(
+        tenant_id=tenant_id,
+        section=section,
+        line_key=line_key,
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_ids=company_ids,
+        limit=limit,
+    )
+    return CashFlowDrilldownResponse(
+        tenant_id=tenant_id,
+        section=section,
+        line_key=line_key,
+        total_records=len(records),
+        records=records,
     )
