@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone as tz
 from datetime import timedelta
 from typing import List, Optional
-from uuid import UUIDx 
+from uuid import UUID 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from doova_one_view.api.dependencies import get_current_user
