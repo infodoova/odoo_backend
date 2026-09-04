@@ -148,13 +148,16 @@ class AccountMoveSynchronizer(BaseSynchronizer):
         line_query = """
             INSERT INTO fact_account_move_lines (
                 tenant_id, account_move_id, odoo_id, odoo_move_id,
-                product_id, partner_id, company_id, account_code,
+                product_id, partner_id, company_id, account_odoo_id, account_code,
                 account_name, account_type, debit, credit, balance,
                 amount_currency, currency_code, quantity, price_unit,
                 price_subtotal, name, odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET 
+                account_odoo_id = COALESCE(EXCLUDED.account_odoo_id, fact_account_move_lines.account_odoo_id),
+                account_code = EXCLUDED.account_code,
+                account_name = EXCLUDED.account_name,
                 debit = EXCLUDED.debit, credit = EXCLUDED.credit,
                 balance = EXCLUDED.balance, account_type = COALESCE(EXCLUDED.account_type, fact_account_move_lines.account_type),
                 odoo_write_date = EXCLUDED.odoo_write_date,
@@ -184,10 +187,14 @@ class AccountMoveSynchronizer(BaseSynchronizer):
                 account_odoo_id = None
                 if isinstance(account_data, (list, tuple)):
                     account_odoo_id = account_data[0]
-                    # Odoo often returns [id, "code name"]
-                    parts = account_data[1].split(' ', 1)
-                    account_code = parts[0]
-                    account_name = parts[1] if len(parts) > 1 else parts[0]
+                    raw_str = (account_data[1] or "").strip()
+                    parts = raw_str.split(' ', 1)
+                    if parts[0] and parts[0][0].isdigit():
+                        account_code = parts[0]
+                        account_name = parts[1] if len(parts) > 1 else parts[0]
+                    else:
+                        account_code = None
+                        account_name = raw_str
 
                 # account_type: prefer direct Odoo field, fallback to CoA lookup
                 account_type = line.get('account_type') or None
@@ -199,7 +206,7 @@ class AccountMoveSynchronizer(BaseSynchronizer):
 
                 line_params.append((
                     tenant_id, account_move_id, line['id'], move_odoo_id,
-                    product_id, partner_id, company_id, account_code,
+                    product_id, partner_id, company_id, account_odoo_id, account_code,
                     account_name, account_type,
                     self.transformer.parse_odoo_decimal(line.get('debit', 0)),
                     self.transformer.parse_odoo_decimal(line.get('credit', 0)),

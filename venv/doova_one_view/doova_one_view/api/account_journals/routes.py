@@ -77,6 +77,31 @@ async def list_journals(
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountJournalService.get_journals(tenant_id, limit, offset, search, _company_ids(company_id, companies))
 
+@router.get("/{tenant_id}/audit")
+async def get_journal_audit(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency"),
+    user: AppUser = _view_journals,
+) -> dict[str, Any]:
+    """Official Journal Audit report matching Odoo Report 20."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    from doova_one_view.api.agent.tools_refactored.banking import get_journal_audit_tool
+    return get_journal_audit_tool(
+        tenant_id=tenant_id,
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_id=company_id,
+        company_ids=_company_ids(company_id, companies),
+        base_currency=base_currency,
+    )
+
+
 @router.get("/{tenant_id}/{journal_id}")
 async def get_journal(
     tenant_id: str,

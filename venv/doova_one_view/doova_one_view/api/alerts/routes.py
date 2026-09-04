@@ -14,8 +14,7 @@ import logging
 from datetime import datetime, timezone as tz
 from datetime import timedelta
 from typing import List, Optional
-from uuid import UUID
-
+from uuid import UUIDx 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from doova_one_view.api.dependencies import get_current_user
@@ -44,15 +43,66 @@ _manage = Depends(require_permissions("manage_alerts"))
 # helpers
 # ---------------------------------------------------------------------------
 
-def _serialize_schedule(s) -> dict:
+def _serialize_schedule(s, tenant_map: dict = None, company_map: dict = None) -> dict:
+    from django.db import models
+    t_ids = getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else [])
+    c_ids = getattr(s, "companies", []) or []
+
+    # 1. Resolve Tenant Names
+    if tenant_map is None:
+        from odoo_app.models.tenant import Tenant
+        query_ids = list(set([str(tid) for tid in t_ids if tid] + ([str(s.tenant_id)] if s.tenant_id else [])))
+        t_objs = Tenant.objects.filter(id__in=query_ids)
+        tenant_map = {str(t.id): t.name for t in t_objs}
+    
+    t_names = [tenant_map[str(tid)] for tid in t_ids if str(tid) in tenant_map]
+    if not t_names and s.tenant_id and str(s.tenant_id) in tenant_map:
+        t_names = [tenant_map[str(s.tenant_id)]]
+    if not t_names and getattr(s, 'tenant', None) and s.tenant:
+        try:
+            t_names = [s.tenant.name]
+        except Exception:
+            pass
+    
+    tenant_name_str = ", ".join(t_names) if t_names else (s.tenant.name if getattr(s, 'tenant', None) and s.tenant else None)
+
+    # 2. Resolve Company Names
+    if company_map is None and c_ids:
+        from odoo_app.models.company import Company
+        c_objs = Company.objects.filter(models.Q(id__in=c_ids) | models.Q(odoo_id__in=c_ids))
+        company_map = {}
+        for c in c_objs:
+            company_map[c.id] = c.name
+            company_map[c.odoo_id] = c.name
+            company_map[str(c.id)] = c.name
+            company_map[str(c.odoo_id)] = c.name
+    elif company_map is None:
+        company_map = {}
+
+    c_names = []
+    for cid in c_ids:
+        c_name = company_map.get(cid) or company_map.get(str(cid))
+        if c_name and c_name not in c_names:
+            c_names.append(c_name)
+
+    company_name_str = ", ".join(c_names) if c_names else ("All Companies" if not c_ids else None)
+
     return {
         "id":               str(s.id),
         "tenant_id":        str(s.tenant_id) if s.tenant_id else None,
-        "tenantIds":        getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else []),
+        "tenant_name":      tenant_name_str,
+        "tenantName":       tenant_name_str,
+        "tenantIds":        t_ids,
+        "tenant_names":     t_names,
+        "tenantNames":      t_names,
         "name":             s.name,
         "prompt":           s.prompt,
         "recipients":       s.recipients,
-        "companyIds":       getattr(s, "companies", []),
+        "companyIds":       c_ids,
+        "company_name":     company_name_str,
+        "companyName":      company_name_str,
+        "company_names":    c_names,
+        "companyNames":     c_names,
         "thresholds":       getattr(s, "thresholds", {}) or {},
         "webhook_url":       getattr(s, "webhook_url", None),
         "timezone":         s.timezone,
@@ -152,15 +202,37 @@ async def list_alert_schedules(
 
     def _fetch():
         from odoo_app.models.alert_schedule import AlertSchedule
-        # Return this tenant's schedules AND system-wide ones AND multi-tenant matching ones
+        from odoo_app.models.tenant import Tenant
+        from odoo_app.models.company import Company
         from django.db.models import Q
         qs = AlertSchedule.objects.filter(
             Q(tenant_id=tenant_id) | Q(tenants__contains=tenant_id) | Q(is_system_default=True)
-        ).order_by('-created_at')
-        return list(qs[offset: offset + limit])
+        ).select_related('tenant').order_by('-created_at')
+        schedules = list(qs[offset: offset + limit])
+
+        all_tenant_ids = set()
+        all_company_ids = set()
+        for s in schedules:
+            if s.tenant_id:
+                all_tenant_ids.add(str(s.tenant_id))
+            for tid in (getattr(s, "tenants", []) or []):
+                all_tenant_ids.add(str(tid))
+            for cid in (getattr(s, "companies", []) or []):
+                all_company_ids.add(cid)
+
+        tenant_map = {str(t.id): t.name for t in Tenant.objects.filter(id__in=all_tenant_ids)}
+        company_map = {}
+        if all_company_ids:
+            for c in Company.objects.filter(Q(id__in=all_company_ids) | Q(odoo_id__in=all_company_ids)):
+                company_map[c.id] = c.name
+                company_map[c.odoo_id] = c.name
+                company_map[str(c.id)] = c.name
+                company_map[str(c.odoo_id)] = c.name
+
+        return [_serialize_schedule(s, tenant_map=tenant_map, company_map=company_map) for s in schedules]
 
     schedules = await asyncio.to_thread(_fetch)
-    return [_serialize_schedule(s) for s in schedules]
+    return schedules
 
 
 # ---------------------------------------------------------------------------

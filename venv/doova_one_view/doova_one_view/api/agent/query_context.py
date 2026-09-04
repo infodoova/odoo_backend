@@ -187,34 +187,10 @@ def extract_date_range(message: str) -> Tuple[Optional[str], Optional[str], Opti
     """
     Sophisticated date extraction utility for financial periods.
     Returns (start_date, end_date, human_readable_description).
+    Delegates to the unified date_engine.
     """
-    text = (message or "").lower()
-    today = date.today()
-
-    # 1. Financial Period Shortcuts
-    if "today" in text:
-        return today.isoformat(), today.isoformat(), "Today"
-    if "yesterday" in text:
-        yest = today - timedelta(days=1)
-        return yest.isoformat(), yest.isoformat(), "Yesterday"
-    if "this month" in text:
-        start = today.replace(day=1)
-        return start.isoformat(), today.isoformat(), "MDT (Month to Date)"
-    if "last month" in text:
-        last_month_end = today.replace(day=1) - timedelta(days=1)
-        last_month_start = last_month_end.replace(day=1)
-        return last_month_start.isoformat(), last_month_end.isoformat(), last_month_start.strftime("%B %Y")
-    if "this year" in text:
-        return today.replace(month=1, day=1).isoformat(), today.isoformat(), f"YTD {today.year}"
-
-    # 2. ISO Date Pattern Matching (YYYY-MM-DD)
-    iso_matches = re.findall(r'(\d{4}-\d{2}-\d{2})', text)
-    if iso_matches:
-        if len(iso_matches) >= 2:
-            return iso_matches[0], iso_matches[1], f"From {iso_matches[0]} to {iso_matches[1]}"
-        return iso_matches[0], today.isoformat(), f"Since {iso_matches[0]}"
-
-    return None, None, None
+    from .date_engine import resolve_period_dates
+    return resolve_period_dates(text=message, default_to_ytd=False)
 
 def is_strategic_finance_query(message: str) -> bool:
     """

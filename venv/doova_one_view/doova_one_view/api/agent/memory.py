@@ -163,6 +163,15 @@ class SessionMemory:
         session.plan_state = None
         session.save()
 
+    def set_active_date_window(self, session_id: str, date_window: Dict[str, Any]):
+        session = self.get_or_create(session_id)
+        session.active_date_window = date_window
+        session.save()
+
+    def get_active_date_window(self, session_id: str) -> Optional[Dict[str, Any]]:
+        session = self.get_or_create(session_id)
+        return session.active_date_window
+
     def list_sessions(self) -> List[Dict[str, Any]]:
         sessions = ChatSession.objects.all().order_by('-updated_at')
         results = []

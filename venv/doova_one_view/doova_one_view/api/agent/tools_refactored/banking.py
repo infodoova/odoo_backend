@@ -4,7 +4,7 @@ from doova_one_view.api.accounting.service import AccountingService, _metric, _t
 from datetime import date
 from django.db.models import Sum, Q, Count, Case, When, F, DecimalField
 from doova_one_view.api.kpi.service import _get_rate_map, _get_conversion_rate, _sum_converted
-from doova_one_view.api.agent.tools_refactored.common import run_query, normalize_company_ids, build_company_filter_sql
+from doova_one_view.api.agent.tools_refactored.common import run_query, normalize_company_ids, build_company_filter_sql, build_currency_case_sql
 from doova_one_view.api.agent.query_context import build_tenant_filter_sql
 
 def get_dashboard_impl(
@@ -890,5 +890,145 @@ def get_bank_statement_summary_tool(
             }
             for r in rows
         ]
+    }
+
+
+def get_journal_audit_tool(
+    tenant_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    company_id: Optional[int] = None,
+    company_ids: Optional[list[int]] = None,
+    base_currency: Optional[str] = None,
+    tenant_ids: Optional[list[str]] = None
+) -> dict:
+    """Official Journal Audit report matching Odoo Report 20.
+    Returns debit, credit, balance, and entries count for all posted accounting journals (Cash, Bank, Invoices, Bills, Stock, JVs) + Tax Summary.
+    """
+    s_date = start_date or date_from
+    e_date = end_date or date_to
+    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    f_sql_m, f_params_m = build_company_filter_sql(tenant_id, selected, column_name="m.company_id", prefix="c_m")
+    
+    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'c.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'c.currency_code')
+    
+    params = {"tenant_id": tenant_id}
+    params.update(t_params_m)
+    params.update(f_params_m)
+    
+    date_sql = ""
+    if s_date:
+        date_sql += " AND m.date >= :s_date"
+        params["s_date"] = s_date
+    if e_date:
+        date_sql += " AND m.date <= :e_date"
+        params["e_date"] = e_date
+        
+    query = f"""
+        SELECT
+            j.id AS journal_id,
+            j.odoo_id AS journal_odoo_id,
+            COALESCE(j.name, 'Unassigned Journal') AS journal_name,
+            COALESCE(j.code, '—') AS journal_code,
+            COALESCE(j.type, 'general') AS journal_type,
+            m.company_id,
+            COALESCE(c.name, '') AS company_name,
+            COALESCE(j.currency_code, c.currency_code, 'XAF') AS currency_code,
+            COUNT(DISTINCT m.id) AS entries_count,
+            COALESCE(SUM({debit_col}), 0) AS total_debit,
+            COALESCE(SUM({credit_col}), 0) AS total_credit
+        FROM fact_account_move_lines l
+        JOIN fact_account_moves m ON l.account_move_id = m.id AND l.tenant_id = m.tenant_id
+        LEFT JOIN dim_account_journals j ON m.journal_id = j.id AND m.tenant_id = j.tenant_id
+        LEFT JOIN dim_companies c ON m.company_id = c.id
+        WHERE 1=1 {t_sql_m}
+          AND m.state = 'posted'
+          {f_sql_m}
+          {date_sql}
+        GROUP BY j.id, j.odoo_id, j.name, j.code, j.type, m.company_id, c.name, j.currency_code, c.currency_code
+        ORDER BY j.name ASC, m.company_id ASC
+    """
+    rows = run_query(query, params)
+    
+    journals = []
+    tot_debit = 0.0
+    tot_credit = 0.0
+    tot_entries = 0
+    
+    for r in rows:
+        d = float(r.get("total_debit") or 0.0)
+        c = float(r.get("total_credit") or 0.0)
+        cnt = int(r.get("entries_count") or 0)
+        tot_debit += d
+        tot_credit += c
+        tot_entries += cnt
+        
+        journals.append({
+            "journal_id": r.get("journal_odoo_id") or r.get("journal_id"),
+            "name": r.get("journal_name"),
+            "code": r.get("journal_code"),
+            "type": r.get("journal_type"),
+            "company_id": r.get("company_id"),
+            "company_name": r.get("company_name"),
+            "currency_code": r.get("currency_code"),
+            "debit": round(d, 2),
+            "credit": round(c, 2),
+            "balance": round(d - c, 2),
+            "entries_count": cnt
+        })
+        
+    tax_query = f"""
+        SELECT
+            l.account_code,
+            l.account_name,
+            COALESCE(SUM({debit_col}), 0) AS total_debit,
+            COALESCE(SUM({credit_col}), 0) AS total_credit
+        FROM fact_account_move_lines l
+        JOIN fact_account_moves m ON l.account_move_id = m.id AND l.tenant_id = m.tenant_id
+        LEFT JOIN dim_companies c ON m.company_id = c.id
+        WHERE 1=1 {t_sql_m}
+          AND m.state = 'posted'
+          AND l.account_code LIKE '44%'
+          {f_sql_m}
+          {date_sql}
+        GROUP BY l.account_code, l.account_name
+        ORDER BY l.account_code ASC
+    """
+    tax_rows = run_query(tax_query, params)
+    taxes = []
+    for tr in tax_rows:
+        t_deb = float(tr.get("total_debit") or 0.0)
+        t_crd = float(tr.get("total_credit") or 0.0)
+        t_due = t_crd - t_deb
+        taxes.append({
+            "code": tr.get("account_code"),
+            "name": tr.get("account_name"),
+            "debit": round(t_deb, 2),
+            "credit": round(t_crd, 2),
+            "due_amount": round(t_due, 2)
+        })
+
+    return {
+        "tool_name": "get_journal_audit_tool",
+        "period": {
+            "start_date": s_date,
+            "end_date": e_date
+        },
+        "totals": {
+            "total_debit": round(tot_debit, 2),
+            "total_credit": round(tot_credit, 2),
+            "net_variance": round(tot_debit - tot_credit, 2),
+            "is_balanced": abs(tot_debit - tot_credit) < 0.01,
+            "total_journals": len(journals),
+            "total_entries": tot_entries,
+            "base_currency": base_currency or "XAF"
+        },
+        "journals": journals,
+        "tax_summary": taxes
     }
 

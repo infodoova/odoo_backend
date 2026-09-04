@@ -18,14 +18,16 @@ def get_inventory_alerts_tool(
     params = {"tenant_id": tenant_id, "threshold": low_stock_threshold, "expiring_days": expiring_days}
     params.update(t_params_l)
     params.update(t_params_q)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids)
-    params.update(f_params)
+    q_f_sql, q_f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="q.company_id", prefix="q_comp")
+    l_f_sql, l_f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="l.company_id", prefix="l_comp")
+    params.update(q_f_params)
+    params.update(l_f_params)
 
     low_stock_rows = run_query(f"""
         SELECT p.name AS product_name, COALESCE(SUM(q.quantity), 0) AS available, q.location_name
         FROM fact_stock_quants q
         JOIN dim_products p ON q.product_id = p.id AND q.tenant_id = p.tenant_id
-        WHERE 1=1 {t_sql_q} AND q.product_id IS NOT NULL {f_sql}
+        WHERE 1=1 {t_sql_q} AND q.product_id IS NOT NULL {q_f_sql}
         GROUP BY p.name, q.location_name
         HAVING COALESCE(SUM(q.quantity), 0) > 0 AND COALESCE(SUM(q.quantity), 0) <= :threshold
         ORDER BY available ASC LIMIT 25
@@ -37,7 +39,7 @@ def get_inventory_alerts_tool(
         JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
         WHERE 1=1 {t_sql_l} AND l.expiration_date IS NOT NULL
           AND l.expiration_date >= CURRENT_DATE AND l.expiration_date < (CURRENT_DATE + (:expiring_days * INTERVAL '1 day'))
-          {f_sql}
+          {l_f_sql}
         ORDER BY l.expiration_date ASC LIMIT 25
     """, params)
 
@@ -96,7 +98,7 @@ def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: 
     from doova_one_view.api.inventory.service import InventoryService
     from doova_one_view.api.agent.query_context import resolve_tenant_id
     from .common import normalize_company_ids
-    company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     clean_tenant_id = resolve_tenant_id(tenant_id)
     # Coerce limit/offset to int — the LLM agent may pass them as strings
     try:
@@ -110,7 +112,7 @@ def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: 
     res = async_to_sync(InventoryService.get_stock_table)(
         tenant_id=clean_tenant_id,
         table_type=table_type,
-        company_ids=company_ids,
+        company_ids=selected_company_ids,
         limit=limit,
         offset=offset
     )
@@ -120,23 +122,24 @@ def get_inventory_dashboard_alerts_tool(tenant_id: str, company_id: int | None =
     from doova_one_view.api.inventory.service import InventoryService
     from doova_one_view.api.agent.query_context import resolve_tenant_id
     from .common import normalize_company_ids
-    company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     clean_tenant_id = resolve_tenant_id(tenant_id)
     res = InventoryService.get_alerts_sync(
         tenant_id=clean_tenant_id,
-        company_ids=company_ids
+        company_ids=selected_company_ids
     )
     return {"tool_name": "get_inventory_dashboard_alerts_tool", **res}
+
 
 def get_inventory_valuation_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
     from doova_one_view.api.inventory.service import InventoryService
     from doova_one_view.api.agent.query_context import resolve_tenant_id
     from .common import normalize_company_ids
-    company_ids = normalize_company_ids(company_id=company_id, companies=None)
+    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     clean_tenant_id = resolve_tenant_id(tenant_id)
     res = InventoryService.get_inventory_summary_sync(
         tenant_id=clean_tenant_id,
-        company_ids=company_ids
+        company_ids=selected_company_ids
     )
     return {"tool_name": "get_inventory_valuation_tool", **res}
 

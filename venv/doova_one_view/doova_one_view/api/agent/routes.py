@@ -215,6 +215,8 @@ async def background_retry_executor(
     for attempt in range(1, max_retries + 1):
         try:
             logger.info(f"BACKGROUND RETRY | Session: {session_id} | Attempt {attempt}/{max_retries}")
+            from .session_context import set_session_context
+            set_session_context(session_id)
             
             if mode == "EXECUTE":
                 def save_summary_to_db(summary_text: str):
@@ -339,9 +341,12 @@ async def chat_endpoint(request: Request):
         logger.info(f"Generated new session ID: {current_session_id}")
 
     session_tenant_id = primary_tenant_id or "default"
-    # Load session and history BEFORE saving new message
     session = await sync_to_async(session_manager.get_or_create_session)(current_session_id, session_tenant_id, user_message)
     
+    # Initialize thread-safe session context with active date window
+    from .session_context import set_session_context
+    set_session_context(current_session_id, session.active_date_window)
+
     # Retrieve persisted summary (from last summarization cycle)
     db_summary = session.summary or ""
     
@@ -713,6 +718,7 @@ async def chat_endpoint(request: Request):
                         company_ids=resolved_company_ids,
                         chat_history=chat_history_from_db,
                         memory_summary=db_summary,
+                        language=user_language,
                     )
 
                 try:
@@ -732,6 +738,9 @@ async def chat_endpoint(request: Request):
                             chat_history=chat_history_from_db,
                             memory_summary=db_summary,
                             on_summary=save_summary_to_db,
+                            session_id=current_session_id,
+                            is_voice=is_voice_mode,
+                            language=user_language,
                         )
 
                     answer = await asyncio.to_thread(run_fast_path)
@@ -1051,8 +1060,8 @@ async def run_analysis(request: Request):
 
     tool_map = {
         "Sales & Revenue": "sales_summary, period_comparison, top_products",
-        "Inventory Velocity": "inventory_alerts, inventory_efficiency",
-        "Operational Costs": "calculate_pnl, expense_breakdown, profitability_analysis",
+        "Inventory Velocity": "inventory_dashboard_alerts, inventory_efficiency",
+        "Operational Costs": "calculate_pnl, expense_breakdown",
     }
     tool_hint = tool_map.get(focus_area, "sales_summary, period_comparison")
 

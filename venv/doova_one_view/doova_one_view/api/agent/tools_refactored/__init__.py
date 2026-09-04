@@ -20,6 +20,7 @@ from .banking import (
     get_bank_cash_summary_tool,
     get_journal_cards_tool,
     get_bank_statement_summary_tool,
+    get_journal_audit_tool,
 )
 from .purchasing import (
     get_purchase_summary_tool,
@@ -51,6 +52,9 @@ from .finance import (
     get_unrealized_currency_gains_losses_tool,
     get_general_ledger_tool,
     get_partner_ledger_tool,
+    get_customer_statement_tool,
+    get_followup_report_tool,
+    get_executive_summary_tool,
 )
 from .finance_v2 import (
     get_cash_flow_statement_tool,

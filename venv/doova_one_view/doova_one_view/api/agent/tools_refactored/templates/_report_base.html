@@ -328,6 +328,11 @@
             border: 1px solid #e2e8f0;
             border-radius: 5px;
             padding: 8px 10px;
+            min-height: 105px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
             break-inside: avoid;
             page-break-inside: avoid;
             position: relative;
@@ -404,6 +409,7 @@
             display: flex;
             align-items: center;
             gap: 2px;
+            min-height: 14px;
             margin-bottom: 3px;
         }
 
@@ -424,7 +430,7 @@
             color: #94a3b8;
             border-top: 1px solid #f1f5f9;
             padding-top: 2px;
-            margin-top: 2px;
+            margin-top: auto;
             line-height: 1.2;
         }
 
@@ -513,8 +519,16 @@
             border-radius: 5px;
             overflow: hidden;
             font-size: 7.5pt;
-            break-inside: avoid;
+            page-break-inside: auto;
+        }
+
+        .data-table thead {
+            display: table-header-group;
+        }
+
+        .data-table tr {
             page-break-inside: avoid;
+            page-break-after: auto;
         }
 
         .data-table th {

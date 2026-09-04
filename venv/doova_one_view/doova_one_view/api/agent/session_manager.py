@@ -1,5 +1,6 @@
 # api/agent/session_manager.py
 
+from typing import Optional, Dict, Any, List
 from langchain_anthropic import ChatAnthropic
 from .config import AgentConfig
 from .prompts import SESSION_TITLE_PROMPT
@@ -76,6 +77,15 @@ class SessionManager:
     def save_summary(self, session_id: str, summary_text: str):
         """Persist a generated memory summary to the session record."""
         ChatSession.objects.filter(session_id=session_id).update(summary=summary_text)
+
+    def save_active_date_window(self, session_id: str, date_window: dict):
+        """Persist the active date window (start_date, end_date, label) to the session record."""
+        ChatSession.objects.filter(session_id=session_id).update(active_date_window=date_window)
+
+    def get_active_date_window(self, session_id: str) -> Optional[dict]:
+        """Retrieve the active date window from the session record."""
+        session = ChatSession.objects.filter(session_id=session_id).first()
+        return session.active_date_window if session else None
 
     def get_sessions(self, tenant_id: str = None):
         if tenant_id:

@@ -211,7 +211,63 @@ class AccountingService:
         return qs
 
     @staticmethod
-    def _is_inventory_scrap_adjustment(atype: str, acode: str, aname: str, net_debit: float) -> bool:
+    def _get_tag4_account_ids(tenant_id: str) -> set[int]:
+        """Returns the set of Odoo account IDs carrying Tag 4 (Purchase Expenses accounts)."""
+        import uuid
+        from odoo_app.models.chart_of_accounts import ChartOfAccounts
+        try:
+            try:
+                uuid.UUID(str(tenant_id))
+            except (ValueError, AttributeError, TypeError):
+                return set()
+            coas = ChartOfAccounts.objects.filter(tenant_id=tenant_id).only("odoo_id", "tag_ids")
+            tag4_ids = set()
+            for c in coas:
+                if c.tag_ids and 4 in c.tag_ids and c.odoo_id:
+                    tag4_ids.add(c.odoo_id)
+            return tag4_ids
+        except Exception:
+            return set()
+
+    @staticmethod
+    def _is_tag4_purchase_expense(
+        tenant_id: str,
+        account_odoo_id: Optional[int] = None,
+        company_id: Optional[int] = None,
+        acode: Optional[str] = None,
+        aname: Optional[str] = None,
+        tag4_ids: Optional[set[int]] = None,
+    ) -> bool:
+        """
+        In standard Odoo Accounting (P&L Line 50 / Executive Summary Line 32),
+        accounts carrying Tag 4 (Purchase Expenses accounts / interim purchase clearing)
+        are excluded from Operating Expenses.
+        """
+        if tag4_ids is None:
+            tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
+        
+        if account_odoo_id and account_odoo_id in tag4_ids:
+            return True
+            
+        # Fallback if account_odoo_id is not yet populated
+        code_str = (acode or "").strip()
+        name_str = (aname or "").strip().lower()
+        full_name = f"{code_str} {name_str}".strip().lower()
+        
+        if code_str.startswith("6011") or code_str.startswith("6012") or code_str.startswith("6018") or code_str.startswith("6052") or code_str.startswith("60510002") or code_str.startswith("60510003") or code_str.startswith("60510004"):
+            return True
+        if code_str in ("61121003", "61125002", "61181002", "62610004", "62610005", "62620004", "62620005", "62690002", "63110003", "67400002"):
+            return True
+        if any(kw in full_name for kw in [
+            "purchase of goods", "purchase of assets", "purchases of assets", "cost of goods purchased",
+            "freight - goods", "customs charges - goods", "purchase of spare part", "purchase of colorant",
+            "purchases of raw materials", "purchases tools"
+        ]):
+            return True
+        return False
+
+    @staticmethod
+    def _is_inventory_scrap_adjustment(atype: str, acode: str, aname: str, net_debit: float, tenant_id: Optional[str] = None, account_odoo_id: Optional[int] = None) -> bool:
         """
         In standard Odoo Chart of Accounts under Anglo-Saxon automated inventory valuation,
         interim stock valuation variance accounts (e.g. Products Loss, Damaged Products, 60520003)
@@ -220,10 +276,15 @@ class AccountingService:
         """
         if atype != "expense":
             return False
+        if tenant_id:
+            return AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=account_odoo_id, acode=acode, aname=aname)
         name_clean = (aname or "").lower().strip()
         code_clean = (acode or "").lower().strip()
+        full_name = f"{code_clean} {name_clean}".strip()
         
-        if code_clean in ("60520003", "60510002"):
+        if code_clean in ("60520003", "60510002") or code_clean.startswith("6011") or code_clean.startswith("6012") or code_clean.startswith("6018") or code_clean.startswith("6052"):
+            return True
+        if any(kw in full_name for kw in ["purchase of goods", "purchase of assets", "purchases of assets", "cost of goods purchased", "freight - goods", "customs charges - goods"]):
             return True
         if name_clean in ("products loss", "adjustment products loss") and net_debit < -5000000:
             return True
@@ -367,12 +428,14 @@ class AccountingService:
             if end_date:
                 line_base = line_base.filter(account_move__date__lte=end_date)
 
-            line_aggs = line_base.values("company_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
+            tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
+            line_aggs = line_base.values("company_id", "account_odoo_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
             
             true_revenue = 0.0
+            true_other_income = 0.0
             true_cogs = 0.0
             true_expenses = 0.0
             true_depreciation = 0.0
@@ -380,6 +443,7 @@ class AccountingService:
             
             for agg in line_aggs:
                 cid = agg.get("company_id")
+                a_odoo_id = agg.get("account_odoo_id")
                 atype = agg["account_type"] or ""
                 acode = agg["account_code"] or ""
                 aname = agg["account_name"] or ""
@@ -389,27 +453,25 @@ class AccountingService:
                 
                 net_credit = (_to_float(agg["total_credit"]) - _to_float(agg["total_debit"])) * rate
                 net_debit = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
-                
-                # Exclude internal inventory valuation adjustments that Odoo excludes from P&L operating expenses
-                if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
-                    continue
 
-                if atype.startswith("income"):
+                if atype == "income":
                     true_revenue += net_credit
-                elif atype.startswith("expense"):
-                    if atype == "expense_direct_cost":
-                        true_cogs += net_debit
-                    elif atype == "expense_depreciation":
-                        true_depreciation += net_debit
-                    elif atype == "expense":
+                elif atype == "income_other":
+                    true_other_income += net_credit
+                elif atype == "expense_direct_cost":
+                    true_cogs += net_debit
+                elif atype == "expense_depreciation":
+                    true_depreciation += net_debit
+                elif atype == "expense":
+                    if not AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
                         true_expenses += net_debit
                         if acode.startswith("67") or acode.startswith("69"):
                             true_taxes_interest += net_debit
 
             gross_profit = true_revenue - true_cogs
             total_all_expenses = true_expenses + true_depreciation
-            ebit = gross_profit - (true_expenses - true_taxes_interest) - true_depreciation
-            net_profit = gross_profit - total_all_expenses
+            ebit = gross_profit - true_expenses
+            net_profit = gross_profit + true_other_income - total_all_expenses
             
             cumulative_qs = AccountingService._base_qs(tenant_id, company_ids)
             if end_date:
@@ -1059,9 +1121,10 @@ class AccountingService:
             AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
         ).filter(state='posted')
 
+        tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
         lines_aggs = AccountMoveLine.objects.filter(
             account_move__in=qs
-        ).values("company_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
+        ).values("company_id", "account_odoo_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
             net_debit=Sum("debit"),
             net_credit=Sum("credit")
         )
@@ -1070,6 +1133,7 @@ class AccountingService:
         rate_map = _get_rate_map()
 
         revenue = 0.0
+        other_income = 0.0
         cogs = 0.0
         depreciation = 0.0
         general_expenses = 0.0
@@ -1077,6 +1141,7 @@ class AccountingService:
 
         for agg in lines_aggs:
             cid = agg.get("company_id")
+            a_odoo_id = agg.get("account_odoo_id")
             atype = agg.get("account_type") or ""
             acode = agg.get("account_code") or ""
             aname = agg.get("account_name") or ""
@@ -1087,34 +1152,34 @@ class AccountingService:
             net_debit = (_to_float(agg.get("net_debit")) - _to_float(agg.get("net_credit"))) * rate
             net_credit = (_to_float(agg.get("net_credit")) - _to_float(agg.get("net_debit"))) * rate
 
-            # Exclude internal inventory valuation adjustments that Odoo excludes from P&L operating expenses
-            if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
-                continue
-
-            if atype.startswith("income"):
+            if atype == "income":
                 revenue += net_credit
-            elif atype.startswith("expense"):
-                if atype == "expense_direct_cost":
-                    cogs += net_debit
-                elif atype == "expense_depreciation":
-                    depreciation += net_debit
-                elif atype == "expense":
+            elif atype == "income_other":
+                other_income += net_credit
+            elif atype == "expense_direct_cost":
+                cogs += net_debit
+            elif atype == "expense_depreciation":
+                depreciation += net_debit
+            elif atype == "expense":
+                if not AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
                     general_expenses += net_debit
                     if acode.startswith("67") or acode.startswith("69"):
                         taxes_interest += net_debit
 
         gross_profit = revenue - cogs
         total_expenses = general_expenses + depreciation
-        ebit = gross_profit - (general_expenses - taxes_interest) - depreciation
+        ebit = gross_profit - general_expenses
         ebitda = ebit + depreciation
-        net_profit = gross_profit - total_expenses
+        net_profit = gross_profit + other_income - total_expenses
 
         return {
             "revenue": revenue,
+            "other_income": other_income,
             "cogs": cogs,
             "gross_profit": gross_profit,
             "expenses": general_expenses,
             "depreciation": depreciation,
+            "other_expenses": depreciation,
             "total_expenses": total_expenses,
             "operating_expenses": general_expenses,
             "ebitda": ebitda,
@@ -1122,6 +1187,208 @@ class AccountingService:
             "taxes_and_interest": taxes_interest,
             "net_profit": net_profit,
         }
+
+    @staticmethod
+    def _calc_executive_summary_sync(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Calculates the complete 5-pillar Executive Summary exactly matching Odoo Report ID 6:
+        - Cash: Cash received, Cash spent, Cash surplus, Closing bank balance
+        - Profitability: Revenue, Cost of Revenue, Gross profit, Expenses (OpEx), Net Profit
+        - Balance Sheet: Receivables, Payables, Net assets
+        - Performance: Gross profit margin %, Net profit margin %, Return on investments %
+        - Position: Average debtors days, Average creditors days, Short term cash forecast, Current assets to liabilities
+        """
+        import datetime
+        effective_base = base_currency or "XAF"
+        rate_map = _get_rate_map()
+        tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
+        
+        # 1. Period-scoped move lines (P&L & Cash flow)
+        p_qs = AccountingService._date_qs(
+            AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+        ).filter(state='posted')
+        
+        period_aggs = AccountMoveLine.objects.filter(
+            account_move__in=p_qs
+        ).values("company_id", "account_odoo_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
+            net_debit=Sum("debit"),
+            net_credit=Sum("credit")
+        )
+        
+        revenue = 0.0
+        other_income = 0.0
+        cogs = 0.0
+        depreciation = 0.0
+        opex = 0.0
+        cash_received = 0.0
+        cash_spent = 0.0
+        
+        for agg in period_aggs:
+            cid = agg.get("company_id")
+            a_odoo_id = agg.get("account_odoo_id")
+            atype = agg.get("account_type") or ""
+            acode = agg.get("account_code") or ""
+            aname = agg.get("account_name") or ""
+            company_curr = agg.get("company__currency_code") or "XAF"
+            rate = _get_conversion_rate(company_curr, effective_base, rate_map)
+            
+            deb = _to_float(agg.get("net_debit")) * rate
+            crd = _to_float(agg.get("net_credit")) * rate
+            net_d = deb - crd
+            net_c = crd - deb
+            
+            if atype == "income":
+                revenue += net_c
+            elif atype == "income_other":
+                other_income += net_c
+            elif atype == "expense_direct_cost":
+                cogs += net_d
+            elif atype == "expense_depreciation":
+                depreciation += net_d
+            elif atype == "expense":
+                if not AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                    opex += net_d
+            elif atype in ("asset_cash", "liability_credit_card"):
+                cash_received += deb
+                cash_spent -= crd
+                
+        gross_profit = revenue - cogs
+        total_expenses = opex + depreciation
+        net_profit = gross_profit + other_income - total_expenses
+        cash_surplus = cash_received + cash_spent
+        
+        # 2. Cumulative Balance Sheet up to end_date
+        cum_qs = AccountingService._base_qs(tenant_id, company_ids)
+        if end_date:
+            cum_qs = cum_qs.filter(date__lte=end_date)
+        cum_qs = cum_qs.filter(state='posted')
+        
+        cum_aggs = AccountMoveLine.objects.filter(
+            account_move__in=cum_qs
+        ).values("company_id", "account_type", "company__currency_code").annotate(
+            bal=Sum("debit") - Sum("credit")
+        )
+        
+        receivables = 0.0
+        payables = 0.0
+        closing_bank_balance = 0.0
+        current_assets = 0.0
+        current_liabilities = 0.0
+        total_assets = 0.0
+        total_liabilities = 0.0
+        
+        for agg in cum_aggs:
+            atype = agg.get("account_type") or ""
+            company_curr = agg.get("company__currency_code") or "XAF"
+            rate = _get_conversion_rate(company_curr, effective_base, rate_map)
+            bal = _to_float(agg.get("bal")) * rate
+            
+            if atype == "asset_receivable":
+                receivables += bal
+                current_assets += bal
+                total_assets += bal
+            elif atype == "liability_payable":
+                payables += bal
+                current_liabilities += (-bal)
+                total_liabilities += (-bal)
+            elif atype in ("asset_cash", "liability_credit_card"):
+                closing_bank_balance += bal
+                if atype == "asset_cash":
+                    current_assets += bal
+                    total_assets += bal
+                else:
+                    current_liabilities += (-bal)
+                    total_liabilities += (-bal)
+            elif atype in ("asset_current", "asset_prepayments"):
+                current_assets += bal
+                total_assets += bal
+            elif atype in ("asset_fixed", "asset_non_current"):
+                total_assets += bal
+            elif atype in ("liability_current",):
+                current_liabilities += (-bal)
+                total_liabilities += (-bal)
+            elif atype in ("liability_non_current",):
+                total_liabilities += (-bal)
+                
+        net_assets = total_assets - total_liabilities
+        
+        # 3. Performance & Position Ratios
+        gp_margin = (gross_profit / revenue * 100) if revenue else 0.0
+        np_margin = (net_profit / revenue * 100) if revenue else 0.0
+        roi = (net_profit / total_assets * 100) if total_assets else 0.0
+        
+        # Date duration in days (NDays)
+        ndays = 30.0
+        if start_date and end_date:
+            try:
+                d_start = datetime.date.fromisoformat(str(start_date)[:10])
+                d_end = datetime.date.fromisoformat(str(end_date)[:10])
+                ndays = max((d_end - d_start).days + 1, 1)
+            except Exception:
+                pass
+                
+        dso = (receivables / revenue * ndays) if revenue else 0.0
+        dpo = (-payables / (cogs + opex) * ndays) if (cogs + opex) else 0.0
+        short_term_cash_forecast = receivables + payables
+        current_ratio = (current_assets / current_liabilities) if current_liabilities else 0.0
+        
+        return {
+            "cash": {
+                "cash_received": cash_received,
+                "cash_spent": cash_spent,
+                "cash_surplus": cash_surplus,
+                "closing_bank_balance": closing_bank_balance,
+            },
+            "profitability": {
+                "revenue": revenue,
+                "cost_of_revenue": cogs,
+                "gross_profit": gross_profit,
+                "expenses": opex,
+                "other_income": other_income,
+                "other_expenses": depreciation,
+                "net_profit": net_profit,
+            },
+            "balance_sheet": {
+                "receivables": receivables,
+                "payables": payables,
+                "net_assets": net_assets,
+            },
+            "performance": {
+                "gross_profit_margin_pct": round(gp_margin, 2),
+                "net_profit_margin_pct": round(np_margin, 2),
+                "return_on_investments_pct": round(roi, 2),
+            },
+            "position": {
+                "average_debtors_days": round(dso, 1),
+                "average_creditors_days": round(dpo, 1),
+                "short_term_cash_forecast": short_term_cash_forecast,
+                "current_assets_to_liabilities": round(current_ratio, 2),
+            }
+        }
+
+    @staticmethod
+    async def get_executive_summary(
+        tenant_id: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Calculates the complete 5-pillar Executive Summary matching Odoo Report 6."""
+        return await asyncio.to_thread(
+            AccountingService._calc_executive_summary_sync,
+            tenant_id,
+            start_date,
+            end_date,
+            company_ids,
+            base_currency,
+        )
 
     @staticmethod
     async def get_pnl_summary(
@@ -1278,13 +1545,12 @@ class AccountingService:
                 AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
             ).filter(state='posted')
 
+            tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
             lines_aggs = AccountMoveLine.objects.filter(
                 account_move__in=qs,
-                account_type__startswith='expense',
-            ).exclude(
-                account_type='expense_direct_cost',
+                account_type='expense',
             ).values(
-                "account_code", "account_name", "company__currency_code"
+                "company_id", "account_odoo_id", "account_code", "account_name", "company__currency_code"
             ).annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit"),
@@ -1296,15 +1562,17 @@ class AccountingService:
             category_totals: dict[str, float] = {}
 
             for agg in lines_aggs:
+                cid = agg.get("company_id")
+                a_odoo_id = agg.get("account_odoo_id")
                 acode = agg.get("account_code") or ""
                 aname = agg.get("account_name") or ""
                 company_curr = agg.get("company__currency_code") or "XAF"
 
+                if AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                    continue
+
                 rate = _get_conversion_rate(company_curr, effective_base, rate_map)
                 balance = (_to_float(agg["total_debit"]) - _to_float(agg["total_credit"])) * rate
-
-                if AccountingService._is_inventory_scrap_adjustment("expense", acode, aname, balance):
-                    continue
 
                 cat = AccountingService._classify_expense(aname, acode)
                 category_totals[cat] = category_totals.get(cat, 0.0) + balance

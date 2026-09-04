@@ -22,9 +22,10 @@ class ReportSchedule(models.Model):
     tenants      = models.JSONField(default=list)  # [] = creator tenant, ["uuid1", "uuid2"] = specific tenant IDs
     report_name  = models.CharField(max_length=100, blank=True, default='')
     report_type  = models.CharField(max_length=30, default='analysis')
-    date_range_start = models.DateField(null=True, blank=True)
-    date_range_end   = models.DateField(null=True, blank=True)
-    prompt       = models.TextField(default='', blank=True)
+    date_range_start  = models.DateField(null=True, blank=True)
+    date_range_end    = models.DateField(null=True, blank=True)
+    comparison_label  = models.CharField(max_length=100, null=True, blank=True)  # e.g. "Same Period Prior Year (YoY)"
+    prompt        = models.TextField(default='', blank=True)
     is_enabled           = models.BooleanField(default=True)
     consecutive_failures = models.IntegerField(default=0)
     last_error           = models.TextField(null=True, blank=True)

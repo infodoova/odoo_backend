@@ -229,6 +229,29 @@ async def get_expense_breakdown(
     return ExpenseBreakdownResponse(**data)
 
 
+@router.get("/{tenant_id}/executive-summary")
+async def get_executive_summary(
+    tenant_id: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    company_id: Optional[int] = Query(None),
+    companies: Optional[str] = Query(None),
+    base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
+    user: AppUser = _view_accounting_overview,
+) -> dict[str, Any]:
+    """Official 5-pillar Executive Business Summary matching Odoo Report 6."""
+    await TenantService.get_tenant(tenant_id, str(user.id))
+    return await AccountingService.get_executive_summary(
+        tenant_id,
+        start_date or date_from,
+        end_date or date_to,
+        _company_ids(company_id, companies),
+        base_currency,
+    )
+
+
 @router.get("/{tenant_id}/kpis")
 async def get_accounting_kpis(
     tenant_id: str,

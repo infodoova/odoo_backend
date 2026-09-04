@@ -14,6 +14,7 @@ class AccountMoveLine(models.Model):
     partner = models.ForeignKey('odoo_app.Partner', on_delete=models.SET_NULL, null=True, blank=True)
     company = models.ForeignKey('odoo_app.Company', on_delete=models.SET_NULL, null=True, blank=True)
 
+    account_odoo_id = models.IntegerField(null=True, blank=True, db_index=True)
     account_code = models.CharField(max_length=50, null=True, blank=True)
     account_name = models.CharField(max_length=255, null=True, blank=True)
     account_type = models.CharField(max_length=50, null=True, blank=True)

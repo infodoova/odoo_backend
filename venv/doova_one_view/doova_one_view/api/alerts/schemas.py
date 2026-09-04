@@ -43,12 +43,20 @@ class AlertScheduleUpdate(BaseModel):
 
 class AlertScheduleResponse(BaseModel):
     id: str
-    tenant_id: Optional[str]
+    tenant_id: Optional[str] = None
+    tenant_name: Optional[str] = None
+    tenantName: Optional[str] = None
     tenantIds: List[str] = []
+    tenant_names: List[str] = []
+    tenantNames: List[str] = []
     name: str
     prompt: str
     recipients: List[str]
     companyIds: List[int] = []
+    company_name: Optional[str] = None
+    companyName: Optional[str] = None
+    company_names: List[str] = []
+    companyNames: List[str] = []
     thresholds: dict = {}
     webhook_url: Optional[str] = None
     timezone: str

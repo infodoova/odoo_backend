@@ -23,13 +23,25 @@
             <div class="kpi-card-top-bar bar-blue"></div>
             <div class="kpi-title">Posted Income</div>
             <div class="kpi-value">{{ report_data.get('revenue', {}).get('formatted', kpis.get('revenue', {}).get('formatted', '—')) }}</div>
+            {% set rev_var = report_data.get('revenue', {}).get('var_text', kpis.get('revenue', {}).get('var_text', '')) %}
+            {% if rev_var %}
+            <div class="kpi-variance {{ report_data.get('revenue', {}).get('var_class', kpis.get('revenue', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('revenue', {}).get('arrow', kpis.get('revenue', {}).get('arrow', '')) }} {{ rev_var }}
+            </div>
+            {% endif %}
             <div class="kpi-source">GL Class: Income Accounts</div>
         </div>
 
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-amber"></div>
             <div class="kpi-title">Posted Expenses</div>
-            <div class="kpi-value">{{ report_data.get('total_expenses', {}).get('formatted', report_data.get('opex', {}).get('formatted', kpis.get('opex', {}).get('formatted', '—'))) }}</div>
+            <div class="kpi-value">{{ report_data.get('operating_expenses', {}).get('formatted', report_data.get('total_expenses', {}).get('formatted', report_data.get('opex', {}).get('formatted', '—'))) }}</div>
+            {% set exp_var = report_data.get('operating_expenses', {}).get('var_text', report_data.get('total_expenses', {}).get('var_text', '')) %}
+            {% if exp_var %}
+            <div class="kpi-variance {{ report_data.get('operating_expenses', {}).get('var_class', report_data.get('total_expenses', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('operating_expenses', {}).get('arrow', report_data.get('total_expenses', {}).get('arrow', '')) }} {{ exp_var }}
+            </div>
+            {% endif %}
             <div class="kpi-source">GL Class: Expense Accounts</div>
         </div>
 
@@ -37,6 +49,12 @@
             <div class="kpi-card-top-bar bar-green"></div>
             <div class="kpi-title">Net Ledger Result</div>
             <div class="kpi-value">{{ report_data.get('net_profit', {}).get('formatted', kpis.get('net_profit', {}).get('formatted', '—')) }}</div>
+            {% set net_var = report_data.get('net_profit', {}).get('var_text', kpis.get('net_profit', {}).get('var_text', '')) %}
+            {% if net_var %}
+            <div class="kpi-variance {{ report_data.get('net_profit', {}).get('var_class', kpis.get('net_profit', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('net_profit', {}).get('arrow', kpis.get('net_profit', {}).get('arrow', '')) }} {{ net_var }}
+            </div>
+            {% endif %}
             <div class="kpi-source">Current Year Earnings</div>
         </div>
 
@@ -44,6 +62,12 @@
             <div class="kpi-card-top-bar bar-cyan"></div>
             <div class="kpi-title">GL Asset Balance</div>
             <div class="kpi-value">{{ report_data.get('total_assets', {}).get('formatted', '—') }}</div>
+            {% set ast_var = report_data.get('total_assets', {}).get('var_text', '') %}
+            {% if ast_var %}
+            <div class="kpi-variance {{ report_data.get('total_assets', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_assets', {}).get('arrow', '') }} {{ ast_var }}
+            </div>
+            {% endif %}
             <div class="kpi-source">All Posted Asset Accounts</div>
         </div>
 
@@ -51,6 +75,12 @@
             <div class="kpi-card-top-bar bar-purple"></div>
             <div class="kpi-title">Open AR (Debtors)</div>
             <div class="kpi-value">{{ report_data.get('accounts_receivable', {}).get('formatted', report_data.get('ar', {}).get('formatted', kpis.get('ar', {}).get('formatted', '—'))) }}</div>
+            {% set ar_var = report_data.get('accounts_receivable', {}).get('var_text', report_data.get('ar', {}).get('var_text', '')) %}
+            {% if ar_var %}
+            <div class="kpi-variance {{ report_data.get('accounts_receivable', {}).get('var_class', report_data.get('ar', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('accounts_receivable', {}).get('arrow', report_data.get('ar', {}).get('arrow', '')) }} {{ ar_var }}
+            </div>
+            {% endif %}
             <div class="kpi-source">Unreconciled Customer Invoices</div>
         </div>
 
@@ -58,6 +88,12 @@
             <div class="kpi-card-top-bar bar-red"></div>
             <div class="kpi-title">Open AP (Creditors)</div>
             <div class="kpi-value">{{ report_data.get('accounts_payable', {}).get('formatted', report_data.get('ap', {}).get('formatted', kpis.get('ap', {}).get('formatted', '—'))) }}</div>
+            {% set ap_var = report_data.get('accounts_payable', {}).get('var_text', report_data.get('ap', {}).get('var_text', '')) %}
+            {% if ap_var %}
+            <div class="kpi-variance {{ report_data.get('accounts_payable', {}).get('var_class', report_data.get('ap', {}).get('var_class', 'variance-neutral')) }}">
+                {{ report_data.get('accounts_payable', {}).get('arrow', report_data.get('ap', {}).get('arrow', '')) }} {{ ap_var }}
+            </div>
+            {% endif %}
             <div class="kpi-source">Unreconciled Vendor Bills</div>
         </div>
     </div>
@@ -228,6 +264,76 @@
         </tbody>
     </table>
     {% endif %}
+
+    {% set gl_cats = report_data.get('gl_categories', []) %}
+    {% if gl_cats %}
+    <h2 class="sub-title" style="margin-top: 24px;">General Ledger Classification & Category Rollup</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Account Classification</th>
+                <th class="text-center">Active Accounts</th>
+                <th class="text-right">Total Debit</th>
+                <th class="text-right">Total Credit</th>
+                <th class="text-right">Net Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cat in gl_cats %}
+            <tr>
+                <td class="font-bold">{{ cat.get('category', 'Category') }}</td>
+                <td class="text-center">{{ cat.get('accounts_count', 0) }} Accounts</td>
+                <td class="text-right">{{ cat.get('total_debit', '—') }}</td>
+                <td class="text-right">{{ cat.get('total_credit', '—') }}</td>
+                <td class="text-right font-bold">{{ cat.get('net_balance', '—') }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 2px solid #cbd5e1; background: #f8fafc; font-weight: 700;">
+                <td class="font-bold">Total General Ledger Movement</td>
+                <td class="text-center font-bold">{% if report_data.get('tb_accounts_count') is mapping %}{{ report_data.get('tb_accounts_count', {}).get('formatted', '0') }}{% else %}{{ report_data.get('tb_accounts_count', 0) }}{% endif %} Accounts</td>
+                <td class="text-right font-bold">{{ report_data.get('tb_total_debit_formatted', '—') }}</td>
+                <td class="text-right font-bold">{{ report_data.get('tb_total_credit_formatted', '—') }}</td>
+                <td class="text-right font-bold"><span class="badge badge-success">{{ report_data.get('tb_integrity', 'BALANCED') }}</span></td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% set gl_accounts = report_data.get('trial_balance', report_data.get('gl_accounts', report_data.get('gl_top_accounts', []))) %}
+    {% if gl_accounts %}
+    <h2 class="sub-title" style="margin-top: 24px;">General Ledger Trial Balance Schedule (All Accounts)</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Account Code</th>
+                <th>Account Name</th>
+                <th class="text-right" style="width: 20%;">Total Debit</th>
+                <th class="text-right" style="width: 20%;">Total Credit</th>
+                <th class="text-right" style="width: 20%;">Net Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for acc in gl_accounts %}
+            <tr>
+                <td class="font-mono font-bold">{{ acc.get('code', '—') }}</td>
+                <td>{{ acc.get('name', '—') }}</td>
+                <td class="text-right">{{ acc.get('debit', '—') }}</td>
+                <td class="text-right">{{ acc.get('credit', '—') }}</td>
+                <td class="text-right font-bold">{{ acc.get('balance', '—') }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 2px solid #cbd5e1; background: #f8fafc; font-weight: 700;">
+                <td colspan="2" class="font-bold">General Ledger Integrity (Grand Total)</td>
+                <td class="text-right font-bold">{{ report_data.get('tb_total_debit_formatted', '—') }}</td>
+                <td class="text-right font-bold">{{ report_data.get('tb_total_credit_formatted', '—') }}</td>
+                <td class="text-right font-bold"><span class="badge badge-success">{{ report_data.get('tb_integrity', 'BALANCED') }}</span></td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Page break for Executive Strategy -->
+    <div class="page-break"></div>
 
     <!-- AI Detailed Analysis -->
     <h1 class="section-title">2. Audit Findings & Ledger Governance</h1>

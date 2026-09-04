@@ -16,7 +16,7 @@ import anthropic
 
 from .config import AgentConfig
 from .langchain_tools import agent_tools
-from .prompts import AGENT_SYSTEM_PROMPT, WEB_SEARCH_SYSTEM_PROMPT_ADDITION
+from .prompts import AGENT_SYSTEM_PROMPT, WEB_SEARCH_SYSTEM_PROMPT_ADDITION, STATIC_AGENT_INSTRUCTIONS
 from .logger import log_agent_start, log_agent_complete, log_error, log_tool_call, log_chain_event
 from .utils import fix_currency_symbols, replace_tenant_ids_with_names
 
@@ -118,6 +118,10 @@ class WebSearchAgent:
             except Exception as e:
                 logger.warning(f"Failed to convert tool {getattr(tool, 'name', 'unknown')} to Anthropic schema: {e}")
 
+        # Enable Prompt Caching on the tools array by marking the last tool as ephemeral
+        if tools_list:
+            tools_list[-1]["cache_control"] = {"type": "ephemeral"}
+
         return tools_list
 
     def _build_system_prompt(
@@ -127,7 +131,8 @@ class WebSearchAgent:
         company_ids: List[int],
         currency: str,
         memory_summary: str = "",
-    ) -> str:
+        language: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Renders the comprehensive system prompt combining ERP instructions
         with real-time web search guidance.
@@ -146,8 +151,24 @@ class WebSearchAgent:
         if memory_summary:
             base_prompt_text += f"\nSession Context & Prior Summary:\n{memory_summary}\n"
 
+        lang_str = (language or "").strip()
+        if lang_str and lang_str.lower() not in ("auto", "none", "null", ""):
+            code_lower = lang_str.lower()
+            if code_lower.startswith("fr") or "french" in code_lower:
+                lang_directive = "- TARGET LANGUAGE OVERRIDE: The user selected FRENCH (fr). You MUST reply 100% in French, even if the user query is in English or Arabic. Strictly do not reply in English."
+            elif code_lower.startswith("ar") or "arab" in code_lower:
+                lang_directive = "- TARGET LANGUAGE OVERRIDE: The user selected ARABIC (ar). You MUST reply 100% in Arabic, even if the user query is in English. Strictly do not reply in English."
+            elif code_lower.startswith("es") or "span" in code_lower:
+                lang_directive = "- TARGET LANGUAGE OVERRIDE: The user selected SPANISH (es). You MUST reply 100% in Spanish, even if the user query is in English. Strictly do not reply in English."
+            elif code_lower.startswith("en") or "english" in code_lower:
+                lang_directive = "- TARGET LANGUAGE OVERRIDE: The user selected ENGLISH (en). You MUST reply 100% in English."
+            else:
+                lang_directive = f"- TARGET LANGUAGE OVERRIDE: The user selected {lang_str}. You MUST reply 100% in {lang_str}, even if the user query is in English. Strictly do not reply in English."
+        else:
+            lang_directive = "- You MUST reply strictly in the exact same language as the user's latest query (e.g. if the user query is in English, reply in English; if in Arabic, reply in Arabic; if in French, reply in French)."
+
         # Combine with web search operational guidelines
-        full_system_prompt = (
+        dynamic_system_prompt = (
             f"{base_prompt_text}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"AGENT CORE INSTRUCTIONS\n"
@@ -155,11 +176,23 @@ class WebSearchAgent:
             f"You are the senior AI business advisor for Doova One View.\n"
             f"You have access to 40+ internal business tools, native real-time Web Search, and Web Fetch (deep URL reading).\n\n"
             f"LANGUAGE & LOCALIZATION DIRECTIVE (STRICT):\n"
-            f"- You MUST reply strictly in the exact same language as the user's latest query (e.g. if the user query is in English, you MUST reply 100% in English; if in Arabic, reply in Arabic; if in French, reply in French).\n"
+            f"{lang_directive}\n"
             f"- NEVER maintain or reply in an older session language if the user switched languages in their latest query.\n\n"
             f"{WEB_SEARCH_SYSTEM_PROMPT_ADDITION}"
         )
-        return full_system_prompt
+        
+        # Build Anthropic system prompt array with prompt caching enabled on the static instructions
+        return [
+            {
+                "type": "text",
+                "text": STATIC_AGENT_INSTRUCTIONS,
+                "cache_control": {"type": "ephemeral"}
+            },
+            {
+                "type": "text",
+                "text": dynamic_system_prompt
+            }
+        ]
 
     def _execute_client_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
         """
@@ -194,6 +227,7 @@ class WebSearchAgent:
         tenant_ids: Optional[List[str]] = None,
         chat_history: Optional[List[Dict[str, Any]]] = None,
         memory_summary: str = "",
+        language: Optional[str] = None,
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Executes the query using the Anthropic API with web_search enabled.
@@ -225,6 +259,7 @@ class WebSearchAgent:
             company_ids=resolved_company_ids,
             currency=currency,
             memory_summary=memory_summary,
+            language=language,
         )
 
         # Build message history for Anthropic API

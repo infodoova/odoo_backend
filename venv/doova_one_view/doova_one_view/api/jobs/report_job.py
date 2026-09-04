@@ -31,38 +31,119 @@ _FREQUENCY_LOOKBACK = {
 }
 
 
-def _resolve_report_period(schedule, now: datetime) -> tuple[str, str, str, str, str]:
+def _infer_comparison_label(days: int) -> str:
+    """
+    Auto-derive the comparison basis label purely from the span of the
+    date range in days. No frequency shortcuts — always date-driven.
+
+      ≤ 1 day           → Prior Day
+      6 – 8 days        → Prior Week (WoW)
+      13 – 15 days      → Prior 2 Weeks
+      27 – 31 days      → Prior Month (MoM)
+      88 – 95 days      → Prior Quarter (QoQ)
+      178 – 186 days    → Prior 6 Months (HoH)
+      363 – 367 days    → Prior Year (YoY)
+      anything else     → Same Custom Range (Prior Year)
+    """
+    if days <= 1:
+        return 'Prior Day'
+    elif 6 <= days <= 8:
+        return 'Prior Week (WoW)'
+    elif 13 <= days <= 15:
+        return 'Prior 2 Weeks'
+    elif 27 <= days <= 31:
+        return 'Prior Month (MoM)'
+    elif 88 <= days <= 95:
+        return 'Prior Quarter (QoQ)'
+    elif 178 <= days <= 186:
+        return 'Prior 6 Months (HoH)'
+    elif 363 <= days <= 367:
+        return 'Prior Year (YoY)'
+    else:
+        return 'Same Custom Range (Prior Year)'
+
+
+def _resolve_report_period(schedule, now: datetime) -> tuple[str, str, str, str, str, str]:
     """
     Resolve the reporting period for a schedule. Returns:
-        (start_date, end_date, prev_start, prev_end, period_label) as ISO strings and formatted label.
+        (start_date, end_date, prev_start, prev_end, period_label, comparison_label)
 
     Priority order:
       1. Explicit date_range_start / date_range_end on the schedule
       2. Frequency-based auto-compute lookback
       3. Fallback: last 30 days
+
+    comparison_label priority:
+      1. Explicit schedule.comparison_label (user-provided)
+      2. Auto-inferred from date span (MoM / QoQ / YoY / Custom)
     """
+    prompt_text = (getattr(schedule, 'prompt', '') or '').strip()
+    explicit_comp = getattr(schedule, 'comparison_label', None)
+
+    # 1. Explicit dates on schedule record
     if getattr(schedule, 'date_range_start', None) and getattr(schedule, 'date_range_end', None):
         start = schedule.date_range_start.isoformat()
-        end = schedule.date_range_end.isoformat()
+        end   = schedule.date_range_end.isoformat()
         delta = schedule.date_range_end - schedule.date_range_start
-        prev_end = (schedule.date_range_start - timedelta(days=1)).isoformat()
+        prev_end   = (schedule.date_range_start - timedelta(days=1)).isoformat()
         prev_start = (schedule.date_range_start - delta - timedelta(days=1)).isoformat()
-        period_label = f"{schedule.date_range_start.strftime('%b %d, %Y')} – {schedule.date_range_end.strftime('%b %d, %Y')}"
-    else:
-        lookback = _FREQUENCY_LOOKBACK.get(schedule.frequency, timedelta(days=30))
-        end = now.strftime('%Y-%m-%d')
-        start = (now - lookback).strftime('%Y-%m-%d')
-        prev_end = (now - lookback - timedelta(days=1)).strftime('%Y-%m-%d')
-        prev_start = (now - lookback - lookback - timedelta(days=1)).strftime('%Y-%m-%d')
+        period_label = (
+            f"{schedule.date_range_start.strftime('%b %d, %Y')} – "
+            f"{schedule.date_range_end.strftime('%b %d, %Y')}"
+        )
+        # Use explicit label if provided; otherwise infer from date span
+        comparison_label = (
+            explicit_comp
+            or _infer_comparison_label(delta.days)
+        )
+        return start, end, prev_start, prev_end, period_label, comparison_label
+
+    # 2. Extract period & comparison basis from prompt if present
+    if prompt_text:
         try:
-            s_dt = datetime.strptime(start, '%Y-%m-%d')
-            e_dt = datetime.strptime(end, '%Y-%m-%d')
-            period_label = f"{s_dt.strftime('%b %d, %Y')} – {e_dt.strftime('%b %d, %Y')}"
-        except Exception:
-            period_label = f"{start} – {end}"
+            from doova_one_view.api.agent.date_engine import resolve_period_dates, resolve_comparison_dates
+            p_start, p_end, p_label = resolve_period_dates(text=prompt_text, reference_date=now.date(), default_to_ytd=False)
+            if p_start and p_end:
+                lower_p = prompt_text.lower()
+                inferred_comp = explicit_comp
+                if not inferred_comp:
+                    if "qoq" in lower_p or "prior quarter" in lower_p or "quarter-over-quarter" in lower_p:
+                        inferred_comp = "Prior Quarter (QoQ)"
+                    elif "mom" in lower_p or "prior month" in lower_p or "month-over-month" in lower_p:
+                        inferred_comp = "Prior Month (MoM)"
+                    elif "yoy" in lower_p or "prior year" in lower_p or "year-over-year" in lower_p:
+                        inferred_comp = "Same Period Prior Year (YoY)"
+                    elif "wow" in lower_p or "prior week" in lower_p or "week-over-week" in lower_p:
+                        inferred_comp = "Prior Week (WoW)"
 
-    return start, end, prev_start, prev_end, period_label
+                prev_start, prev_end, resolved_comp = resolve_comparison_dates(
+                    start_date=p_start,
+                    end_date=p_end,
+                    comparison_label=inferred_comp,
+                )
+                return p_start, p_end, prev_start, prev_end, p_label, resolved_comp
+        except Exception as e:
+            logger.warning(f"_resolve_report_period: prompt date extraction failed ({e}) — falling back to frequency lookback")
 
+    # 3. Frequency lookback fallback
+    lookback = _FREQUENCY_LOOKBACK.get(schedule.frequency, timedelta(days=30))
+    end        = now.strftime('%Y-%m-%d')
+    start      = (now - lookback).strftime('%Y-%m-%d')
+    prev_end   = (now - lookback - timedelta(days=1)).strftime('%Y-%m-%d')
+    prev_start = (now - lookback - lookback - timedelta(days=1)).strftime('%Y-%m-%d')
+    try:
+        s_dt = datetime.strptime(start, '%Y-%m-%d')
+        e_dt = datetime.strptime(end, '%Y-%m-%d')
+        period_label = f"{s_dt.strftime('%b %d, %Y')} – {e_dt.strftime('%b %d, %Y')}"
+    except Exception:
+        period_label = f"{start} – {end}"
+
+    comparison_label = (
+        explicit_comp
+        or 'Same Period Prior Year (YoY)'
+    )
+
+    return start, end, prev_start, prev_end, period_label, comparison_label
 
 
 def cleanup_old_reports(retention_days: int = 90, reports_dir: str | None = None) -> int:
@@ -189,6 +270,23 @@ class ReportJobManager:
         else:
             tenant_id = str(schedule.tenant_id) if schedule.tenant_id else None
         company_ids = schedule.companies if schedule.companies else None
+        if not company_ids and schedule.prompt:
+            try:
+                from doova_one_view.api.agent.tools_refactored.common import get_companies_tool
+                c_res = get_companies_tool(tenant_id=tenant_id, tenant_ids=tenant_ids)
+                avail_comps = c_res.get("companies", []) if isinstance(c_res, dict) else []
+                prompt_lower = schedule.prompt.lower()
+                matched_cids = []
+                for ac in avail_comps:
+                    cname = (ac.get("name") or "").strip().lower()
+                    clean_cname = re.sub(r'[^a-zA-Z0-9]', '', cname)
+                    clean_prompt = re.sub(r'[^a-zA-Z0-9]', '', prompt_lower)
+                    if (clean_cname and clean_cname in clean_prompt) or (cname and cname in prompt_lower):
+                        matched_cids.append(ac.get("odoo_id") or ac.get("id"))
+                if matched_cids:
+                    company_ids = matched_cids
+            except Exception:
+                pass
         next_dt = calculate_next_send(schedule.frequency, now)
 
         # ── Claim immediately ────────────────────────────────────────────────
@@ -248,7 +346,7 @@ class ReportJobManager:
             thresholds = await db_sync_to_async(get_tenant_thresholds)(tenant_id)
             min_completeness = thresholds.get("min_completeness_threshold_pct", 90.0)
 
-            start_date, end_date, prev_start, prev_end, period_label = _resolve_report_period(schedule, now)
+            start_date, end_date, prev_start, prev_end, period_label, comparison_label = _resolve_report_period(schedule, now)
 
             # 2. Build AI-generated report content using the user's prompt and period
             try:
@@ -336,6 +434,7 @@ class ReportJobManager:
                     start_date=start_date,
                     end_date=end_date,
                     reporting_period=period_label,
+                    comparison_label=comparison_label,
                 )
                 filename = result['filename']
             except Exception as pdf_err:
@@ -358,8 +457,9 @@ class ReportJobManager:
 
             # 4. Email each recipient with backoff retry
             tname = await _get_schedule_tenant_name(schedule)
+            cname = await _get_schedule_company_name(schedule)
             subject = _build_subject(schedule, tname)
-            html_body = _build_email_body(schedule, tname)
+            html_body = _build_email_body(schedule, tname, cname)
             sent_count = 0
             email_errors = []
 
@@ -559,6 +659,26 @@ def _get_schedule_tenant_name(schedule) -> str:
         return "Your Business"
 
 
+@db_sync_to_async
+def _get_schedule_company_name(schedule) -> str:
+    if schedule.companies and len(schedule.companies) > 0:
+        try:
+            from odoo_app.models.company import Company
+            from django.db.models import Q
+            c_objs = Company.objects.filter(Q(id__in=schedule.companies) | Q(odoo_id__in=schedule.companies))
+            c_names = []
+            for cid in schedule.companies:
+                for c in c_objs:
+                    if (c.id == cid or c.odoo_id == cid) and c.name not in c_names:
+                        c_names.append(c.name)
+                        break
+            if c_names:
+                return ", ".join(c_names)
+        except Exception:
+            pass
+    return "All Companies"
+
+
 def _build_subject(schedule, tname: str = "Your Business") -> str:
     freq_labels = {
         'daily':       'Daily',
@@ -576,7 +696,7 @@ def _build_subject(schedule, tname: str = "Your Business") -> str:
 
 
 
-def _build_email_body(schedule, tname: str = "Your Business") -> str:
+def _build_email_body(schedule, tname: str = "Your Business", cname: str = "All Companies") -> str:
     freq_labels = {
         'daily':       'daily',
         'weekly':      'weekly',
@@ -587,10 +707,7 @@ def _build_email_body(schedule, tname: str = "Your Business") -> str:
         'annual':      'annual',
     }
     label = freq_labels.get(schedule.frequency, schedule.frequency)
-    company_note = (
-        "all companies" if not schedule.companies
-        else f"{len(schedule.companies)} selected company/ies"
-    )
+    company_note = cname if cname else "All Companies"
     return f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
         <h2 style="color: #1a3d5c;">Your Scheduled Business Report</h2>

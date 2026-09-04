@@ -74,6 +74,7 @@ class FrontendChatRequest(BaseModel):
     plan_action: Optional[str] = None  # null | approve | cancel | edit
     attachments: Optional[List[AttachmentItem]] = None
     web_search: Optional[bool] = False
+    language: Optional[str] = None
 
 
 class FrontendChatResponse(BaseModel):

@@ -81,14 +81,14 @@
 
         <div class="kpi-card">
             <div class="kpi-card-top-bar bar-amber"></div>
-            <div class="kpi-title">Slow / Dead Stock Value</div>
-            <div class="kpi-value">{{ report_data.get('dead_stock_value', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('dead_stock_value', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('dead_stock_value', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('dead_stock_value', {}).get('arrow', '') }} {{ report_data.get('dead_stock_value', {}).get('var_text', '') }}
+            <div class="kpi-title">Total In-Stock Units</div>
+            <div class="kpi-value">{{ report_data.get('total_units', {}).get('formatted', report_data.get('total_quantity', {}).get('formatted', '—')) }}</div>
+            {% if report_data.get('total_units', {}).get('var_text') %}
+            <div class="kpi-variance {{ report_data.get('total_units', {}).get('var_class', 'variance-neutral') }}">
+                {{ report_data.get('total_units', {}).get('arrow', '') }} {{ report_data.get('total_units', {}).get('var_text', '') }}
             </div>
             {% endif %}
-            <div class="kpi-source">Zero Moves in &gt; 90 Days</div>
+            <div class="kpi-source">Physical Warehouse Quantities</div>
         </div>
     </div>
 
@@ -100,10 +100,13 @@
     </div>
     {% endif %}
 
-    <!-- Low Stock Alerts Table -->
+    <!-- Low Stock Alerts Table (Top 10 Critical SKUs) -->
     {% set alerts = report_data.get('low_stock_alerts', report_data.get('low_stock_items', [])) %}
     {% if alerts %}
-    <h2 class="sub-title">Critical Reorder Alerts (Low / Out of Stock)</h2>
+    <h2 class="sub-title">
+        <span>Critical Reorder Alerts (Low / Out of Stock)</span>
+        <span class="period-subtext">Top 10 Priority SKUs</span>
+    </h2>
     <table class="data-table">
         <thead>
             <tr>
@@ -114,7 +117,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for a in alerts %}
+            {% for a in alerts[:10] %}
             <tr>
                 <td class="font-bold">{{ a.get('product', a.get('product_name', a.get('name', 'Product'))) }}</td>
                 <td class="text-right">{{ a.get('qty', a.get('quantity', a.get('available_qty', 0))) }}</td>
@@ -125,6 +128,9 @@
         </tbody>
     </table>
     {% endif %}
+
+    <!-- Page break for Executive Strategy -->
+    <div class="page-break"></div>
 
     <!-- AI Detailed Analysis -->
     <h1 class="section-title">2. Warehouse Operations & Stock Strategy</h1>

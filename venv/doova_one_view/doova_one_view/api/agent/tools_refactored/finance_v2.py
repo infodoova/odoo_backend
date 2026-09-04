@@ -187,40 +187,32 @@ def get_period_comparison_pnl_tool(
     t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
     selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
-    params: dict = {
-        "tenant_id": tenant_id, 
-        "p1_start": period1_start, "p1_end": period1_end,
-        "p2_start": period2_start, "p2_end": period2_end
-    }
-    params.update(t_params_m)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="m.company_id")
-    params.update(f_params)
-
-    query = f"""
-        SELECT 
-            COALESCE(l.account_type, 'unknown') AS acc_type,
-            SUM(CASE WHEN m.date >= :p1_start AND m.date <= :p1_end THEN -{amount_col} ELSE 0 END) AS p1_amount,
-            SUM(CASE WHEN m.date >= :p2_start AND m.date <= :p2_end THEN -{amount_col} ELSE 0 END) AS p2_amount
-        FROM fact_account_move_lines l
-        JOIN fact_account_moves m ON l.account_move_id = m.id AND l.tenant_id = m.tenant_id
-        
-        WHERE 1=1 {t_sql_m}
-          AND m.state = 'posted'
-          AND l.account_type IN ('income', 'income_other', 'expense', 'expense_direct_cost', 'expense_depreciation')
-          AND ((m.date >= :p1_start AND m.date <= :p1_end) OR (m.date >= :p2_start AND m.date <= :p2_end))
-          {f_sql}
-        GROUP BY l.account_type
-    """
-    rows = run_query(query, params)
+    from doova_one_view.api.accounting.service import AccountingService
+    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     
+    p1_stats = AccountingService._calc_pnl_sync(
+        tenant_id=tenant_id,
+        start_date=period1_start,
+        end_date=period1_end,
+        company_ids=selected,
+        base_currency=base_currency
+    )
+    p2_stats = AccountingService._calc_pnl_sync(
+        tenant_id=tenant_id,
+        start_date=period2_start,
+        end_date=period2_end,
+        company_ids=selected,
+        base_currency=base_currency
+    )
+    
+    metrics = ["revenue", "cogs", "gross_profit", "expenses", "depreciation", "operating_expenses", "net_profit"]
     comparison = {}
-    for r in rows:
-        ctype = r.get("acc_type")
-        v1 = float(r.get("p1_amount") or 0)
-        v2 = float(r.get("p2_amount") or 0)
+    for m in metrics:
+        v1 = float(p1_stats.get(m) or 0.0)
+        v2 = float(p2_stats.get(m) or 0.0)
         variance = v2 - v1
         variance_pct = round((variance / abs(v1)) * 100, 1) if v1 != 0 else 0
-        comparison[ctype] = {
+        comparison[m] = {
             "period1_amount": round(v1, 2),
             "period2_amount": round(v2, 2),
             "variance": round(variance, 2),

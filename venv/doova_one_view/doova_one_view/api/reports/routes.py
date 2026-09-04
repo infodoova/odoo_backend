@@ -40,19 +40,71 @@ _manage = Depends(require_permissions("manage_reports"))
 # helpers
 # ---------------------------------------------------------------------------
 
-def _serialize_schedule(s) -> dict:
+def _serialize_schedule(s, tenant_map: dict = None, company_map: dict = None) -> dict:
+    from django.db import models
+    t_ids = getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else [])
+    c_ids = getattr(s, "companies", []) or []
+
+    # 1. Resolve Tenant Names
+    if tenant_map is None:
+        from odoo_app.models.tenant import Tenant
+        query_ids = list(set([str(tid) for tid in t_ids if tid] + ([str(s.tenant_id)] if s.tenant_id else [])))
+        t_objs = Tenant.objects.filter(id__in=query_ids)
+        tenant_map = {str(t.id): t.name for t in t_objs}
+    
+    t_names = [tenant_map[str(tid)] for tid in t_ids if str(tid) in tenant_map]
+    if not t_names and s.tenant_id and str(s.tenant_id) in tenant_map:
+        t_names = [tenant_map[str(s.tenant_id)]]
+    if not t_names and getattr(s, 'tenant', None) and s.tenant:
+        try:
+            t_names = [s.tenant.name]
+        except Exception:
+            pass
+    
+    tenant_name_str = ", ".join(t_names) if t_names else (s.tenant.name if getattr(s, 'tenant', None) and s.tenant else None)
+
+    # 2. Resolve Company Names
+    if company_map is None and c_ids:
+        from odoo_app.models.company import Company
+        c_objs = Company.objects.filter(models.Q(id__in=c_ids) | models.Q(odoo_id__in=c_ids))
+        company_map = {}
+        for c in c_objs:
+            company_map[c.id] = c.name
+            company_map[c.odoo_id] = c.name
+            company_map[str(c.id)] = c.name
+            company_map[str(c.odoo_id)] = c.name
+    elif company_map is None:
+        company_map = {}
+
+    c_names = []
+    for cid in c_ids:
+        c_name = company_map.get(cid) or company_map.get(str(cid))
+        if c_name and c_name not in c_names:
+            c_names.append(c_name)
+
+    company_name_str = ", ".join(c_names) if c_names else ("All Companies" if not c_ids else None)
+
     return {
         "id":               str(s.id),
         "report_name":      s.report_name or '',
         "tenant_id":        str(s.tenant_id) if s.tenant_id else None,
-        "tenantIds":        getattr(s, "tenants", []) or ([str(s.tenant_id)] if s.tenant_id else []),
+        "tenant_name":      tenant_name_str,
+        "tenantName":       tenant_name_str,
+        "tenantIds":        t_ids,
+        "tenant_names":     t_names,
+        "tenantNames":      t_names,
         "recipients":       s.recipients,
         "frequency":        s.frequency,
         "timezone":         s.timezone,
-        "companyIds":       getattr(s, "companies", []),
+        "companyIds":       c_ids,
+        "company_name":     company_name_str,
+        "companyName":      company_name_str,
+        "company_names":    c_names,
+        "companyNames":     c_names,
         "report_type":      s.report_type,
         "date_range_start": s.date_range_start,
         "date_range_end":   s.date_range_end,
+        "comparison_label": getattr(s, "comparison_label", None),
         "prompt":           s.prompt,
         "is_enabled":       s.is_enabled,
         "next_send_at":     s.next_send_at,
@@ -125,6 +177,7 @@ async def create_schedule(
             report_type=payload.report_type,
             date_range_start=payload.date_range_start,
             date_range_end=payload.date_range_end,
+            comparison_label=payload.comparison_label,
             prompt=payload.prompt,
             is_enabled=payload.is_enabled,
             next_send_at=start_at,
@@ -153,14 +206,37 @@ async def list_schedules(
 
     def _fetch():
         from odoo_app.models.report_schedule import ReportSchedule
+        from odoo_app.models.tenant import Tenant
+        from odoo_app.models.company import Company
         from django.db.models import Q
         qs = ReportSchedule.objects.filter(
             Q(tenant_id=tenant_id) | Q(tenants__contains=tenant_id)
-        ).order_by('-created_at')
-        return list(qs[offset: offset + limit])
+        ).select_related('tenant').order_by('-created_at')
+        schedules = list(qs[offset: offset + limit])
+
+        all_tenant_ids = set()
+        all_company_ids = set()
+        for s in schedules:
+            if s.tenant_id:
+                all_tenant_ids.add(str(s.tenant_id))
+            for tid in (getattr(s, "tenants", []) or []):
+                all_tenant_ids.add(str(tid))
+            for cid in (getattr(s, "companies", []) or []):
+                all_company_ids.add(cid)
+
+        tenant_map = {str(t.id): t.name for t in Tenant.objects.filter(id__in=all_tenant_ids)}
+        company_map = {}
+        if all_company_ids:
+            for c in Company.objects.filter(Q(id__in=all_company_ids) | Q(odoo_id__in=all_company_ids)):
+                company_map[c.id] = c.name
+                company_map[c.odoo_id] = c.name
+                company_map[str(c.id)] = c.name
+                company_map[str(c.odoo_id)] = c.name
+
+        return [_serialize_schedule(s, tenant_map=tenant_map, company_map=company_map) for s in schedules]
 
     schedules = await asyncio.to_thread(_fetch)
-    return [_serialize_schedule(s) for s in schedules]
+    return schedules
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +266,8 @@ async def update_schedule(
         update_fields = []
         for field in (
             'report_name', 'recipients', 'frequency', 'timezone', 'report_type',
-            'date_range_start', 'date_range_end', 'prompt', 'is_enabled', 'next_send_at'
+            'date_range_start', 'date_range_end', 'comparison_label', 'prompt',
+            'is_enabled', 'next_send_at'
         ):
             val = getattr(payload, field, None)
             if val is not None:

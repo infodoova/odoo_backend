@@ -262,31 +262,104 @@ class DoovaLangChainAgent:
             else:
                 input_payload = [HumanMessage(content=str(user_input))]
 
-            voice_instruction = ""
             if is_voice:
                 voice_instruction = (
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    "VOICE MODE ACTIVE:\n"
+                    "VOICE CALL MODE ACTIVE:\n"
                     "- Respond in 2-3 short, natural, conversational spoken sentences suitable for Text-to-Speech.\n"
                     "- STRICTLY NO markdown tables, bullet points, asterisks, hash headers, or lists.\n"
-                    "- STRICTLY match the language of the user's spoken utterance."
+                    "- MANDATORY LANGUAGE: You MUST formulate 100% of your response in the active voice language specified below, regardless of what language the user spoke in.\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                 )
-
-            # Resolve language code as the absolute master key
-            lang_str = (language or "").strip()
-            if lang_str and lang_str.lower() not in ("auto", "none", "null"):
-                code_lower = lang_str.lower()
-                if code_lower.startswith("en"):
-                    target_language_label = "ENGLISH (en) — MASTER OVERRIDE: The system language code is set to English. You MUST reply 100% in English, even if the user utterance contains Arabic words or if chat history contains Arabic."
-                elif code_lower.startswith("ar"):
-                    target_language_label = "ARABIC (ar) — MASTER OVERRIDE: The system language code is set to Arabic. You MUST reply 100% in Arabic (العربية)."
-                elif code_lower.startswith("fr"):
-                    target_language_label = "FRENCH (fr) — MASTER OVERRIDE: The system language code is set to French. You MUST reply 100% in French (Français)."
-                elif code_lower.startswith("es"):
-                    target_language_label = "SPANISH (es) — MASTER OVERRIDE: The system language code is set to Spanish. You MUST reply 100% in Spanish (Español)."
+                # Resolve language code as the absolute master key for voice calls
+                lang_str = (language or "").strip()
+                if lang_str and lang_str.lower() not in ("auto", "none", "null", ""):
+                    code_lower = lang_str.lower().replace("_", "-")
+                    if code_lower.startswith("fr") or "french" in code_lower or "français" in code_lower:
+                        target_language_label = (
+                            "FRENCH (fr / fr-FR) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is FRENCH (Français).\n"
+                            "You MUST formulate 100% of your response in French.\n"
+                            "STRICT RULE: Even if the user spoke in English, Arabic, or another language, "
+                            "YOU ARE STRICTLY FORBIDDEN from replying in any language other than French. Reply 100% in French."
+                        )
+                    elif code_lower.startswith("ar") or "arab" in code_lower or "العربية" in code_lower:
+                        target_language_label = (
+                            "ARABIC (ar / ar-SA) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is ARABIC (العربية).\n"
+                            "You MUST formulate 100% of your response in Arabic.\n"
+                            "STRICT RULE: Even if the user spoke in English, French, or another language, "
+                            "YOU ARE STRICTLY FORBIDDEN from replying in English or any other language. Reply 100% in Arabic."
+                        )
+                    elif code_lower.startswith("es") or "span" in code_lower or "español" in code_lower:
+                        target_language_label = (
+                            "SPANISH (es / es-ES) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is SPANISH (Español).\n"
+                            "You MUST formulate 100% of your response in Spanish.\n"
+                            "STRICT RULE: Even if the user spoke in English, Arabic, or another language, reply 100% in Spanish."
+                        )
+                    elif code_lower.startswith("en") or "english" in code_lower:
+                        target_language_label = (
+                            "ENGLISH (en / en-US) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is ENGLISH.\n"
+                            "You MUST formulate 100% of your response in English."
+                        )
+                    elif code_lower.startswith("de") or "german" in code_lower or "deutsch" in code_lower:
+                        target_language_label = (
+                            "GERMAN (de / de-DE) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is GERMAN (Deutsch).\n"
+                            "You MUST formulate 100% of your response in German."
+                        )
+                    elif code_lower.startswith("it") or "italian" in code_lower:
+                        target_language_label = (
+                            "ITALIAN (it / it-IT) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is ITALIAN (Italiano).\n"
+                            "You MUST formulate 100% of your response in Italian."
+                        )
+                    elif code_lower.startswith("tr") or "turkish" in code_lower:
+                        target_language_label = (
+                            "TURKISH (tr / tr-TR) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is TURKISH (Türkçe).\n"
+                            "You MUST formulate 100% of your response in Turkish."
+                        )
+                    elif code_lower.startswith("ru") or "russian" in code_lower:
+                        target_language_label = (
+                            "RUSSIAN (ru / ru-RU) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is RUSSIAN (Русский).\n"
+                            "You MUST formulate 100% of your response in Russian."
+                        )
+                    elif code_lower.startswith("pt") or "portuguese" in code_lower:
+                        target_language_label = (
+                            "PORTUGUESE (pt / pt-PT) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is PORTUGUESE (Português).\n"
+                            "You MUST formulate 100% of your response in Portuguese."
+                        )
+                    elif code_lower.startswith("zh") or "chinese" in code_lower:
+                        target_language_label = (
+                            "CHINESE (zh / zh-CN) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            "The active voice call language is CHINESE (中文).\n"
+                            "You MUST formulate 100% of your response in Chinese."
+                        )
+                    else:
+                        # Dynamic arbitrary language support
+                        target_language_label = (
+                            f"'{lang_str}' — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
+                            f"The active voice call language is '{lang_str}'.\n"
+                            f"You MUST formulate 100% of your response strictly in '{lang_str}'.\n"
+                            f"STRICT RULE: Even if the user spoke in English or any other language, "
+                            f"YOU ARE STRICTLY FORBIDDEN from replying in any language other than '{lang_str}'. Reply 100% in '{lang_str}'."
+                        )
                 else:
-                    target_language_label = f"{lang_str} — MASTER OVERRIDE: You MUST reply 100% in {lang_str}."
+                    import re as _re
+                    if _re.search(r'[\u0600-\u06FF]', message or ""):
+                        target_language_label = "ARABIC (ar) — STRICT REQUIREMENT: The user spoke in Arabic. You MUST reply 100% in Arabic (العربية)."
+                    elif _re.search(r'[a-zA-Z]', message or ""):
+                        target_language_label = "ENGLISH (en) — STRICT REQUIREMENT: The user spoke in English. You MUST reply 100% in English."
+                    else:
+                        target_language_label = "English (Default)"
             else:
+                # Regular AI Chat Mode: Natural language matching ("as it was")
+                voice_instruction = ""
                 import re as _re
                 if _re.search(r'[\u0600-\u06FF]', message or ""):
                     target_language_label = "ARABIC (ar) — STRICT REQUIREMENT: The user's latest query is in Arabic. You MUST reply 100% in Arabic (العربية)."

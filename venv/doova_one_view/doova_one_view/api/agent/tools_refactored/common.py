@@ -12,7 +12,7 @@ from ..config import AgentConfig
 
 def get_companies_tool(tenant_id: str, tenant_ids: Optional[list[str]] = None) -> dict:
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    rows = run_query(f"SELECT id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
+    rows = run_query(f"SELECT id, odoo_id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
     return {"tool_name": "get_companies_tool", "companies": rows}
 
 def resolve_company_name(tenant_id: str, company_id: int | None = None) -> str:

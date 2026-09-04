@@ -20,12 +20,14 @@ class IntentClassifier:
         AVAILABLE TOOLS:
         - get_sales_summary_tool: For total sales, revenue, order counts.
         - get_top_products_tool: For best-selling products, most popular items.
-        - get_inventory_alerts_tool: For low stock, out of stock, expiring items/lots.
+        - get_inventory_dashboard_alerts_tool: For low stock, out of stock, expiring items/lots, slow moving items.
         - get_inventory_efficiency_tool: For turnover ratio, days inventory on hand.
         - get_receivables_analysis_tool: For overdue invoices, accounts receivable, who owes money.
         - get_unrealized_currency_gains_losses_tool: For unrealized currency gains/losses, balance sheet FX revaluation, foreign currency adjustments.
         - get_general_ledger_tool: For general ledger, grand livre, full account balances, debit/credit totals.
         - get_partner_ledger_tool: For partner ledger, grand livre des tiers, customer/supplier balances and ledger lines.
+        - get_customer_statement_tool: For customer statement, releve client, statement of account, customer open invoices and balances.
+        - get_followup_report_tool: For follow up report, rapport de relance, customer follow up, overdue receivables list.
         - get_business_health_score_tool: For overall company performance and health status.
         - generate_report_tool: For creating a PDF report or business summary.
         - get_last_report_tool: For downloading the most recent report.

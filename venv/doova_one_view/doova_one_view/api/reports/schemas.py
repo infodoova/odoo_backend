@@ -17,6 +17,7 @@ class ReportScheduleCreate(BaseModel):
     report_type:      str = 'analysis'
     date_range_start: Optional[date] = None
     date_range_end:   Optional[date] = None
+    comparison_label: Optional[str] = None   # e.g. "Same Period Prior Year (YoY)", "Prior Quarter (QoQ)"
     prompt:           str = ''
     is_enabled:       bool = True
     start_at:         datetime  # first send time (UTC)
@@ -66,6 +67,7 @@ class ReportScheduleUpdate(BaseModel):
     report_type:      Optional[str] = None
     date_range_start: Optional[date] = None
     date_range_end:   Optional[date] = None
+    comparison_label: Optional[str] = None
     prompt:           Optional[str] = None
     is_enabled:       Optional[bool] = None
     next_send_at:     Optional[datetime] = None
@@ -103,14 +105,23 @@ class ReportScheduleResponse(BaseModel):
     id:               str
     report_name:      str = ''
     tenant_id:        Optional[str] = None
+    tenant_name:      Optional[str] = None
+    tenantName:       Optional[str] = None
     tenantIds:        List[str] = []
+    tenant_names:     List[str] = []
+    tenantNames:      List[str] = []
     recipients:       List[str]
     frequency:        str
     timezone:         str
     companyIds:       List[int] = []
+    company_name:     Optional[str] = None
+    companyName:      Optional[str] = None
+    company_names:    List[str] = []
+    companyNames:     List[str] = []
     report_type:      str
     date_range_start: Optional[date] = None
     date_range_end:   Optional[date] = None
+    comparison_label: Optional[str] = None
     prompt:           str
     is_enabled:       bool
     next_send_at:     datetime
