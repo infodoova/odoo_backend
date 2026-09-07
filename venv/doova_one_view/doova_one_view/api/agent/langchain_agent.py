@@ -167,10 +167,8 @@ class DoovaLangChainAgent:
     def run(
         self,
         message: str,
-        tenant_id: str | None = None,
-        company_id: int | None = None,
-        company_ids: list[int] | None = None,
         tenant_ids: list[str] | None = None,
+        company_ids: list[int] | None = None,
         chat_history: list = None,
         memory_summary: str = "",
         on_summary=None,
@@ -182,8 +180,15 @@ class DoovaLangChainAgent:
         start = time.time()
         formatted_history = self._format_history(chat_history or [])
         
+        from .query_context import normalize_company_ids, normalize_tenant_ids
+        resolved_tenant_ids = normalize_tenant_ids(tenant_ids)
+        primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else "default"
+
+        resolved_company_ids = normalize_company_ids(company_ids)
+        resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
+
         # Ensure we always pass the list representation for logging
-        log_agent_start(message, tenant_id or (tenant_ids[0] if tenant_ids else "default"), company_ids or company_id, len(formatted_history))
+        log_agent_start(message, primary_tenant_id, resolved_company_ids or resolved_company_id, len(formatted_history))
         
         active_history = formatted_history
         new_summary_generated = None
@@ -195,8 +200,8 @@ class DoovaLangChainAgent:
             from .attachment_processor import process_attachments
             claude_blocks, extracted_text = process_attachments(
                 attachments,
-                tenant_id=tenant_id,
-                company_id=company_id or (company_ids[0] if company_ids else None),
+                tenant_ids=resolved_tenant_ids,
+                company_ids=resolved_company_ids,
                 session_id=session_id
             )
 
@@ -235,14 +240,6 @@ class DoovaLangChainAgent:
 
         try:
             from .utils import get_tenant_currency, fix_currency_symbols, replace_tenant_ids_with_names
-            from .query_context import normalize_company_ids, normalize_tenant_ids
-            
-            resolved_tenant_ids = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
-            primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else (tenant_id or "default")
-
-            resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-            resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
-
             currency = get_tenant_currency(primary_tenant_id, resolved_company_id)
 
             # Build user input payload (multimodal blocks if images/docs attached)

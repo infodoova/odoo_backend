@@ -552,11 +552,10 @@ def _attempt_sql_correction(
 def run_sql_agent(
     user_question: str,
     chat_history: str = "",
-    tenant_id: str | None = None,
     tenant_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     from doova_one_view.api.agent.query_context import normalize_tenant_ids
-    tenants = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
+    tenants = normalize_tenant_ids(tenant_ids)
     question_lower = (user_question or "").lower()
 
     # Refuse destructive requests before asking Claude to generate SQL.
@@ -722,8 +721,8 @@ def run_sql_agent(
     from doova_one_view.api.kpi.service import _get_rate_map
     from doova_one_view.api.agent.tools_refactored.common import get_per_tenant_exchange_rates
     
-    tenant_curr = get_tenant_currency(tenant_id)
-    rate_map = _get_rate_map(tenant_id=tenant_id)
+    tenant_curr = get_tenant_currency(tenant_ids=tenants)
+    rate_map = _get_rate_map(tenant_ids=tenants)
     per_tenant_rates = get_per_tenant_exchange_rates(tenant_ids=tenants)
     
     currency_context = (

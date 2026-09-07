@@ -40,6 +40,7 @@ class SalesOrder(models.Model):
     margin = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     currency_code = models.CharField(max_length=10, null=True, blank=True)
 
+    odoo_create_date = models.DateTimeField(null=True, blank=True)
     odoo_write_date = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)
 

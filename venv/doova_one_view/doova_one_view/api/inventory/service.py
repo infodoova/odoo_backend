@@ -3,6 +3,7 @@ Inventory API service.
 """
 
 import asyncio
+import logging
 from datetime import date, timedelta
 from typing import Any, Optional, Union
 
@@ -15,6 +16,8 @@ from odoo_app.models.stock_move_line import StockMoveLine
 from odoo_app.models.stock_picking import StockPicking
 from odoo_app.models.stock_quant import StockQuant
 from doova_one_view.api.common.exceptions import NotFoundError
+
+logger = logging.getLogger(__name__)
 
 
 def _to_float(value: Any) -> float:
@@ -329,10 +332,16 @@ class InventoryService:
     """Service for inventory operations."""
 
     @staticmethod
-    def _company_filter(qs, company_ids: Optional[list[int]]):
-        if company_ids:
-            qs = qs.filter(company_id__in=company_ids)
-        return qs
+    def _company_filter(qs, company_ids: Optional[list[int]] = None):
+        from doova_one_view.api.agent.query_context import apply_scope_filter_orm, normalize_company_ids
+        norm_comps = normalize_company_ids(company_ids)
+        return apply_scope_filter_orm(qs, "company_id", norm_comps)
+
+    @staticmethod
+    def _tenant_filter(qs, tenant_ids: Optional[list[str]] = None):
+        from doova_one_view.api.agent.query_context import apply_scope_filter_orm, normalize_tenant_ids
+        norm_tenants = normalize_tenant_ids(tenant_ids)
+        return apply_scope_filter_orm(qs, "tenant_id", norm_tenants)
 
     @staticmethod
     def _apply_search(qs, filters: list[Any], field_map: dict[str, str]):
@@ -370,12 +379,15 @@ class InventoryService:
 
     @staticmethod
     def get_inventory_summary_sync(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
-        qs = InventoryService._company_filter(
-            StockQuant.objects.filter(tenant_id=tenant_id), company_ids
-        )
+        qs = StockQuant.objects.all()
+        moves_qs = StockMove.objects.all()
+        qs = InventoryService._tenant_filter(qs, tenant_ids=tenant_ids)
+        moves_qs = InventoryService._tenant_filter(moves_qs, tenant_ids=tenant_ids)
+        qs = InventoryService._company_filter(qs, company_ids)
         stats = qs.aggregate(
             total_qty=Sum("quantity"),
             total_reserved=Sum("reserved_quantity"),
@@ -388,7 +400,7 @@ class InventoryService:
         
         recent_since = timezone.now() - timedelta(days=7)
         recent_moves = InventoryService._company_filter(
-            StockMove.objects.filter(tenant_id=tenant_id, date__gte=recent_since),
+            moves_qs.filter(date__gte=recent_since),
             company_ids,
         ).count()
         return {
@@ -397,35 +409,48 @@ class InventoryService:
             "total_reserved_quantity": _to_float(stats["total_reserved"]),
             "total_value": _to_float(stock_value_agg["total_value"]),
             "recent_moves_count": recent_moves,
-            "applied_filters": {"tenant_id": tenant_id, "company_ids": company_ids},
+            "applied_filters": {"tenant_ids": tenant_ids, "company_ids": company_ids},
         }
 
     @staticmethod
     async def get_inventory_summary(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
         company_ids: Optional[list[int]] = None,
+        base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
-        return await asyncio.to_thread(InventoryService.get_inventory_summary_sync, tenant_id, company_ids)
+        return await asyncio.to_thread(
+            InventoryService.get_inventory_summary_sync,
+            tenant_ids,
+            company_ids,
+            base_currency,
+        )
 
     @staticmethod
     def get_alerts_sync(
-        tenant_id: str,
-        company_ids: Optional[list[int]] = None,
+        tenant_ids: Optional[Union[list[str], str]] = None,
+        company_ids: Optional[Union[list[int], int, str]] = None,
         low_stock_threshold: int = 10,
         limit: int = 10,
     ) -> dict[str, Any]:
         """Return aggregated inventory alerts synchronously."""
         from django.utils import timezone
         from datetime import timedelta
+        from doova_one_view.api.agent.query_context import (
+            normalize_tenant_ids,
+            normalize_company_ids,
+            build_tenant_filter_sql,
+            build_company_filter_sql,
+        )
 
-        quants = InventoryService._company_filter(
-            StockQuant.objects.filter(tenant_id=tenant_id).select_related("product", "lot"),
-            company_ids
-        )
-        pickings = InventoryService._company_filter(
-            StockPicking.objects.filter(tenant_id=tenant_id).select_related("partner"),
-            company_ids
-        )
+        norm_tenants = normalize_tenant_ids(tenant_ids)
+        norm_comps = normalize_company_ids(company_ids)
+
+        quants = StockQuant.objects.select_related("product", "lot")
+        pickings = StockPicking.objects.select_related("partner")
+        quants = InventoryService._tenant_filter(quants, tenant_ids=norm_tenants)
+        pickings = InventoryService._tenant_filter(pickings, tenant_ids=norm_tenants)
+        quants = InventoryService._company_filter(quants, norm_comps)
+        pickings = InventoryService._company_filter(pickings, norm_comps)
         now = timezone.now()
 
         # 1. Low Stock (Deduplicated by product)
@@ -527,6 +552,61 @@ class InventoryService:
             for q in val_qs[:limit]
         ]
 
+        # 8. Backdated Entries (Security Audit)
+        backdated_items = []
+        backdated_cnt = 0
+        try:
+            from doova_one_view.api.agent.db import run_query
+            t_sql, t_params = build_tenant_filter_sql(tenant_ids=norm_tenants, column_name="tenant_id", prefix="t_bd")
+            f_sql, f_params = build_company_filter_sql(company_ids=norm_comps, prefix="c_bd")
+            params = {**t_params, **f_params}
+
+            query = f"""
+                SELECT 'Invoice' as entity_type, odoo_id, odoo_name, date as claimed_date, odoo_create_date,
+                       'State: ' || COALESCE(state, 'N/A') || ', Total: ' || COALESCE(amount_total, 0) || ' ' || COALESCE(currency_code, '') as details
+                FROM fact_account_moves 
+                WHERE 1=1 {t_sql} {f_sql} AND DATE(odoo_create_date) > date AND odoo_create_date >= CURRENT_DATE - INTERVAL '2 days'
+                UNION ALL
+                SELECT 'Bank Statement', odoo_id, odoo_name, date as claimed_date, odoo_create_date,
+                       'State: ' || COALESCE(state, 'N/A') || ', Balance: ' || COALESCE(balance_end_real, 0) as details
+                FROM fact_bank_statements 
+                WHERE 1=1 {t_sql} {f_sql} AND DATE(odoo_create_date) > date AND odoo_create_date >= CURRENT_DATE - INTERVAL '2 days'
+                UNION ALL
+                SELECT 'Inventory Transfer', odoo_id, odoo_name, DATE(scheduled_date) as claimed_date, odoo_create_date,
+                       'State: ' || COALESCE(state, 'N/A') as details
+                FROM fact_stock_pickings 
+                WHERE 1=1 {t_sql} {f_sql} AND DATE(odoo_create_date) > DATE(scheduled_date) AND odoo_create_date >= CURRENT_DATE - INTERVAL '2 days'
+                UNION ALL
+                SELECT 'Sales Order', odoo_id, odoo_name, DATE(date_order) as claimed_date, odoo_create_date,
+                       'State: ' || COALESCE(state, 'N/A') || ', Total: ' || COALESCE(amount_total, 0) || ' ' || COALESCE(currency_code, '') as details
+                FROM fact_sales_orders 
+                WHERE 1=1 {t_sql} {f_sql} AND DATE(odoo_create_date) > DATE(date_order) AND odoo_create_date >= CURRENT_DATE - INTERVAL '2 days'
+                UNION ALL
+                SELECT 'Purchase Order', odoo_id, odoo_name, DATE(date_order) as claimed_date, odoo_create_date,
+                       'State: ' || COALESCE(state, 'N/A') || ', Total: ' || COALESCE(amount_total, 0) || ' ' || COALESCE(currency_code, '') as details
+                FROM fact_purchase_orders 
+                WHERE 1=1 {t_sql} {f_sql} AND DATE(odoo_create_date) > DATE(date_order) AND odoo_create_date >= CURRENT_DATE - INTERVAL '2 days'
+                ORDER BY odoo_create_date DESC
+                LIMIT 50
+            """
+            rows = run_query(query, params)
+            for row in rows:
+                entity_type = row.get("entity_type")
+                odoo_id = row.get("odoo_id")
+                odoo_name = row.get("odoo_name")
+                claimed_date = row.get("claimed_date")
+                create_date = row.get("odoo_create_date")
+                details = row.get("details") or ""
+                backdated_cnt += 1
+                days_back = (create_date.date() - claimed_date).days if (create_date and claimed_date) else 0
+                backdated_items.append({
+                    "id": -(hash(f"{entity_type}_{odoo_id}") % 1000000),
+                    "title": f"Manipulated {entity_type}: {odoo_name or f'#{odoo_id}'}",
+                    "description": f"[{details.strip()}] This {entity_type} was actually created on {create_date.strftime('%Y-%m-%d')}, but was manually backdated by {days_back} days to appear as if it happened on {claimed_date.strftime('%Y-%m-%d')}."
+                })
+        except Exception as e:
+            logger.error(f"Error fetching backdated alerts in dashboard: {e}")
+
         alerts = [
             {"key": "low_stock", "label": "Low Stock", "count": low_cnt, "severity": "warning", "items": low_items},
             {"key": "out_of_stock", "label": "Out of Stock", "count": oos_cnt, "severity": "danger", "items": oos_items},
@@ -535,24 +615,30 @@ class InventoryService:
             {"key": "late_shipments", "label": "Late Shipments", "count": late_cnt, "severity": "danger", "items": late_items},
             {"key": "backorders", "label": "Backorders", "count": back_cnt, "severity": "warning", "items": back_items},
             {"key": "valuation_issues", "label": "Valuation Issues", "count": val_cnt, "severity": "warning", "items": val_items},
+            {"key": "backdated_entries", "label": "Backdated Entries", "count": backdated_cnt, "severity": "danger" if backdated_cnt > 0 else "warning", "items": backdated_items},
         ]
-
-        return {"alerts": alerts}
+        return {"alerts": alerts, "total_alerts": sum(a["count"] for a in alerts)}
 
     @staticmethod
     async def get_alerts(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
         company_ids: Optional[list[int]] = None,
         low_stock_threshold: int = 10,
         limit: int = 10,
     ) -> dict[str, Any]:
         """Return aggregated inventory alerts."""
-        return await asyncio.to_thread(InventoryService.get_alerts_sync, tenant_id, company_ids, low_stock_threshold, limit)
+        return await asyncio.to_thread(
+            InventoryService.get_alerts_sync,
+            tenant_ids=tenant_ids,
+            company_ids=company_ids,
+            low_stock_threshold=low_stock_threshold,
+            limit=limit,
+        )
 
     @staticmethod
     async def get_stock_table(
-        tenant_id: str,
-        table_type: str,
+        tenant_ids: Optional[list[str]] = None,
+        table_type: str = "",
         company_ids: Optional[list[int]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
@@ -566,10 +652,9 @@ class InventoryService:
             from django.utils import timezone
             from doova_one_view.api.inventory.schemas import StockQuantRead
 
-            quants = InventoryService._company_filter(
-                StockQuant.objects.filter(tenant_id=tenant_id).select_related("product", "lot", "company"),
-                company_ids
-            )
+            quants = StockQuant.objects.select_related("product", "lot", "company")
+            quants = InventoryService._tenant_filter(quants, tenant_ids=tenant_ids)
+            quants = InventoryService._company_filter(quants, company_ids)
 
             if start_date:
                 quants = quants.filter(in_date__gte=start_date)

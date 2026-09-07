@@ -41,8 +41,8 @@ def _to_bool_or_none(value: Optional[str | bool]) -> Optional[bool]:
     return None
 
 
-def _company_ids(company_id: Optional[int], companies: Optional[str]) -> Optional[list[int]]:
-    return parse_company_ids(company_id if company_id is not None else companies)
+def _company_ids(company_ids: Optional[str] = None) -> Optional[list[int]]:
+    return parse_company_ids(company_ids)
 
 
 @router.get("/{tenant_id}/companies")
@@ -69,14 +69,11 @@ async def get_enums(
 @router.get("/{tenant_id}/filters")
 async def get_filters(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
-    includeCompanies: Optional[str] = Query(None),
-    include_companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await MasterDataService.get_filters(tenant_id, _company_ids(company_id, companies))
+    return await MasterDataService.get_filters(tenant_id, _company_ids(company_ids))
 
 
 # Partners: static subpaths before /partners
@@ -93,21 +90,19 @@ async def get_partners_filters(
 async def search_partners(
     tenant_id: str,
     request: SearchRequest,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_partners(
-        tenant_id, request.filters, request.limit, request.offset, _company_ids(company_id, companies)
+        tenant_id, request.filters, request.limit, request.offset, _company_ids(company_ids)
     )
 
 
 @router.get("/{tenant_id}/partners/export")
 async def export_partners(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _export_partners,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -127,8 +122,7 @@ async def list_partners(
     is_customer: Optional[str] = Query(None),
     is_supplier: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_partners,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -139,7 +133,7 @@ async def list_partners(
         search,
         _to_bool_or_none(is_customer),
         _to_bool_or_none(is_supplier),
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
     )
 
 
@@ -147,20 +141,18 @@ async def list_partners(
 @router.get("/{tenant_id}/products/filters")
 async def get_products_filters(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_products,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    return await MasterDataService.get_products_filters(tenant_id, _company_ids(company_id, companies))
+    return await MasterDataService.get_products_filters(tenant_id, _company_ids(company_ids))
 
 
 @router.post("/{tenant_id}/products/search")
 async def search_products(
     tenant_id: str,
     request: SearchRequest,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_products,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -169,20 +161,19 @@ async def search_products(
         request.filters,
         request.limit,
         request.offset,
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
     )
 
 
 @router.get("/{tenant_id}/products/export")
 async def export_products(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _export_products,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await MasterDataService.export_products_csv(
-        tenant_id, _company_ids(company_id, companies)
+        tenant_id, _company_ids(company_ids)
     )
     return Response(
         content=csv_content,
@@ -197,13 +188,12 @@ async def list_products(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     search: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_products,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_products(
-        tenant_id, limit, offset, search, _company_ids(company_id, companies)
+        tenant_id, limit, offset, search, _company_ids(company_ids)
     )
 
 
@@ -233,12 +223,11 @@ async def get_category(
 async def search_lots(
     tenant_id: str,
     request: SearchRequest,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_lots,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(company_id, companies)
+    company_ids = _company_ids(company_ids)
     if company_ids is None:
         company_ids = parse_company_ids(
             request.company_id if request.company_id is not None else request.companies
@@ -251,13 +240,12 @@ async def search_lots(
 @router.get("/{tenant_id}/lots/export")
 async def export_lots(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _export_lots,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await MasterDataService.export_lots_csv(
-        tenant_id, _company_ids(company_id, companies)
+        tenant_id, _company_ids(company_ids)
     )
     return Response(
         content=csv_content,
@@ -269,13 +257,12 @@ async def export_lots(
 @router.get("/{tenant_id}/lots/filters")
 async def get_lots_filters(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_lots,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_lots_filters(
-        tenant_id, _company_ids(company_id, companies)
+        tenant_id, _company_ids(company_ids)
     )
 
 
@@ -284,13 +271,12 @@ async def list_lots(
     tenant_id: str,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_lots,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_lots(
-        tenant_id, limit, offset, _company_ids(company_id, companies)
+        tenant_id, limit, offset, _company_ids(company_ids)
     )
 
 
@@ -311,21 +297,19 @@ async def list_currencies(
 async def search_chart_of_accounts(
     tenant_id: str,
     request: SearchRequest,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.search_chart_of_accounts(
-        tenant_id, request.filters, request.limit, request.offset, _company_ids(company_id, companies)
+        tenant_id, request.filters, request.limit, request.offset, _company_ids(company_ids)
     )
 
 
 @router.get("/{tenant_id}/chart-of-accounts/export")
 async def export_chart_of_accounts(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _export_chart,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
@@ -352,11 +336,10 @@ async def list_chart_of_accounts(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     search: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_chart,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await MasterDataService.get_chart_of_accounts(
-        tenant_id, limit, offset, search, _company_ids(company_id, companies)
+        tenant_id, limit, offset, search, _company_ids(company_ids)
     )

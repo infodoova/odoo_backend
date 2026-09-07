@@ -53,9 +53,10 @@ def _sum(qs, field: str) -> float:
     return _to_float(qs.aggregate(value=Coalesce(Sum(field), Decimal("0")))["value"])
 
 
-def _get_rate_map(tenant_id: Optional[str] = None) -> dict:
-    from doova_one_view.api.agent.query_context import resolve_tenant_id
-    clean_tenant_id = resolve_tenant_id(tenant_id)
+def _get_rate_map(tenant_ids: Optional[list[str]] = None) -> dict:
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids
+    clean_tenant_ids = normalize_tenant_ids(tenant_ids)
+    clean_tenant_id = clean_tenant_ids[0] if clean_tenant_ids else None
 
     from django.db import connection
     with connection.cursor() as cursor:
@@ -1045,7 +1046,10 @@ class KPIService:
                 output_field=DecimalField(max_digits=20, decimal_places=4)
             )
 
-            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"], sales_order__tenant__is_active=True)
+            lines = SalesOrderLine.objects.filter(
+                sales_order__state__in=["sale", "done"],
+                sales_order__tenant__is_active=True
+            ).exclude(product__product_type='service').exclude(product__name__icontains='discount')
             lines = _apply_tenant_company_filter(lines, tenant_ids, company_ids, company_field="sales_order__company_id")
             lines = _date_filter(lines, "sales_order__date_order", date_from, date_to)
             rows = list(
@@ -2449,7 +2453,10 @@ class KPIService:
         date_to: Optional[str] = None,
     ) -> dict[str, Any]:
         def _get():
-            lines = SalesOrderLine.objects.filter(sales_order__state__in=["sale", "done"], sales_order__tenant__is_active=True)
+            lines = SalesOrderLine.objects.filter(
+                sales_order__state__in=["sale", "done"], 
+                sales_order__tenant__is_active=True
+            ).exclude(product__product_type='service').exclude(product__name__icontains='discount')
             lines = _apply_tenant_company_filter(lines, tenant_ids, company_ids, company_field="sales_order__company_id")
             lines = _date_filter(lines, "sales_order__date_order", date_from, date_to)
             rows = list(

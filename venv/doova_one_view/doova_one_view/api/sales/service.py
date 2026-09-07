@@ -432,7 +432,8 @@ class SalesService:
                 tenant_id=tenant_id, 
                 sales_order__state__in=['sale', 'done'],
                 sales_order__date_order__date__range=(initial_date, final_date)
-            ).values('product__name', 'product_id', 'sales_order__currency_code')
+            ).exclude(product__product_type='service').exclude(product__name__icontains='discount')
+            .values('product__name', 'product_id', 'sales_order__currency_code')
              .annotate(value=Sum('price_total')))
             prod_map = {}
             for r in prod_rows:

@@ -1,60 +1,30 @@
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
+# api/agent/tools_refactored/inventory_v2.py
 from typing import Optional, Dict, Any, List
-from .common import run_query
+from .common import run_query, build_company_filter_sql, build_tenant_filter_sql
 
-def get_reorder_recommendations_tool(tenant_id: str, company_id: Optional[int] = None, days_history: int = 30, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> Dict[str, Any]:
+
+def get_reorder_recommendations_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    days_history: int = 30,
+) -> Dict[str, Any]:
     """
     Identifies products where current available stock is too low compared to recent sales velocity.
     Recommends reorder quantities to cover the next N days based on historical sales.
     """
+    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_ids, column_name="p.tenant_id", prefix="t_p")
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
+    c_sql_o, c_params_o = build_company_filter_sql(company_ids, column_name="o.company_id", prefix="co")
+    c_sql_q, c_params_q = build_company_filter_sql(company_ids, column_name="company_id", prefix="cq")
 
-    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="p.tenant_id", prefix="t_p")
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    sql = f"""
-        WITH sales_velocity AS (
-            SELECT 
-                l.product_id,
-                COALESCE(SUM(l.product_uom_qty), 0) AS units_sold
-            FROM fact_sales_order_lines l
-            JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id
-            WHERE 1=1 {t_sql_l} 
-              AND o.state IN ('sale', 'done')
-              AND o.date_order >= CURRENT_DATE - INTERVAL '{days_history} days'
-            GROUP BY l.product_id
-        ),
-        current_stock AS (
-            SELECT 
-                product_id,
-                SUM(quantity) AS total_qty,
-                SUM(reserved_quantity) AS reserved_qty
-            FROM fact_stock_quants
-            WHERE 1=1 {t_sql_def}
-            GROUP BY product_id
-        )
-        SELECT 
-            p.name AS product_name,
-            COALESCE(s.units_sold, 0) AS sold_past_{days_history}_days,
-            COALESCE(c.total_qty, 0) - COALESCE(c.reserved_qty, 0) AS available_qty,
-            GREATEST(0, COALESCE(s.units_sold, 0) - (COALESCE(c.total_qty, 0) - COALESCE(c.reserved_qty, 0))) AS suggested_reorder_qty
-        FROM dim_products p
-        JOIN current_stock c ON p.id = c.product_id
-        LEFT JOIN sales_velocity s ON p.id = s.product_id
-        WHERE 1=1 {t_sql_p} AND p.product_type = 'product'
-          AND (COALESCE(c.total_qty, 0) - COALESCE(c.reserved_qty, 0)) < COALESCE(s.units_sold, 0)
-        ORDER BY suggested_reorder_qty DESC
-        LIMIT 20
-    """
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_p)
     params.update(t_params_l)
     params.update(t_params_def)
-    if company_id:
-        # For simplicity, filtering on fact_stock_quants and fact_sales_orders would be better done in CTEs
-        # We will use the CTEs but add company_id filter
-        pass # To keep it simple, we use the tenant scope for this query in the tool. The real tool should add company_id support.
+    params.update(c_params_o)
+    params.update(c_params_q)
 
-    # Re-writing with company_id support
     sql = f"""
         WITH sales_velocity AS (
             SELECT 
@@ -65,7 +35,7 @@ def get_reorder_recommendations_tool(tenant_id: str, company_id: Optional[int] =
             WHERE 1=1 {t_sql_l} 
               AND o.state IN ('sale', 'done')
               AND o.date_order >= CURRENT_DATE - INTERVAL '{days_history} days'
-              {'AND o.company_id = :company_id' if company_id else ''}
+              {c_sql_o}
             GROUP BY l.product_id
         ),
         current_stock AS (
@@ -75,7 +45,7 @@ def get_reorder_recommendations_tool(tenant_id: str, company_id: Optional[int] =
                 SUM(reserved_quantity) AS reserved_qty
             FROM fact_stock_quants
             WHERE 1=1 {t_sql_def}
-              {'AND company_id = :company_id' if company_id else ''}
+              {c_sql_q}
             GROUP BY product_id
         )
         SELECT 
@@ -91,8 +61,6 @@ def get_reorder_recommendations_tool(tenant_id: str, company_id: Optional[int] =
         ORDER BY suggested_reorder_qty DESC
         LIMIT 20
     """
-    if company_id:
-        params["company_id"] = company_id
 
     rows = run_query(sql, params)
     return {
@@ -102,14 +70,23 @@ def get_reorder_recommendations_tool(tenant_id: str, company_id: Optional[int] =
     }
 
 
-def get_abc_analysis_tool(tenant_id: str, company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> Dict[str, Any]:
+def get_abc_analysis_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> Dict[str, Any]:
     """
     Classifies inventory into A (high value), B (medium), and C (low) categories based on all-time revenue contribution.
     Uses the 80/15/5 Pareto principle.
     """
+    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_ids, column_name="p.tenant_id", prefix="t_p")
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    c_sql_o, c_params_o = build_company_filter_sql(company_ids, column_name="o.company_id", prefix="co")
 
-    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="p.tenant_id", prefix="t_p")
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    params = {}
+    params.update(t_params_p)
+    params.update(t_params_l)
+    params.update(c_params_o)
+
     sql = f"""
         WITH product_revenue AS (
             SELECT 
@@ -118,7 +95,7 @@ def get_abc_analysis_tool(tenant_id: str, company_id: Optional[int] = None, comp
             FROM fact_sales_order_lines l
             JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id
             WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
-              {'AND o.company_id = :company_id' if company_id else ''}
+              {c_sql_o}
             GROUP BY l.product_id
         ),
         ranked_products AS (
@@ -143,6 +120,7 @@ def get_abc_analysis_tool(tenant_id: str, company_id: Optional[int] = None, comp
                     ELSE 'C'
                 END AS abc_class
             FROM ranked_products
+            ORDER BY revenue DESC
         )
         SELECT 
             abc_class,
@@ -152,11 +130,6 @@ def get_abc_analysis_tool(tenant_id: str, company_id: Optional[int] = None, comp
         GROUP BY abc_class
         ORDER BY abc_class
     """
-    params = {"tenant_id": tenant_id}
-    params.update(t_params_p)
-    params.update(t_params_l)
-    if company_id:
-        params["company_id"] = company_id
 
     rows = run_query(sql, params)
     return {
@@ -165,12 +138,20 @@ def get_abc_analysis_tool(tenant_id: str, company_id: Optional[int] = None, comp
     }
 
 
-def get_warehouse_utilization_tool(tenant_id: str, company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> Dict[str, Any]:
+def get_warehouse_utilization_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> Dict[str, Any]:
     """
     Analyzes stock quantities and valuation by physical location.
     """
+    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_ids, column_name="q.tenant_id", prefix="t_q")
+    c_sql_q, c_params_q = build_company_filter_sql(company_ids, column_name="q.company_id", prefix="cq")
 
-    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="q.tenant_id", prefix="t_q")
+    params = {}
+    params.update(t_params_q)
+    params.update(c_params_q)
+
     sql = f"""
         SELECT 
             q.location_name,
@@ -180,14 +161,10 @@ def get_warehouse_utilization_tool(tenant_id: str, company_id: Optional[int] = N
         FROM fact_stock_quants q
         JOIN dim_products p ON q.product_id = p.id AND q.tenant_id = p.tenant_id
         WHERE 1=1 {t_sql_q}
-          {'AND q.company_id = :company_id' if company_id else ''}
+          {c_sql_q}
         GROUP BY q.location_name
         ORDER BY estimated_value DESC
     """
-    params = {"tenant_id": tenant_id}
-    params.update(t_params_q)
-    if company_id:
-        params["company_id"] = company_id
 
     rows = run_query(sql, params)
     return {
@@ -196,12 +173,20 @@ def get_warehouse_utilization_tool(tenant_id: str, company_id: Optional[int] = N
     }
 
 
-def get_fulfillment_rate_tool(tenant_id: str, company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> Dict[str, Any]:
+def get_fulfillment_rate_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> Dict[str, Any]:
     """
     Calculates the % of outgoing deliveries that were delivered on-time (done on or before scheduled date).
     """
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
+    c_sql, c_params = build_company_filter_sql(company_ids, column_name="company_id", prefix="c")
 
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
+    params = {}
+    params.update(t_params_def)
+    params.update(c_params)
+
     sql = f"""
         WITH outbound AS (
             SELECT 
@@ -215,9 +200,7 @@ def get_fulfillment_rate_tool(tenant_id: str, company_id: Optional[int] = None, 
                 END AS is_on_time
             FROM fact_stock_pickings
             WHERE 1=1 {t_sql_def} 
-              -- Odoo outgoing pickings usually have partner_id set and are related to sales, or we just look at picking_type if available.
-              -- We will just analyze all 'done' pickings vs 'done on time'.
-              {'AND company_id = :company_id' if company_id else ''}
+              {c_sql}
         )
         SELECT 
             COUNT(*) AS total_pickings,
@@ -229,10 +212,6 @@ def get_fulfillment_rate_tool(tenant_id: str, company_id: Optional[int] = None, 
             ) AS on_time_delivery_pct
         FROM outbound
     """
-    params = {"tenant_id": tenant_id}
-    params.update(t_params_def)
-    if company_id:
-        params["company_id"] = company_id
 
     rows = run_query(sql, params)
     return {
@@ -241,12 +220,20 @@ def get_fulfillment_rate_tool(tenant_id: str, company_id: Optional[int] = None, 
     }
 
 
-def get_backorder_aging_tool(tenant_id: str, company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> Dict[str, Any]:
+def get_backorder_aging_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> Dict[str, Any]:
     """
     Identifies the oldest unfulfilled stock moves (backorders).
     """
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    c_sql_m, c_params_m = build_company_filter_sql(company_ids, column_name="m.company_id", prefix="cm")
 
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    params = {}
+    params.update(t_params_m)
+    params.update(c_params_m)
+
     sql = f"""
         SELECT 
             m.name AS reference,
@@ -260,14 +247,10 @@ def get_backorder_aging_tool(tenant_id: str, company_id: Optional[int] = None, c
         JOIN dim_products p ON m.product_id = p.id AND m.tenant_id = p.tenant_id
         WHERE 1=1 {t_sql_m} 
           AND m.state NOT IN ('done', 'cancel', 'draft')
-          {'AND m.company_id = :company_id' if company_id else ''}
+          {c_sql_m}
         ORDER BY m.date ASC
         LIMIT 20
     """
-    params = {"tenant_id": tenant_id}
-    params.update(t_params_m)
-    if company_id:
-        params["company_id"] = company_id
 
     rows = run_query(sql, params)
     return {
@@ -276,12 +259,20 @@ def get_backorder_aging_tool(tenant_id: str, company_id: Optional[int] = None, c
     }
 
 
-def get_supplier_lead_time_tool(tenant_id: str, company_id: Optional[int] = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> Dict[str, Any]:
+def get_supplier_lead_time_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> Dict[str, Any]:
     """
     Calculates average actual lead time (in days) from expected date vs actual done date for received items.
     """
+    t_sql_sp, t_params_sp = build_tenant_filter_sql(tenant_ids, column_name="sp.tenant_id", prefix="t_sp")
+    c_sql_sp, c_params_sp = build_company_filter_sql(company_ids, column_name="sp.company_id", prefix="csp")
 
-    t_sql_sp, t_params_sp = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="sp.tenant_id", prefix="t_sp")
+    params = {}
+    params.update(t_params_sp)
+    params.update(c_params_sp)
+
     sql = f"""
         SELECT 
             p.name AS vendor_name,
@@ -292,21 +283,15 @@ def get_supplier_lead_time_tool(tenant_id: str, company_id: Optional[int] = None
         WHERE 1=1 {t_sql_sp} 
           AND sp.state = 'done'
           AND p.is_supplier = TRUE
-          {'AND sp.company_id = :company_id' if company_id else ''}
+          {c_sql_sp}
         GROUP BY p.id, p.name
         HAVING COUNT(sp.id) > 0
         ORDER BY avg_days_late DESC
         LIMIT 15
     """
-    params = {"tenant_id": tenant_id}
-    params.update(t_params_sp)
-    if company_id:
-        params["company_id"] = company_id
 
     rows = run_query(sql, params)
     return {
         "tool_name": "get_supplier_lead_time_tool",
         "supplier_performance": rows
     }
-
-

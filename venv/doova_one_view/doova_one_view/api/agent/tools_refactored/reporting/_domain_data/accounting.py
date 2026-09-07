@@ -12,17 +12,15 @@ logger = logging.getLogger(__name__)
 def enrich(
     data: dict,
     pnl_ctx: dict,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
     prior_start: str | None = None,
     prior_end: str | None = None,
     comparison_label: str = "",
-    **kwargs
 ) -> None:
     """Enriches data dict with Accounting & GL telemetry (6-bucket AR/AP aging, expenses, working capital)."""
     from doova_one_view.api.agent.tools_refactored.finance import (
@@ -36,18 +34,18 @@ def enrich(
     )
 
     try:
-        receivables = get_receivables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
-        payables = get_payables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
-        ar_aging_data = get_aging_analysis_tool(tenant_id, direction="receivable", company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids, as_of_date=end_date)
-        ap_aging_data = get_aging_analysis_tool(tenant_id, direction="payable", company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids, as_of_date=end_date)
-        expenses_data = get_expense_breakdown_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-        bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-        wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        receivables = get_receivables_analysis_tool(tenant_ids=tenant_ids, company_ids=company_ids, base_currency=base_currency)
+        payables = get_payables_analysis_tool(tenant_ids=tenant_ids, company_ids=company_ids, base_currency=base_currency)
+        ar_aging_data = get_aging_analysis_tool(tenant_ids=tenant_ids, company_ids=company_ids, direction="receivable", base_currency=base_currency, as_of_date=end_date)
+        ap_aging_data = get_aging_analysis_tool(tenant_ids=tenant_ids, company_ids=company_ids, direction="payable", base_currency=base_currency, as_of_date=end_date)
+        expenses_data = get_expense_breakdown_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency)
+        bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=end_date, base_currency=base_currency)
+        wc = get_working_capital_tool(tenant_ids=tenant_ids, company_ids=company_ids, base_currency=base_currency)
 
         prior_bs = {}
         if prior_end:
             try:
-                prior_bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+                prior_bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=prior_end, base_currency=base_currency)
             except Exception:
                 pass
 
@@ -215,11 +213,10 @@ def enrich(
 
         # General Ledger Trial Balance & Category Classification (as of period end, matching Odoo GL cumulative state)
         tb_data = get_trial_balance_tool(
-            tenant_id,
-            company_ids=resolved_company_ids,
+            tenant_ids=tenant_ids,
+            company_ids=company_ids,
             as_of_date=end_date,
             base_currency=base_currency,
-            tenant_ids=tenant_ids
         )
 
         raw_accounts = tb_data.get("accounts", [])
@@ -240,13 +237,13 @@ def enrich(
 
         from doova_one_view.api.agent.tools_refactored.common import run_query, build_tenant_filter_sql, build_company_filter_sql, build_currency_case_sql, normalize_company_ids
         
-        t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-        balance_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
-        debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'c.currency_code')
-        credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'c.currency_code')
-        f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=None, companies=resolved_company_ids), column_name="l.company_id")
+        t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
+        balance_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
+        debit_col = build_currency_case_sql('l.debit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
+        credit_col = build_currency_case_sql('l.credit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
+        f_sql, f_params = build_company_filter_sql(company_ids, column_name="l.company_id")
         
-        gl_params = {"tenant_id": tenant_id, "end_date": end_date}
+        gl_params = {"end_date": end_date}
         gl_params.update(t_params_l)
         gl_params.update(f_params)
         

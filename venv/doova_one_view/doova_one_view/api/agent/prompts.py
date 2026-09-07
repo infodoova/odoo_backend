@@ -521,7 +521,8 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
         }
     ]),
     # BLOCK 2: Dynamic context — sent fresh every request (small, ~100 tokens)
-    ("system", """TENANT: {tenant_id}
+    ("system", """PRIMARY_TENANT: {tenant_id}
+    TARGET_TENANTS: {tenant_ids}
     COMPANY_IDS: {company_ids}
     CURRENCY: {currency}
 
@@ -551,12 +552,12 @@ AGENT_SYSTEM_PROMPT = ChatPromptTemplate.from_messages([
     - ALWAYS present financial metrics, revenues, and balances using the currency {currency} (e.g., if the currency is XAF, present values as "XAF 150M" or "150M XAF", NOT "$150M").
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    COMPANY FILTER RULES — MANDATORY
+    TENANT & COMPANY SCOPE RULES — MANDATORY
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    - You are operating for company_ids = {company_ids}.
-    - EVERY tool call you make MUST pass company_ids = {company_ids} as a parameter.
-    - NEVER omit company_ids from any tool invocation. Omitting it returns data for ALL companies, which is a critical data isolation violation if specific companies were requested.
-    - If a tool does not accept company_ids, ensure tenant_id = {tenant_id} is passed to restrict the scope.
+    - You are operating for tenant_ids = {tenant_ids} and company_ids = {company_ids}.
+    - EVERY tool call you make MUST pass tenant_ids = {tenant_ids} and company_ids = {company_ids}.
+    - Pass company_ids as a list of integers (e.g. [36, 37]), and tenant_ids as a list of UUID strings.
+    - NEVER omit these scope parameters from tool invocations. Omitting company_ids queries all companies in the tenant. Omitting tenant_ids queries across all tenants.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     LANGUAGE & VOICE RULES — MANDATORY

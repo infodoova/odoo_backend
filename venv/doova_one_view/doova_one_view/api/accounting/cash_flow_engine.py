@@ -36,19 +36,20 @@ class CashFlowEngine:
     """
 
     @classmethod
-    def get_liquidity_filter(cls, tenant_id: str) -> Q:
+    def get_liquidity_filter(cls, tenant_ids: Optional[list[str]] = None) -> Q:
         """
         Builds the canonical liquidity Q-filter identifying all bank, cash, and
         clearing accounts (IAS 7 Cash & Cash Equivalents).
         """
-        journal_account_codes = list(
-            AccountJournal.objects.filter(
-                tenant_id=tenant_id,
-                type__in=['bank', 'cash']
-            ).exclude(
-                default_account_code__isnull=True
-            ).values_list('default_account_code', flat=True)
-        )
+        from doova_one_view.api.agent.query_context import normalize_tenant_ids
+        clean_tenants = normalize_tenant_ids(tenant_ids)
+        journal_qs = AccountJournal.objects.filter(type__in=['bank', 'cash']).exclude(default_account_code__isnull=True)
+        if clean_tenants:
+            if len(clean_tenants) == 1:
+                journal_qs = journal_qs.filter(tenant_id=clean_tenants[0])
+            else:
+                journal_qs = journal_qs.filter(tenant_id__in=clean_tenants)
+        journal_account_codes = list(journal_qs.values_list('default_account_code', flat=True))
 
         # Only use numeric account codes from journals (e.g. "51200001", "53000001").
         # Short journal codes like "Bank", "Cash", "Cheques" must be excluded because
@@ -938,7 +939,7 @@ class CashFlowEngine:
         Returns individual contributing journal entries and counterpart items for any Cash Flow section.
         Adheres to Workspace Rule #1 (date synchronization).
         """
-        liq_filter = cls.get_liquidity_filter(tenant_id)
+        liq_filter = cls.get_liquidity_filter(tenant_ids=[tenant_id] if tenant_id else None)
 
         period_qs = AccountMove.objects.filter(
             tenant_id=tenant_id,

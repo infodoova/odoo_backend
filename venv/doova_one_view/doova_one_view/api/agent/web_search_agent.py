@@ -126,7 +126,6 @@ class WebSearchAgent:
 
     def _build_system_prompt(
         self,
-        tenant_id: str,
         tenant_ids: List[str],
         company_ids: List[int],
         currency: str,
@@ -139,11 +138,12 @@ class WebSearchAgent:
         """
         # Format base prompt template
         today_str = datetime.now().strftime("%Y-%m-%d")
+        primary_tenant_id = tenant_ids[0] if tenant_ids else "default"
         
         # AGENT_SYSTEM_PROMPT is a ChatPromptTemplate with placeholders
         base_prompt_text = (
             f"Current Date: {today_str}\n"
-            f"Primary Tenant ID: {tenant_id}\n"
+            f"Primary Tenant ID: {primary_tenant_id}\n"
             f"Active Tenant IDs: {tenant_ids}\n"
             f"Active Company IDs: {company_ids}\n"
             f"Reporting Currency: {currency}\n"
@@ -163,20 +163,16 @@ class WebSearchAgent:
             elif code_lower.startswith("en") or "english" in code_lower:
                 lang_directive = "- TARGET LANGUAGE OVERRIDE: The user selected ENGLISH (en). You MUST reply 100% in English."
             else:
-                lang_directive = f"- TARGET LANGUAGE OVERRIDE: The user selected {lang_str}. You MUST reply 100% in {lang_str}, even if the user query is in English. Strictly do not reply in English."
+                lang_directive = f"- TARGET LANGUAGE OVERRIDE: The user selected '{lang_str}'. You MUST reply 100% in '{lang_str}'."
         else:
-            lang_directive = "- You MUST reply strictly in the exact same language as the user's latest query (e.g. if the user query is in English, reply in English; if in Arabic, reply in Arabic; if in French, reply in French)."
+            lang_directive = "- LANGUAGE: Match the user's natural language automatically."
 
-        # Combine with web search operational guidelines
         dynamic_system_prompt = (
-            f"{base_prompt_text}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"AGENT CORE INSTRUCTIONS\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"You are the senior AI business advisor for Doova One View.\n"
-            f"You have access to 40+ internal business tools, native real-time Web Search, and Web Fetch (deep URL reading).\n\n"
-            f"LANGUAGE & LOCALIZATION DIRECTIVE (STRICT):\n"
+            f"{base_prompt_text}\n"
+            f"LANGUAGE & VOICE DIRECTIVES:\n"
             f"{lang_directive}\n"
+            f"- If the user's latest query is in Arabic, reply 100% in Arabic.\n"
+            f"- If the user's latest query is in English, reply 100% in English.\n"
             f"- NEVER maintain or reply in an older session language if the user switched languages in their latest query.\n\n"
             f"{WEB_SEARCH_SYSTEM_PROMPT_ADDITION}"
         )
@@ -221,10 +217,8 @@ class WebSearchAgent:
     def run(
         self,
         message: str,
-        tenant_id: Optional[str] = None,
-        company_id: Optional[int] = None,
-        company_ids: Optional[List[int]] = None,
         tenant_ids: Optional[List[str]] = None,
+        company_ids: Optional[List[int]] = None,
         chat_history: Optional[List[Dict[str, Any]]] = None,
         memory_summary: str = "",
         language: Optional[str] = None,
@@ -238,10 +232,10 @@ class WebSearchAgent:
         from .query_context import normalize_company_ids, normalize_tenant_ids
         from .utils import get_tenant_currency
 
-        resolved_tenant_ids = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
-        primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else (tenant_id or "default")
+        resolved_tenant_ids = normalize_tenant_ids(tenant_ids)
+        primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else "default"
 
-        resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+        resolved_company_ids = normalize_company_ids(company_ids)
         resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
 
         currency = get_tenant_currency(primary_tenant_id, resolved_company_id)
@@ -254,7 +248,6 @@ class WebSearchAgent:
         )
 
         system_prompt = self._build_system_prompt(
-            tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
             company_ids=resolved_company_ids,
             currency=currency,

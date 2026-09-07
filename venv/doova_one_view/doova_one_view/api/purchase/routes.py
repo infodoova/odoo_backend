@@ -28,8 +28,8 @@ from doova_one_view.api.tenants.service import TenantService
 router = APIRouter(prefix="/purchase", tags=["Purchase"])
 
 
-def _company_ids(companies: Optional[str]) -> Optional[list[int]]:
-    return parse_company_ids(companies)
+def _company_ids(company_ids: Optional[str] = None) -> Optional[list[int]]:
+    return parse_company_ids(company_ids)
 
 
 @router.get("/{tenant_id}/summary")
@@ -37,14 +37,14 @@ async def get_purchase_summary(
     tenant_id: str,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_purchase_overview,
 ) -> PurchaseSummary:
     """doova-compatible summary plus optional backend filters."""
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_summary(
-        tenant_id, start_date, end_date, _company_ids(companies), base_currency
+        tenant_id, start_date, end_date, _company_ids(company_ids), base_currency
     )
 
 
@@ -53,13 +53,13 @@ async def get_purchase_dashboard(
     tenant_id: str,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_purchase_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_dashboard(
-        tenant_id, start_date, end_date, _company_ids(companies), base_currency
+        tenant_id, start_date, end_date, _company_ids(company_ids), base_currency
     )
 
 
@@ -68,13 +68,13 @@ async def get_purchase_kpis(
     tenant_id: str,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_purchase_overview,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_dashboard(
-        tenant_id, start_date, end_date, _company_ids(companies), base_currency
+        tenant_id, start_date, end_date, _company_ids(company_ids), base_currency
     )
 
 
@@ -84,12 +84,12 @@ async def list_purchase_orders(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     partner_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_purchase_orders,
 ) -> PaginatedResponse[PurchaseOrderRead]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_orders(
-        tenant_id, limit, offset, partner_id, _company_ids(companies)
+        tenant_id, limit, offset, partner_id, _company_ids(company_ids)
     )
 
 
@@ -97,12 +97,12 @@ async def list_purchase_orders(
 async def get_purchase_order(
     tenant_id: str,
     order_id: int,
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_purchase_orders,
 ) -> PurchaseOrderWithLinesRead:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await PurchaseService.get_order(
-        tenant_id, order_id, _company_ids(companies)
+        tenant_id, order_id, _company_ids(company_ids)
     )
 
 
@@ -131,12 +131,12 @@ async def search_purchase_orders(
 @router.get("/{tenant_id}/export")
 async def export_purchase_orders(
     tenant_id: str,
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _export_purchase_orders,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await PurchaseService.export_orders_csv(
-        tenant_id, _company_ids(companies)
+        tenant_id, _company_ids(company_ids)
     )
     return Response(
         content=csv_content,
@@ -157,14 +157,14 @@ async def get_dashboard_metric_details(
     metric: str = Query(..., description="E.g., total_spend, order_count, avg_order_value, or a state like draft/purchase"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_purchase_overview,
 ) -> MetricDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(companies)
+    company_ids = _company_ids(company_ids)
     return await PurchaseService.get_dashboard_metric_details(
         tenant_id=tenant_id,
         metric=metric,
@@ -180,14 +180,14 @@ async def get_dashboard_metric_details(
 async def get_daily_orders(
     tenant_id: str,
     day: str = Query(..., description="The calendar day to drill into (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_purchase_overview,
 ) -> DailyOrdersResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(companies)
+    company_ids = _company_ids(company_ids)
     return await PurchaseService.get_daily_orders(
         tenant_id=tenant_id,
         day=day,
@@ -204,14 +204,14 @@ async def get_market_breakdown_details(
     entity_id: int = Query(..., description="The entity ID (partner_id / product_id / user_id)"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_purchase_overview,
 ) -> MarketBreakdownResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(companies)
+    company_ids = _company_ids(company_ids)
     return await PurchaseService.get_market_breakdown_details(
         tenant_id=tenant_id,
         section=section,
@@ -230,14 +230,14 @@ async def get_product_purchase_details(
     product_id: int = Query(..., description="The product's Django pk"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_purchase_overview,
 ) -> ProductPurchaseDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(companies)
+    company_ids = _company_ids(company_ids)
     return await PurchaseService.get_product_purchase_details(
         tenant_id=tenant_id,
         product_id=product_id,

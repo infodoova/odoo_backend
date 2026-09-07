@@ -47,9 +47,19 @@ def _bool_to_csv(value: Any) -> str:
 
 
 def _company_filter(qs, company_ids: Optional[list[int]]):
-    if company_ids and hasattr(qs.model, "company"):
-        qs = qs.filter(company_id__in=company_ids)
-    return qs
+    from doova_one_view.api.agent.query_context import apply_scope_filter_orm, normalize_company_ids
+    norm_comps = normalize_company_ids(company_ids)
+    if not norm_comps or not hasattr(qs.model, "company"):
+        return qs
+    from odoo_app.models.company import Company
+    from django.db.models import Q
+    resolved_ids = set(
+        Company.objects.filter(
+            Q(id__in=norm_comps) | Q(odoo_id__in=norm_comps)
+        ).values_list("id", flat=True)
+    )
+    final_ids = sorted(list(resolved_ids)) if resolved_ids else norm_comps
+    return apply_scope_filter_orm(qs, "company_id", final_ids)
 
 
 def _company_to_item(company: Company) -> dict[str, Any]:

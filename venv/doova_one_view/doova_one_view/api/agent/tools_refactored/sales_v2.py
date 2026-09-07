@@ -1,15 +1,23 @@
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
-from typing import Optional
 # api/agent/tools_refactored/sales_v2.py
+from typing import Optional
+from .common import (
+    run_query,
+    build_company_filter_sql,
+    build_tenant_filter_sql,
+    build_currency_case_sql,
+)
 
-from .common import run_query, normalize_company_ids, build_company_filter_sql, build_currency_case_sql
 
-def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('o.amount_total', tenant_id, base_currency)
-    margin_col = build_currency_case_sql('o.margin', tenant_id, base_currency)
+def get_salesperson_performance_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_ids, column_name="o.tenant_id", prefix="t_o")
+    amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    margin_col = build_currency_case_sql('o.margin', tenant_ids=tenant_ids, base_currency=base_currency)
     
     query = f"""
         SELECT 
@@ -21,9 +29,9 @@ def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = No
         JOIN dim_users u ON o.user_id = u.id AND o.tenant_id = u.tenant_id
         WHERE 1=1 {t_sql_o} AND o.state IN ('sale', 'done')
     """
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_o)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
     
@@ -58,11 +66,15 @@ def get_salesperson_performance_tool(tenant_id: str, company_id: int | None = No
     }
 
 
-def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+def get_sales_pipeline_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
     
     query = f"""
         SELECT 
@@ -72,9 +84,9 @@ def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, compa
         FROM fact_sales_orders
         WHERE 1=1 {t_sql_def}
     """
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_def)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    f_sql, f_params = build_company_filter_sql(company_ids)
     query += f_sql
     params.update(f_params)
     
@@ -124,13 +136,15 @@ def get_sales_pipeline_tool(tenant_id: str, company_id: int | None = None, compa
     }
 
 
-def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    
-    # discount value is price_unit * qty * discount / 100
-    price_col = build_currency_case_sql('l.price_unit', tenant_id, base_currency, currency_column='o.currency_code')
+def get_discount_leakage_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    price_col = build_currency_case_sql('l.price_unit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code')
     
     query = f"""
         SELECT 
@@ -141,9 +155,9 @@ def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, com
         JOIN fact_sales_orders o ON o.id = l.sales_order_id AND o.tenant_id = l.tenant_id
         WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
     """
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_l)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
     
@@ -190,11 +204,14 @@ def get_discount_leakage_tool(tenant_id: str, company_id: int | None = None, com
     }
 
 
-def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, limit: int = 10, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('o.amount_total', tenant_id, base_currency)
+def get_customer_lifetime_value_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    base_currency: str | None = None,
+    limit: int = 10,
+) -> dict:
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_ids, column_name="o.tenant_id", prefix="t_o")
+    amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
     
     query = f"""
         SELECT 
@@ -207,9 +224,9 @@ def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = No
         JOIN dim_partners p ON o.partner_id = p.id AND o.tenant_id = p.tenant_id
         WHERE 1=1 {t_sql_o} AND o.state IN ('sale', 'done')
     """
-    params = {"tenant_id": tenant_id, "limit": limit}
+    params = {"limit": limit}
     params.update(t_params_o)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
     
@@ -221,7 +238,6 @@ def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = No
     for r in rows:
         rev = float(r.get("lifetime_revenue", 0))
         orders = int(r.get("order_count", 0))
-        # Simple tiering
         tier = "Bronze"
         if rev > 100000: tier = "Platinum"
         elif rev > 50000: tier = "Gold"
@@ -246,10 +262,14 @@ def get_customer_lifetime_value_tool(tenant_id: str, company_id: int | None = No
     }
 
 
-def get_order_to_cash_cycle_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+def get_order_to_cash_cycle_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_ids, column_name="o.tenant_id", prefix="t_o")
     
     query = f"""
         SELECT 
@@ -262,9 +282,9 @@ def get_order_to_cash_cycle_tool(tenant_id: str, company_id: int | None = None, 
           AND am.move_type = 'out_invoice'
           AND am.state = 'posted'
     """
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_o)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
     
@@ -286,11 +306,15 @@ def get_order_to_cash_cycle_tool(tenant_id: str, company_id: int | None = None, 
     }
 
 
-def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    price_col = build_currency_case_sql('l.price_subtotal', tenant_id, base_currency, currency_column='o.currency_code')
+def get_revenue_by_category_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    price_col = build_currency_case_sql('l.price_subtotal', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code')
     
     query = f"""
         SELECT 
@@ -304,9 +328,9 @@ def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, 
         WHERE 1=1 {t_sql_l} 
           AND o.state IN ('sale', 'done')
     """
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_l)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="o.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="o.company_id")
     query += f_sql
     params.update(f_params)
     
@@ -338,5 +362,3 @@ def get_revenue_by_category_tool(tenant_id: str, company_id: int | None = None, 
         "total_revenue": total_rev,
         "categories": categories
     }
-
-

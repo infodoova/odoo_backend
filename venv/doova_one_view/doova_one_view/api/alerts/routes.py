@@ -389,9 +389,13 @@ async def run_alert_now(
     from doova_one_view.api.jobs.alert_job import AlertJobManager
 
     try:
+        target_tenants = schedule.tenants if (schedule.tenants and len(schedule.tenants) > 0) else []
+        target_companies = schedule.companies or []
+
         raw_res = await AlertJobManager.run_check(
             schedule=schedule,
-            tenant_id=tenant_id,
+            tenant_ids=target_tenants,
+            company_ids=target_companies,
             send_email=send_email_flag,
             is_instant=True,
         )

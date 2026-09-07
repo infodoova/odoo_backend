@@ -111,9 +111,9 @@ class AlertJobManager:
                         try:
                             await AlertJobManager.run_check(
                                 schedule=schedule,
-                                tenant_id=tid,
                                 send_email=True,
                                 is_instant=False,
+                                tenant_ids=[tid],
                             )
                         except Exception:
                             logger.error(
@@ -122,13 +122,13 @@ class AlertJobManager:
                 else:
                     if schedule.tenant_id or schedule.tenants:
                         try:
-                            tenant_ids = schedule.tenants if schedule.tenants else None
+                            target_tenants = schedule.tenants if schedule.tenants else ([str(schedule.tenant_id)] if schedule.tenant_id else None)
                             await AlertJobManager.run_check(
                                 schedule=schedule,
-                                tenant_id=str(schedule.tenant_id) if schedule.tenant_id else None,
                                 send_email=True,
                                 is_instant=False,
-                                tenant_ids=tenant_ids,
+                                tenant_ids=target_tenants,
+                                company_ids=schedule.companies if schedule.companies else None,
                             )
                         except Exception:
                             logger.error(
@@ -147,20 +147,25 @@ class AlertJobManager:
         return await _fetch()
 
     @staticmethod
-    async def _check_daily_rate_limit(tenant_id: str) -> bool:
+    async def _check_daily_rate_limit(tenant_ids: list[str] | None = None) -> bool:
         @db_sync_to_async
         def _check():
             from odoo_app.models.alert_schedule import AlertLog
             from doova_one_view.api.agent.config import AgentConfig
             from datetime import timedelta
             from django.utils import timezone
+            from doova_one_view.api.agent.query_context import normalize_tenant_ids
 
             limit = getattr(AgentConfig, "MAX_DAILY_ALERT_CHECKS_PER_TENANT", 20)
             cutoff = timezone.now() - timedelta(days=1)
-            count = AlertLog.objects.filter(
-                tenant_id=tenant_id,
-                checked_at__gte=cutoff,
-            ).count()
+            t_ids = normalize_tenant_ids(tenant_ids)
+            if not t_ids:
+                return False
+            qs = AlertLog.objects.filter(checked_at__gte=cutoff)
+            if len(t_ids) == 1:
+                count = qs.filter(tenant_id=t_ids[0]).count()
+            else:
+                count = qs.filter(tenant_id__in=t_ids).count()
             return count >= limit
 
         return await _check()
@@ -172,38 +177,59 @@ class AlertJobManager:
     @staticmethod
     async def run_check(
         schedule,
-        tenant_id: str,
-        send_email: bool,
-        is_instant: bool,
+        send_email: bool = True,
+        is_instant: bool = False,
         tenant_ids: list | None = None,
+        company_ids: list | None = None,
     ) -> dict:
         """
-        Run the AI anomaly check for one (schedule, tenant) pair.
+        Run the AI anomaly check for one schedule scoped to tenant_ids and company_ids.
         """
+        from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+
         now = datetime.now(tz.utc)
-        company_ids = schedule.companies if schedule.companies else None
+        
+        # Determine execution tenant scope strictly from target sources (no creator pollution)
+        if tenant_ids is not None:
+            t_source = tenant_ids
+        elif getattr(schedule, "tenants", None):
+            t_source = schedule.tenants
+        else:
+            t_source = []
 
-        # Rate limiting: Check if tenant exceeded 24-hour max AI alert checks
-        is_exceeded = await AlertJobManager._check_daily_rate_limit(tenant_id)
-        if is_exceeded:
-            if is_instant:
-                from fastapi import HTTPException
-                from doova_one_view.api.agent.config import AgentConfig
-                max_limit = getattr(AgentConfig, "MAX_DAILY_ALERT_CHECKS_PER_TENANT", 20)
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Rate limit exceeded: Maximum daily AI alert checks ({max_limit}) reached for this tenant."
-                )
+        resolved_tenant_ids = normalize_tenant_ids(t_source)
+        primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else (str(schedule.tenant_id) if getattr(schedule, "tenant_id", None) else None)
 
+        if company_ids is not None:
+            c_source = company_ids
+        elif getattr(schedule, "companies", None):
+            c_source = schedule.companies
+        else:
+            c_source = []
 
-            else:
-                logger.warning(f"AlertJobManager: daily rate limit reached for tenant={tenant_id} — skipping check.")
-                return {
-                    "condition_triggered": False,
-                    "summary": "RATE LIMIT: Daily alert check limit reached for this tenant.",
-                    "alert_sent": False,
-                    "log_id": None,
-                }
+        resolved_company_ids = normalize_company_ids(c_source)
+
+        # Rate limiting: Check if primary tenant exceeded 24-hour max AI alert checks
+        check_ids = resolved_tenant_ids if resolved_tenant_ids else ([primary_tenant_id] if primary_tenant_id else None)
+        if check_ids:
+            is_exceeded = await AlertJobManager._check_daily_rate_limit(tenant_ids=check_ids)
+            if is_exceeded:
+                if is_instant:
+                    from fastapi import HTTPException
+                    from doova_one_view.api.agent.config import AgentConfig
+                    max_limit = getattr(AgentConfig, "MAX_DAILY_ALERT_CHECKS_PER_TENANT", 20)
+                    raise HTTPException(
+                        status_code=429,
+                        detail=f"Rate limit exceeded: Maximum daily AI alert checks ({max_limit}) reached for this tenant."
+                    )
+                else:
+                    logger.warning(f"AlertJobManager: daily rate limit reached for tenant={primary_tenant_id} — skipping check.")
+                    return {
+                        "condition_triggered": False,
+                        "summary": "RATE LIMIT: Daily alert check limit reached for this tenant.",
+                        "alert_sent": False,
+                        "log_id": None,
+                    }
 
         if not is_instant:
             @db_sync_to_async
@@ -224,10 +250,9 @@ class AlertJobManager:
 
         try:
             summary, condition_triggered, severity = await AlertJobManager._detect_anomalies(
-                tenant_id=tenant_id,
-                company_ids=company_ids,
+                company_ids=resolved_company_ids,
                 user_prompt=schedule.prompt,
-                tenant_ids=tenant_ids,
+                tenant_ids=resolved_tenant_ids,
                 thresholds=getattr(schedule, "thresholds", None),
             )
 
@@ -236,10 +261,10 @@ class AlertJobManager:
             if should_send:
                 await AlertJobManager._send_alert_email(
                     schedule=schedule,
-                    tenant_id=tenant_id,
                     summary=summary,
                     is_anomaly=condition_triggered,
                     severity=severity,
+                    tenant_ids=resolved_tenant_ids,
                 )
                 alert_sent = True
 
@@ -248,7 +273,7 @@ class AlertJobManager:
             def _log_success():
                 from odoo_app.models.alert_schedule import AlertLog
                 from odoo_app.models.tenant import Tenant
-                tenant_obj = Tenant.objects.filter(id=tenant_id).first()
+                tenant_obj = Tenant.objects.filter(id=primary_tenant_id).first() if primary_tenant_id else None
                 return AlertLog.objects.create(
                     schedule=schedule,
                     tenant=tenant_obj,
@@ -261,7 +286,7 @@ class AlertJobManager:
             log_id = await _log_success()
             logger.info(
                 f"AlertJobManager: check done schedule={schedule.id} "
-                f"tenant={tenant_id} condition_triggered={condition_triggered}"
+                f"tenant_ids={resolved_tenant_ids} condition_triggered={condition_triggered}"
             )
             from doova_one_view.api.agent.metrics import metrics_registry
             metrics_registry.record_alert_check(condition_triggered=condition_triggered, alert_sent=alert_sent, skipped_llm=False, status="completed")
@@ -276,7 +301,7 @@ class AlertJobManager:
         except Exception as exc:
             error_msg = str(exc)
             logger.exception(
-                f"AlertJobManager: check failed schedule={schedule.id} tenant={tenant_id}"
+                f"AlertJobManager: check failed schedule={schedule.id} tenant_ids={resolved_tenant_ids}"
             )
 
             # next_check_at already advanced in _claim — just log the failure
@@ -284,7 +309,7 @@ class AlertJobManager:
             def _log_failure():
                 from odoo_app.models.alert_schedule import AlertLog
                 from odoo_app.models.tenant import Tenant
-                tenant_obj = Tenant.objects.filter(id=tenant_id).first()
+                tenant_obj = Tenant.objects.filter(id=primary_tenant_id).first() if primary_tenant_id else None
                 return AlertLog.objects.create(
                     schedule=schedule,
                     tenant=tenant_obj,
@@ -307,7 +332,6 @@ class AlertJobManager:
 
     @staticmethod
     async def _detect_anomalies(
-        tenant_id: str,
         company_ids: list | None,
         user_prompt: str,
         tenant_ids: list | None = None,
@@ -321,14 +345,14 @@ class AlertJobManager:
 
         # Tier 1: Deterministic SQL Pre-Checks (zero LLM cost)
         precheck_res = await asyncio.to_thread(
-            run_all_prechecks, tenant_id, company_ids, tenant_ids=tenant_ids, thresholds=thresholds
+            run_all_prechecks, tenant_ids=tenant_ids, company_ids=company_ids, thresholds=thresholds
         )
         has_custom_prompt = bool(
             user_prompt and user_prompt.strip() and user_prompt.strip() != DEFAULT_ALERT_PROMPT
         )
 
         if not precheck_res["any_triggered"] and not has_custom_prompt:
-            logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant={tenant_id} and no custom prompt — skipping LLM inference.")
+            logger.info(f"AlertJobManager: Tier 1 pre-checks CLEAR for tenant_ids={tenant_ids} and no custom prompt — skipping LLM inference.")
             from doova_one_view.api.agent.metrics import metrics_registry
             metrics_registry.record_alert_check(condition_triggered=False, alert_sent=False, skipped_llm=True, status="completed")
             return "OK: All monitored financial, inventory, and operational metrics are within normal baseline ranges.", False, "success"
@@ -351,10 +375,10 @@ class AlertJobManager:
         from doova_one_view.api.agent.tools_refactored.communication import serialize_alert_context
 
         context_json = serialize_alert_context(
-            tenant_id=tenant_id,
+            tenant_ids=tenant_ids,
+            company_ids=company_ids,
             user_prompt=user_prompt,
             thresholds=thresholds,
-            company_ids=company_ids,
             precheck_summary=precheck_res.get("precheck_summary", ""),
         )
 
@@ -418,8 +442,9 @@ class AlertJobManager:
             f"5. Quantify impact clearly: amounts, percentages, deltas vs. prior periods, and time horizons.\n"
             f"6. Write for a business owner: concise, direct, plain-spoken, and grounded in verifiable data.\n"
             f"7. NO RECOMMENDATIONS OR ADVICE: Alerts are strictly factual disclosures. NEVER include recommendations, advice, next steps, or tool commentary in alerts.\n"
-            f"8. Before writing your final report, reason step-by-step inside <thinking> tags: restate the user's question, identify the relevant data points, test them against the rubric, and decide severity. Keep this reasoning out of the final report sections.\n"
-            f"9. Then output your final assessment exactly per <output_format>.\n"
+            f"8. IMPORTANT: When invoking data retrieval tools, ALWAYS pass the 'tenant_ids' array exactly as it appears in <alert_context_json>. Do NOT pass the singular 'tenant_id' argument, use 'tenant_ids' exclusively.\n"
+            f"9. Before writing your final report, reason step-by-step inside <thinking> tags: restate the user's question, identify the relevant data points, test them against the rubric, and decide severity. Keep this reasoning out of the final report sections.\n"
+            f"10. Then output your final assessment exactly per <output_format>.\n"
             f"</instructions>\n\n"
 
             f"<analysis_quality_standards>\n"
@@ -477,12 +502,17 @@ class AlertJobManager:
 
         agent = DoovaLangChainAgent()
         try:
-            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids, tenant_ids=tenant_ids)
+            result = await asyncio.to_thread(
+                agent.run,
+                full_prompt,
+                tenant_ids=tenant_ids,
+                company_ids=company_ids,
+            )
             result = result.strip() if result else ""
         except Exception as exc:
             err_str = str(exc)
             if any(k in err_str.lower() for k in ["credit balance", "insufficient_quota", "quota", "invalid_request_error", "payment_required"]):
-                logger.error(f"AlertJobManager: Upstream LLM provider quota/credit error for tenant={tenant_id}: {exc}")
+                logger.error(f"AlertJobManager: Upstream LLM provider quota/credit error for tenant_ids={tenant_ids}: {exc}")
                 return (
                     "INFO: AI Advisor Service Temporarily Unavailable\n\n"
                     "## Service Notice\n"
@@ -491,7 +521,7 @@ class AlertJobManager:
                     False,
                     "info",
                 )
-            logger.error(f"AlertJobManager: AI execution error for tenant={tenant_id}: {exc}")
+            logger.error(f"AlertJobManager: AI execution error for tenant_ids={tenant_ids}: {exc}")
             return (
                 f"INFO: AI Advisor Execution Exception\n\n## Service Notice\n{err_str}",
                 False,
@@ -573,7 +603,7 @@ class AlertJobManager:
     # ------------------------------------------------------------------
 
     @staticmethod
-    async def _send_alert_email(schedule, tenant_id: str, summary: str, is_anomaly: bool = True, severity: str = "critical"):
+    async def _send_alert_email(schedule, summary: str, is_anomaly: bool = True, severity: str = "critical", tenant_ids: list | None = None):
         from doova_one_view.api.email.service import EmailService
         from doova_one_view.api.agent.tools_refactored.communication import _format_alert_email_html
         @db_sync_to_async
@@ -612,7 +642,7 @@ class AlertJobManager:
             title=f"{prefix} — {tenant_name}",
             message=summary,
             severity=severity,
-            tenant_id=tenant_id,
+            tenant_ids=tenant_ids,
         )
 
         sent_count = 0

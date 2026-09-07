@@ -20,13 +20,12 @@ logger = logging.getLogger(__name__)
 
 def _fetch_domain_report_data(
     resolved_domain: str,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
     prior_start: str | None = None,
     prior_end: str | None = None,
     comparison_label: str = "",
@@ -41,7 +40,7 @@ def _fetch_domain_report_data(
 
     data = {}
     try:
-        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+        pnl = calculate_pnl_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Domain P&L fetch error: {e}")
         pnl = {}
@@ -49,7 +48,7 @@ def _fetch_domain_report_data(
     prior_pnl = {}
     if prior_start and prior_end:
         try:
-            prior_pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+            prior_pnl = calculate_pnl_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency)
         except Exception as e:
             logger.warning(f"Prior P&L fetch error in domain pipeline: {e}")
 
@@ -93,12 +92,11 @@ def _fetch_domain_report_data(
             enrich_fn(
                 data=data,
                 pnl_ctx=pnl_ctx,
-                tenant_id=tenant_id,
-                resolved_company_ids=resolved_company_ids,
+                tenant_ids=tenant_ids,
+                company_ids=company_ids,
                 start_date=start_date,
                 end_date=end_date,
                 base_currency=base_currency,
-                tenant_ids=tenant_ids,
                 currency=currency,
                 prior_start=prior_start,
                 prior_end=prior_end,

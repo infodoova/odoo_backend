@@ -1,50 +1,33 @@
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
-from typing import Optional
 # api/agent/tools_refactored/purchasing.py
-
-"""
-Purchasing Intelligence Tools Ã¢â‚¬â€ 7 tools covering the entire procurement domain.
-
-Tools:
-  1. get_purchase_summary_tool        Ã¢â‚¬â€ total spend, PO count, avg PO value
-  2. get_top_vendors_tool             Ã¢â‚¬â€ vendors ranked by spend
-  3. get_vendor_performance_tool      Ã¢â‚¬â€ delivery metrics per vendor
-  4. get_procurement_category_breakdown_tool Ã¢â‚¬â€ spend by product category
-  5. get_purchase_vs_sales_margin_tool Ã¢â‚¬â€ buy vs sell price analysis
-  6. get_po_fulfillment_tool          Ã¢â‚¬â€ overdue/partial POs
-  7. get_purchase_trend_tool          Ã¢â‚¬â€ monthly spend time series
-"""
-
+from typing import Optional
 from .common import (
     run_query,
-    normalize_company_ids,
     build_company_filter_sql,
+    build_tenant_filter_sql,
     calculate_ratio,
     build_currency_case_sql,
     get_multi_currency_conversions,
 )
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 1. PURCHASE SUMMARY
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_purchase_summary_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Total confirmed purchase spend, PO count, and average PO value."""
 
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    params: dict = {"tenant_id": tenant_id}
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    params: dict = {}
     params.update(t_params_def)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected)
+    f_sql, f_params = build_company_filter_sql(company_ids)
     params.update(f_params)
 
     date_sql = ""
@@ -71,7 +54,6 @@ def get_purchase_summary_tool(
 
     row = rows[0] if rows else {}
     spend = float(row.get("total_spend") or 0)
-    cid_single = selected[0] if len(selected) == 1 else None
     return {
         "tool_name": "get_purchase_summary_tool",
         "total_spend": spend,
@@ -79,34 +61,32 @@ def get_purchase_summary_tool(
         "avg_po_value": round(float(row.get("avg_po_value") or 0), 2),
         "first_po_date": str(row.get("first_po_date") or ""),
         "last_po_date": str(row.get("last_po_date") or ""),
-        "currency_conversions": get_multi_currency_conversions(spend, tenant_id, company_id=company_id, company_ids=company_ids, base_currency=base_currency, tenant_ids=tenant_ids, start_date=start_date, end_date=end_date, domain="purchasing"),
+        "currency_conversions": get_multi_currency_conversions(spend, tenant_ids=tenant_ids, company_ids=company_ids, base_currency=base_currency, start_date=start_date, end_date=end_date, domain="purchasing"),
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 2. TOP VENDORS BY SPEND
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_top_vendors_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int = 10,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Rank vendors by total confirmed purchase spend."""
 
-    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_po")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_ids, column_name="po.tenant_id", prefix="t_po")
     amount_col = build_currency_case_sql(
-        'po.amount_total', tenant_id, base_currency, 'po.currency_code'
+        'po.amount_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='po.currency_code'
     )
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params: dict = {"limit": limit}
     params.update(t_params_po)
     f_sql, f_params = build_company_filter_sql(
-        tenant_id, selected, column_name="po.company_id"
+        company_ids, column_name="po.company_id"
     )
     params.update(f_params)
 
@@ -150,28 +130,26 @@ def get_top_vendors_tool(
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 3. VENDOR PERFORMANCE SCORECARD
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_vendor_performance_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     limit: int = 10,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Per-vendor on-time delivery rate and average lead time."""
 
-    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_po")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_ids, column_name="po.tenant_id", prefix="t_po")
     amount_col = build_currency_case_sql(
-        'po.amount_total', tenant_id, base_currency, 'po.currency_code'
+        'po.amount_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='po.currency_code'
     )
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params: dict = {"limit": limit}
     params.update(t_params_po)
     f_sql, f_params = build_company_filter_sql(
-        tenant_id, selected, column_name="po.company_id"
+        company_ids, column_name="po.company_id"
     )
     params.update(f_params)
 
@@ -229,30 +207,28 @@ def get_vendor_performance_tool(
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 4. PROCUREMENT SPEND BY CATEGORY
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_procurement_category_breakdown_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int = 20,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Break down purchase spend by product category."""
 
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
     price_col = build_currency_case_sql(
-        'l.price_subtotal', tenant_id, base_currency, 'po.currency_code'
+        'l.price_subtotal', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='po.currency_code'
     )
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params: dict = {"limit": limit}
     params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(
-        tenant_id, selected, column_name="po.company_id"
+        company_ids, column_name="po.company_id"
     )
     params.update(f_params)
 
@@ -301,32 +277,30 @@ def get_procurement_category_breakdown_tool(
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 5. PURCHASE vs SALES MARGIN ANALYSIS
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_purchase_vs_sales_margin_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     limit: int = 20,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Compare average buy price vs average sell price per product."""
 
-    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="p.tenant_id", prefix="t_p")
-    t_sql_sl, t_params_sl = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="sl.tenant_id", prefix="t_sl")
-    t_sql_pl, t_params_pl = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="pl.tenant_id", prefix="t_pl")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    t_sql_p, t_params_p = build_tenant_filter_sql(tenant_ids, column_name="p.tenant_id", prefix="t_p")
+    t_sql_sl, t_params_sl = build_tenant_filter_sql(tenant_ids, column_name="sl.tenant_id", prefix="t_sl")
+    t_sql_pl, t_params_pl = build_tenant_filter_sql(tenant_ids, column_name="pl.tenant_id", prefix="t_pl")
+    params: dict = {"limit": limit}
     params.update(t_params_p)
     params.update(t_params_sl)
     params.update(t_params_pl)
     f_sql_po, f_params_po = build_company_filter_sql(
-        tenant_id, selected, column_name="po.company_id", prefix="po_co"
+        company_ids, column_name="po.company_id", prefix="po_co"
     )
     f_sql_so, f_params_so = build_company_filter_sql(
-        tenant_id, selected, column_name="so.company_id", prefix="so_co"
+        company_ids, column_name="so.company_id", prefix="so_co"
     )
     params.update(f_params_po)
     params.update(f_params_so)
@@ -398,30 +372,28 @@ def get_purchase_vs_sales_margin_tool(
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 6. PO FULFILLMENT & DELIVERY TRACKING
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_po_fulfillment_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     limit: int = 15,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Identify overdue POs and partial receipts."""
 
-    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_po")
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
+    t_sql_po, t_params_po = build_tenant_filter_sql(tenant_ids, column_name="po.tenant_id", prefix="t_po")
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
     amount_col = build_currency_case_sql(
-        'po.amount_total', tenant_id, base_currency, 'po.currency_code'
+        'po.amount_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='po.currency_code'
     )
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params: dict = {"limit": limit}
     params.update(t_params_po)
     params.update(t_params_l)
     f_sql, f_params = build_company_filter_sql(
-        tenant_id, selected, column_name="po.company_id"
+        company_ids, column_name="po.company_id"
     )
     params.update(f_params)
 
@@ -513,28 +485,25 @@ def get_po_fulfillment_tool(
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 7. PURCHASE TREND (TIME SERIES)
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 
 def get_purchase_trend_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     granularity: str = "month",
     base_currency: str | None = None,
-    tenant_ids: Optional[list[str]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> dict:
     """Purchase spend time series broken down by period."""
 
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    params: dict = {"tenant_id": tenant_id}
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    params: dict = {}
     params.update(t_params_def)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected)
+    f_sql, f_params = build_company_filter_sql(company_ids)
     params.update(f_params)
 
     # Sanitize granularity to prevent SQL injection
@@ -578,31 +547,29 @@ def get_purchase_trend_tool(
         ],
     }
 
+
 # ──────────────────────────────────────────────────────────────
 # 8. PRODUCT PURCHASE HISTORY & UNIT COSTS
 # ──────────────────────────────────────────────────────────────
 
 def get_product_purchase_history_tool(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     product_name: str | None = None,
     vendor_name: str | None = None,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     limit: int = 50,
     base_currency: str | None = None,
-    tenant_ids: list[str] | None = None
 ) -> dict:
     """Retrieve detailed purchase order history, unit costs, quantities, and currencies for specific products or vendors."""
-    t_sql_pol, t_params_pol = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="pol.tenant_id", prefix="t_pol")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="pol.company_id")
+    t_sql_pol, t_params_pol = build_tenant_filter_sql(tenant_ids, column_name="pol.tenant_id", prefix="t_pol")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="pol.company_id")
     
-    price_col = build_currency_case_sql('pol.price_subtotal', tenant_id, base_currency, 'po.currency_code')
-    unit_price_col = build_currency_case_sql('pol.price_unit', tenant_id, base_currency, 'po.currency_code')
+    price_col = build_currency_case_sql('pol.price_subtotal', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='po.currency_code')
+    unit_price_col = build_currency_case_sql('pol.price_unit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='po.currency_code')
 
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    params: dict = {"limit": limit}
     params.update(t_params_pol)
     params.update(f_params)
 
@@ -683,6 +650,3 @@ def get_product_purchase_history_tool(
         "average_unit_price_base": avg_unit_price_base,
         "purchase_orders": items,
     }
-
-
-

@@ -168,12 +168,13 @@ def validate_file_security(filename: str, data_bytes: bytes) -> Tuple[bool, str,
     return True, safe_name, ""
 
 
-def get_ai_user_input_storage_dir(tenant_id: Optional[str] = None, session_id: Optional[str] = None) -> Path:
+def get_ai_user_input_storage_dir(tenant_ids: Optional[List[str]] = None, session_id: Optional[str] = None) -> Path:
     """Returns directory path: storage_uploads/ai_agent_user_input/[tenant_id]/[session_id]/"""
     base_dir = Path(getattr(settings, "BASE_DIR", Path.cwd()))
     storage_root = base_dir / "storage_uploads" / "ai_agent_user_input"
     
-    tenant_part = re.sub(r"[^\w\-]", "_", str(tenant_id or "shared"))
+    primary_tenant = tenant_ids[0] if tenant_ids else "shared"
+    tenant_part = re.sub(r"[^\w\-]", "_", str(primary_tenant))
     session_part = re.sub(r"[^\w\-]", "_", str(session_id or "general"))
     
     target_dir = storage_root / tenant_part / session_part
@@ -184,11 +185,11 @@ def get_ai_user_input_storage_dir(tenant_id: Optional[str] = None, session_id: O
 def save_attachment_to_disk(
     filename: str,
     data_bytes: bytes,
-    tenant_id: Optional[str] = None,
+    tenant_ids: Optional[List[str]] = None,
     session_id: Optional[str] = None
 ) -> Path:
     """Saves attachment bytes with non-executable permissions (0o640) under storage_uploads/ai_agent_user_input/."""
-    folder = get_ai_user_input_storage_dir(tenant_id, session_id)
+    folder = get_ai_user_input_storage_dir(tenant_ids, session_id)
     safe_name = sanitize_filename(filename)
     unique_prefix = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
     dest_path = folder / f"{unique_prefix}_{safe_name}"
@@ -213,8 +214,8 @@ def save_attachment_to_db(
     storage_path: str,
     file_size: int,
     content_type: str,
-    tenant_id: Optional[str] = None,
-    company_id: Optional[int] = None,
+    tenant_ids: Optional[List[str]] = None,
+    company_ids: Optional[List[int]] = None,
     session_id: Optional[str] = None
 ) -> Optional[int]:
     """Persists uploaded attachment metadata into the `stored_files` database table."""
@@ -224,6 +225,8 @@ def save_attachment_to_db(
         
         uploaded_at = timezone.now()
         description = f"AI Agent User Input | Session: {session_id or 'general'}"
+        tenant_id = tenant_ids[0] if tenant_ids else None
+        company_id = company_ids[0] if company_ids else None
         
         # Verify if tenant exists in odoo_app_tenant to avoid foreign key errors
         db_tenant_id = None
@@ -382,8 +385,8 @@ def parse_csv_to_markdown(data_bytes: bytes, filename: str) -> str:
 
 def process_attachments(
     attachments: List[Dict[str, Any]],
-    tenant_id: Optional[str] = None,
-    company_id: Optional[int] = None,
+    tenant_ids: Optional[List[str]] = None,
+    company_ids: Optional[List[int]] = None,
     session_id: Optional[str] = None,
     persist: bool = True
 ) -> Tuple[List[Dict[str, Any]], str]:
@@ -443,7 +446,7 @@ def process_attachments(
         if persist:
             dest_path = None
             try:
-                dest_path = save_attachment_to_disk(safe_name, data_bytes, tenant_id=tenant_id or "default", session_id=session_id)
+                dest_path = save_attachment_to_disk(safe_name, data_bytes, tenant_ids=tenant_ids, session_id=session_id)
             except Exception as e:
                 logger.warning(f"[Attachments] Could not save attachment to disk: {e}")
 
@@ -456,8 +459,8 @@ def process_attachments(
                         storage_path=str(dest_path),
                         file_size=len(data_bytes),
                         content_type=media_type,
-                        tenant_id=tenant_id or "default",
-                        company_id=company_id,
+                        tenant_ids=tenant_ids,
+                        company_ids=company_ids,
                         session_id=session_id
                     )
                 except Exception as e:

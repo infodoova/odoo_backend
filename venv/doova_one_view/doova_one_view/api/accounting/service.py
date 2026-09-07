@@ -4,7 +4,7 @@ Accounting API service.
 
 import asyncio
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from django.db.models import Avg, Case, Count, DecimalField, F, Prefetch, Q, Sum, When
 
@@ -191,15 +191,21 @@ class AccountingService:
     """Service for accounting operations."""
 
     @staticmethod
-    def _base_qs(tenant_id: str, company_ids: Optional[list[int]] = None):
-        try:
-            import uuid
-            uuid.UUID(str(tenant_id))
-            qs = AccountMove.objects.filter(tenant_id=tenant_id)
-        except Exception:
-            qs = AccountMove.objects.none()
-        if company_ids:
-            qs = qs.filter(company_id__in=company_ids)
+    def _base_qs(
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
+    ):
+        from doova_one_view.api.agent.query_context import (
+            normalize_tenant_ids,
+            normalize_company_ids,
+            apply_scope_filter_orm,
+        )
+        t_ids = normalize_tenant_ids(tenant_ids)
+        c_ids = normalize_company_ids(company_ids)
+
+        qs = AccountMove.objects.all()
+        qs = apply_scope_filter_orm(qs, "tenant_id", t_ids)
+        qs = apply_scope_filter_orm(qs, "company_id", c_ids)
         return qs
 
     @staticmethod
@@ -211,16 +217,15 @@ class AccountingService:
         return qs
 
     @staticmethod
-    def _get_tag4_account_ids(tenant_id: str) -> set[int]:
+    def _get_tag4_account_ids(tenant_ids: Optional[list[str]] = None) -> set[int]:
         """Returns the set of Odoo account IDs carrying Tag 4 (Purchase Expenses accounts)."""
-        import uuid
         from odoo_app.models.chart_of_accounts import ChartOfAccounts
+        from doova_one_view.api.agent.query_context import apply_scope_filter_orm, normalize_tenant_ids
         try:
-            try:
-                uuid.UUID(str(tenant_id))
-            except (ValueError, AttributeError, TypeError):
-                return set()
-            coas = ChartOfAccounts.objects.filter(tenant_id=tenant_id).only("odoo_id", "tag_ids")
+            t_ids = normalize_tenant_ids(tenant_ids)
+            qs = ChartOfAccounts.objects.all()
+            qs = apply_scope_filter_orm(qs, "tenant_id", t_ids)
+            coas = qs.only("odoo_id", "tag_ids")
             tag4_ids = set()
             for c in coas:
                 if c.tag_ids and 4 in c.tag_ids and c.odoo_id:
@@ -231,9 +236,9 @@ class AccountingService:
 
     @staticmethod
     def _is_tag4_purchase_expense(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
         account_odoo_id: Optional[int] = None,
-        company_id: Optional[int] = None,
+        company_ids: Optional[list[int]] = None,
         acode: Optional[str] = None,
         aname: Optional[str] = None,
         tag4_ids: Optional[set[int]] = None,
@@ -244,7 +249,7 @@ class AccountingService:
         are excluded from Operating Expenses.
         """
         if tag4_ids is None:
-            tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
+            tag4_ids = AccountingService._get_tag4_account_ids(tenant_ids)
         
         if account_odoo_id and account_odoo_id in tag4_ids:
             return True
@@ -267,7 +272,7 @@ class AccountingService:
         return False
 
     @staticmethod
-    def _is_inventory_scrap_adjustment(atype: str, acode: str, aname: str, net_debit: float, tenant_id: Optional[str] = None, account_odoo_id: Optional[int] = None) -> bool:
+    def _is_inventory_scrap_adjustment(atype: str, acode: str, aname: str, net_debit: float, tenant_ids: Optional[list[str]] = None, account_odoo_id: Optional[int] = None) -> bool:
         """
         In standard Odoo Chart of Accounts under Anglo-Saxon automated inventory valuation,
         interim stock valuation variance accounts (e.g. Products Loss, Damaged Products, 60520003)
@@ -276,8 +281,8 @@ class AccountingService:
         """
         if atype != "expense":
             return False
-        if tenant_id:
-            return AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=account_odoo_id, acode=acode, aname=aname)
+        if tenant_ids:
+            return AccountingService._is_tag4_purchase_expense(tenant_ids=tenant_ids, account_odoo_id=account_odoo_id, acode=acode, aname=aname)
         name_clean = (aname or "").lower().strip()
         code_clean = (acode or "").lower().strip()
         full_name = f"{code_clean} {name_clean}".strip()
@@ -463,7 +468,7 @@ class AccountingService:
                 elif atype == "expense_depreciation":
                     true_depreciation += net_debit
                 elif atype == "expense":
-                    if not AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                    if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
                         true_expenses += net_debit
                         if acode.startswith("67") or acode.startswith("69"):
                             true_taxes_interest += net_debit
@@ -1111,17 +1116,19 @@ class AccountingService:
 
     @staticmethod
     def _calc_pnl_sync(
-        tenant_id: str,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
         base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         qs = AccountingService._date_qs(
-            AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            AccountingService._base_qs(tenant_ids=tenant_ids, company_ids=company_ids),
+            start_date,
+            end_date
         ).filter(state='posted')
 
-        tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
+        tag4_ids = AccountingService._get_tag4_account_ids(tenant_ids)
         lines_aggs = AccountMoveLine.objects.filter(
             account_move__in=qs
         ).values("company_id", "account_odoo_id", "account_type", "account_code", "account_name", "company__currency_code").annotate(
@@ -1161,7 +1168,7 @@ class AccountingService:
             elif atype == "expense_depreciation":
                 depreciation += net_debit
             elif atype == "expense":
-                if not AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                if not AccountingService._is_tag4_purchase_expense(tenant_ids=tenant_ids, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
                     general_expenses += net_debit
                     if acode.startswith("67") or acode.startswith("69"):
                         taxes_interest += net_debit
@@ -1190,11 +1197,11 @@ class AccountingService:
 
     @staticmethod
     def _calc_executive_summary_sync(
-        tenant_id: str,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
         base_currency: Optional[str] = None,
+        tenant_ids: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """
         Calculates the complete 5-pillar Executive Summary exactly matching Odoo Report ID 6:
@@ -1207,11 +1214,13 @@ class AccountingService:
         import datetime
         effective_base = base_currency or "XAF"
         rate_map = _get_rate_map()
-        tag4_ids = AccountingService._get_tag4_account_ids(tenant_id)
+        tag4_ids = AccountingService._get_tag4_account_ids(tenant_ids)
         
         # 1. Period-scoped move lines (P&L & Cash flow)
         p_qs = AccountingService._date_qs(
-            AccountingService._base_qs(tenant_id, company_ids), start_date, end_date
+            AccountingService._base_qs(tenant_ids=tenant_ids, company_ids=company_ids),
+            start_date,
+            end_date
         ).filter(state='posted')
         
         period_aggs = AccountMoveLine.objects.filter(
@@ -1252,7 +1261,7 @@ class AccountingService:
             elif atype == "expense_depreciation":
                 depreciation += net_d
             elif atype == "expense":
-                if not AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
                     opex += net_d
             elif atype in ("asset_cash", "liability_credit_card"):
                 cash_received += deb
@@ -1374,7 +1383,7 @@ class AccountingService:
 
     @staticmethod
     async def get_executive_summary(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
@@ -1383,16 +1392,16 @@ class AccountingService:
         """Calculates the complete 5-pillar Executive Summary matching Odoo Report 6."""
         return await asyncio.to_thread(
             AccountingService._calc_executive_summary_sync,
-            tenant_id,
-            start_date,
-            end_date,
-            company_ids,
-            base_currency,
+            start_date=start_date,
+            end_date=end_date,
+            company_ids=company_ids,
+            base_currency=base_currency,
+            tenant_ids=tenant_ids,
         )
 
     @staticmethod
     async def get_pnl_summary(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         company_ids: Optional[list[int]] = None,
@@ -1401,11 +1410,11 @@ class AccountingService:
         """Calculates a proper P&L breakdown by analyzing AccountMoveLines."""
         return await asyncio.to_thread(
             AccountingService._calc_pnl_sync,
-            tenant_id,
-            start_date,
-            end_date,
-            company_ids,
-            base_currency,
+            start_date=start_date,
+            end_date=end_date,
+            company_ids=company_ids,
+            base_currency=base_currency,
+            tenant_ids=tenant_ids,
         )
 
     @staticmethod
@@ -1427,42 +1436,47 @@ class AccountingService:
 
     @staticmethod
     def _calc_cash_flow_sync(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        company_ids: Optional[list[int]] = None,
         base_currency: Optional[str] = None,
         source: str = "auto",
     ) -> dict[str, Any]:
         """Calculates a proper Cash Flow Statement matching Odoo via CashFlowEngine."""
         from .cash_flow_engine import CashFlowEngine
+        from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+        t_ids = normalize_tenant_ids(tenant_ids)
+        c_ids = normalize_company_ids(company_ids)
+        primary_t = t_ids[0] if t_ids else None
         return CashFlowEngine.compute(
-            tenant_id=tenant_id,
+            tenant_id=primary_t,
             start_date=start_date,
             end_date=end_date,
-            company_ids=company_ids,
+            company_ids=c_ids,
             base_currency=base_currency,
+            tenant_ids=t_ids,
             source=source,
         )
 
     @staticmethod
     async def get_cash_flow_statement(
-        tenant_id: str,
+        tenant_ids: Optional[list[str]] = None,
+        company_ids: Optional[list[int]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        company_ids: Optional[list[int]] = None,
         base_currency: Optional[str] = None,
         source: str = "auto",
     ) -> dict[str, Any]:
         """Calculates a structured Cash Flow Statement matching Odoo."""
         return await asyncio.to_thread(
             AccountingService._calc_cash_flow_sync,
-            tenant_id,
-            start_date,
-            end_date,
-            company_ids,
-            base_currency,
-            source,
+            tenant_ids=tenant_ids,
+            company_ids=company_ids,
+            start_date=start_date,
+            end_date=end_date,
+            base_currency=base_currency,
+            source=source,
         )
 
     @staticmethod
@@ -1568,7 +1582,7 @@ class AccountingService:
                 aname = agg.get("account_name") or ""
                 company_curr = agg.get("company__currency_code") or "XAF"
 
-                if AccountingService._is_tag4_purchase_expense(tenant_id, account_odoo_id=a_odoo_id, company_id=cid, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                if AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
                     continue
 
                 rate = _get_conversion_rate(company_curr, effective_base, rate_map)

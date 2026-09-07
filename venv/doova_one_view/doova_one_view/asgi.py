@@ -37,6 +37,7 @@ from doova_one_view.api.app import app as fastapi_app
 from doova_one_view.api.jobs.sync_job import SyncJobManager
 from doova_one_view.api.jobs.report_job import ReportJobManager
 from doova_one_view.api.jobs.alert_job import AlertJobManager
+from doova_one_view.api.jobs.tts_cache_job import TTSCacheJobManager
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -46,10 +47,12 @@ async def lifespan(app):
     await SyncJobManager.start()
     await ReportJobManager.start()
     await AlertJobManager.start()
+    await TTSCacheJobManager.start()
     yield
     await SyncJobManager.stop()
     await ReportJobManager.stop()
     await AlertJobManager.stop()
+    await TTSCacheJobManager.stop()
 
 # ============================================================================
 # Main Application - Uses Mount-based routing with static files

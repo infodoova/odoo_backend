@@ -11,9 +11,9 @@ def _month_bounds(year, month):
     last_day = calendar.monthrange(year, month)[1]
     return f"{year:04d}-{month:02d}-01", f"{year:04d}-{month:02d}-{last_day:02d}"
 
-def _get_sales_metrics(tenant_id: str | None, company_ids: list[int] | None, start: str, end: str, tenant_ids: list[str] | None = None):
-    t_sql, t_params = build_tenant_filter_sql(tenant_id, tenant_ids)
-    c_sql, c_params = build_company_filter_sql(tenant_id, company_ids)
+def _get_sales_metrics(company_ids: list[int] | None = None, start: str = "", end: str = "", tenant_ids: list[str] | None = None):
+    t_sql, t_params = build_tenant_filter_sql(tenant_ids=tenant_ids)
+    c_sql, c_params = build_company_filter_sql(company_ids=company_ids)
     params = {"start": start, "end": end}
     params.update(t_params)
     params.update(c_params)
@@ -26,15 +26,15 @@ def _get_sales_metrics(tenant_id: str | None, company_ids: list[int] | None, sta
     """, params)
     return {"revenue": float(rows[0]["revenue"]), "count": int(rows[0]["count"])}
 
-def analyze_sales_change(tenant_id: str | None, message: str, company_ids: list[int] | None = None, tenant_ids: list[str] | None = None) -> str | None:
+def analyze_sales_change(message: str, tenant_ids: list[str] | None = None, company_ids: list[int] | None = None) -> str | None:
     text = normalize_business_text_for_intent(message)
     pattern = r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{4})\b"
     matches = re.findall(pattern, text)
     if len(matches) < 2: return None
     
-    return f"Sales change analysis between {matches[0]} and {matches[1]} for tenant(s) {tenant_ids or tenant_id}."
+    return f"Sales change analysis between {matches[0]} and {matches[1]} for tenant(s) {tenant_ids}."
 
-def analyze_revenue_gap(tenant_id: str | None, message: str, company_ids: list[int] | None = None, tenant_ids: list[str] | None = None) -> str | None:
+def analyze_revenue_gap(message: str, tenant_ids: list[str] | None = None, company_ids: list[int] | None = None) -> str | None:
     text = normalize_business_text_for_intent(message)
     if "accounting" in text and "sales" in text and any(x in text for x in ["why", "diff", "gap"]):
         return "Deterministic revenue gap analysis result."

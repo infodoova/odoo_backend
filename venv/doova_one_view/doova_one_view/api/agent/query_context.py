@@ -52,79 +52,94 @@ def resolve_tenant_id(tenant_id: Optional[str]) -> Optional[str]:
 
     return None
 
-def normalize_company_ids(
-    company_id: Optional[Union[int, str]] = None,
-    companies: Optional[Union[List[Union[int, str]], str]] = None,
-) -> List[int]:
+def normalize_company_ids(company_ids: Any = None) -> List[int]:
     """
-    Standardizes company identifiers into a unique list of Odoo IDs.
-    Handles single inputs, lists, comma-separated strings, and string-to-int conversions gracefully.
-    Also silently discards the string "None" / "null" / "" that an LLM may emit.
+    Standardizes company identifiers into a unique list of integer IDs.
+    Accepts:
+      - list/tuple/set of ints or strings: [36, 37] or ["36", "37"]
+      - single int or string: 36 or "36"
+      - comma-separated string: "36, 37"
+      - JSON array string: "[36, 37]" or "['36', '37']"
+    Returns:
+      Sorted unique list of int. Discards null, none, all, and empty strings.
     """
+    if company_ids is None:
+        return []
+
     processed_ids: List[int] = []
+    items = company_ids if isinstance(company_ids, (list, tuple, set)) else [company_ids]
 
-    if companies:
-        if isinstance(companies, str):
-            if companies.lower() in ("none", "null", "", "all"):
-                companies_list = []
-            else:
-                companies_list = [c.strip() for c in companies.split(",") if c.strip()]
-        elif isinstance(companies, (list, tuple, set)):
-            companies_list = list(companies)
-        else:
-            companies_list = [companies]
-
-        for val in companies_list:
-            if isinstance(val, str) and val.lower() in ("none", "null", "", "all"):
+    for item in items:
+        if item is None:
+            continue
+        if isinstance(item, int):
+            processed_ids.append(item)
+        elif isinstance(item, str):
+            s = item.strip()
+            if s.lower() in ("none", "null", "all", ""):
                 continue
-            try:
-                processed_ids.append(int(val))
-            except (ValueError, TypeError):
-                continue
-
-    if company_id is not None:
-        if not (isinstance(company_id, str) and company_id.lower() in ("none", "null", "", "all")):
-            try:
-                processed_ids.append(int(company_id))
-            except (ValueError, TypeError):
-                pass
+            for m in re.findall(r'-?\d+', s):
+                try:
+                    processed_ids.append(int(m))
+                except (ValueError, TypeError):
+                    pass
+        elif isinstance(item, (list, tuple, set)):
+            for sub in item:
+                if sub is None:
+                    continue
+                if isinstance(sub, int):
+                    processed_ids.append(sub)
+                elif isinstance(sub, str):
+                    s = sub.strip()
+                    if s.lower() in ("none", "null", "all", ""):
+                        continue
+                    for m in re.findall(r'-?\d+', s):
+                        try:
+                            processed_ids.append(int(m))
+                        except (ValueError, TypeError):
+                            pass
 
     return sorted(list(set(processed_ids)))
 
 
-def normalize_tenant_ids(
-    tenant_id: Optional[str] = None,
-    tenant_ids: Optional[Union[List[str], str]] = None,
-) -> List[str]:
+def normalize_tenant_ids(tenant_ids: Any = None) -> List[str]:
     """
     Standardizes tenant identifiers into a unique list of valid UUID strings.
-    Handles single inputs, lists, and comma-separated strings. Returns empty list if no valid tenants are provided
-    (meaning all tenants or cross-tenant query).
+    Accepts:
+      - list/tuple/set of UUID strings
+      - single UUID string or slug/name
+      - comma-separated string
+      - JSON array string: "['uuid1', 'uuid2']"
+    Returns:
+      Sorted unique list of valid UUID strings. Discards null, none, all, and empty strings.
     """
+    if tenant_ids is None:
+        return []
+
     processed_ids: List[str] = []
-
-    if tenant_ids:
-        if isinstance(tenant_ids, str):
-            if tenant_ids.lower() in ("none", "null", "", "all"):
-                tenant_list = []
-            else:
-                tenant_list = [t.strip() for t in tenant_ids.split(",") if t.strip()]
-        elif isinstance(tenant_ids, (list, tuple, set)):
-            tenant_list = list(tenant_ids)
+    items = []
+    if isinstance(tenant_ids, (list, tuple, set)):
+        items = list(tenant_ids)
+    elif isinstance(tenant_ids, str):
+        s = tenant_ids.strip()
+        if s.lower() in ("none", "null", "all", ""):
+            items = []
         else:
-            tenant_list = [tenant_ids]
+            found_uuids = re.findall(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', s)
+            if found_uuids:
+                items = found_uuids
+            else:
+                items = [t.strip().strip("'\"") for t in s.strip("[]").split(",") if t.strip()]
+    else:
+        items = [tenant_ids]
 
-        for val in tenant_list:
-            clean = resolve_tenant_id(str(val))
-            if clean:
-                processed_ids.append(clean)
-
-    if tenant_id is not None:
-        clean = resolve_tenant_id(str(tenant_id))
+    for val in items:
+        clean = resolve_tenant_id(str(val))
         if clean:
             processed_ids.append(clean)
 
     return sorted(list(set(processed_ids)))
+
 
 def resolve_company_ids_to_local(tenant_id: str, odoo_ids: List[int]) -> List[int]:
     """
@@ -140,48 +155,94 @@ def resolve_company_ids_to_local(tenant_id: str, odoo_ids: List[int]) -> List[in
         .values_list('id', flat=True)
     )
 
-def build_company_filter_sql(
-    tenant_id: str, 
-    company_ids: Optional[Union[int, List[int]]] = None, 
-    column_name: str = "company_id", 
-    prefix: str = "comp"
+
+def build_scope_filter_sql(
+    column_name: str,
+    ids: List[Union[int, str]],
+    prefix: str = "scope",
 ) -> Tuple[str, Dict[str, Any]]:
     """
-    Generates a secure SQL 'IN' clause for company filtering.
-    Returns the SQL snippet and the parameter dictionary to prevent injection.
+    Core SQL condition generator following the dynamic operator contract:
+      - len(ids) == 0 -> ("", {})  (no condition / full scope)
+      - len(ids) == 1 -> (" AND {column_name} = :{prefix}_0", {f"{prefix}_0": ids[0]})  (exact equality '=')
+      - len(ids) > 1  -> (" AND {column_name} IN (:{prefix}_0, ...)", {...})  (inclusion set 'IN')
     """
-    ids = normalize_company_ids(
-        company_id=company_ids if isinstance(company_ids, (int, str)) else None,
-        companies=company_ids if isinstance(company_ids, list) else None
-    )
-    
     if not ids:
         return "", {}
-        
+
+    if len(ids) == 1:
+        param_name = f"{prefix}_0"
+        return f" AND {column_name} = :{param_name}", {param_name: ids[0]}
+
     placeholders = [f":{prefix}_{i}" for i in range(len(ids))]
-    params = {f"{prefix}_{i}": cid for i, cid in enumerate(ids)}
-    
+    params = {f"{prefix}_{i}": val for i, val in enumerate(ids)}
     return f" AND {column_name} IN ({', '.join(placeholders)})", params
 
-def build_tenant_filter_sql(
-    tenant_id: Optional[str] = None, 
-    tenant_ids: Optional[List[str]] = None,
-    column_name: str = "tenant_id", 
-    prefix: str = "t"
+
+def build_company_filter_sql(
+    company_ids: Any = None,
+    column_name: str = "company_id",
+    prefix: str = "comp",
 ) -> Tuple[str, Dict[str, Any]]:
     """
-    Generates a secure SQL filter for tenant_id using an IN clause if multiple are provided.
-    If no tenants are provided, returns no filter (allowing cross-tenant queries).
+    Generates dynamic SQL condition for company filtering:
+      - 0 companies: ("", {})
+      - 1 company:   (" AND {column_name} = :comp_0", {"comp_0": ...})
+      - >1 company:  (" AND {column_name} IN (:comp_0, :comp_1)", {"comp_0": ..., "comp_1": ...})
     """
-    ids = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
-    
+    c_ids = normalize_company_ids(company_ids)
+    return build_scope_filter_sql(column_name, c_ids, prefix=prefix)
+
+
+def build_tenant_filter_sql(
+    tenant_ids: Any = None,
+    column_name: str = "tenant_id",
+    prefix: str = "t",
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Generates dynamic SQL condition for tenant filtering:
+      - 0 tenants: ("", {})
+      - 1 tenant:   (" AND {column_name} = :t_tenant_id_0", {"t_tenant_id_0": ...})
+      - >1 tenants: (" AND {column_name} IN (:t_tenant_id_0, :t_tenant_id_1)", ...)
+    """
+    t_ids = normalize_tenant_ids(tenant_ids)
+    param_prefix = f"{prefix}_tenant_id" if not prefix.endswith("tenant_id") else prefix
+    return build_scope_filter_sql(column_name, t_ids, prefix=param_prefix)
+
+
+def apply_scope_filter_orm(
+    queryset,
+    field_name: str,
+    ids: List[Union[int, str]],
+):
+    """
+    Applies ORM filtering dynamically based on list cardinality:
+      - len(ids) == 0 -> queryset (unfiltered)
+      - len(ids) == 1 -> queryset.filter(**{field_name: ids[0]})  (emits SQL '=')
+      - len(ids) > 1  -> queryset.filter(**{f"{field_name}__in": ids})  (emits SQL 'IN')
+    """
     if not ids:
-        return "", {}
-        
-    placeholders = [f":{prefix}_tenant_id_{i}" for i in range(len(ids))]
-    params = {f"{prefix}_tenant_id_{i}": tid for i, tid in enumerate(ids)}
-    
-    return f" AND {column_name} IN ({', '.join(placeholders)})", params
+        return queryset
+    if len(ids) == 1:
+        return queryset.filter(**{field_name: ids[0]})
+    return queryset.filter(**{f"{field_name}__in": ids})
+
+
+def build_scope_q(
+    field_name: str,
+    ids: List[Union[int, str]],
+) -> models.Q:
+    """
+    Builds a Django Q object dynamically:
+      - len(ids) == 0 -> Q() (empty)
+      - len(ids) == 1 -> Q(**{field_name: ids[0]})
+      - len(ids) > 1  -> Q(**{f"{field_name}__in": ids})
+    """
+    if not ids:
+        return models.Q()
+    if len(ids) == 1:
+        return models.Q(**{field_name: ids[0]})
+    return models.Q(**{f"{field_name}__in": ids})
 
 def extract_date_range(message: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """

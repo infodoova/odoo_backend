@@ -264,16 +264,12 @@ class ReportJobManager:
         from doova_one_view.api.reports.utils import calculate_next_send
         from doova_one_view.api.agent.tools_refactored.reporting_v2 import generate_report_tool
 
-        tenant_ids = [str(t) for t in schedule.tenants] if schedule.tenants else None
-        if tenant_ids and len(tenant_ids) > 0:
-            tenant_id = str(tenant_ids[0])
-        else:
-            tenant_id = str(schedule.tenant_id) if schedule.tenant_id else None
-        company_ids = schedule.companies if schedule.companies else None
+        tenant_ids = [str(t) for t in schedule.tenants] if schedule.tenants else []
+        company_ids = schedule.companies or []
         if not company_ids and schedule.prompt:
             try:
                 from doova_one_view.api.agent.tools_refactored.common import get_companies_tool
-                c_res = get_companies_tool(tenant_id=tenant_id, tenant_ids=tenant_ids)
+                c_res = get_companies_tool(tenant_ids=tenant_ids)
                 avail_comps = c_res.get("companies", []) if isinstance(c_res, dict) else []
                 prompt_lower = schedule.prompt.lower()
                 matched_cids = []
@@ -343,7 +339,7 @@ class ReportJobManager:
             from doova_one_view.api.agent.thresholds import get_tenant_thresholds
             from doova_one_view.api.agent.citation_validator import CitationValidator
             from doova_one_view.api.agent.completeness import CompletenessEvaluator
-            thresholds = await db_sync_to_async(get_tenant_thresholds)(tenant_id)
+            thresholds = await db_sync_to_async(get_tenant_thresholds)(tenant_ids=tenant_ids)
             min_completeness = thresholds.get("min_completeness_threshold_pct", 90.0)
 
             start_date, end_date, prev_start, prev_end, period_label, comparison_label = _resolve_report_period(schedule, now)
@@ -351,11 +347,10 @@ class ReportJobManager:
             # 2. Build AI-generated report content using the user's prompt and period
             try:
                 custom_content = await ReportJobManager._build_analysis(
-                    tenant_id,
-                    schedule.report_type,
-                    company_ids,
-                    schedule.prompt,
+                    report_type=schedule.report_type,
+                    user_prompt=schedule.prompt,
                     tenant_ids=tenant_ids,
+                    company_ids=company_ids,
                     start_date=start_date,
                     end_date=end_date,
                     prev_start=prev_start,
@@ -374,7 +369,7 @@ class ReportJobManager:
                 ground_truth = {}
                 try:
                     pnl_data = await db_sync_to_async(calculate_pnl_tool)(
-                        tenant_id=tenant_id,
+                        tenant_ids=tenant_ids,
                         company_ids=company_ids,
                         start_date=start_date,
                         end_date=end_date,
@@ -394,11 +389,10 @@ class ReportJobManager:
                     try:
                         repair_prompt = (schedule.prompt or "") + "\n\n" + (val_res["repair_prompt"] or "")
                         custom_content = await ReportJobManager._build_analysis(
-                            tenant_id,
-                            schedule.report_type,
-                            company_ids,
-                            repair_prompt,
+                            report_type=schedule.report_type,
+                            user_prompt=repair_prompt,
                             tenant_ids=tenant_ids,
+                            company_ids=company_ids,
                             start_date=start_date,
                             end_date=end_date,
                             prev_start=prev_start,
@@ -425,10 +419,9 @@ class ReportJobManager:
                     raw_type=schedule.report_type,
                 )
                 result = await db_sync_to_async(generate_report_tool)(
-                    tenant_id=tenant_id,
+                    tenant_ids=tenant_ids,
                     company_ids=company_ids,
                     custom_content=custom_content,
-                    tenant_ids=tenant_ids,
                     report_type=resolved_report_type,
                     prompt=schedule.prompt,
                     start_date=start_date,
@@ -533,11 +526,10 @@ class ReportJobManager:
 
     @staticmethod
     async def _build_analysis(
-        tenant_id: str,
         report_type: str,
-        company_ids: list | None,
         user_prompt: str,
         tenant_ids: list | None = None,
+        company_ids: list | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         prev_start: str | None = None,
@@ -632,7 +624,12 @@ class ReportJobManager:
 
         try:
             agent = DoovaLangChainAgent()
-            result = await asyncio.to_thread(agent.run, full_prompt, tenant_id, company_ids=company_ids, tenant_ids=tenant_ids)
+            result = await asyncio.to_thread(
+                agent.run,
+                full_prompt,
+                tenant_ids=tenant_ids,
+                company_ids=company_ids,
+            )
             return result
         except Exception as e:
             logger.exception(f"AI agent failed for schedule — using fallback content")

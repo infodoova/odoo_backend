@@ -7,30 +7,33 @@ from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from ..db import run_query
-from ..query_context import extract_date_range, normalize_company_ids, build_company_filter_sql, build_tenant_filter_sql
+from ..query_context import extract_date_range, normalize_company_ids, normalize_tenant_ids, build_company_filter_sql, build_tenant_filter_sql
 from ..config import AgentConfig
 
-def get_companies_tool(tenant_id: str, tenant_ids: Optional[list[str]] = None) -> dict:
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
+def get_companies_tool(tenant_ids: Optional[list[str]] = None) -> dict:
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     rows = run_query(f"SELECT id, odoo_id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
     return {"tool_name": "get_companies_tool", "companies": rows}
 
-def resolve_company_name(tenant_id: str, company_id: int | None = None) -> str:
-    if not company_id:
+def resolve_company_name(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None) -> str:
+    c_ids = normalize_company_ids(company_ids=company_ids)
+    if not c_ids:
         return "All Companies"
-    try:
-        rows = run_query("SELECT name FROM dim_companies WHERE id = %(cid)s LIMIT 1", {"cid": int(company_id)})
-        if rows and rows[0].get("name"):
-            return rows[0]["name"]
-    except Exception:
-        pass
-    return f"Company {company_id}"
+    if len(c_ids) == 1:
+        try:
+            rows = run_query("SELECT name FROM dim_companies WHERE id = %(cid)s LIMIT 1", {"cid": c_ids[0]})
+            if rows and rows[0].get("name"):
+                return rows[0]["name"]
+        except Exception:
+            pass
+        return f"Company {c_ids[0]}"
+    return f"{len(c_ids)} Companies Selected"
 
-def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_tenant_profile_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None) -> dict:
     """Fetches the company's industry, sector, and operational context from the database."""
     # dim_companies PK is "id", not "company_id"
-    company_f_sql, company_f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="id")
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
+    company_f_sql, company_f_params = build_company_filter_sql(company_ids=company_ids, column_name="id")
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     company_params = {**company_f_params, **t_params_def}
 
     # Try to get basic company info
@@ -61,7 +64,10 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
     total_skus = sum(catalog_by_type.values())
 
     # 2. Dynamic Transaction & Revenue Study (Group by ANY product_type in database)
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    f_sql_l, f_params_l = build_company_filter_sql(company_ids=company_ids, column_name="o.company_id", prefix="f_l")
+    rev_params = {**t_params_l, **f_params_l}
+
     rev_rows = run_query(
         f"""SELECT
                 COALESCE(p.product_type, 'unclassified') AS ptype,
@@ -70,10 +76,10 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
             FROM fact_sales_order_lines l
             JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
             JOIN fact_sales_orders o ON l.sales_order_id = o.id AND l.tenant_id = o.tenant_id
-            WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
+            WHERE 1=1 {t_sql_l} {f_sql_l} AND o.state IN ('sale', 'done')
             GROUP BY COALESCE(p.product_type, 'unclassified')
             ORDER BY total_revenue DESC""",
-        t_params_l,
+        rev_params,
     )
 
     # 3. Dynamic Category Study (Top Product Categories by Revenue)
@@ -86,11 +92,11 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
             JOIN dim_products p ON l.product_id = p.id AND l.tenant_id = p.tenant_id
             JOIN fact_sales_orders o ON l.sales_order_id = o.id AND l.tenant_id = o.tenant_id
             LEFT JOIN dim_product_categories c ON p.category_id = c.id AND p.tenant_id = c.tenant_id
-            WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done')
+            WHERE 1=1 {t_sql_l} {f_sql_l} AND o.state IN ('sale', 'done')
             GROUP BY COALESCE(c.complete_name, c.name, 'Uncategorized')
             ORDER BY category_revenue DESC
             LIMIT 5""",
-        t_params_l,
+        rev_params,
     )
 
     total_revenue = sum(float(r["total_revenue"]) for r in rev_rows)
@@ -126,8 +132,8 @@ def get_tenant_profile_tool(tenant_id: str, company_id: int | None = None, compa
         primary_driver = f"No sales transactions yet. Catalog is lead by '{top_sku_type}' ({catalog_by_type.get(top_sku_type, 0)} SKUs)."
 
     # 4. Dynamic Customer & Channel Composition Study
-    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_o")
-    f_sql_o, f_params_o = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids), column_name="o.company_id")
+    t_sql_o, t_params_o = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="o.tenant_id", prefix="t_o")
+    f_sql_o, f_params_o = build_company_filter_sql(company_ids=company_ids, column_name="o.company_id")
     order_params = {**t_params_o, **f_params_o}
 
     order_stats_rows = []
@@ -259,17 +265,20 @@ def generate_pdf(text: str, filename: str = "output.pdf") -> str:
 def calculate_ratio(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator != 0 else 0.0
 
-def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | None, currency_column: str = "currency_code", tenant_ids: Optional[list[str]] = None) -> str:
+def build_currency_case_sql(column: str, tenant_ids: Optional[list[str]] = None, base_currency: str | None = None, currency_column: str = "currency_code") -> str:
     """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""
     if not base_currency:
         return column
 
     try:
+        t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
+        first_tid = t_ids[0] if t_ids else None
+
         from doova_one_view.api.kpi.service import _get_rate_map
-        rate_map = _get_rate_map(tenant_id=tenant_id)
+        rate_map = _get_rate_map(tenant_ids=t_ids)
         
         from doova_one_view.api.agent.utils import get_tenant_currency
-        tenant_base = get_tenant_currency(tenant_id)
+        tenant_base = get_tenant_currency(tenant_ids=t_ids)
         if tenant_base and tenant_base not in rate_map:
             rate_map[tenant_base] = 1.0
 
@@ -287,57 +296,6 @@ def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | No
             factor = target_rate / row_rate
             if abs(factor - 1.0) < 0.0001:
                 continue
-            cases.append(f"WHEN {currency_column} = '{cur_code}' THEN {column} * {factor}")
-            
-        if not cases:
-            return column
-            
-        case_str = " ".join(cases)
-        return f"(CASE {case_str} ELSE {column} END)"
-    except Exception as e:
-        import logging
-        logging.error(f"Error building currency case sql: {e}")
-        return column
-
-
-
-def build_currency_case_sql(column: str, tenant_id: str, base_currency: str | None, currency_column: str = "currency_code", tenant_ids: Optional[list[str]] = None) -> str:
-    """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""
-    if not base_currency:
-        return column
-
-    try:
-        from doova_one_view.api.kpi.service import _get_rate_map
-        rate_map = _get_rate_map()
-        
-        # Inject the tenant's base currency with a rate of 1.0 so conversions to/from it work
-        from doova_one_view.api.agent.utils import get_tenant_currency
-        tenant_base = get_tenant_currency(tenant_id)
-        if tenant_base and tenant_base not in rate_map:
-            rate_map[tenant_base] = 1.0
-
-        if not rate_map or base_currency not in rate_map:
-            return column
-            
-        target_rate = rate_map[base_currency]
-        if target_rate == 0:
-            return column
-
-        cases = []
-        for cur_code, row_rate in rate_map.items():
-            if not cur_code or row_rate == 0:
-                continue
-                
-            # Factor to convert from cur_code to base_currency
-            # value_in_base = value_in_cur_code / row_rate
-            # value_in_target = value_in_base * target_rate
-            # therefore factor = target_rate / row_rate
-            factor = target_rate / row_rate
-            
-            # Avoid emitting " * 1.0 " if the factor is exactly 1
-            if abs(factor - 1.0) < 0.0001:
-                continue
-                
             cases.append(f"WHEN {currency_column} = '{cur_code}' THEN {column} * {factor}")
             
         if not cases:
@@ -357,16 +315,17 @@ def get_per_tenant_exchange_rates(tenant_ids: Optional[list[str]] = None) -> dic
         from doova_one_view.api.agent.utils import get_tenant_currency
         from doova_one_view.api.kpi.service import _get_rate_map, _get_conversion_rate
         
-        if tenant_ids:
-            tenants = list(Tenant.objects.filter(id__in=tenant_ids))
+        t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
+        if t_ids:
+            tenants = list(Tenant.objects.filter(id__in=t_ids))
         else:
             tenants = list(Tenant.objects.all())
             
         result = {}
         for t in tenants:
             tid_str = str(t.id)
-            base_curr = get_tenant_currency(tid_str)
-            raw_rates = _get_rate_map(tid_str)
+            base_curr = get_tenant_currency(tenant_ids=[tid_str])
+            raw_rates = _get_rate_map(tenant_ids=[tid_str])
             
             # Ensure base currency is in raw_rates
             if base_curr and base_curr not in raw_rates:
@@ -378,7 +337,11 @@ def get_per_tenant_exchange_rates(tenant_ids: Optional[list[str]] = None) -> dic
                     conv = _get_conversion_rate(base_curr, target_curr, raw_rates)
                     tenant_rates[target_curr] = round(conv, 6)
             
-            result[t.name] = {
+            key_name = t.name
+            if key_name in result:
+                key_name = f"{t.name} ({tid_str[:8]})"
+
+            result[key_name] = {
                 "tenant_id": tid_str,
                 "base_currency": base_curr,
                 "exchange_rates": tenant_rates
@@ -391,11 +354,9 @@ def get_per_tenant_exchange_rates(tenant_ids: Optional[list[str]] = None) -> dic
 
 def get_multi_currency_conversions(
     amount: float, 
-    tenant_id: str | None, 
-    company_id: int | None = None, 
+    tenant_ids: Optional[list[str]] = None, 
     company_ids: list[int] | None = None, 
     base_currency: str | None = None, 
-    tenant_ids: Optional[list[str]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
     domain: str = "sales",
@@ -405,11 +366,13 @@ def get_multi_currency_conversions(
         from doova_one_view.api.agent.utils import get_tenant_currency
         from doova_one_view.api.kpi.service import _get_rate_map, _get_conversion_rate
 
-        selected_cids = normalize_company_ids(company_id=company_id, companies=company_ids)
+        selected_cids = normalize_company_ids(company_ids=company_ids)
         target_cid = selected_cids[0] if len(selected_cids) == 1 else None
+        t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
+        first_tid = t_ids[0] if t_ids else None
 
-        native_curr = base_currency or get_tenant_currency(tenant_id, company_id=target_cid, company_ids=selected_cids)
-        rate_map = _get_rate_map(tenant_id=tenant_id)
+        native_curr = base_currency or get_tenant_currency(tenant_ids=tenant_ids, company_ids=selected_cids)
+        rate_map = _get_rate_map(tenant_ids=t_ids)
         
         per_tenant_rates = get_per_tenant_exchange_rates(tenant_ids=tenant_ids)
         
@@ -428,8 +391,8 @@ def get_multi_currency_conversions(
                 date_col = "date_order"
                 amount_col_name = "amount_total"
 
-            t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="t.tenant_id", prefix="t_multi")
-            f_sql_def, f_params_def = build_company_filter_sql(tenant_id, selected_cids, column_name="t.company_id", prefix="c_multi")
+            t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="t.tenant_id", prefix="t_multi")
+            f_sql_def, f_params_def = build_company_filter_sql(company_ids=selected_cids, column_name="t.company_id", prefix="c_multi")
             
             comp_query = f"""
                 SELECT COALESCE(t.currency_code, c.currency_name, c.currency_code, 'XAF') AS currency_code, COALESCE(SUM(t.{amount_col_name}), 0) AS raw_total

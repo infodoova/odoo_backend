@@ -38,7 +38,7 @@ class PurchaseOrderSynchronizer(BaseSynchronizer):
             req_order_fields = [
                 'id', 'name', 'partner_id', 'user_id', 'company_id', 'date_order', 'date_planned',
                 'date_approve', 'state', 'invoice_status', 'amount_untaxed',
-                'amount_tax', 'amount_total', 'currency_id', 'partner_ref', 'write_date'
+                'amount_tax', 'amount_total', 'currency_id', 'partner_ref', 'create_date', 'write_date'
             ]
             req_line_fields = [
                 'id', 'order_id', 'product_id', 'product_qty', 'qty_received',
@@ -110,6 +110,7 @@ class PurchaseOrderSynchronizer(BaseSynchronizer):
                     self.transformer.parse_odoo_decimal(order.get('amount_tax', 0)),
                     self.transformer.parse_odoo_decimal(order.get('amount_total', 0)),
                     currency_code, order.get('partner_ref'),
+                    self.transformer.parse_odoo_datetime(order.get('create_date')),
                     self.transformer.parse_odoo_datetime(order.get('write_date'))
                 ))
                 order_odoo_ids.append(order['id'])
@@ -122,12 +123,14 @@ class PurchaseOrderSynchronizer(BaseSynchronizer):
                 tenant_id, odoo_id, odoo_name, company_id, partner_id, user_id,
                 date_order, date_order_id, date_planned, date_approve,
                 state, invoice_status, amount_untaxed, amount_tax, amount_total,
-                currency_code, partner_ref, odoo_write_date, synced_at
+                currency_code, partner_ref, odoo_create_date, odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET 
                 state = EXCLUDED.state, invoice_status = EXCLUDED.invoice_status,
-                amount_total = EXCLUDED.amount_total, odoo_write_date = EXCLUDED.odoo_write_date,
+                amount_total = EXCLUDED.amount_total, 
+                odoo_create_date = EXCLUDED.odoo_create_date,
+                odoo_write_date = EXCLUDED.odoo_write_date,
                 synced_at = NOW()
         """
         self.execute_upsert_batch(order_query, order_params)

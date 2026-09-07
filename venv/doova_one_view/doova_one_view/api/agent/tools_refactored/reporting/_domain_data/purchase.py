@@ -12,17 +12,15 @@ logger = logging.getLogger(__name__)
 def enrich(
     data: dict,
     pnl_ctx: dict,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
     prior_start: str | None = None,
     prior_end: str | None = None,
     comparison_label: str = "",
-    **kwargs
 ) -> None:
     """Enriches data dict with Purchasing & Procurement telemetry (PO count, spend, AP aging, top vendors)."""
     from doova_one_view.api.agent.tools_refactored import reporting_v2
@@ -32,14 +30,14 @@ def enrich(
     get_aging_analysis_tool = reporting_v2.get_aging_analysis_tool
 
     try:
-        purch = get_purchase_summary_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-        top_v = get_top_vendors_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, limit=10, base_currency=base_currency, tenant_ids=tenant_ids)
-        payables = get_payables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        purch = get_purchase_summary_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency)
+        top_v = get_top_vendors_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, limit=10, base_currency=base_currency)
+        payables = get_payables_analysis_tool(tenant_ids=tenant_ids, company_ids=company_ids, base_currency=base_currency)
 
         prior_purch = {}
         if prior_start and prior_end:
             try:
-                prior_purch = get_purchase_summary_tool(tenant_id, company_ids=resolved_company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+                prior_purch = get_purchase_summary_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency)
             except Exception:
                 pass
 
@@ -71,7 +69,7 @@ def enrich(
         prior_po_cnt = int(prior_purch.get("po_count", prior_purch.get("order_count", 0)) or 0)
         prior_avg_po = float(prior_purch.get("avg_po_value", prior_purch.get("average_order_value", 0)) or (prior_total_purch / prior_po_cnt if prior_po_cnt > 0 else 0))
 
-        ap_aging_tool = get_aging_analysis_tool(tenant_id, direction="payable", company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        ap_aging_tool = get_aging_analysis_tool(tenant_ids=tenant_ids, company_ids=company_ids, direction="payable", base_currency=base_currency)
         ap_c = float(ap_aging_tool.get("current", 0) or 0.0)
         ap_c_cnt = int(ap_aging_tool.get("current_cnt", 0) or 0)
         ap_d1 = float(ap_aging_tool.get("1_30_days", 0) or 0.0)

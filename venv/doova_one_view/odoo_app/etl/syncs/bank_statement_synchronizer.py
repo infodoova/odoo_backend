@@ -36,7 +36,7 @@ class BankStatementSynchronizer(BaseSynchronizer):
 
             req_stmt_fields = [
                 'id', 'name', 'date', 'company_id', 'journal_id',
-                'balance_start', 'balance_end_real', 'state', 'write_date'
+                'balance_start', 'balance_end_real', 'state', 'create_date', 'write_date'
             ]
             req_line_fields = [
                 'id', 'statement_id', 'date', 'name', 'amount',
@@ -104,6 +104,7 @@ class BankStatementSynchronizer(BaseSynchronizer):
                     self.transformer.parse_odoo_decimal(stmt.get('balance_start', 0)),
                     self.transformer.parse_odoo_decimal(stmt.get('balance_end_real', 0)),
                     stmt.get('state'),
+                    self.transformer.parse_odoo_datetime(stmt.get('create_date')),
                     self.transformer.parse_odoo_datetime(stmt.get('write_date'))
                 ))
                 stmt_odoo_ids.append(stmt['id'])
@@ -116,16 +117,16 @@ class BankStatementSynchronizer(BaseSynchronizer):
                 tenant_id, odoo_id, odoo_name, company_id, journal_id,
                 date, date_id, journal_name,
                 balance_start, balance_end_real, state,
-                odoo_write_date, synced_at
+                odoo_create_date, odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
                 company_id = EXCLUDED.company_id,
                 journal_id = EXCLUDED.journal_id,
-                balance_start = EXCLUDED.balance_start,
                 balance_end_real = EXCLUDED.balance_end_real,
                 state = EXCLUDED.state,
-                odoo_write_date = EXCLUDED.odoo_write_date,
+                odoo_create_date = EXCLUDED.odoo_create_date,
+                odoo_write_date = EXCLUDED.odoo_write_date, 
                 synced_at = NOW()
         """
         self.execute_upsert_batch(stmt_query, stmt_params)

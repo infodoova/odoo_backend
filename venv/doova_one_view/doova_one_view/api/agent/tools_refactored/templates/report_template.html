@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ company_name|default("Nexus") }} — Executive Business Health Report</title>
+    <title>{{ company_name|default("Doova") }} — Executive Business Health Report</title>
     <style>
         /* -------------------------------------------------------------------------
            1. PAGE SETUP (Standard CSS Paged Media for WeasyPrint A4)
@@ -24,7 +24,7 @@
                 color: #94a3b8;
             }
             @bottom-left {
-                content: "{{ company_name|default('Nexus') }} — Confidential & Proprietary";
+                content: "{{ company_name|default('Doova') }} — Confidential & Proprietary";
                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
                 font-size: 7.5pt;
                 color: #94a3b8;
@@ -678,7 +678,7 @@
         }
 
         /* -------------------------------------------------------------------------
-           10. NEXUS LOGO WATERMARK (Fixed background on report pages)
+           10. DOOVA LOGO WATERMARK (Fixed background on report pages)
            ------------------------------------------------------------------------- */
         .report-watermark {
             position: fixed;
@@ -739,11 +739,11 @@
 <body>
 
     <!-- =========================================================================
-         NEXUS WATERMARK EMBLEM (Repeating background layer)
+         DOOVA WATERMARK EMBLEM (Repeating background layer)
          ========================================================================= -->
     <div class="report-watermark">
         {% if logo_b64 %}
-        <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}" class="watermark-img" alt="Nexus Logo Watermark" />
+        <img src="data:{{ logo_mime|default('image/png') }};base64,{{ logo_b64 }}" class="watermark-img" alt="Doova Logo Watermark" />
         {% else %}
         <div class="watermark-nexus-logo">
             <svg viewBox="0 0 100 100" class="watermark-svg" xmlns="http://www.w3.org/2000/svg">
@@ -751,10 +751,10 @@
                 <polygon points="50,4 92,26 92,74 50,96 8,74 8,26" fill="none" stroke="#0f172a" stroke-width="5" />
                 <!-- Inner Hexagon Frame -->
                 <polygon points="50,14 82,32 82,68 50,86 18,68 18,32" fill="none" stroke="#2563eb" stroke-width="2.5" />
-                <!-- Center Nexus Icon N -->
+                <!-- Center Doova Icon N -->
                 <text x="50" y="66" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="46" font-weight="900" text-anchor="middle" fill="#0f172a">N</text>
             </svg>
-            <div class="watermark-brand-text">NEXUS</div>
+            <div class="watermark-brand-text">DOOVA</div>
             <div class="watermark-sub-text">EXECUTIVE INTELLIGENCE</div>
         </div>
         {% endif %}
@@ -773,7 +773,7 @@
                 {% else %}
                 <div class="brand-badge">
                     <span class="brand-icon">N</span>
-                    <span class="brand-text">NEXUS</span>
+                    <span class="brand-text">DOOVA</span>
                 </div>
                 {% endif %}
             </div>

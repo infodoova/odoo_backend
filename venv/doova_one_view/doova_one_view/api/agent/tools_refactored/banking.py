@@ -8,24 +8,30 @@ from doova_one_view.api.agent.tools_refactored.common import run_query, normaliz
 from doova_one_view.api.agent.query_context import build_tenant_filter_sql
 
 def get_dashboard_impl(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    company_ids: Optional[list[int]] = None,
     base_currency: Optional[str] = None,
-    tenant_ids: Optional[list[str]] = None
 ) -> dict[str, Any]:
     def _dashboard():
-        from doova_one_view.api.agent.query_context import normalize_tenant_ids
-        tenants = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
+        from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+        tenants = normalize_tenant_ids(tenant_ids)
+        companies = normalize_company_ids(company_ids)
 
         def _local_base_qs(c_ids):
             from odoo_app.models.account_move import AccountMove
             q = AccountMove.objects.all()
             if tenants:
-                q = q.filter(tenant_id__in=tenants)
+                if len(tenants) == 1:
+                    q = q.filter(tenant_id=tenants[0])
+                else:
+                    q = q.filter(tenant_id__in=tenants)
             if c_ids:
-                q = q.filter(company_id__in=c_ids)
+                if len(c_ids) == 1:
+                    q = q.filter(company_id=c_ids[0])
+                else:
+                    q = q.filter(company_id__in=c_ids)
             return q
 
         qs = AccountingService._date_qs(
@@ -485,7 +491,7 @@ def get_dashboard_impl(
         ]
         
         applied = {
-            "tenant_id": tenant_id,
+            "tenant_ids": tenants,
             "start_date": start_date,
             "end_date": end_date,
             "company_ids": company_ids,
@@ -582,18 +588,18 @@ def get_dashboard_impl(
 
 
 def get_journal_cards_impl(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: str = None,
     end_date: str = None,
-    company_ids: list[int] = None,
     base_currency: str = None,
     limit: int = 50,
     offset: int = 0,
-    tenant_ids: Optional[list[str]] = None
 ) -> dict:
     def _get():
-        from doova_one_view.api.agent.query_context import normalize_tenant_ids
-        tenants = normalize_tenant_ids(tenant_id=tenant_id, tenant_ids=tenant_ids)
+        from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+        tenants = normalize_tenant_ids(tenant_ids)
+        companies = normalize_company_ids(company_ids)
 
         from odoo_app.models import AccountJournal, AccountMove, BankStatement, AccountMoveLine
         from django.db.models import Sum, Q, Count, Case, When, F, DecimalField
@@ -605,9 +611,15 @@ def get_journal_cards_impl(
         
         qs = AccountJournal.objects.all()
         if tenants:
-            qs = qs.filter(tenant_id__in=tenants)
-        if company_ids:
-            qs = qs.filter(company_id__in=company_ids)
+            if len(tenants) == 1:
+                qs = qs.filter(tenant_id=tenants[0])
+            else:
+                qs = qs.filter(tenant_id__in=tenants)
+        if companies:
+            if len(companies) == 1:
+                qs = qs.filter(company_id=companies[0])
+            else:
+                qs = qs.filter(company_id__in=companies)
             
         total = qs.count()
         journals = qs.select_related('company').order_by('name')[offset:offset+limit]
@@ -798,26 +810,22 @@ def get_journal_cards_impl(
 
 
 def get_bank_cash_summary_tool(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    company_id: Optional[int] = None,
-    company_ids: Optional[list[int]] = None,
     base_currency: Optional[str] = None,
-    tenant_ids: Optional[list[str]] = None
 ) -> dict:
     from doova_one_view.api.agent.tools_refactored.finance import get_balance_sheet_tool
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    bs = get_balance_sheet_tool(tenant_id=tenant_id, company_ids=selected, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+    bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=end_date, base_currency=base_currency)
     total_balance = float(bs.get("bank_and_cash_accounts", 0.0) or 0.0)
 
     data = get_dashboard_impl(
-        tenant_id=tenant_id,
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
         start_date=start_date,
         end_date=end_date,
-        company_ids=selected,
         base_currency=base_currency,
-        tenant_ids=tenant_ids
     )
     return {
         "tool_name": "get_bank_cash_summary_tool",
@@ -831,22 +839,18 @@ def get_bank_cash_summary_tool(
     }
 
 def get_journal_cards_tool(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    company_id: Optional[int] = None,
-    company_ids: Optional[list[int]] = None,
     base_currency: Optional[str] = None,
-    tenant_ids: Optional[list[str]] = None
 ) -> dict:
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     res = get_journal_cards_impl(
-        tenant_id=tenant_id,
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
         start_date=start_date,
         end_date=end_date,
-        company_ids=selected,
         base_currency=base_currency,
-        tenant_ids=tenant_ids
     )
     return {
         "tool_name": "get_journal_cards_tool",
@@ -854,15 +858,11 @@ def get_journal_cards_tool(
     }
 
 def get_bank_statement_summary_tool(
-    tenant_id: str,
-    company_id: Optional[int] = None,
+    tenant_ids: Optional[list[str]] = None,
     company_ids: Optional[list[int]] = None,
-    tenant_ids: Optional[list[str]] = None
 ) -> dict:
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    
-    t_sql, params = build_tenant_filter_sql(tenant_id, tenant_ids, prefix="t", column_name="s.tenant_id")
-    c_sql, c_params = build_company_filter_sql(tenant_id, selected, column_name="s.company_id", prefix="company")
+    t_sql, params = build_tenant_filter_sql(tenant_ids, prefix="t", column_name="s.tenant_id")
+    c_sql, c_params = build_company_filter_sql(company_ids, column_name="s.company_id", prefix="company")
     params.update(c_params)
 
     rows = run_query(f"""
@@ -894,30 +894,27 @@ def get_bank_statement_summary_tool(
 
 
 def get_journal_audit_tool(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    company_id: Optional[int] = None,
-    company_ids: Optional[list[int]] = None,
     base_currency: Optional[str] = None,
-    tenant_ids: Optional[list[str]] = None
 ) -> dict:
     """Official Journal Audit report matching Odoo Report 20.
     Returns debit, credit, balance, and entries count for all posted accounting journals (Cash, Bank, Invoices, Bills, Stock, JVs) + Tax Summary.
     """
     s_date = start_date or date_from
     e_date = end_date or date_to
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    f_sql_m, f_params_m = build_company_filter_sql(tenant_id, selected, column_name="m.company_id", prefix="c_m")
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    f_sql_m, f_params_m = build_company_filter_sql(company_ids, column_name="m.company_id", prefix="c_m")
     
-    debit_col = build_currency_case_sql('l.debit', tenant_id, base_currency, 'c.currency_code')
-    credit_col = build_currency_case_sql('l.credit', tenant_id, base_currency, 'c.currency_code')
+    debit_col = build_currency_case_sql('l.debit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
+    credit_col = build_currency_case_sql('l.credit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
     
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_m)
     params.update(f_params_m)
     

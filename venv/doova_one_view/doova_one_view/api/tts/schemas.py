@@ -38,3 +38,27 @@ class VoiceListResponse(BaseModel):
     voices: List[VoiceInfo]
     engines: List[str]
     languages: List[str]
+
+
+class TTSCachePolicy(BaseModel):
+    max_age_days: int = Field(..., description="Configured maximum retention age in days (TTL)")
+    max_files: int = Field(..., description="Configured maximum number of cached audio files")
+    max_size_mb: int = Field(..., description="Configured maximum total cache size in megabytes")
+
+
+class TTSCacheStatsResponse(BaseModel):
+    total_files: int = Field(..., description="Current count of cached audio files")
+    total_size_bytes: int = Field(..., description="Total cache size in bytes")
+    total_size_mb: float = Field(..., description="Total cache size in megabytes")
+    oldest_file_age_days: Optional[float] = Field(None, description="Age in days of the oldest cached file")
+    newest_file_age_hours: Optional[float] = Field(None, description="Age in hours of the most recently written file")
+    policy: TTSCachePolicy = Field(..., description="Active cache limits and retention policies")
+
+
+class TTSCacheCleanResponse(BaseModel):
+    deleted_files: int = Field(..., description="Number of audio files purged during cleanup")
+    freed_bytes: int = Field(..., description="Disk space freed in bytes")
+    freed_mb: float = Field(..., description="Disk space freed in megabytes")
+    remaining_files: int = Field(..., description="Remaining count of cached audio files")
+    message: str = Field(..., description="Summary message of the clean operation")
+

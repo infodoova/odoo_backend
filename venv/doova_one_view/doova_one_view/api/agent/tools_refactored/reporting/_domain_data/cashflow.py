@@ -12,17 +12,15 @@ logger = logging.getLogger(__name__)
 def enrich(
     data: dict,
     pnl_ctx: dict,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
     prior_start: str | None = None,
     prior_end: str | None = None,
     comparison_label: str = "",
-    **kwargs
 ) -> None:
     """Enriches data dict with Cash Flow & Liquidity telemetry matching Odoo Enterprise Cash Flow Statement."""
     from doova_one_view.api.agent.tools_refactored import reporting_v2
@@ -35,13 +33,13 @@ def enrich(
         from doova_one_view.api.agent.tools_refactored.finance_v2 import get_cash_flow_statement_tool
 
     try:
-        cf = get_cash_flow_statement_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-        bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+        cf = get_cash_flow_statement_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency)
+        bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=end_date, base_currency=base_currency)
         
         prior_cf = {}
         if prior_start and prior_end:
             try:
-                prior_cf = get_cash_flow_statement_tool(tenant_id, company_ids=resolved_company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+                prior_cf = get_cash_flow_statement_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency)
             except Exception:
                 pass
 
@@ -92,17 +90,24 @@ def enrich(
         # Query real granular bank & cash accounts matching Cash Flow liquidity definition
         from doova_one_view.api.accounting.cash_flow_engine import CashFlowEngine
         from odoo_app.models import AccountMoveLine
-        liq_filter = CashFlowEngine.get_liquidity_filter(tenant_id)
+        liq_filter = CashFlowEngine.get_liquidity_filter(tenant_ids=tenant_ids)
         end_date_str = end_date or "2099-12-31"
 
         liq_qs = AccountMoveLine.objects.filter(
             liq_filter,
-            tenant_id=tenant_id,
             account_move__state="posted",
             account_move__date__lte=end_date_str
         )
-        if resolved_company_ids:
-            liq_qs = liq_qs.filter(company_id__in=resolved_company_ids)
+        if tenant_ids:
+            if len(tenant_ids) == 1:
+                liq_qs = liq_qs.filter(tenant_id=tenant_ids[0])
+            else:
+                liq_qs = liq_qs.filter(tenant_id__in=tenant_ids)
+        if company_ids:
+            if len(company_ids) == 1:
+                liq_qs = liq_qs.filter(company_id=company_ids[0])
+            else:
+                liq_qs = liq_qs.filter(company_id__in=company_ids)
 
         from django.db.models import Sum
         acct_aggs = liq_qs.values("account_code", "account_name", "company__currency_code").annotate(

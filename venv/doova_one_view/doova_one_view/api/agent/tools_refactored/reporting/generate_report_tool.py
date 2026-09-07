@@ -20,6 +20,7 @@ import matplotlib.ticker as ticker
 
 from doova_one_view.api.agent.query_context import (
     build_tenant_filter_sql,
+    normalize_tenant_ids,
     normalize_company_ids,
     build_company_filter_sql,
 )
@@ -71,7 +72,6 @@ def _slugify_filename_part(text: str, max_len: int = 40) -> str:
 
 def _build_pdf_filename(
     domain: str,
-    tenant_id: str,
     company_name: str,
     reporting_period: str,
     tenant_ids: list[str] | None = None,
@@ -81,14 +81,14 @@ def _build_pdf_filename(
         from odoo_app.models import Tenant
         if tenant_ids and len(tenant_ids) > 1:
             tenant_name_str = f"multi_tenants_{len(tenant_ids)}"
-        else:
-            t = Tenant.objects.filter(id=tenant_id).first()
+        elif tenant_ids:
+            t = Tenant.objects.filter(id=tenant_ids[0]).first()
             if t and t.name:
                 tenant_name_str = t.name
     except Exception:
         pass
     if not tenant_name_str:
-        tenant_name_str = str(tenant_id)[:8] if tenant_id else "tenant"
+        tenant_name_str = str(tenant_ids[0])[:8] if tenant_ids else "tenant"
 
     tenant_slug = _slugify_filename_part(tenant_name_str)
     company_slug = _slugify_filename_part(company_name or "All_Companies")
@@ -100,12 +100,10 @@ def _build_pdf_filename(
 
 
 def generate_report_tool(
-    tenant_id: str, 
-    custom_content: str = "", 
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
-    base_currency: str | None = None, 
     tenant_ids: Optional[list[str]] = None,
+    company_ids: list[int] | None = None,
+    custom_content: str = "",
+    base_currency: str | None = None,
     logo_path: str | None = None,
     logo_b64: str | None = None,
     logo_url: str | None = None,
@@ -113,22 +111,20 @@ def generate_report_tool(
     report_type: str | None = None,
     report_data: dict | None = None,
     comparison_type: str = "prior_year",
-    start_date: str | None = None,   # ISO date "YYYY-MM-DD" — reporting window start
-    end_date: str | None = None,     # ISO date "YYYY-MM-DD" — reporting window end
-    reporting_period: str | None = None,   # Human-readable label stamped on PDF cover
-    comparison_label: str | None = None,   # e.g. "Prior Quarter (QoQ)" — auto-inferred if None
-    **kwargs,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    reporting_period: str | None = None,
+    comparison_label: str | None = None,
+    prompt: str | None = None,
 ) -> dict:
-    if not report_type and kwargs.get("domain"):
-        report_type = kwargs.get("domain")
+    clean_tenant_ids = normalize_tenant_ids(tenant_ids)
+    resolved_company_ids = normalize_company_ids(company_ids)
+    resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
     if report_type and report_mode == "auto":
         report_mode = report_type
 
-    resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
-
     # Check for currency hints in prompt if base_currency is not passed
-    prompt_text = (kwargs.get("prompt") or "").lower()
+    prompt_text = (prompt or "").lower()
     if not base_currency:
         if re.search(r'\b(usd|dollars?|\$)\b', prompt_text) or re.search(r'\b(in usd|in dollars)\b', custom_content.lower()):
             base_currency = "USD"
@@ -137,7 +133,8 @@ def generate_report_tool(
         elif re.search(r'\b(xaf|fcfa|cfa)\b', prompt_text):
             base_currency = "XAF"
 
-    currency = base_currency or get_tenant_currency(tenant_id, resolved_company_id)
+    primary_tenant = clean_tenant_ids[0] if clean_tenant_ids else None
+    currency = base_currency or get_tenant_currency(primary_tenant, resolved_company_id)
     search_text = prompt_text.lower() if prompt_text else (custom_content.lower() if custom_content else "")
 
     # 1. Company & View Labeling
@@ -149,7 +146,7 @@ def generate_report_tool(
         company_name = "Financial Overview"
         view_type = "Individual"
         try:
-            comp_res = get_companies_tool(tenant_id, tenant_ids=tenant_ids)
+            comp_res = get_companies_tool(tenant_ids=clean_tenant_ids)
             comps = comp_res.get("companies", []) if isinstance(comp_res, dict) else []
             for c in comps:
                 if isinstance(c, dict) and (c.get("id") in resolved_company_ids or c.get("odoo_id") in resolved_company_ids):
@@ -160,7 +157,7 @@ def generate_report_tool(
     else:
         view_type = "Comparison"
         try:
-            comp_res = get_companies_tool(tenant_id, tenant_ids=tenant_ids)
+            comp_res = get_companies_tool(tenant_ids=clean_tenant_ids)
             comps = comp_res.get("companies", []) if isinstance(comp_res, dict) else []
             selected_names = [
                 c.get("name") for c in comps
@@ -177,20 +174,20 @@ def generate_report_tool(
             company_name = f"Multi-Company ({len(resolved_company_ids)} Companies)"
 
     # 2. Resolve Reporting Period & Core Financial Dates Dynamically via date_engine
-    raw_start = start_date or kwargs.get("start_date") or kwargs.get("from_date")
-    raw_end   = end_date   or kwargs.get("end_date")   or kwargs.get("to_date")
+    raw_start = start_date
+    raw_end   = end_date
     ytd_start, ytd_end, auto_period_label = resolve_period_dates(
         text=search_text,
         start_date=raw_start,
         end_date=raw_end,
     )
-    resolved_period_label = reporting_period or kwargs.get("reporting_period") or auto_period_label
+    resolved_period_label = reporting_period or auto_period_label
 
     # Resolve Comparison Basis Dynamically (auto-infer from resolved ytd_start/ytd_end if not provided)
     _, _, resolved_comparison_label = resolve_comparison_dates(
         start_date=ytd_start,
         end_date=ytd_end,
-        comparison_label=comparison_label or kwargs.get("comparison_label"),
+        comparison_label=comparison_label,
         comparison_type=comparison_type,
     )
 
@@ -208,12 +205,11 @@ def generate_report_tool(
 
         db_domain_data = _fetch_domain_report_data(
             resolved_domain=resolved_domain,
-            tenant_id=tenant_id,
-            resolved_company_ids=resolved_company_ids,
+            tenant_ids=clean_tenant_ids,
+            company_ids=resolved_company_ids,
             start_date=ytd_start,
             end_date=ytd_end,
             base_currency=base_currency,
-            tenant_ids=tenant_ids,
             currency=currency,
             prior_start=prior_start,
             prior_end=prior_end,
@@ -237,8 +233,8 @@ def generate_report_tool(
         normalized_data = _normalize_report_data(report_data or {}, currency)
         agent_charts = _render_charts_from_report_data(normalized_data, currency, domain=resolved_domain)
 
-        chart_1_b64 = agent_charts.get("chart_1_b64") or kwargs.get("chart_1_b64")
-        chart_2_b64 = agent_charts.get("chart_2_b64") or kwargs.get("chart_2_b64")
+        chart_1_b64 = agent_charts.get("chart_1_b64")
+        chart_2_b64 = agent_charts.get("chart_2_b64")
 
         # Automatically build trend and waterfall charts if not supplied by agent
         if not chart_1_b64:
@@ -252,23 +248,21 @@ def generate_report_tool(
 
                 trend_data_pts = _get_domain_trend_series(
                     domain=resolved_domain,
-                    tenant_id=tenant_id,
+                    tenant_ids=clean_tenant_ids,
                     company_ids=resolved_company_ids,
                     start_date=trend_start,
                     end_date=trend_end,
                     base_currency=base_currency,
-                    tenant_ids=tenant_ids,
                 )
                 if not trend_data_pts and resolved_domain in ("sales", "commercial"):
                     try:
                         ts_res = get_time_series_data_tool(
-                            tenant_id=tenant_id,
+                            tenant_ids=clean_tenant_ids,
                             company_ids=resolved_company_ids,
                             start_date=trend_start,
                             end_date=trend_end,
                             granularity="month",
                             base_currency=base_currency,
-                            tenant_ids=tenant_ids,
                         )
                         trend_data_pts = ts_res.get("points", []) if isinstance(ts_res, dict) else []
                     except Exception:
@@ -276,13 +270,12 @@ def generate_report_tool(
                 elif not trend_data_pts and resolved_domain in ("purchase", "purchasing", "procurement"):
                     try:
                         ts_res = get_purchase_trend_tool(
-                            tenant_id=tenant_id,
+                            tenant_ids=clean_tenant_ids,
                             company_ids=resolved_company_ids,
                             start_date=trend_start,
                             end_date=trend_end,
                             granularity="month",
                             base_currency=base_currency,
-                            tenant_ids=tenant_ids,
                         )
                         trend_data_pts = ts_res.get("points", []) if isinstance(ts_res, dict) else []
                     except Exception:
@@ -309,7 +302,7 @@ def generate_report_tool(
                 pass
 
         # Process Markdown Custom Content
-        custom_content = replace_tenant_ids_with_names(custom_content, tenant_ids or ([tenant_id] if tenant_id else None))
+        custom_content = replace_tenant_ids_with_names(custom_content, clean_tenant_ids)
         custom_content = normalize_status_emoji(custom_content)
 
         def _chart_block_replacer_agent(match):
@@ -350,7 +343,7 @@ def generate_report_tool(
         custom_content = re.sub(r'```chart\s*\n(.*?)\n```', _chart_block_replacer_agent, custom_content, flags=re.DOTALL | re.IGNORECASE)
 
         # Autonomous AI Agent Invocation whenever prompt is provided or custom_content is empty
-        effective_prompt = kwargs.get("prompt") or prompt_text
+        effective_prompt = prompt or prompt_text
         if not custom_content.strip() or effective_prompt:
             ai_analysis = _generate_ai_domain_analysis(
                 domain=resolved_domain,
@@ -419,7 +412,7 @@ def generate_report_tool(
             template_kpis=meta.get("kpi_slots", []),
             trend_chart_b64=chart_1_b64,
             waterfall_chart_b64=chart_2_b64,
-            wc_chart_b64=kwargs.get("wc_chart_b64"),
+            wc_chart_b64=None,
             chart_1_b64=chart_1_b64,
             chart_2_b64=chart_2_b64,
             body_html=body_html,
@@ -431,10 +424,9 @@ def generate_report_tool(
         reports_dir = _get_reports_dir()
         filename = _build_pdf_filename(
             domain=resolved_domain,
-            tenant_id=tenant_id,
             company_name=company_name,
             reporting_period=resolved_period_label,
-            tenant_ids=tenant_ids,
+            tenant_ids=clean_tenant_ids,
         )
         output_path = reports_dir / filename
         html_out = _highlight_negative_numbers_html(html_out)
@@ -476,57 +468,57 @@ def generate_report_tool(
     top_prods = {}
 
     try:
-        sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency, tenant_ids=tenant_ids)
+        sales = get_sales_summary_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Sales fetch error: {e}")
 
     try:
-        health = get_business_health_score_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        health = get_business_health_score_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Health score fetch error: {e}")
 
     try:
-        pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency, tenant_ids=tenant_ids)
+        pnl = calculate_pnl_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"P&L fetch error: {e}")
 
     try:
-        prior_pnl = calculate_pnl_tool(tenant_id, company_ids=resolved_company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+        prior_pnl = calculate_pnl_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Prior-period P&L fetch error: {e}")
 
     try:
-        bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        bs = get_balance_sheet_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Balance sheet fetch error: {e}")
 
     try:
-        receivables = get_receivables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        receivables = get_receivables_analysis_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Receivables fetch error: {e}")
 
     try:
-        payables = get_payables_analysis_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        payables = get_payables_analysis_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Payables fetch error: {e}")
 
     try:
-        wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        wc = get_working_capital_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Working capital fetch error: {e}")
 
     try:
-        inv = get_inventory_valuation_tool(tenant_id, company_ids=resolved_company_ids, tenant_ids=tenant_ids)
+        inv = get_inventory_valuation_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids)
     except Exception as e:
         logger.warning(f"Inventory fetch error: {e}")
 
     try:
-        expenses_data = get_expense_breakdown_tool(tenant_id, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency, tenant_ids=tenant_ids)
+        expenses_data = get_expense_breakdown_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Expense breakdown fetch error: {e}")
 
     try:
-        top_prods = get_top_products_tool(tenant_id, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, limit=5, base_currency=base_currency, tenant_ids=tenant_ids)
+        top_prods = get_top_products_tool(tenant_ids=clean_tenant_ids, company_ids=resolved_company_ids, start_date=ytd_start, end_date=ytd_end, limit=5, base_currency=base_currency)
     except Exception as e:
         logger.warning(f"Top products fetch error: {e}")
 
@@ -543,11 +535,11 @@ def generate_report_tool(
     # Real Cash from GL accounts (account_type = 'asset_cash')
     cash_val = 0.0
     try:
-        t_sql_cash, t_params_cash = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_cash")
-        balance_col_cash = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
-        cash_params = {"tenant_id": tenant_id}
+        t_sql_cash, t_params_cash = build_tenant_filter_sql(clean_tenant_ids, column_name="l.tenant_id", prefix="t_cash")
+        balance_col_cash = build_currency_case_sql('l.balance', tenant_ids=clean_tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
+        cash_params = {}
         cash_params.update(t_params_cash)
-        f_sql_cash, f_params_cash = build_company_filter_sql(tenant_id, resolved_company_ids, column_name="l.company_id")
+        f_sql_cash, f_params_cash = build_company_filter_sql(resolved_company_ids, column_name="l.company_id")
         cash_params.update(f_params_cash)
         cash_rows = run_query(
             f"""SELECT COALESCE(SUM({balance_col_cash}), 0) AS cash_balance
@@ -680,17 +672,9 @@ def generate_report_tool(
     }
 
     # 5. Build Autonomous AI Executive Summary, Drivers & Prioritized Alerts
-    filtered_kwargs = {
-        k: v for k, v in kwargs.items()
-        if k not in (
-            "prompt", "comparison_label", "reporting_period", "start_date", "end_date",
-            "from_date", "to_date", "company_id", "company_ids", "tenant_id", "tenant_ids",
-            "base_currency", "custom_content", "comparison_type"
-        )
-    }
     exec_summary, drivers, alerts = _synthesize_autonomous_insights(
         custom_content=custom_content,
-        prompt=kwargs.get("prompt", ""),
+        prompt=prompt or "",
         pnl=pnl,
         prior_pnl=prior_pnl,
         sales=sales,
@@ -717,13 +701,12 @@ def generate_report_tool(
         inv_val=inv_val,
         ap_val=ap_val,
         cash_val=cash_val,
-        **filtered_kwargs
     )
 
     # 8. Build Company Comparison Table (if Multi-Company)
     company_comparison = []
     if len(resolved_company_ids) > 1:
-        comp_res = get_companies_tool(tenant_id)
+        comp_res = get_companies_tool(tenant_ids=clean_tenant_ids)
         all_comps = comp_res.get("companies", []) if isinstance(comp_res, dict) else []
         for c in all_comps:
             c_id = c.get("id")
@@ -731,13 +714,15 @@ def generate_report_tool(
                 c_name = c.get("name", f"Company {c_id}")
                 try:
                     c_pnl = calculate_pnl_tool(
-                        tenant_id, company_ids=[c_id],
-                        start_date=ytd_start, end_date=ytd_end,
-                        base_currency=base_currency, tenant_ids=tenant_ids,
+                        tenant_ids=clean_tenant_ids,
+                        company_ids=[c_id],
+                        start_date=ytd_start,
+                        end_date=ytd_end,
+                        base_currency=base_currency,
                     )
                     c_ar = get_receivables_analysis_tool(
-                        tenant_id, company_ids=[c_id],
-                        base_currency=base_currency, tenant_ids=tenant_ids,
+                        tenant_ids=clean_tenant_ids, company_ids=[c_id],
+                        base_currency=base_currency,
                     )
                     c_rev = float(c_pnl.get("total_income", 0) or c_pnl.get("revenue", 0) or 0)
                     c_gp = float(c_pnl.get("gross_profit", 0) or 0)
@@ -774,12 +759,11 @@ def generate_report_tool(
 
     try:
         monthly_pnl_data = _get_monthly_pnl_series(
-            tenant_id,
+            tenant_ids=clean_tenant_ids,
             company_ids=resolved_company_ids,
             start_date=trend_start,
             end_date=trend_end,
             base_currency=base_currency,
-            tenant_ids=tenant_ids,
         )
     except Exception as e:
         logger.warning(f"Monthly P&L series error: {e}")
@@ -788,13 +772,12 @@ def generate_report_tool(
         ts_result = {}
         try:
             ts_result = get_time_series_data_tool(
-                tenant_id,
+                tenant_ids=clean_tenant_ids,
                 company_ids=resolved_company_ids,
                 start_date=trend_start,
                 end_date=trend_end,
                 granularity="month",
                 base_currency=base_currency,
-                tenant_ids=tenant_ids
             )
         except Exception:
             pass
@@ -808,7 +791,7 @@ def generate_report_tool(
     wc_chart_b64 = _render_working_capital_chart(cash_val, ar_val, overdue_ar_val, ap_val, inv_val, nwc_val, currency)
 
     # 10. Process Markdown Custom Content
-    custom_content = replace_tenant_ids_with_names(custom_content, tenant_ids or ([tenant_id] if tenant_id else None))
+    custom_content = replace_tenant_ids_with_names(custom_content, clean_tenant_ids)
     custom_content = normalize_status_emoji(custom_content)
 
     def _chart_block_replacer(match):
@@ -911,10 +894,9 @@ The organization generated **{_fmt_money(rev_val, currency)}** in total revenue 
     reports_dir = _get_reports_dir()
     filename = _build_pdf_filename(
         domain="health",
-        tenant_id=tenant_id,
         company_name=company_name,
         reporting_period=resolved_period_label,
-        tenant_ids=tenant_ids,
+        tenant_ids=clean_tenant_ids,
     )
     output_path = reports_dir / filename
     html_out = _highlight_negative_numbers_html(html_out)
@@ -939,27 +921,31 @@ The organization generated **{_fmt_money(rev_val, currency)}** in total revenue 
     }
 
 
-def get_last_report_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_last_report_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> dict:
     reports_dir = _get_reports_dir()
+    clean_tenant_ids = normalize_tenant_ids(tenant_ids)
 
     tenant_name_str = ""
     try:
         from odoo_app.models import Tenant
-        if tenant_ids and len(tenant_ids) > 1:
-            tenant_name_str = f"multi_tenants_{len(tenant_ids)}"
-        else:
-            t = Tenant.objects.filter(id=tenant_id).first()
+        if clean_tenant_ids and len(clean_tenant_ids) > 1:
+            tenant_name_str = f"multi_tenants_{len(clean_tenant_ids)}"
+        elif clean_tenant_ids:
+            t = Tenant.objects.filter(id=clean_tenant_ids[0]).first()
             if t and t.name:
                 tenant_name_str = t.name
     except Exception:
         pass
 
     t_slug = _slugify_filename_part(tenant_name_str) if tenant_name_str else ""
-    t_id_prefix = str(tenant_id)[:8] if tenant_id else ""
+    t_id_prefix = str(clean_tenant_ids[0])[:8] if clean_tenant_ids else ""
 
     files = [
         f for f in reports_dir.glob('*.pdf')
-        if (tenant_id and tenant_id in f.name)
+        if (clean_tenant_ids and any(t_id in f.name for t_id in clean_tenant_ids))
         or (t_slug and t_slug in f.name)
         or (t_id_prefix and t_id_prefix in f.name)
     ]

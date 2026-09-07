@@ -12,17 +12,15 @@ logger = logging.getLogger(__name__)
 def enrich(
     data: dict,
     pnl_ctx: dict,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
     prior_start: str | None = None,
     prior_end: str | None = None,
     comparison_label: str = "",
-    **kwargs
 ) -> None:
     """Enriches data dict with Sales & Commercial telemetry (orders, top products, AOV, prior sales)."""
     from doova_one_view.api.agent.tools_refactored import reporting_v2
@@ -30,13 +28,13 @@ def enrich(
     get_top_products_tool = reporting_v2.get_top_products_tool
 
     try:
-        sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-        top_prods = get_top_products_tool(tenant_id, company_ids=resolved_company_ids, start_date=start_date, end_date=end_date, limit=10, base_currency=base_currency, tenant_ids=tenant_ids)
+        sales = get_sales_summary_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency)
+        top_prods = get_top_products_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=start_date, end_date=end_date, limit=10, base_currency=base_currency)
         
         prior_sales = {}
         if prior_start and prior_end:
             try:
-                prior_sales = get_sales_summary_tool(tenant_id, company_ids=resolved_company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+                prior_sales = get_sales_summary_tool(tenant_ids=tenant_ids, company_ids=company_ids, start_date=prior_start, end_date=prior_end, base_currency=base_currency)
             except Exception:
                 pass
 

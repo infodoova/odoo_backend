@@ -36,6 +36,7 @@ class StockPicking(models.Model):
 
     origin = models.CharField(max_length=255, null=True, blank=True)
 
+    odoo_create_date = models.DateTimeField(null=True, blank=True)
     odoo_write_date = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)
 

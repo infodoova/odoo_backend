@@ -68,6 +68,28 @@ class APISettings:
             30
         )
 
+        # TTS Cache Settings
+        self.tts_cache_max_age_days = getattr(
+            django_settings,
+            'TTS_CACHE_MAX_AGE_DAYS',
+            14
+        )
+        self.tts_cache_max_files = getattr(
+            django_settings,
+            'TTS_CACHE_MAX_FILES',
+            2500
+        )
+        self.tts_cache_max_size_mb = getattr(
+            django_settings,
+            'TTS_CACHE_MAX_SIZE_MB',
+            500
+        )
+        self.tts_cache_cleanup_interval_hours = getattr(
+            django_settings,
+            'TTS_CACHE_CLEANUP_INTERVAL_HOURS',
+            6
+        )
+
 
 # Global settings instance
 settings = APISettings()

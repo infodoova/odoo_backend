@@ -11,18 +11,17 @@ from ..common import build_currency_case_sql
 
 
 def _get_monthly_pnl_series(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
     company_ids: list[int] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     base_currency: str | None = None,
-    tenant_ids: Optional[list[str]] = None,
 ) -> list[dict]:
     """Query real monthly income, expenses, and net profit from the GL scoped to date range."""
-    t_sql_ts, t_params_ts = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_ts")
-    balance_col_ts = build_currency_case_sql('l.balance', tenant_id, base_currency, 'c.currency_code')
-    f_sql_ts, f_params_ts = build_company_filter_sql(tenant_id, company_ids, column_name="l.company_id")
-    params = {"tenant_id": tenant_id}
+    t_sql_ts, t_params_ts = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_ts")
+    balance_col_ts = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='c.currency_code')
+    f_sql_ts, f_params_ts = build_company_filter_sql(company_ids, column_name="l.company_id")
+    params = {}
     params.update(t_params_ts)
     params.update(f_params_ts)
 
@@ -64,12 +63,11 @@ def _get_monthly_pnl_series(
 
 def _get_domain_trend_series(
     domain: str,
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
     company_ids: list[int] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     base_currency: str | None = None,
-    tenant_ids: Optional[list[str]] = None,
 ) -> list[dict]:
     """
     Returns monthly time series data scoped to the specific domain and date range.
@@ -80,11 +78,11 @@ def _get_domain_trend_series(
     """
     domain = (domain or "general").lower()
     if domain in ("sales", "commercial"):
-        t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="o.tenant_id", prefix="t_def")
-        amount_col = build_currency_case_sql('o.amount_total', tenant_id, base_currency)
-        params: dict = {"tenant_id": tenant_id}
+        t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="o.tenant_id", prefix="t_def")
+        amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+        params: dict = {}
         params.update(t_params_def)
-        f_sql, f_params = build_company_filter_sql(tenant_id, company_ids, column_name="o.company_id")
+        f_sql, f_params = build_company_filter_sql(company_ids, column_name="o.company_id")
         params.update(f_params)
 
         date_filter = ""
@@ -120,11 +118,11 @@ def _get_domain_trend_series(
         ]
 
     elif domain in ("purchase", "purchasing", "procurement"):
-        t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="po.tenant_id", prefix="t_def")
-        amount_col = build_currency_case_sql('po.amount_total', tenant_id, base_currency)
-        params = {"tenant_id": tenant_id}
+        t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="po.tenant_id", prefix="t_def")
+        amount_col = build_currency_case_sql('po.amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+        params = {}
         params.update(t_params_def)
-        f_sql, f_params = build_company_filter_sql(tenant_id, company_ids, column_name="po.company_id")
+        f_sql, f_params = build_company_filter_sql(company_ids, column_name="po.company_id")
         params.update(f_params)
 
         date_filter = ""
@@ -164,10 +162,9 @@ def _get_domain_trend_series(
 
     else:
         return _get_monthly_pnl_series(
-            tenant_id=tenant_id,
+            tenant_ids=tenant_ids,
             company_ids=company_ids,
             start_date=start_date,
             end_date=end_date,
             base_currency=base_currency,
-            tenant_ids=tenant_ids,
         )

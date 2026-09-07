@@ -26,41 +26,40 @@ from odoo_app.models.product import Product
 from odoo_app.models.partner import Partner
 from odoo_app.models.company import Company
 from odoo_app.models.tenant import Tenant
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql, normalize_company_ids
+from doova_one_view.api.agent.query_context import (
+    build_tenant_filter_sql,
+    build_company_filter_sql,
+    normalize_company_ids,
+    normalize_tenant_ids,
+    apply_scope_filter_orm,
+)
 
 
 class ScopedDataAccess:
     """
     Unified, non-bypassable data access layer.
-    Guarantees that every query strictly filters by the bound tenant_id (or tenant_ids list)
+    Guarantees that every query strictly filters by the bound tenant_ids list
     and optional company_ids, preventing cross-tenant leakage.
+    Follows the dynamic operator contract:
+      len == 0 -> no filter
+      len == 1 -> strict '='
+      len > 1  -> set 'IN'
     """
 
     def __init__(
         self,
-        tenant_id: str,
-        company_id: Optional[int] = None,
-        company_ids: Optional[List[int]] = None,
-        tenant_ids: Optional[List[str]] = None,
+        tenant_ids: Optional[Union[List[str], str]] = None,
+        company_ids: Optional[Union[List[int], str, int]] = None,
     ):
-        if not tenant_id and not tenant_ids:
-            raise ValueError("ScopedDataAccess requires at least tenant_id or tenant_ids to be defined.")
-        
-        self.tenant_id = str(tenant_id) if tenant_id else None
-        self.tenant_ids = [str(t) for t in tenant_ids] if tenant_ids else ([self.tenant_id] if self.tenant_id else [])
-        self.resolved_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
+        self.tenant_ids = normalize_tenant_ids(tenant_ids)
+        self.resolved_company_ids = normalize_company_ids(company_ids)
+        self.tenant_id = self.tenant_ids[0] if len(self.tenant_ids) == 1 else None
 
     def _apply_tenant_filter(self, qs: QuerySet, field_name: str = "tenant_id") -> QuerySet:
-        if len(self.tenant_ids) == 1:
-            return qs.filter(**{field_name: self.tenant_ids[0]})
-        elif len(self.tenant_ids) > 1:
-            return qs.filter(**{f"{field_name}__in": self.tenant_ids})
-        return qs
+        return apply_scope_filter_orm(qs, field_name, self.tenant_ids)
 
     def _apply_company_filter(self, qs: QuerySet, field_name: str = "company_id") -> QuerySet:
-        if self.resolved_company_ids:
-            return qs.filter(**{f"{field_name}__in": self.resolved_company_ids})
-        return qs
+        return apply_scope_filter_orm(qs, field_name, self.resolved_company_ids)
 
     # ── Fact Tables ──────────────────────────────────────────────────────────
 
@@ -70,6 +69,7 @@ class ScopedDataAccess:
 
     def sales_order_lines(self) -> QuerySet[SalesOrderLine]:
         qs = self._apply_tenant_filter(SalesOrderLine.objects.all(), "sales_order__tenant_id")
+        qs = qs.exclude(product__product_type='service').exclude(product__name__icontains='discount')
         return self._apply_company_filter(qs, "sales_order__company_id")
 
     def purchase_orders(self) -> QuerySet[PurchaseOrder]:
@@ -132,12 +132,15 @@ class ScopedDataAccess:
         """
         Executes raw SQL query while injecting the mandatory tenant and company filter conditions.
         """
-        filter_clause, params = build_tenant_filter_sql(
-            tenant_id=self.tenant_id,
-            company_ids=self.resolved_company_ids,
-            table_alias=table_alias,
-            tenant_ids=self.tenant_ids,
-        )
+        t_col = f"{table_alias}.tenant_id" if table_alias else "tenant_id"
+        c_col = f"{table_alias}.company_id" if table_alias else "company_id"
+        t_sql, t_params = build_tenant_filter_sql(tenant_ids=self.tenant_ids, column_name=t_col, prefix="sda_t")
+        c_sql, c_params = build_company_filter_sql(company_ids=self.resolved_company_ids, column_name=c_col, prefix="sda_c")
+        
+        clauses = [c for c in [t_sql.strip(), c_sql.strip()] if c]
+        filter_clause = " ".join(clauses)
+        params = {**t_params, **c_params}
+
         if extra_params:
             params.update(extra_params)
 
@@ -145,8 +148,7 @@ class ScopedDataAccess:
         if "{tenant_filter}" in base_sql:
             final_sql = base_sql.format(tenant_filter=filter_clause)
         else:
-            connector = "WHERE" if "WHERE" not in base_sql.upper() else "AND"
-            final_sql = f"{base_sql} {connector} {filter_clause}"
+            final_sql = f"{base_sql} {filter_clause}" if filter_clause else base_sql
 
         with connection.cursor() as cursor:
             cursor.execute(final_sql, params)

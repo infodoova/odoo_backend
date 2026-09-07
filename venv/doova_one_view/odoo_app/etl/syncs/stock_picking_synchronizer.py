@@ -28,7 +28,7 @@ class StockPickingSynchronizer(BaseSynchronizer):
             model_fields = self.with_retry(self.odoo.get_fields, 'stock.picking').keys()
             req_fields = [
                 'id', 'name', 'partner_id', 'company_id', 'scheduled_date',
-                'date_done', 'picking_type_id', 'state', 'origin', 'write_date'
+                'date_done', 'picking_type_id', 'state', 'origin', 'create_date', 'write_date'
             ]
             available_fields = [f for f in req_fields if f in model_fields]
 
@@ -39,11 +39,12 @@ class StockPickingSynchronizer(BaseSynchronizer):
                 INSERT INTO fact_stock_pickings (
                     tenant_id, odoo_id, odoo_name, partner_id, company_id,
                     scheduled_date, scheduled_date_id, date_done, date_done_id,
-                    picking_type, state, origin, odoo_write_date, synced_at
+                    picking_type, state, origin, odoo_create_date, odoo_write_date, synced_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
                     state = EXCLUDED.state, date_done = EXCLUDED.date_done,
+                    odoo_create_date = EXCLUDED.odoo_create_date,
                     odoo_write_date = EXCLUDED.odoo_write_date, synced_at = NOW()
             """
 
@@ -62,6 +63,7 @@ class StockPickingSynchronizer(BaseSynchronizer):
                         self.transformer.parse_odoo_datetime(picking.get('date_done')),
                         self.transformer.get_date_id(picking.get('date_done')),
                         picking_type, picking.get('state'), picking.get('origin'),
+                        self.transformer.parse_odoo_datetime(picking.get('create_date')),
                         self.transformer.parse_odoo_datetime(picking.get('write_date'))
                     ))
 

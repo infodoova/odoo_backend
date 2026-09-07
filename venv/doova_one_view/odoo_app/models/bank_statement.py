@@ -27,6 +27,7 @@ class BankStatement(models.Model):
     ]
     state = models.CharField(max_length=50, choices=STATE_CHOICES, null=True, blank=True)
 
+    odoo_create_date = models.DateTimeField(null=True, blank=True)
     odoo_write_date = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)
 

@@ -6,8 +6,8 @@ import time
 import asyncio
 from asgiref.sync import sync_to_async
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Union
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+from typing import List, Optional, Union, Any
 
 from .router import RouterNode
 from .fast_path import FastPathNode
@@ -37,21 +37,52 @@ class ChatRequest(BaseModel):
     content: Optional[str] = Field(alias="userInput", default=None)
     prompt: Optional[str] = Field(default=None)
 
-    tenant_id: Optional[Union[str, List[str]]] = Field(alias="tenantId", default=None)
-    tenant_ids: Optional[List[str]] = Field(alias="tenantIds", default=None)
-    tenants: Optional[List[str]] = Field(default=None)
-
+    tenant_ids: Optional[Union[List[str], str]] = Field(alias="tenantIds", default=None)
     session_id: str = Field(alias="sessionId", default="default_session")
-
-    company_id: Optional[Union[int, str, List[Union[int, str]]]] = Field(alias="companyId", default=None)
-    company_ids: Optional[List[Union[int, str]]] = Field(alias="companyIds", default=None)
-    companies: Optional[List[Union[int, str]]] = Field(default=None)
+    company_ids: Optional[Union[List[Union[int, str]], Union[int, str]]] = Field(alias="companyIds", default=None)
 
     chat_history: Optional[List[dict]] = Field(default=[])
     web_search: Optional[bool] = Field(alias="webSearch", default=False)
     attachments: Optional[List[dict]] = Field(default=None)
     is_voice: Optional[bool] = Field(alias="isVoice", default=False)
     language: Optional[str] = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Map legacy or frontend aliases to tenant_ids
+            if "tenant_ids" not in data and "tenantIds" not in data:
+                if "tenantId" in data:
+                    data["tenant_ids"] = data["tenantId"]
+                elif "tenant_id" in data:
+                    data["tenant_ids"] = data["tenant_id"]
+            # Map legacy or frontend aliases to company_ids
+            if "company_ids" not in data and "companyIds" not in data:
+                if "companyId" in data:
+                    data["company_ids"] = data["companyId"]
+                elif "company_id" in data:
+                    data["company_ids"] = data["company_id"]
+        return data
+
+    @property
+    def tenant_id(self) -> Optional[str]:
+        if isinstance(self.tenant_ids, list):
+            return self.tenant_ids[0] if self.tenant_ids else None
+        return self.tenant_ids
+
+    @property
+    def company_id(self) -> Optional[int]:
+        if isinstance(self.company_ids, list):
+            val = self.company_ids[0] if self.company_ids else None
+        else:
+            val = self.company_ids
+        if val is None:
+            return None
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return None
 
     # Fallback for 'message' vs 'text'
     @property
@@ -63,42 +94,15 @@ def extract_context_ids(req_data: Union[ChatRequest, dict]):
     Extracts and normalizes tenant and company parameters from a ChatRequest or dict.
     Returns: (primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids)
     """
-    raw_tenants = []
-    raw_companies = []
-
     if isinstance(req_data, ChatRequest):
-        t_id = req_data.tenant_id
-        t_ids = req_data.tenant_ids
-        t_list = req_data.tenants
-
-        c_id = req_data.company_id
-        c_ids = req_data.company_ids
-        c_list = req_data.companies
+        raw_tenants = req_data.tenant_ids
+        raw_companies = req_data.company_ids
     else:
-        t_id = req_data.get("tenant_id") or req_data.get("tenantId")
-        t_ids = req_data.get("tenant_ids") or req_data.get("tenantIds")
-        t_list = req_data.get("tenants")
+        raw_tenants = req_data.get("tenant_ids") or req_data.get("tenantIds") or req_data.get("tenant_id") or req_data.get("tenantId")
+        raw_companies = req_data.get("company_ids") or req_data.get("companyIds") or req_data.get("company_id") or req_data.get("companyId")
 
-        c_id = req_data.get("company_id") or req_data.get("companyId")
-        c_ids = req_data.get("company_ids") or req_data.get("companyIds")
-        c_list = req_data.get("companies")
-
-    for val in (t_id, t_ids, t_list):
-        if val is not None:
-            if isinstance(val, list):
-                raw_tenants.extend(val)
-            else:
-                raw_tenants.append(val)
-
-    for val in (c_id, c_ids, c_list):
-        if val is not None:
-            if isinstance(val, list):
-                raw_companies.extend(val)
-            else:
-                raw_companies.append(val)
-
-    resolved_tenant_ids = normalize_tenant_ids(tenant_ids=raw_tenants)
-    resolved_company_ids = normalize_company_ids(companies=raw_companies)
+    resolved_tenant_ids = normalize_tenant_ids(raw_tenants)
+    resolved_company_ids = normalize_company_ids(raw_companies)
 
     primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else None
     primary_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
@@ -199,8 +203,6 @@ def get_user_facing_error_message(e: Exception | None = None) -> str:
 
 async def background_retry_executor(
     session_id: str,
-    tenant_id: str | None,
-    company_id: int | None,
     user_message: str,
     chat_history: list,
     db_summary: str,
@@ -225,9 +227,7 @@ async def background_retry_executor(
                 
                 answer = await asyncio.to_thread(fast_path_node.run, 
                     message=user_message,
-                    tenant_id=tenant_id,
                     tenant_ids=tenant_ids,
-                    company_id=company_id,
                     company_ids=company_ids,
                     chat_history=chat_history,
                     memory_summary=db_summary,
@@ -236,9 +236,7 @@ async def background_retry_executor(
             elif mode == "PLAN":
                 plan_result = await asyncio.to_thread(reasoning_node.create_plan, 
                     message=user_message,
-                    tenant_id=tenant_id,
                     tenant_ids=tenant_ids,
-                    company_id=company_id,
                     company_ids=company_ids
                 )
                 
@@ -257,7 +255,8 @@ async def background_retry_executor(
                 answer = plan_summary
                 
                 def _update_session_plan():
-                    s = session_manager.get_or_create_session(session_id, tenant_id or "default")
+                    primary_tid = tenant_ids[0] if tenant_ids else "default"
+                    s = session_manager.get_or_create_session(session_id, primary_tid)
                     s.plan_state = plan_result
                     s.save()
                 await sync_to_async(_update_session_plan)()
@@ -265,9 +264,7 @@ async def background_retry_executor(
                 answer = await asyncio.to_thread(reasoning_node.execute_plan, 
                     message=user_message,
                     plan=plan,
-                    tenant_id=tenant_id,
                     tenant_ids=tenant_ids,
-                    company_id=company_id,
                     company_ids=company_ids
                 )
             
@@ -544,9 +541,7 @@ async def chat_endpoint(request: Request):
                 reasoning_node.execute_plan,
                 message=user_message,
                 plan=session.plan_state,
-                tenant_id=primary_tenant_id,
                 tenant_ids=resolved_tenant_ids,
-                company_id=primary_company_id,
                 company_ids=resolved_company_ids
             )
             
@@ -581,15 +576,13 @@ async def chat_endpoint(request: Request):
                 asyncio.create_task(
                     background_retry_executor(
                         session_id=current_session_id,
-                        tenant_id=primary_tenant_id,
-                        tenant_ids=resolved_tenant_ids,
-                        company_id=primary_company_id,
-                        company_ids=resolved_company_ids,
                         user_message=user_message,
                         chat_history=chat_history_from_db,
                         db_summary=db_summary,
                         mode="EXECUTE_PLAN",
-                        plan=session.plan_state
+                        plan=session.plan_state,
+                        tenant_ids=resolved_tenant_ids,
+                        company_ids=resolved_company_ids
                     )
                 )
                 session.plan_state = None
@@ -712,9 +705,7 @@ async def chat_endpoint(request: Request):
                     agent = WebSearchAgent()
                     return agent.run(
                         message=user_message,
-                        tenant_id=primary_tenant_id,
                         tenant_ids=resolved_tenant_ids,
-                        company_id=primary_company_id,
                         company_ids=resolved_company_ids,
                         chat_history=chat_history_from_db,
                         memory_summary=db_summary,
@@ -731,9 +722,7 @@ async def chat_endpoint(request: Request):
                     def run_fast_path():
                         return fast_path_node.run(
                             message=clean_user_message or user_message,
-                            tenant_id=primary_tenant_id,
                             tenant_ids=resolved_tenant_ids,
-                            company_id=primary_company_id,
                             company_ids=resolved_company_ids,
                             chat_history=chat_history_from_db,
                             memory_summary=db_summary,
@@ -753,9 +742,7 @@ async def chat_endpoint(request: Request):
                 def run_fast_path():
                     return fast_path_node.run(
                         message=clean_user_message or user_message,
-                        tenant_id=primary_tenant_id,
                         tenant_ids=resolved_tenant_ids,
-                        company_id=primary_company_id,
                         company_ids=resolved_company_ids,
                         chat_history=chat_history_from_db,
                         memory_summary=db_summary,
@@ -801,14 +788,12 @@ async def chat_endpoint(request: Request):
                 asyncio.create_task(
                     background_retry_executor(
                         session_id=current_session_id,
-                        tenant_id=primary_tenant_id,
-                        tenant_ids=resolved_tenant_ids,
-                        company_id=primary_company_id,
-                        company_ids=resolved_company_ids,
                         user_message=user_message,
                         chat_history=chat_history_from_db,
                         db_summary=db_summary,
-                        mode="EXECUTE"
+                        mode="EXECUTE",
+                        tenant_ids=resolved_tenant_ids,
+                        company_ids=resolved_company_ids
                     )
                 )
                 answer = "⏳ The AI provider is temporarily overloaded, but I have queued your request and am executing it in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
@@ -835,9 +820,7 @@ async def chat_endpoint(request: Request):
         plan = await asyncio.to_thread(
             reasoning_node.create_plan,
             message=user_message,
-            tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
-            company_id=primary_company_id,
             company_ids=resolved_company_ids
         )
         # Format the plan into a readable answer for the UI
@@ -904,14 +887,12 @@ async def chat_endpoint(request: Request):
             asyncio.create_task(
                 background_retry_executor(
                     session_id=current_session_id,
-                    tenant_id=primary_tenant_id,
-                    tenant_ids=resolved_tenant_ids,
-                    company_id=primary_company_id,
-                    company_ids=resolved_company_ids,
                     user_message=user_message,
                     chat_history=chat_history_from_db,
                     db_summary=db_summary,
-                    mode="PLAN"
+                    mode="PLAN",
+                    tenant_ids=resolved_tenant_ids,
+                    company_ids=resolved_company_ids
                 )
             )
             answer = "⏳ The AI provider is temporarily overloaded, but I have queued your request to generate the strategic plan in the background. Please wait a moment—it will automatically appear as soon as it's ready."
@@ -1028,9 +1009,7 @@ async def generate_ai_report(request: Request):
     try:
         from .tools_refactored.reporting_v2 import generate_report_tool
         result = await sync_to_async(generate_report_tool)(
-            tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
-            company_id=primary_company_id,
             company_ids=resolved_company_ids,
             custom_content=custom_content,
             report_type=report_type,
@@ -1096,9 +1075,7 @@ async def run_analysis(request: Request):
         answer = await asyncio.to_thread(
             fast_path_node.run,
             message=prompt,
-            tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
-            company_id=primary_company_id,
             company_ids=resolved_company_ids,
             chat_history=[],
             memory_summary=""
@@ -1171,9 +1148,7 @@ async def run_forecast(request: Request):
         answer = await asyncio.to_thread(
             fast_path_node.run,
             message=prompt,
-            tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
-            company_id=primary_company_id,
             company_ids=resolved_company_ids,
             chat_history=[],
             memory_summary=""
@@ -1251,9 +1226,7 @@ async def run_audit(request: Request):
         answer = await asyncio.to_thread(
             fast_path_node.run,
             message=prompt,
-            tenant_id=primary_tenant_id,
             tenant_ids=resolved_tenant_ids,
-            company_id=primary_company_id,
             company_ids=resolved_company_ids,
             chat_history=[],
             memory_summary=""
@@ -1354,13 +1327,14 @@ async def delete_session(session_id: str):
 async def approve_plan(request: ChatRequest, plan: dict):
     user_message = request.message or request.content or request.prompt or "Plan execution"
     logger.info(f"PLAN APPROVED | Session: {request.session_id}")
+    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(request)
     try:
         answer = await asyncio.to_thread(
             reasoning_node.execute_plan,
             message=user_message,
             plan=plan,
-            tenant_id=request.tenant_id,
-            company_id=request.company_id
+            tenant_ids=resolved_tenant_ids,
+            company_ids=resolved_company_ids
         )
         session_manager.save_message(request.session_id, "assistant", answer)
         return make_chat_response(
@@ -1378,13 +1352,13 @@ async def approve_plan(request: ChatRequest, plan: dict):
             asyncio.create_task(
                 background_retry_executor(
                     session_id=request.session_id,
-                    tenant_id=request.tenant_id,
-                    company_id=request.company_id,
                     user_message=user_message,
                     chat_history=[],
                     db_summary="",
                     mode="EXECUTE_PLAN",
-                    plan=plan
+                    plan=plan,
+                    tenant_ids=resolved_tenant_ids,
+                    company_ids=resolved_company_ids
                 )
             )
             answer = "⏳ The AI provider is temporarily overloaded, but I am executing the approved plan in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."

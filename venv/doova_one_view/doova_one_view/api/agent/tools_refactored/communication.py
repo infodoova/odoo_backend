@@ -4,13 +4,13 @@ from datetime import datetime
 import re
 from typing import Optional
 from asgiref.sync import async_to_sync
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
+from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
 from doova_one_view.api.email.email_utils import md_to_html
 
 logger = logging.getLogger(__name__)
 
 
-def _format_alert_email_html(title: str, message: str, severity: str, tenant_id: str) -> str:
+def _format_alert_email_html(title: str, message: str, severity: str, tenant_ids: Optional[list[str]] = None) -> str:
     combined = f"{title} {message}".lower()
 
     # Enhanced severity classification logic
@@ -46,17 +46,23 @@ def _format_alert_email_html(title: str, message: str, severity: str, tenant_id:
 
     from doova_one_view.api.agent.utils import replace_tenant_ids_with_names
     from odoo_app.models.tenant import Tenant
+    clean_tenants = normalize_tenant_ids(tenant_ids)
     tenant_name = "Organization"
-    is_uuid = bool(re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', str(tenant_id or ""), re.IGNORECASE))
-    try:
-        t_obj = Tenant.objects.filter(id=tenant_id).first()
-        if t_obj and t_obj.name:
-            tenant_name = t_obj.name
-        elif tenant_id and not is_uuid:
-            tenant_name = str(tenant_id)
-    except Exception:
-        if tenant_id and not is_uuid:
-            tenant_name = str(tenant_id)
+    if clean_tenants:
+        try:
+            t_objs = Tenant.objects.filter(id__in=clean_tenants)
+            names = [t.name for t in t_objs if t.name]
+            if names:
+                tenant_name = ", ".join(names)
+            else:
+                tenant_name = clean_tenants[0]
+        except Exception:
+            tenant_name = clean_tenants[0]
+    elif tenant_ids:
+        if isinstance(tenant_ids, (list, tuple, set)) and len(tenant_ids) > 0:
+            tenant_name = str(list(tenant_ids)[0])
+        elif isinstance(tenant_ids, str):
+            tenant_name = tenant_ids
 
     title = replace_tenant_ids_with_names(title)
     message = replace_tenant_ids_with_names(message)
@@ -109,19 +115,24 @@ def _format_alert_email_html(title: str, message: str, severity: str, tenant_id:
 </html>"""
 
 
-
-def get_tenant_alert_recipients(tenant_id: str) -> list[str]:
+def get_tenant_alert_recipients(tenant_ids: Optional[list[str]] = None) -> list[str]:
     recipients = []
     try:
         from odoo_app.models.alert_schedule import AlertSchedule
-        schedules = AlertSchedule.objects.filter(tenant_id=tenant_id, is_enabled=True)
+        clean_tenants = normalize_tenant_ids(tenant_ids)
+        schedules = AlertSchedule.objects.filter(is_enabled=True)
+        if clean_tenants:
+            if len(clean_tenants) == 1:
+                schedules = schedules.filter(tenant_id=clean_tenants[0])
+            else:
+                schedules = schedules.filter(tenant_id__in=clean_tenants)
         for s in schedules:
             if s.recipients and isinstance(s.recipients, list):
                 for r in s.recipients:
                     if r and r not in recipients:
                         recipients.append(r)
     except Exception as e:
-        logger.warning(f"Could not fetch alert schedule recipients for tenant {tenant_id}: {e}")
+        logger.warning(f"Could not fetch alert schedule recipients for tenants {tenant_ids}: {e}")
 
     if not recipients:
         try:
@@ -136,14 +147,12 @@ def get_tenant_alert_recipients(tenant_id: str) -> list[str]:
 
 
 def send_alert_tool(
-    tenant_id: str,
-    title: str,
-    message: str,
-    severity: str = "info",
-    company_id: int | None = None,
-    source_tool: str | None = None,
-    company_ids: Optional[list[int]] = None,
     tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    title: str = "",
+    message: str = "",
+    severity: str = "info",
+    source_tool: str | None = None,
     to_email: Optional[str] = None,
 ) -> dict:
     allowed = ["info", "warning", "critical", "success"]
@@ -154,10 +163,13 @@ def send_alert_tool(
     title = replace_tenant_ids_with_names(title)
     message = replace_tenant_ids_with_names(message)
 
+    clean_tenants = normalize_tenant_ids(tenant_ids)
+    clean_companies = normalize_company_ids(company_ids)
+
     alert = {
         "alert_id": str(uuid4()),
-        "tenant_id": tenant_id,
-        "company_id": company_id,
+        "tenant_ids": clean_tenants,
+        "company_ids": clean_companies,
         "title": title,
         "message": message,
         "severity": severity,
@@ -166,7 +178,7 @@ def send_alert_tool(
         "status": "prepared",
     }
 
-    recipients = [to_email] if to_email else get_tenant_alert_recipients(tenant_id)
+    recipients = [to_email] if to_email else get_tenant_alert_recipients(clean_tenants)
 
     if not recipients:
         alert["status"] = "no_recipients"
@@ -178,7 +190,7 @@ def send_alert_tool(
         }
 
     from doova_one_view.api.email.service import EmailService
-    html_body = _format_alert_email_html(title, message, severity, tenant_id)
+    html_body = _format_alert_email_html(title, message, severity, tenant_ids=clean_tenants)
     subject = f"[{severity.upper()}] Alert: {title}"
 
     sent_count = 0
@@ -219,14 +231,12 @@ def send_alert_tool(
 
 
 def send_email_tool(
-    tenant_id: str,
     to_email: str,
     subject: str,
     body: str,
-    company_id: int | None = None,
-    source_tool: str | None = None,
-    company_ids: Optional[list[int]] = None,
     tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    source_tool: str | None = None,
 ) -> dict:
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", to_email):
         return {"tool_name": "send_email_tool", "sent": False, "status": "invalid_email"}
@@ -235,10 +245,13 @@ def send_email_tool(
     subject = replace_tenant_ids_with_names(subject)
     body = replace_tenant_ids_with_names(body)
 
+    clean_tenants = normalize_tenant_ids(tenant_ids)
+    clean_companies = normalize_company_ids(company_ids)
+
     email = {
         "email_id": str(uuid4()),
-        "tenant_id": tenant_id,
-        "company_id": company_id,
+        "tenant_ids": clean_tenants,
+        "company_ids": clean_companies,
         "to_email": to_email,
         "subject": subject,
         "body": body,
@@ -249,7 +262,6 @@ def send_email_tool(
 
     from doova_one_view.api.email.service import EmailService
 
-    # Convert markdown body (tables, bold, lists) to email-safe inline-styled HTML
     body_html = md_to_html(body)
 
     html_body = f"""<!DOCTYPE html>
@@ -292,26 +304,31 @@ MAX_ALERT_PAYLOAD_BYTES = 8192
 
 
 def serialize_alert_context(
-    tenant_id: str | None,
-    user_prompt: str | None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    user_prompt: str | None = None,
     thresholds: dict | None = None,
-    company_ids: list | None = None,
     precheck_summary: str | None = None,
 ) -> str:
     """
     Serializes alert context into a safe, bounded JSON string using AlertContextPayload schema.
     Guarantees size <= MAX_ALERT_PAYLOAD_BYTES and valid JSON formatting.
     """
+    clean_tenants = normalize_tenant_ids(tenant_ids)
+    if not clean_tenants and tenant_ids:
+        if isinstance(tenant_ids, (list, tuple, set)):
+            clean_tenants = [str(x) for x in tenant_ids if x]
+        elif isinstance(tenant_ids, str):
+            clean_tenants = [tenant_ids]
+    clean_companies = normalize_company_ids(company_ids)
+    primary_t = clean_tenants[0] if clean_tenants else None
+
     payload = AlertContextPayload(
-        tenant_id=tenant_id,
+        tenant_id=primary_t,
+        tenant_ids=clean_tenants,
         prompt=user_prompt or "",
         thresholds=thresholds or {},
-        company_ids=company_ids or [],
+        company_ids=clean_companies,
         precheck_summary=precheck_summary or "",
     )
     return payload.to_json_prompt(max_bytes=MAX_ALERT_PAYLOAD_BYTES)
-
-
-
-
-

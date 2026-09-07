@@ -1,30 +1,49 @@
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
 from typing import Optional
 # api/agent/tools_refactored/sales.py
 
-from .common import run_query, normalize_company_ids, build_company_filter_sql, build_currency_case_sql
+from ..query_context import (
+    normalize_tenant_ids,
+    normalize_company_ids,
+    build_tenant_filter_sql,
+    build_company_filter_sql,
+)
+from .common import (
+    run_query,
+    build_currency_case_sql,
+    get_multi_currency_conversions,
+)
+from ..utils import get_tenant_currency
 
-def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, period: str = "selected_period", base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+def get_sales_summary_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    period: str = "selected_period",
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
+    selected_company_ids = normalize_company_ids(company_ids=company_ids)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
     query = f"SELECT COALESCE(SUM({amount_col}), 0) AS total_revenue, COUNT(*) AS order_count, COALESCE(AVG({amount_col}), 0) AS average_order_value, COALESCE(MIN(date_order), NULL) AS first_order_date, COALESCE(MAX(date_order), NULL) AS last_order_date FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done')"
-    params = {"tenant_id": tenant_id}
+    params = {}
     params.update(t_params_def)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids)
+    f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids)
     query += f_sql
     params.update(f_params)
-    if start_date: query += " AND date_order >= :start_date"; params["start_date"] = start_date
-    if end_date: query += " AND date_order <= :end_date"; params["end_date"] = end_date
+    if start_date:
+        query += " AND date_order >= :start_date"
+        params["start_date"] = start_date
+    if end_date:
+        query += " AND date_order <= :end_date"
+        params["end_date"] = end_date
     rows = run_query(query, params)
     row = rows[0] if rows else {}
     rev = float(row.get("total_revenue") or 0)
     
-    from doova_one_view.api.agent.utils import get_tenant_currency
-    from doova_one_view.api.agent.tools_refactored.common import get_multi_currency_conversions
-    
-    native_curr = base_currency or get_tenant_currency(tenant_id, company_id=selected_company_ids[0] if len(selected_company_ids) == 1 else None)
+    t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
+    first_tid = t_ids[0] if t_ids else None
+    native_curr = base_currency or get_tenant_currency(tenant_ids=tenant_ids, company_ids=selected_company_ids)
 
     has_data = rev > 0 or int(row.get("order_count") or 0) > 0
     return {
@@ -35,14 +54,20 @@ def get_sales_summary_tool(tenant_id: str, company_id: int | None = None, compan
         "order_count": int(row.get("order_count") or 0), 
         "average_order_value": float(row.get("average_order_value") or 0),
         "currency": native_curr,
-        "currency_conversions": get_multi_currency_conversions(rev, tenant_id, company_id=company_id, company_ids=company_ids, base_currency=base_currency, tenant_ids=tenant_ids, start_date=start_date, end_date=end_date),
+        "currency_conversions": get_multi_currency_conversions(rev, tenant_ids=tenant_ids, company_ids=selected_company_ids, base_currency=base_currency, start_date=start_date, end_date=end_date),
     }
 
-def get_top_products_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, start_date: str | None = None, end_date: str | None = None, limit: int = 10, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    price_col = build_currency_case_sql('l.price_total', tenant_id, base_currency, currency_column='o.currency_code')
+def get_top_products_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 10,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    selected_company_ids = normalize_company_ids(company_ids=company_ids)
+    price_col = build_currency_case_sql('l.price_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code')
     query = f"""
         SELECT 
             l.product_id, 
@@ -56,13 +81,17 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
           AND o.state IN ('sale', 'done') 
           AND l.product_id IS NOT NULL
     """
-    params = {"tenant_id": tenant_id, "limit": limit}
+    params = {"limit": limit}
     params.update(t_params_l)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="l.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids, column_name="l.company_id")
     query += f_sql
     params.update(f_params)
-    if start_date: query += " AND o.date_order >= :start_date"; params["start_date"] = start_date
-    if end_date: query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"; params["end_date"] = end_date
+    if start_date:
+        query += " AND o.date_order >= :start_date"
+        params["start_date"] = start_date
+    if end_date:
+        query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
     query += " GROUP BY l.product_id, p.name ORDER BY revenue DESC LIMIT :limit"
     rows = run_query(query, params)
     return {
@@ -73,21 +102,18 @@ def get_top_products_tool(tenant_id: str, company_id: int | None = None, company
     }
 
 def get_time_series_data_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     granularity: str = "month",
     base_currency: str | None = None,
-    tenant_ids: Optional[list[str]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> dict:
-
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    params = {"tenant_id": tenant_id}
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    params = {}
     params.update(t_params_def)
-    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
+    f_sql, f_params = build_company_filter_sql(company_ids=company_ids)
     params.update(f_params)
 
     date_filter = ""
@@ -102,29 +128,46 @@ def get_time_series_data_tool(
     rows = run_query(query, params)
     return {"tool_name": "get_time_series_data_tool", "points": [{"period": str(r.get('period')), "revenue": float(r.get('revenue')), "order_count": int(r.get('order_count'))} for r in rows]}
 
-def get_sales_chart_data_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, granularity: str = "month", base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-    data = get_time_series_data_tool(tenant_id, company_id=company_id, company_ids=company_ids, granularity=granularity, base_currency=base_currency)
+def get_sales_chart_data_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    granularity: str = "month",
+    base_currency: str | None = None,
+) -> dict:
+    data = get_time_series_data_tool(tenant_ids=tenant_ids, company_ids=company_ids, granularity=granularity, base_currency=base_currency)
     return {"tool_name": "get_sales_chart_data_tool", "chart": {"type": "line", "data": data.get('points')}}
 
-def analyze_variance_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
-    query = f"SELECT DATE_TRUNC('month', date_order) AS month, SUM({amount_col}) AS revenue FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done') GROUP BY month ORDER BY month DESC LIMIT 2"
-    rows = run_query(query, {**{"tenant_id": tenant_id}, **t_params_def})
-    if len(rows) < 2: return {"status": "not_enough_data"}
+def analyze_variance_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
+    selected_company_ids = normalize_company_ids(company_ids=company_ids)
+    f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    query = f"SELECT DATE_TRUNC('month', date_order) AS month, SUM({amount_col}) AS revenue FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done') {f_sql} GROUP BY month ORDER BY month DESC LIMIT 2"
+    params = {}
+    params.update(t_params_def)
+    params.update(f_params)
+    rows = run_query(query, params)
+    if len(rows) < 2:
+        return {"status": "not_enough_data"}
     curr, prev = rows[0], rows[1]
     change = float(curr.get('revenue')) - float(prev.get('revenue'))
     return {"tool_name": "analyze_variance_tool", "current": float(curr.get('revenue')), "previous": float(prev.get('revenue')), "change": change}
 
-def forecast_sales_tool(tenant_id: str, company_id: int | None = None, company_ids: list[int] | None = None, base_currency: str | None = None, tenant_ids: Optional[list[str]] = None) -> dict:
-
-    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="tenant_id", prefix="t_def")
-    params = {"tenant_id": tenant_id}
+def forecast_sales_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    base_currency: str | None = None,
+) -> dict:
+    t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
+    params = {}
     params.update(t_params_def)
-    f_sql, f_params = build_company_filter_sql(tenant_id, normalize_company_ids(company_id=company_id, companies=company_ids))
+    f_sql, f_params = build_company_filter_sql(company_ids=company_ids)
     params.update(f_params)
-    amount_col = build_currency_case_sql('amount_total', tenant_id, base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
 
     rows = run_query(
         f"""SELECT DATE_TRUNC('month', date_order) AS month,
@@ -133,9 +176,9 @@ def forecast_sales_tool(tenant_id: str, company_id: int | None = None, company_i
             WHERE 1=1 {t_sql_def}
               AND state IN ('sale', 'done')
               AND date_order >= CURRENT_DATE - INTERVAL '6 months'
-              {{f_sql}}
+              {f_sql}
             GROUP BY month
-            ORDER BY month ASC""".format(f_sql=f_sql),
+            ORDER BY month ASC""",
         params,
     )
 
@@ -154,5 +197,3 @@ def forecast_sales_tool(tenant_id: str, company_id: int | None = None, company_i
         "trend_direction": "Upward" if trend > 0 else "Downward" if trend < 0 else "Flat",
         "forecast_next_month": forecast_next,
     }
-
-

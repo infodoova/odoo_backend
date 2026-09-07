@@ -13,17 +13,15 @@ logger = logging.getLogger(__name__)
 def enrich(
     data: dict,
     pnl_ctx: dict,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
     prior_start: str | None = None,
     prior_end: str | None = None,
     comparison_label: str = "",
-    **kwargs
 ) -> None:
     """Enriches data dict with Balance Sheet and Solvency telemetry (comparative balance sheet statement rows)."""
     from doova_one_view.api.agent.tools_refactored import reporting_v2
@@ -31,21 +29,21 @@ def enrich(
     get_working_capital_tool = reporting_v2.get_working_capital_tool
 
     try:
-        bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
-        wc = get_working_capital_tool(tenant_id, company_ids=resolved_company_ids, base_currency=base_currency, tenant_ids=tenant_ids)
+        bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=end_date, base_currency=base_currency)
+        wc = get_working_capital_tool(tenant_ids=tenant_ids, company_ids=company_ids, base_currency=base_currency)
         
         # Prior Period Balance Sheet for Comparison
         prior_bs = {}
         if prior_end:
             try:
-                prior_bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=prior_end, base_currency=base_currency, tenant_ids=tenant_ids)
+                prior_bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=prior_end, base_currency=base_currency)
             except Exception:
                 pass
         elif end_date:
             try:
                 end_dt = datetime.strptime(end_date, "%Y-%m-%d")
                 prior_as_of = (end_dt.replace(year=end_dt.year - 1)).strftime("%Y-%m-%d")
-                prior_bs = get_balance_sheet_tool(tenant_id, company_ids=resolved_company_ids, as_of_date=prior_as_of, base_currency=base_currency, tenant_ids=tenant_ids)
+                prior_bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=prior_as_of, base_currency=base_currency)
             except Exception:
                 pass
 

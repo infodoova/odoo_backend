@@ -22,7 +22,7 @@ def render_and_compile_pdf(
     template_file: str,
     context: dict,
     filename_prefix: str,
-    tenant_id: str,
+    tenant_ids: list[str] | None = None,
     custom_content: str = "",
     logo_path: str | None = None,
     logo_b64: str | None = None,
@@ -64,7 +64,8 @@ def render_and_compile_pdf(
     reporting_period = context.get("reporting_period", "All_Time")
     
     cleaned_prefix = re.sub(r'[^A-Za-z0-9]+', '_', filename_prefix.strip()).strip('_')
-    tenant_slug = re.sub(r'[^A-Za-z0-9]+', '_', str(tenant_id).strip()).strip('_')[:30]
+    t_name = tenant_ids[0] if tenant_ids else 'tenant'
+    tenant_slug = re.sub(r'[^A-Za-z0-9]+', '_', str(t_name).strip()).strip('_')[:30]
     company_slug = re.sub(r'[^A-Za-z0-9]+', '_', str(company_name).strip()).strip('_')[:30]
     period_slug = re.sub(r'[^A-Za-z0-9]+', '_', str(reporting_period).strip()).strip('_')[:30]
     timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')

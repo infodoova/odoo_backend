@@ -33,9 +33,9 @@ class SalesOrderSynchronizer(BaseSynchronizer):
             tenant_id, odoo_id, odoo_name, company_id, partner_id,
             user_id, date_order, date_order_id, state, invoice_status,
             amount_untaxed, amount_tax, amount_total, margin,
-            currency_code, odoo_write_date, synced_at
+            currency_code, odoo_create_date, odoo_write_date, synced_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET
             state            = EXCLUDED.state,
             invoice_status   = EXCLUDED.invoice_status,
@@ -44,6 +44,7 @@ class SalesOrderSynchronizer(BaseSynchronizer):
             amount_total     = EXCLUDED.amount_total,
             margin           = EXCLUDED.margin,
             currency_code    = EXCLUDED.currency_code,
+            odoo_create_date = EXCLUDED.odoo_create_date,
             odoo_write_date  = EXCLUDED.odoo_write_date,
             synced_at        = NOW()
     """
@@ -71,7 +72,7 @@ class SalesOrderSynchronizer(BaseSynchronizer):
     REQ_ORDER_FIELDS = [
         'id', 'name', 'partner_id', 'user_id', 'date_order', 'state',
         'invoice_status', 'amount_untaxed', 'amount_tax', 'amount_total',
-        'margin', 'company_id', 'currency_id', 'write_date',
+        'margin', 'company_id', 'currency_id', 'create_date', 'write_date',
     ]
 
     REQ_LINE_FIELDS = [
@@ -276,6 +277,7 @@ class SalesOrderSynchronizer(BaseSynchronizer):
             t.parse_odoo_decimal(order.get('amount_total', 0)),                      # amount_total
             t.parse_odoo_decimal(order.get('margin', 0)),                            # margin
             self._resolve_currency_code(order.get('currency_id')),                   # currency_code ← FIXED
+            t.parse_odoo_datetime(order.get('create_date')),                         # odoo_create_date
             t.parse_odoo_datetime(order.get('write_date')),                          # odoo_write_date
         )
 

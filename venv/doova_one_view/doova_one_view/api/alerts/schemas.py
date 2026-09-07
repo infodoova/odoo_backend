@@ -103,6 +103,7 @@ class RunAlertResponse(BaseModel):
 
 class AlertContextPayload(BaseModel):
     tenant_id: Optional[str] = None
+    tenant_ids: List[str] = []
     prompt: str = ""
     thresholds: dict = {}
     company_ids: List[int] = []

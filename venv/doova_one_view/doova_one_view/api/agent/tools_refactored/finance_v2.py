@@ -1,32 +1,28 @@
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
-from typing import Optional
 # api/agent/tools_refactored/finance_v2.py
+from typing import Optional
+from .common import run_query, build_company_filter_sql, build_tenant_filter_sql, build_currency_case_sql
 
-from .common import run_query, normalize_company_ids, build_company_filter_sql, build_currency_case_sql
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 1. CASH FLOW STATEMENT (Indirect Method Proxy)
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 def get_cash_flow_statement_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
     base_currency: str | None = None,
-    tenant_ids: Optional[list[str]] = None,
-    source: str = "auto"
+    source: str = "auto",
 ) -> dict:
     """Generate the structured Cash Flow Statement (Operating, Investing, Financing, Unclassified) matching Odoo with full itemized details."""
     from doova_one_view.api.accounting.service import AccountingService
-    c_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
     cf = AccountingService._calc_cash_flow_sync(
-        tenant_id=tenant_id,
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
         start_date=start_date,
         end_date=end_date,
-        company_ids=c_ids,
         base_currency=base_currency,
-        source=source
+        source=source,
     )
     op = cf.get("operating_activities", {})
     inv = cf.get("investing_activities", {})
@@ -89,30 +85,25 @@ def get_cash_flow_statement_tool(
         "execution_time_ms": cf.get("execution_time_ms"),
     }
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 2. WORKING CAPITAL EFFICIENCY (DSO, DPO, CCC)
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 def get_working_capital_efficiency_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    base_currency: str | None = None,
 ) -> dict:
     """Calculate Days Sales Outstanding, Days Payable Outstanding, and Cash Conversion Cycle over the last 365 days."""
 
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="q.tenant_id", prefix="t_q")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
-    params: dict = {"tenant_id": tenant_id}
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_ids, column_name="q.tenant_id", prefix="t_q")
+    amount_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='m.currency_code')
+    params: dict = {}
     params.update(t_params_m)
     params.update(t_params_q)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="m.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="m.company_id")
     params.update(f_params)
 
-    # We need AR, AP, Revenue, COGS, Inventory for the last 365 days.
-    # AR/AP/Inventory are point-in-time balances.
-    # Revenue/COGS are sums over 365 days.
     query = f"""
         WITH trailing_metrics AS (
             SELECT 
@@ -142,8 +133,8 @@ def get_working_capital_efficiency_tool(
         JOIN dim_products p ON q.product_id = p.id AND q.tenant_id = p.tenant_id
         WHERE 1=1 {t_sql_q} AND q.quantity > 0
     """
-    inv_params = {"tenant_id": tenant_id}
-    q_sql, q_params = build_company_filter_sql(tenant_id, selected, column_name="q.company_id", prefix="q_")
+    inv_params = {}
+    q_sql, q_params = build_company_filter_sql(company_ids, column_name="q.company_id", prefix="q_")
     inv_params.update(q_params)
     inv_params.update(t_params_q)
     inv_rows = run_query(inv_query + q_sql, inv_params)
@@ -169,39 +160,33 @@ def get_working_capital_efficiency_tool(
         }
     }
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 3. PERIOD-OVER-PERIOD P&L COMPARISON
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 def get_period_comparison_pnl_tool(
-    tenant_id: str,
-    period1_start: str,
-    period1_end: str,
-    period2_start: str,
-    period2_end: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    period1_start: str = "",
+    period1_end: str = "",
+    period2_start: str = "",
+    period2_end: str = "",
+    base_currency: str | None = None,
 ) -> dict:
     """Compare P&L line items between two explicit date periods."""
-
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
     from doova_one_view.api.accounting.service import AccountingService
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
     
     p1_stats = AccountingService._calc_pnl_sync(
-        tenant_id=tenant_id,
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
         start_date=period1_start,
         end_date=period1_end,
-        company_ids=selected,
         base_currency=base_currency
     )
     p2_stats = AccountingService._calc_pnl_sync(
-        tenant_id=tenant_id,
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
         start_date=period2_start,
         end_date=period2_end,
-        company_ids=selected,
         base_currency=base_currency
     )
     
@@ -226,25 +211,23 @@ def get_period_comparison_pnl_tool(
         "comparison": comparison
     }
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 4. INTEREST COVERAGE RATIO
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 def get_interest_coverage_tool(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     start_date: str | None = None,
     end_date: str | None = None,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Calculate Interest Coverage Ratio (EBIT / Interest Expense)."""
 
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
-    params: dict = {"tenant_id": tenant_id}
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    amount_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='m.currency_code')
+    params: dict = {}
     params.update(t_params_m)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="m.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="m.company_id")
     params.update(f_params)
     
     date_sql = ""
@@ -255,10 +238,6 @@ def get_interest_coverage_tool(
         date_sql += " AND m.date <= :end_date"
         params["end_date"] = end_date
 
-    # Using simplistic Odoo chart of accounts:
-    # Interest expense is usually in 'expense' but often separated by code.
-    # Without specific codes, we can only approximate EBIT = net income + taxes + interest.
-    # Since we lack specific tax/interest flags in standard Odoo account_type, we check account names.
     query = f"""
         SELECT 
             SUM(CASE WHEN l.account_type IN ('income', 'income_other') THEN -{amount_col} ELSE 0 END) AS total_income,
@@ -289,27 +268,25 @@ def get_interest_coverage_tool(
         "status": "Safe" if ratio >= 3 else ("Warning" if ratio >= 1.5 else "Danger")
     }
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 5. REVENUE SEGMENTATION
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 def get_revenue_segmentation_tool(
-    tenant_id: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     segment_by: str = "customer",  # options: "customer", "journal"
     start_date: str | None = None,
     end_date: str | None = None,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
     limit: int = 15,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    base_currency: str | None = None,
 ) -> dict:
     """Segment revenue by customer or journal."""
 
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
-    params: dict = {"tenant_id": tenant_id, "limit": limit}
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    amount_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='m.currency_code')
+    params: dict = {"limit": limit}
     params.update(t_params_m)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="m.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="m.company_id")
     params.update(f_params)
     
     date_sql = ""
@@ -354,26 +331,23 @@ def get_revenue_segmentation_tool(
         ]
     }
 
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 # 6. PAYMENT RECONCILIATION
-# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ──────────────────────────────────────────────────────────────
 def get_payment_reconciliation_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
-    base_currency: str | None = None, tenant_ids: Optional[list[str]] = None
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    base_currency: str | None = None,
 ) -> dict:
     """Analyze unmatched payments and reconciliation efficiency."""
 
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    selected = normalize_company_ids(company_id=company_id, companies=company_ids)
-    amount_col = build_currency_case_sql('l.balance', tenant_id, base_currency, 'm.currency_code')
-    params: dict = {"tenant_id": tenant_id}
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    amount_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='m.currency_code')
+    params: dict = {}
     params.update(t_params_m)
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected, column_name="m.company_id")
+    f_sql, f_params = build_company_filter_sql(company_ids, column_name="m.company_id")
     params.update(f_params)
 
-    # Find customer payments (receipts) not fully reconciled
     query = f"""
         SELECT 
             p.name AS customer_name,
@@ -388,7 +362,7 @@ def get_payment_reconciliation_tool(
           AND m.state = 'posted'
           AND l.account_type = 'asset_receivable'
           AND m.amount_residual != 0
-          AND l.balance < 0 -- Credit balance on AR means payment received
+          AND l.balance < 0
           {f_sql}
         GROUP BY p.name, m.odoo_name, m.date
         ORDER BY payment_amount DESC
@@ -409,5 +383,3 @@ def get_payment_reconciliation_tool(
         ],
         "total_unreconciled_value": sum(float(r.get("payment_amount") or 0) for r in rows)
     }
-
-

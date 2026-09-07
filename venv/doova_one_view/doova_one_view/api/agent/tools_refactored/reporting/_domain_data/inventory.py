@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 def enrich(
     data: dict,
     pnl_ctx: dict,
-    tenant_id: str,
-    resolved_company_ids: list[int] | None,
-    start_date: str,
-    end_date: str,
-    base_currency: str | None,
-    tenant_ids: list[str] | None,
-    currency: str,
+    tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    base_currency: str | None = None,
+    currency: str = "XAF",
+    prior_start: str | None = None,
+    prior_end: str | None = None,
     comparison_label: str = "",
-    **kwargs
 ) -> None:
     """Enriches data dict with Inventory & Warehouse telemetry (stock valuation, turnover, low stock alerts)."""
     from doova_one_view.api.agent.tools_refactored import reporting_v2
@@ -35,9 +35,9 @@ def enrich(
         from doova_one_view.api.agent.tools_refactored.inventory import get_inventory_efficiency_tool
 
     try:
-        inv_val = get_inventory_valuation_tool(tenant_id, company_ids=resolved_company_ids, tenant_ids=tenant_ids)
-        inv_alerts = get_inventory_alerts_tool(tenant_id, company_ids=resolved_company_ids, tenant_ids=tenant_ids)
-        inv_eff = get_inventory_efficiency_tool(tenant_id, company_ids=resolved_company_ids, tenant_ids=tenant_ids)
+        inv_val = get_inventory_valuation_tool(tenant_ids=tenant_ids, company_ids=company_ids)
+        inv_alerts = get_inventory_alerts_tool(tenant_ids=tenant_ids, company_ids=company_ids)
+        inv_eff = get_inventory_efficiency_tool(tenant_ids=tenant_ids, company_ids=company_ids)
 
         raw_alerts = inv_alerts.get("low_stock_items", inv_alerts.get("alerts", []))
         formatted_alerts = []
@@ -58,7 +58,7 @@ def enrich(
         inv_tot_val = float(inv_val.get("total_value", inv_val.get("total_valuation", 0)) or 0)
         if base_currency:
             from doova_one_view.api.kpi.service import _get_rate_map
-            rate_map = _get_rate_map(tenant_id=tenant_id)
+            rate_map = _get_rate_map(tenant_ids=tenant_ids)
             if base_currency in rate_map:
                 inv_tot_val = inv_tot_val * rate_map[base_currency]
 

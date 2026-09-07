@@ -52,8 +52,8 @@ async def _get_all_tenants_for_user(user: AppUser) -> list[dict[str, Any]]:
     return [{"id": str(access.tenant_id), "name": access.tenant.name} for access in accesses]
 
 
-def _company_ids(company_id: Optional[int], companies: Optional[str]) -> Optional[list[int]]:
-    return parse_company_ids(company_id if company_id is not None else companies)
+def _company_ids(company_ids: Optional[str] = None) -> Optional[list[int]]:
+    return parse_company_ids(company_ids)
 
 
 @router.get("/{tenant_id}/summary")
@@ -63,8 +63,7 @@ async def get_accounting_summary(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
@@ -73,7 +72,7 @@ async def get_accounting_summary(
         tenant_id,
         start_date or date_from,
         end_date or date_to,
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
         base_currency,
     )
 
@@ -85,10 +84,7 @@ async def get_accounting_dashboard(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
-    includeCompanies: Optional[str] = Query(None),
-    include_companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
@@ -97,7 +93,7 @@ async def get_accounting_dashboard(
         tenant_id,
         start_date or date_from,
         end_date or date_to,
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
         base_currency,
     )
 
@@ -110,8 +106,7 @@ async def get_bank_cash_summary(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> BankCashSummaryResponse:
@@ -121,7 +116,7 @@ async def get_bank_cash_summary(
         tenant_id,
         start_date or date_from,
         end_date or date_to,
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
         base_currency,
     )
     return BankCashSummaryResponse(
@@ -140,19 +135,18 @@ async def get_profit_and_loss(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> ProfitAndLossSummary:
     """Retrieve a structured Profit & Loss breakdown."""
     await TenantService.get_tenant(tenant_id, str(user.id))
     data = await AccountingService.get_pnl_summary(
-        tenant_id,
-        start_date or date_from,
-        end_date or date_to,
-        _company_ids(company_id, companies),
-        base_currency,
+        tenant_ids=[tenant_id],
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_ids=_company_ids(company_ids),
+        base_currency=base_currency,
     )
     return ProfitAndLossSummary(**data)
 
@@ -163,8 +157,7 @@ async def get_balance_sheet(
     as_of_date: Optional[str] = Query(None, description="As of date for the balance sheet (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="Alternative as of date"),
     date_to: Optional[str] = Query(None, description="Alternative as of date"),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> BalanceSheetResponse:
@@ -173,7 +166,7 @@ async def get_balance_sheet(
     data = await AccountingService.get_balance_sheet(
         tenant_id,
         as_of_date=as_of_date or end_date or date_to,
-        company_ids=_company_ids(company_id, companies),
+        company_ids=_company_ids(company_ids),
         base_currency=base_currency,
     )
     return BalanceSheetResponse(**data)
@@ -186,8 +179,7 @@ async def get_cash_flow_statement(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     date_from: Optional[str] = Query(None, description="Alternative start date"),
     date_to: Optional[str] = Query(None, description="Alternative end date"),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     source: str = Query("auto", description="Source engine: 'auto' | 'odoo_live' | 'local_engine'"),
     user: AppUser = _view_accounting_overview,
@@ -195,10 +187,10 @@ async def get_cash_flow_statement(
     """Retrieve a structured Cash Flow Statement matching Odoo."""
     await TenantService.get_tenant(tenant_id, str(user.id))
     data = await AccountingService.get_cash_flow_statement(
-        tenant_id,
+        tenant_ids=[tenant_id],
         start_date=start_date or date_from,
         end_date=end_date or date_to,
-        company_ids=_company_ids(company_id, companies),
+        company_ids=_company_ids(company_ids),
         base_currency=base_currency,
         source=source,
     )
@@ -212,8 +204,7 @@ async def get_expense_breakdown(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> ExpenseBreakdownResponse:
@@ -223,7 +214,7 @@ async def get_expense_breakdown(
         tenant_id,
         start_date or date_from,
         end_date or date_to,
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
         base_currency,
     )
     return ExpenseBreakdownResponse(**data)
@@ -236,19 +227,18 @@ async def get_executive_summary(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
     """Official 5-pillar Executive Business Summary matching Odoo Report 6."""
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_executive_summary(
-        tenant_id,
-        start_date or date_from,
-        end_date or date_to,
-        _company_ids(company_id, companies),
-        base_currency,
+        tenant_ids=[tenant_id],
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_ids=_company_ids(company_ids),
+        base_currency=base_currency,
     )
 
 
@@ -259,10 +249,7 @@ async def get_accounting_kpis(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
-    includeCompanies: Optional[str] = Query(None),
-    include_companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = _view_accounting_overview,
 ) -> dict[str, Any]:
@@ -271,7 +258,7 @@ async def get_accounting_kpis(
         tenant_id,
         start_date or date_from,
         end_date or date_to,
-        _company_ids(company_id, companies),
+        _company_ids(company_ids),
         base_currency,
     )
 
@@ -282,19 +269,18 @@ async def get_profit_and_loss(
     end_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     user: AppUser = Depends(get_current_user),
 ) -> ProfitAndLossSummary:
     """Retrieve a structured Profit & Loss breakdown."""
     await TenantService.get_tenant(tenant_id, str(user.id))
     data = await AccountingService.get_pnl_summary(
-        tenant_id,
-        start_date or date_from,
-        end_date or date_to,
-        _company_ids(company_id, companies),
-        base_currency,
+        tenant_ids=[tenant_id],
+        start_date=start_date or date_from,
+        end_date=end_date or date_to,
+        company_ids=_company_ids(company_ids),
+        base_currency=base_currency,
     )
     return ProfitAndLossSummary(**data)
 
@@ -307,13 +293,12 @@ async def list_accounting_moves(
     offset: int = Query(0, ge=0),
     partner_id: Optional[int] = Query(None),
     move_type: Optional[str] = Query(None, description="out_invoice, in_invoice, entry, etc."),
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_accounting_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_moves(
-        tenant_id, limit, offset, partner_id, _company_ids(company_id, companies), move_type
+        tenant_id, limit, offset, partner_id, _company_ids(company_ids), move_type
     )
 
 
@@ -321,13 +306,12 @@ async def list_accounting_moves(
 async def get_accounting_move(
     tenant_id: str,
     move_id: int,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _view_accounting_moves,
 ) -> dict[str, Any]:
     await TenantService.get_tenant(tenant_id, str(user.id))
     return await AccountingService.get_move(
-        tenant_id, move_id, _company_ids(company_id, companies)
+        tenant_id, move_id, _company_ids(company_ids)
     )
 
 
@@ -358,13 +342,12 @@ async def search_accounting_moves(
 @router.get("/{tenant_id}/export")
 async def export_accounting_moves(
     tenant_id: str,
-    company_id: Optional[int] = Query(None),
-    companies: Optional[str] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     user: AppUser = _export_accounting_moves,
 ) -> Response:
     await TenantService.get_tenant(tenant_id, str(user.id))
     csv_content = await AccountingService.export_moves_csv(
-        tenant_id, _company_ids(company_id, companies)
+        tenant_id, _company_ids(company_ids)
     )
     return Response(
         content=csv_content,
@@ -386,14 +369,14 @@ async def get_dashboard_metric_details(
     metric: str = Query(..., description="The metric name (e.g., total_revenue, total_expenses, net_profit, receivable_balance, payable_balance, overdue_receivable, overdue_payable)"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_accounting_overview,
 ) -> MetricDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(companies)
+    company_ids = parse_company_ids(company_ids)
     return await AccountingService.get_dashboard_metric_details(
         tenant_id=tenant_id,
         metric=metric,
@@ -409,14 +392,14 @@ async def get_dashboard_metric_details(
 async def get_daily_moves(
     tenant_id: str,
     day: str = Query(..., description="The calendar day to drill into (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_accounting_overview,
 ) -> DailyMovesResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(companies)
+    company_ids = parse_company_ids(company_ids)
     return await AccountingService.get_daily_moves(
         tenant_id=tenant_id,
         day=day,
@@ -433,14 +416,14 @@ async def get_market_breakdown_details(
     entity_id: int = Query(..., description="The entity ID (partner_id)"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_accounting_overview,
 ) -> MarketBreakdownResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(companies)
+    company_ids = parse_company_ids(company_ids)
     return await AccountingService.get_market_breakdown_details(
         tenant_id=tenant_id,
         section=section,
@@ -473,14 +456,14 @@ async def get_product_moves_details(
     product_id: int = Query(..., description="The product's Django pk"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_accounting_overview,
 ) -> ProductMovesDetailResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(companies)
+    company_ids = parse_company_ids(company_ids)
     return await AccountingService.get_product_moves_details(
         tenant_id=tenant_id,
         product_id=product_id,
@@ -500,14 +483,14 @@ async def get_aging_details(
     move_type: str = Query(..., description="'out_invoice' for receivables, 'in_invoice' for payables"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_accounting_overview,
 ) -> AgingDetailsResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(companies)
+    company_ids = parse_company_ids(company_ids)
     return await AccountingService.get_aging_details(
         tenant_id=tenant_id,
         bucket=bucket,
@@ -527,14 +510,14 @@ async def get_dashboard_journals(
     tenant_id: str,
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: AppUser = _view_accounting_overview,
 ) -> JournalCardsResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(companies)
+    company_ids = parse_company_ids(company_ids)
     return await AccountingService.get_journal_cards(
         tenant_id=tenant_id,
         start_date=start_date,
@@ -555,16 +538,15 @@ async def get_cash_flow_statement(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
-    company_id: Optional[int] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     base_currency: Optional[str] = Query(None, description="Target currency for financial values"),
     source: str = Query("auto", description="Source engine: 'auto' | 'odoo_live' | 'local_engine'"),
     user: AppUser = _view_accounting_overview,
 ) -> CashFlowStatementResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(company_id, companies)
+    company_ids = _company_ids(company_ids)
     return await AccountingService.get_cash_flow_statement(
-        tenant_id=tenant_id,
+        tenant_ids=[tenant_id],
         start_date=start_date or date_from,
         end_date=end_date or date_to,
         company_ids=company_ids,
@@ -582,13 +564,12 @@ async def get_cash_flow_drilldown(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    companies: Optional[str] = Query(None, description="Single ID or comma-separated IDs"),
-    company_id: Optional[int] = Query(None),
+    company_ids: Optional[str] = Query(None, description="Comma-separated or JSON list of company IDs"),
     limit: int = Query(200, ge=1, le=1000),
     user: AppUser = _view_accounting_overview,
 ) -> CashFlowDrilldownResponse:
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = _company_ids(company_id, companies)
+    company_ids = _company_ids(company_ids)
     records = await AccountingService.get_cash_flow_drilldown(
         tenant_id=tenant_id,
         section=section,

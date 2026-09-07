@@ -19,13 +19,16 @@ DEFAULT_THRESHOLDS = {
 }
 
 
-def get_tenant_thresholds(tenant_id: Optional[str]) -> Dict[str, float]:
+def get_tenant_thresholds(tenant_ids: Optional[Any] = None) -> Dict[str, float]:
     """
     Retrieve configured thresholds for a specific tenant, falling back to enterprise defaults.
     """
-    if not tenant_id:
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids
+    t_ids = normalize_tenant_ids(tenant_ids)
+    if not t_ids:
         return DEFAULT_THRESHOLDS.copy()
 
+    tenant_id = t_ids[0]
     try:
         from odoo_app.models.tenant_financial_mapping import TenantFinancialMapping
         mapping = TenantFinancialMapping.objects.filter(tenant_id=tenant_id).first()

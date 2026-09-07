@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ company_name|default("Nexus") }} — {% block title %}{{ title|default("Executive Business Report") }}{%
+    <title>{{ company_name|default("Doova") }} — {% block title %}{{ title|default("Executive Business Report") }}{%
         endblock %}</title>
     <style>
         /* -------------------------------------------------------------------------
@@ -39,7 +39,7 @@
             }
 
             @bottom-left {
-                content: "{{ company_name|default('Nexus') }} — Confidential & Proprietary";
+                content: "{{ company_name|default('Doova') }} — Confidential & Proprietary";
                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
                 font-size: 7.5pt;
                 color: #94a3b8;
@@ -754,7 +754,7 @@
         }
 
         /* -------------------------------------------------------------------------
-           9. NEXUS LOGO WATERMARK
+           9. DOOVA LOGO WATERMARK
            ------------------------------------------------------------------------- */
         .report-watermark {
             position: fixed;
@@ -823,7 +823,7 @@
 <body>
 
     <!-- =========================================================================
-         NEXUS WATERMARK EMBLEM
+         DOOVA WATERMARK EMBLEM
          ========================================================================= -->
     <div class="report-watermark">
         {% if logo_b64 %}
@@ -839,7 +839,7 @@
                 <text x="50" y="66" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="46"
                     font-weight="900" text-anchor="middle" fill="#0f172a">N</text>
             </svg>
-            <div class="watermark-brand-text">NEXUS</div>
+            <div class="watermark-brand-text">DOOVA</div>
             <div class="watermark-sub-text">{% block watermark_title %}EXECUTIVE INTELLIGENCE{% endblock %}</div>
         </div>
         {% endif %}
@@ -859,7 +859,7 @@
                 {% else %}
                 <div class="brand-badge">
                     <span class="brand-icon">N</span>
-                    <span class="brand-text">NEXUS</span>
+                    <span class="brand-text">DOOVA</span>
                 </div>
                 {% endif %}
             </div>

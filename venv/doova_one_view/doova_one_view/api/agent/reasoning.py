@@ -13,11 +13,9 @@ class ReasoningNode:
     def create_plan(
         self,
         message: str,
-        tenant_id: str | None = None,
-        company_id: int | None = None,
-        memory_summary: str = "",
         tenant_ids: list[str] | None = None,
-        company_ids: list[int] | None = None
+        company_ids: list[int] | None = None,
+        memory_summary: str = "",
     ) -> dict:
         # Use the centralized JSON planning prompt with memory context
         context = f"PREVIOUS CONTEXT: {memory_summary}\n" if memory_summary else ""
@@ -34,20 +32,16 @@ class ReasoningNode:
         self,
         message: str,
         plan: dict,
-        tenant_id: str | None = None,
-        company_id: int | None = None,
-        memory_summary: str = "",
         tenant_ids: list[str] | None = None,
         company_ids: list[int] | None = None,
+        memory_summary: str = "",
         language: str | None = None
     ) -> str:
         # Use the LangChain Agent Executor to fulfill the plan
         return self.agent.run(
             message=f"Execute this plan: {json.dumps(plan)}. Original question: {message}",
-            tenant_id=tenant_id,
-            company_id=company_id,
-            company_ids=company_ids,
             tenant_ids=tenant_ids,
+            company_ids=company_ids,
             memory_summary=memory_summary,
             language=language
         )
@@ -55,19 +49,15 @@ class ReasoningNode:
     def run(
         self,
         message: str,
-        tenant_id: str | None = None,
-        company_id: int | None = None,
-        memory_summary: str = "",
         tenant_ids: list[str] | None = None,
         company_ids: list[int] | None = None,
+        memory_summary: str = "",
         language: str | None = None
     ) -> str:
         return self.agent.run(
             message=message,
-            tenant_id=tenant_id,
-            company_id=company_id,
-            company_ids=company_ids,
             tenant_ids=tenant_ids,
+            company_ids=company_ids,
             memory_summary=memory_summary,
             language=language
         )

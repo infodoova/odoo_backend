@@ -1,25 +1,26 @@
-from doova_one_view.api.agent.query_context import build_tenant_filter_sql
-from typing import Optional
 # api/agent/tools_refactored/inventory.py
+from typing import Optional
+from .common import (
+    run_query,
+    build_company_filter_sql,
+    build_tenant_filter_sql,
+    calculate_ratio,
+)
 
-from .common import run_query, normalize_company_ids, build_company_filter_sql, calculate_ratio
 
 def get_inventory_alerts_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
     low_stock_threshold: float = 10,
-    expiring_days: int = 90, tenant_ids: Optional[list[str]] = None
+    expiring_days: int = 90,
 ) -> dict:
-
-    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="l.tenant_id", prefix="t_l")
-    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="q.tenant_id", prefix="t_q")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    params = {"tenant_id": tenant_id, "threshold": low_stock_threshold, "expiring_days": expiring_days}
+    t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_ids, column_name="q.tenant_id", prefix="t_q")
+    params = {"threshold": low_stock_threshold, "expiring_days": expiring_days}
     params.update(t_params_l)
     params.update(t_params_q)
-    q_f_sql, q_f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="q.company_id", prefix="q_comp")
-    l_f_sql, l_f_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="l.company_id", prefix="l_comp")
+    q_f_sql, q_f_params = build_company_filter_sql(company_ids, column_name="q.company_id", prefix="q_comp")
+    l_f_sql, l_f_params = build_company_filter_sql(company_ids, column_name="l.company_id", prefix="l_comp")
     params.update(q_f_params)
     params.update(l_f_params)
 
@@ -49,20 +50,18 @@ def get_inventory_alerts_tool(
         "expiring_soon": [{"lot": r.get('name'), "product": r.get('product_name'), "expiration_date": str(r.get('expiration_date'))} for r in expiring_rows]
     }
 
-def get_inventory_efficiency_tool(
-    tenant_id: str,
-    company_id: int | None = None,
-    company_ids: list[int] | None = None, tenant_ids: Optional[list[str]] = None
-) -> dict:
 
-    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="m.tenant_id", prefix="t_m")
-    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_id, tenant_ids, column_name="q.tenant_id", prefix="t_q")
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    params = {"tenant_id": tenant_id}
+def get_inventory_efficiency_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> dict:
+    t_sql_m, t_params_m = build_tenant_filter_sql(tenant_ids, column_name="m.tenant_id", prefix="t_m")
+    t_sql_q, t_params_q = build_tenant_filter_sql(tenant_ids, column_name="q.tenant_id", prefix="t_q")
+    params = {}
     params.update(t_params_m)
     params.update(t_params_q)
-    q_sql, q_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="q.company_id", prefix="q_company")
-    m_sql, m_params = build_company_filter_sql(tenant_id, selected_company_ids, column_name="m.company_id", prefix="m_company")
+    q_sql, q_params = build_company_filter_sql(company_ids, column_name="q.company_id", prefix="q_company")
+    m_sql, m_params = build_company_filter_sql(company_ids, column_name="m.company_id", prefix="m_company")
     params.update(q_params)
     params.update(m_params)
 
@@ -93,14 +92,15 @@ def get_inventory_efficiency_tool(
     }
 
 
-def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: int | None = None, limit: int = 25, offset: int = 0, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_inventory_stock_table_tool(
+    table_type: str,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    limit: int = 25,
+    offset: int = 0,
+) -> dict:
     from asgiref.sync import async_to_sync
     from doova_one_view.api.inventory.service import InventoryService
-    from doova_one_view.api.agent.query_context import resolve_tenant_id
-    from .common import normalize_company_ids
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    clean_tenant_id = resolve_tenant_id(tenant_id)
-    # Coerce limit/offset to int — the LLM agent may pass them as strings
     try:
         limit = int(limit) if limit is not None else 25
     except (ValueError, TypeError):
@@ -110,37 +110,34 @@ def get_inventory_stock_table_tool(tenant_id: str, table_type: str, company_id: 
     except (ValueError, TypeError):
         offset = 0
     res = async_to_sync(InventoryService.get_stock_table)(
-        tenant_id=clean_tenant_id,
+        tenant_ids=tenant_ids,
         table_type=table_type,
-        company_ids=selected_company_ids,
+        company_ids=company_ids,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
     return {"tool_name": "get_inventory_stock_table_tool", **res}
 
-def get_inventory_dashboard_alerts_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
+
+def get_inventory_dashboard_alerts_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> dict:
     from doova_one_view.api.inventory.service import InventoryService
-    from doova_one_view.api.agent.query_context import resolve_tenant_id
-    from .common import normalize_company_ids
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    clean_tenant_id = resolve_tenant_id(tenant_id)
     res = InventoryService.get_alerts_sync(
-        tenant_id=clean_tenant_id,
-        company_ids=selected_company_ids
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
     )
     return {"tool_name": "get_inventory_dashboard_alerts_tool", **res}
 
 
-def get_inventory_valuation_tool(tenant_id: str, company_id: int | None = None, company_ids: Optional[list[int]] = None, tenant_ids: Optional[list[str]] = None) -> dict:
+def get_inventory_valuation_tool(
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+) -> dict:
     from doova_one_view.api.inventory.service import InventoryService
-    from doova_one_view.api.agent.query_context import resolve_tenant_id
-    from .common import normalize_company_ids
-    selected_company_ids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    clean_tenant_id = resolve_tenant_id(tenant_id)
     res = InventoryService.get_inventory_summary_sync(
-        tenant_id=clean_tenant_id,
-        company_ids=selected_company_ids
+        tenant_ids=tenant_ids,
+        company_ids=company_ids,
     )
     return {"tool_name": "get_inventory_valuation_tool", **res}
-
-

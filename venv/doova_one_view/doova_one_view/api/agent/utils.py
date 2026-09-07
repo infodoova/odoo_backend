@@ -4,6 +4,7 @@ import os
 import re
 import json
 from pathlib import Path
+from typing import Any, Optional
 
 def parse_json_chart_from_text(text: str) -> dict | None:
     """Extract the first {type: 'chart'} JSON block from agent output text."""
@@ -205,16 +206,17 @@ def strip_visual_charts_from_text(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
-def get_tenant_currency(tenant_id: str | None, company_id: int | None = None, company_ids: list[int] | None = None) -> str:
+def get_tenant_currency(tenant_ids: Any = None, company_ids: Any = None) -> str:
     """
     Fetch the primary native currency name (e.g. XAF, USD, EUR) for the tenant/companies from dim_companies.
     """
     from .db import run_query
-    from .query_context import build_company_filter_sql, build_tenant_filter_sql, normalize_company_ids
+    from .query_context import build_company_filter_sql, build_tenant_filter_sql, normalize_company_ids, normalize_tenant_ids
     
-    selected_cids = normalize_company_ids(company_id=company_id, companies=company_ids)
-    t_sql, t_params = build_tenant_filter_sql(tenant_id, column_name="tenant_id")
-    f_sql, f_params = build_company_filter_sql(tenant_id, selected_cids, column_name="id")
+    selected_tids = normalize_tenant_ids(tenant_ids)
+    selected_cids = normalize_company_ids(company_ids)
+    t_sql, t_params = build_tenant_filter_sql(tenant_ids=selected_tids, column_name="tenant_id")
+    f_sql, f_params = build_company_filter_sql(company_ids=selected_cids, column_name="id")
     params = {**t_params, **f_params}
     
     query = f"""
