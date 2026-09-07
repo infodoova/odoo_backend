@@ -44,7 +44,7 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             ]
             req_line_fields = [
                 'id', 'move_id', 'product_id', 'partner_id', 'company_id',
-                'account_id', 'account_type', 'debit', 'credit', 'balance', 'amount_currency',
+                'account_id', 'account_type', 'full_reconcile_id', 'debit', 'credit', 'balance', 'amount_currency',
                 'currency_id', 'quantity', 'price_unit', 'price_subtotal',
                 'name', 'write_date'
             ]
@@ -151,17 +151,18 @@ class AccountMoveSynchronizer(BaseSynchronizer):
             INSERT INTO fact_account_move_lines (
                 tenant_id, account_move_id, odoo_id, odoo_move_id,
                 product_id, partner_id, company_id, account_odoo_id, account_code,
-                account_name, account_type, debit, credit, balance,
+                account_name, account_type, full_reconcile_id, debit, credit, balance,
                 amount_currency, currency_code, quantity, price_unit,
                 price_subtotal, name, odoo_write_date, synced_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (tenant_id, odoo_id) DO UPDATE SET 
                 account_odoo_id = COALESCE(EXCLUDED.account_odoo_id, fact_account_move_lines.account_odoo_id),
                 account_code = EXCLUDED.account_code,
                 account_name = EXCLUDED.account_name,
                 debit = EXCLUDED.debit, credit = EXCLUDED.credit,
                 balance = EXCLUDED.balance, account_type = COALESCE(EXCLUDED.account_type, fact_account_move_lines.account_type),
+                full_reconcile_id = EXCLUDED.full_reconcile_id,
                 odoo_write_date = EXCLUDED.odoo_write_date,
                 synced_at = NOW()
         """
@@ -203,13 +204,15 @@ class AccountMoveSynchronizer(BaseSynchronizer):
                 if not account_type and account_code:
                     account_type = self._lookup_account_type(tenant_id, account_code)
 
+                full_reconcile_id = self.transformer.parse_odoo_many2one(line.get('full_reconcile_id'))
+
                 currency_data = line.get('currency_id')
                 currency_code = currency_data[1] if isinstance(currency_data, (list, tuple)) else None
 
                 line_params.append((
                     tenant_id, account_move_id, line['id'], move_odoo_id,
                     product_id, partner_id, company_id, account_odoo_id, account_code,
-                    account_name, account_type,
+                    account_name, account_type, full_reconcile_id,
                     self.transformer.parse_odoo_decimal(line.get('debit', 0)),
                     self.transformer.parse_odoo_decimal(line.get('credit', 0)),
                     self.transformer.parse_odoo_decimal(line.get('balance', 0)),

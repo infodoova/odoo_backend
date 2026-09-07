@@ -290,12 +290,13 @@ def general_ledger( company_ids: CompanyIdsType = None, account_code: str = None
     return get_general_ledger_tool(tenant_ids=tenant_ids, company_ids=company_ids, account_code=account_code, account_name=account_name, date_from=date_from, date_to=date_to, as_of_date=as_of_date, include_lines=include_lines, limit_accounts=limit_accounts, base_currency=base_currency)
 
 @tool
-def partner_ledger( company_ids: CompanyIdsType = None, partner_name: str = None, partner_id: int = None, account_type: str = None, date_from: str = None, date_to: str = None, as_of_date: str = None, include_lines: bool = False, limit_partners: int = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
+def partner_ledger( company_ids: CompanyIdsType = None, partner_name: str = None, partner_id: int = None, account_type: str = None, date_from: str = None, date_to: str = None, as_of_date: str = None, unreconciled_only: bool = False, include_lines: bool = False, limit_partners: int = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
     """Generate the complete Partner Ledger (Grand Livre des Tiers) matching Odoo.
     Returns partner-level Debit, Credit, and Net Balance for all customers and suppliers across companies,
     along with grand totals, Net Receivable / Net Payable status, and optional move lines (invoices, matching, currency).
-    Use for: 'partner ledger', 'grand livre des tiers', 'customer ledger', 'vendor ledger', 'partner balances', 'who owes what per partner'."""
-    return get_partner_ledger_tool(tenant_ids=tenant_ids, company_ids=company_ids, partner_name=partner_name, partner_id=partner_id, account_type=account_type, date_from=date_from, date_to=date_to, as_of_date=as_of_date, include_lines=include_lines, limit_partners=limit_partners, base_currency=base_currency)
+    Set `unreconciled_only=True` when the user asks for unreconciled entries only, open items, unsettled balances, non lettré, or pending reconciliations.
+    Use for: 'partner ledger', 'grand livre des tiers', 'unreconciled partner ledger', 'customer ledger', 'vendor ledger', 'partner balances', 'who owes what per partner'."""
+    return get_partner_ledger_tool(tenant_ids=tenant_ids, company_ids=company_ids, partner_name=partner_name, partner_id=partner_id, account_type=account_type, date_from=date_from, date_to=date_to, as_of_date=as_of_date, unreconciled_only=unreconciled_only, include_lines=include_lines, limit_partners=limit_partners, base_currency=base_currency)
 
 @tool
 def customer_statement( company_ids: CompanyIdsType = None, partner_name: str = None, partner_id: int = None, date_from: str = None, date_to: str = None, as_of_date: str = None, include_lines: bool = False, limit_partners: int = None, base_currency: str = None, tenant_ids: TenantIdsType = None):

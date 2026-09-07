@@ -1110,7 +1110,7 @@ def get_trial_balance_tool(tenant_ids: Optional[list[str]] = None, company_ids: 
 
 def get_financial_ratios_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None, start_date: str | None = None, end_date: str | None = None, as_of_date: str | None = None, base_currency: str | None = None) -> dict:
     bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=as_of_date or end_date, base_currency=base_currency)
-    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+    pnl = calculate_pnl_tool(company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
     inv_data = get_inventory_efficiency_tool(tenant_ids=tenant_ids, company_ids=company_ids)
     inventory_value = inv_data.get("total_inventory_value", 0)
 
@@ -1532,20 +1532,25 @@ def get_general_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
 # 14. PARTNER LEDGER
 # ────────────────────────────────────────────────────────────────────────────────
 
-def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None, partner_name: str | None = None, partner_id: int | None = None, account_type: str | None = None, date_from: str | None = None, date_to: str | None = None, as_of_date: str | None = None, include_lines: bool = False, limit_partners: int | None = None, limit_lines_per_partner: int = 50, base_currency: str | None = None) -> dict:
+def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None, partner_name: str | None = None, partner_id: int | None = None, account_type: str | None = None, date_from: str | None = None, date_to: str | None = None, as_of_date: str | None = None, unreconciled_only: bool = False, include_lines: bool = False, limit_partners: int | None = None, limit_lines_per_partner: int = 50, base_currency: str | None = None) -> dict:
     """
     Generates the complete Partner Ledger (Grand Livre des Tiers) matching Odoo exactly.
     Complies with Odoo's Balance Sheet accounting formula:
-    - Queries local PostgreSQL fact_partner_ledger_snapshots for 100% exact parity with Odoo.
-    - Falls back to dynamic parameterized SQL queries on fact_account_move_lines when no snapshot exists.
+    - Calculates dynamically via parameterized SQL queries on fact_account_move_lines.
     - Ensures Grand Totals and drill-down table rows are 100% synchronized (Rule 1).
+    - Dynamically incorporates all partners meeting Odoo's report criteria:
+      1. Has lifetime transactional activity (debit > 0 or credit > 0)
+      2. And either:
+         a. Has non-zero ending balance at period close
+         b. Had posted transactions within the requested date range (date >= date_from)
+         c. Holds unreconciled or unallocated entries (including historical zero-balance settled partners)
     - When granular move lines are requested, presents the exact Odoo columns:
       Journal, Account, Invoice Date, Due Date, Matching, Debit, Credit, Amount Currency, and running Balance.
     """
     target_end_date = date_to or as_of_date
-    period_key = f"{date_from}_{target_end_date}" if date_from and target_end_date else None
 
     raw_cids = normalize_company_ids(company_ids=company_ids)
+    t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
     resolved_company_ids = []
     company_names = []
     try:
@@ -1563,7 +1568,7 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
             company_names = list(c_qs.values_list('name', flat=True))
     except Exception:
         resolved_company_ids = raw_cids
-    scope_str = ", ".join(company_names) if company_names else ("Consolidated" if not company_id else f"Company {company_id}")
+    scope_str = ", ".join(company_names) if company_names else ("Consolidated" if not raw_cids else f"Companies {raw_cids}")
 
     # Format period label
     if date_from and target_end_date:
@@ -1573,251 +1578,227 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
     else:
         period_label = "All Time"
 
-    # 1. Check local PostgreSQL fact_partner_ledger_snapshots for exact Odoo parity
-    candidate_keys = []
-    if period_key and not account_type:
-        if raw_cids:
-            if len(raw_cids) == 1:
-                cid = raw_cids[0]
-                matched_odoo = list(c_qs.filter(id=cid).values_list('odoo_id', flat=True)) if 'c_qs' in locals() else []
-                odoo_cid = matched_odoo[0] if matched_odoo else cid
-                candidate_keys.extend([f"{period_key}_comp_{odoo_cid}", f"{period_key}_comp_{cid}"])
-            else:
-                sorted_c = sorted(raw_cids)
-                candidate_keys.append(f"{period_key}_comps_{'_'.join(map(str, sorted_c))}")
-                matched_odoo = sorted(list(c_qs.filter(id__in=raw_cids).values_list('odoo_id', flat=True))) if 'c_qs' in locals() else []
-                if matched_odoo:
-                    candidate_keys.append(f"{period_key}_comps_{'_'.join(map(str, matched_odoo))}")
-        else:
-            candidate_keys.append(period_key)
-
-    if candidate_keys:
-        s_filter = ""
-        t_snap_sql, t_snap_params = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_snap")
-        s_params = dict(t_snap_params)
-        placeholders = [f":ckey_{i}" for i in range(len(candidate_keys))]
-        for i, ck in enumerate(candidate_keys):
-            s_params[f"ckey_{i}"] = ck
-
-        matched_k = run_query(
-            f"""SELECT period_key FROM fact_partner_ledger_snapshots
-                WHERE 1=1 {t_snap_sql} AND period_key IN ({', '.join(placeholders)}) LIMIT 1""",
-            s_params,
-        )
-
-        if matched_k:
-            actual_key = matched_k[0]['period_key']
-            s_params_act = dict(t_snap_params)
-            s_params_act["pkey"] = actual_key
-            if partner_name:
-                s_filter += " AND partner_name ILIKE :p_name"
-                s_params_act["p_name"] = f"%{partner_name}%"
-            if partner_id:
-                s_filter += " AND partner_id = :p_id"
-                s_params_act["p_id"] = partner_id
-
-            snapshot_rows = run_query(
-                f"""SELECT partner_name, partner_id, currency, debit, credit, balance, status
-                    FROM fact_partner_ledger_snapshots
-                    WHERE 1=1 {t_snap_sql} AND period_key = :pkey {s_filter}
-                    ORDER BY partner_name NULLS LAST""",
-                s_params_act,
-            )
-
-            if snapshot_rows:
-                tot_snapshot = run_query(
-                    f"""SELECT COALESCE(SUM(debit), 0) AS total_debit,
-                               COALESCE(SUM(credit), 0) AS total_credit,
-                               COALESCE(SUM(balance), 0) AS net_balance
-                        FROM fact_partner_ledger_snapshots
-                        WHERE 1=1 {t_snap_sql} AND period_key = :pkey {s_filter}""",
-                    s_params_act,
-                )
-                tot = tot_snapshot[0] if tot_snapshot else {}
-                grand_total_debit = float(tot.get("total_debit") or 0)
-                grand_total_credit = float(tot.get("total_credit") or 0)
-                grand_net_balance = float(tot.get("net_balance") or 0)
-
-            partners = []
-            for r in snapshot_rows:
-                deb_val = float(r.get("debit") or 0)
-                crd_val = float(r.get("credit") or 0)
-                bal = float(r.get("balance") or 0)
-                p_dict = {
-                    "partner_name": r.get("partner_name") or "Unknown Partner",
-                    "partner_id": r.get("partner_id"),
-                    "currency": base_currency or r.get("currency") or "XAF",
-                    "debit": deb_val,
-                    "credit": crd_val,
-                    "balance": bal,
-                    "initial_balance": bal - (deb_val - crd_val),
-                    "period_debit": deb_val,
-                    "period_credit": crd_val,
-                    "status": r.get("status") or ("Net Receivable" if bal > 0.01 else "Net Payable" if bal < -0.01 else "Settled"),
-                }
-
-                if include_lines or partner_name or partner_id:
-                    # Fetch granular move lines from local database
-                    t_line_sql, t_line_params = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_line")
-                    p_lines_params = {"pid": r.get("partner_id"), "end_d": target_end_date, "limit_lines": int(limit_lines_per_partner)}
-                    p_lines_params.update(t_line_params)
-                    p_lines_data = run_query(f"""SELECT
-                                m.date AS entry_date,
-                                COALESCE(j.code, 'MISC') AS journal,
-                                l.account_code,
-                                m.invoice_date,
-                                m.invoice_date_due AS due_date,
-                                COALESCE(m.odoo_name, m.ref, l.name, '') AS matching,
-                                l.currency_code,
-                                l.amount_currency,
-                                COALESCE(l.debit, 0) AS debit,
-                                COALESCE(l.credit, 0) AS credit,
-                                COALESCE(l.balance, 0) AS balance
-                            FROM fact_account_move_lines l
-                            JOIN fact_account_moves m ON l.account_move_id = m.id
-                            LEFT JOIN dim_account_journals j ON m.journal_id = j.id
-                            LEFT JOIN dim_partners p ON l.partner_id = p.id
-                            WHERE 1=1 {t_line_sql}
-                              AND m.state = 'posted'
-                              AND (l.partner_id = :pid OR p.odoo_id = :pid)
-                              AND m.date <= :end_d
-                            ORDER BY m.date ASC, l.id ASC
-                            LIMIT :limit_lines""", p_lines_params)
-                    p_lines = []
-                    running_bal = 0.0
-                    for line in p_lines_data:
-                        l_deb = float(line.get("debit") or 0)
-                        l_crd = float(line.get("credit") or 0)
-                        running_bal += l_deb - l_crd
-                        p_lines.append({
-                            "date": str(line.get("entry_date")),
-                            "journal": line.get("journal") or "MISC",
-                            "account_code": line.get("account_code") or "",
-                            "invoice_date": str(line.get("invoice_date")) if line.get("invoice_date") else None,
-                            "due_date": str(line.get("due_date")) if line.get("due_date") else None,
-                            "matching": line.get("matching") or "",
-                            "currency": line.get("currency_code") or p_dict["currency"],
-                            "amount_currency": float(line.get("amount_currency")) if line.get("amount_currency") is not None else None,
-                            "debit": l_deb,
-                            "credit": l_crd,
-                            "balance": round(running_bal, 2),
-                        })
-                    p_dict["lines"] = p_lines
-
-                partners.append(p_dict)
-
-            return {
-                "tool_name": "get_partner_ledger_tool",
-                "scope": scope_str,
-                "period": period_label,
-                "date_from": date_from,
-                "date_to": target_end_date,
-                "columns": [
-                    "Journal", "Account", "Invoice Date", "Due Date",
-                    "Matching", "Debit", "Credit", "Amount Currency", "Balance"
-                ],
-                "total_partners_count": len(partners),
-                "total_debit": grand_total_debit,
-                "total_credit": grand_total_credit,
-                "net_balance": grand_net_balance,
-                "currency": base_currency or "XAF",
-                "status": "Net Receivable" if grand_net_balance > 0 else "Net Payable",
-                "partners": partners[:limit_partners] if limit_partners else partners,
-            }
-
-    # 2. Dynamic SQL query on fact_account_move_lines (for custom periods / company-filtered queries)
+    # Dynamic SQL query with Cross-Partner Partial Reconciliation UNION
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_l")
+    t_sql_pr1, t_params_pr1 = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="pr.tenant_id", prefix="t_pr1")
+    t_sql_pr2, t_params_pr2 = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="pr.tenant_id", prefix="t_pr2")
+    t_sql_prd, t_params_prd = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_prd")
+    t_sql_prc, t_params_prc = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_prc")
+
+    f_sql_l, f_params_l = build_company_filter_sql(company_ids=resolved_company_ids, column_name="l.company_id", prefix="comp_l")
+    f_sql_deb, f_params_deb = build_company_filter_sql(company_ids=resolved_company_ids, column_name="l_deb.company_id", prefix="comp_deb")
+    f_sql_crd, f_params_crd = build_company_filter_sql(company_ids=resolved_company_ids, column_name="l_crd.company_id", prefix="comp_crd")
+
     balance_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
     debit_col = build_currency_case_sql('l.debit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
     credit_col = build_currency_case_sql('l.credit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
 
-    end_date_sql = ""
+    if account_type:
+        acct_type_filter_l = f"AND l.account_type = '{account_type}'"
+        acct_type_filter_deb = f"AND l_deb.account_type = '{account_type}'"
+        acct_type_filter_crd = f"AND l_crd.account_type = '{account_type}'"
+    else:
+        acct_type_filter_l = "AND l.account_type IN ('asset_receivable', 'liability_payable')"
+        acct_type_filter_deb = "AND l_deb.account_type IN ('asset_receivable', 'liability_payable')"
+        acct_type_filter_crd = "AND l_crd.account_type IN ('asset_receivable', 'liability_payable')"
+
     params = {}
+    params.update(t_params_l)
+    params.update(t_params_pr1)
+    params.update(t_params_pr2)
+    params.update(t_params_prd)
+    params.update(t_params_prc)
+    params.update(f_params_l)
+    params.update(f_params_deb)
+    params.update(f_params_crd)
+
+    end_date_sql = ""
+    pr_end_date_sql = ""
+    pr_sub_end_date = ""
     if target_end_date:
         end_date_sql = " AND m.date <= :target_end_date"
+        pr_end_date_sql = " AND pr.max_date <= :target_end_date"
+        pr_sub_end_date = " AND max_date <= :target_end_date"
         params["target_end_date"] = target_end_date
 
     partner_sql = ""
     if partner_id:
-        partner_sql += " AND (l.partner_id = :partner_id OR p.odoo_id = :partner_id)"
+        partner_sql += " AND (u.partner_id = :partner_id OR p.odoo_id = :partner_id)"
         params["partner_id"] = partner_id
     if partner_name:
         partner_sql += " AND p.name ILIKE :partner_name"
         params["partner_name"] = f"%{partner_name}%"
 
-    acct_type_filter = ""
-    if account_type:
-        acct_type_filter = f"AND l.account_type = '{account_type}'"
-    else:
-        acct_type_filter = "AND l.account_type IN ('asset_receivable', 'liability_payable')"
-
-    f_sql, f_params = build_company_filter_sql(company_ids=resolved_company_ids, column_name="l.company_id")
-    params.update(t_params_l)
-    params.update(f_params)
-
     if date_from:
         params["date_from"] = date_from
-        init_bal_expr = f"COALESCE(SUM(CASE WHEN m.date < :date_from THEN {balance_col} ELSE 0 END), 0)"
-        period_debit_expr = f"COALESCE(SUM(CASE WHEN m.date >= :date_from THEN {debit_col} ELSE 0 END), 0)"
-        period_credit_expr = f"COALESCE(SUM(CASE WHEN m.date >= :date_from THEN {credit_col} ELSE 0 END), 0)"
+        init_bal_expr = "COALESCE(SUM(CASE WHEN u.date < :date_from THEN u.balance ELSE 0 END), 0)"
+        init_deb_expr = "COALESCE(SUM(CASE WHEN u.date < :date_from THEN u.debit ELSE 0 END), 0)"
+        init_crd_expr = "COALESCE(SUM(CASE WHEN u.date < :date_from THEN u.credit ELSE 0 END), 0)"
+        period_debit_expr = "COALESCE(SUM(CASE WHEN u.date >= :date_from THEN u.debit ELSE 0 END), 0)"
+        period_credit_expr = "COALESCE(SUM(CASE WHEN u.date >= :date_from THEN u.credit ELSE 0 END), 0)"
     else:
         init_bal_expr = "0.0"
-        period_debit_expr = f"COALESCE(SUM({debit_col}), 0)"
-        period_credit_expr = f"COALESCE(SUM({credit_col}), 0)"
+        init_deb_expr = "0.0"
+        init_crd_expr = "0.0"
+        period_debit_expr = "COALESCE(SUM(u.debit), 0)"
+        period_credit_expr = "COALESCE(SUM(u.credit), 0)"
 
     limit_sql = f"LIMIT {int(limit_partners)}" if limit_partners else ""
 
-    # Partner level query with Odoo filter (has open balance or had period movement)
-    date_from_check = "m.date >= :date_from" if date_from else "1=1"
-    having_clause = f"""HAVING 
-        (ABS(COALESCE(SUM({balance_col}), 0)) > 0.001)
-        OR (COALESCE(SUM(CASE WHEN {date_from_check} THEN {debit_col} ELSE 0 END), 0) > 0)
-        OR (COALESCE(SUM(CASE WHEN {date_from_check} THEN {credit_col} ELSE 0 END), 0) > 0)
-    """
+    # Partner level query with dynamic Odoo filter:
+    # 1. Partner must have lifetime transactional activity (debit > 0 or credit > 0).
+    # 2. When unreconciled_only=True: must have non-zero balance or unallocated/open lines.
+    # 3. Default (unfiltered view matching Odoo): includes partners with:
+    #    a. Non-zero ending balance (ABS(balance) > 0.001)
+    #    b. Transactions within requested period (u.date >= date_from)
+    #    c. Unreconciled / open items (no partial reconcile record or remaining unallocated balance)
+    date_from_check = "u.date >= :date_from" if date_from else "1=1"
+    unrec_line_filter = "AND l.full_reconcile_id IS NULL" if unreconciled_only else ""
+    cross_pr_filter = "AND 1=0" if unreconciled_only else ""
+    if unreconciled_only:
+        having_clause = f"""HAVING 
+            (COALESCE(SUM(u.debit), 0) > 0.001 OR COALESCE(SUM(u.credit), 0) > 0.001)
+            AND (
+                (ABS(COALESCE(SUM(u.balance), 0)) > 0.001)
+                OR (COALESCE(SUM(CASE WHEN (u.debit > 0 AND (u.debit - COALESCE(pr_d.rec_d, 0)) > 0.01)
+                                        OR (u.credit > 0 AND (u.credit - COALESCE(pr_c.rec_c, 0)) > 0.01) THEN 1 ELSE 0 END), 0) > 0)
+                OR (COALESCE(SUM(CASE WHEN {date_from_check} THEN 1 ELSE 0 END), 0) > 0)
+            )
+        """
+    else:
+        having_clause = f"""HAVING 
+            (COALESCE(SUM(u.debit), 0) > 0.001 OR COALESCE(SUM(u.credit), 0) > 0.001)
+            AND (
+                (ABS(COALESCE(SUM(u.balance), 0)) > 0.001)
+                OR (COALESCE(SUM(CASE WHEN {date_from_check} THEN 1 ELSE 0 END), 0) > 0)
+                OR (COALESCE(SUM(CASE WHEN u.line_id IS NOT NULL AND pr_d.rec_d IS NULL AND pr_c.rec_c IS NULL THEN 1 ELSE 0 END), 0) > 0)
+                OR (COALESCE(SUM(CASE WHEN u.line_id IS NULL THEN 1 ELSE 0 END), 0) > 0)
+            )
+        """
 
-    rows = run_query(
-        f"""SELECT
-                COALESCE(p.name, 'Unknown Partner') AS partner_name,
+    query = f"""
+        WITH unioned_entries AS (
+            SELECT 
                 l.partner_id,
-                c.currency_code AS base_currency,
-                COALESCE(SUM({debit_col}), 0) AS total_debit,
-                COALESCE(SUM({credit_col}), 0) AS total_credit,
-                COALESCE(SUM({balance_col}), 0) AS balance,
-                {init_bal_expr} AS initial_balance,
-                {period_debit_expr} AS period_debit,
-                {period_credit_expr} AS period_credit
+                l.company_id,
+                l.tenant_id,
+                m.date,
+                {debit_col} AS debit,
+                {credit_col} AS credit,
+                {balance_col} AS balance,
+                l.id AS line_id
             FROM fact_account_move_lines l
             JOIN fact_account_moves m ON l.account_move_id = m.id
-            JOIN dim_companies c ON l.company_id = c.id
-            LEFT JOIN dim_partners p ON l.partner_id = p.id AND l.tenant_id = p.tenant_id
             WHERE 1=1 {t_sql_l}
               AND m.state = 'posted'
-              {acct_type_filter}
-              {f_sql}
+              {acct_type_filter_l}
+              {f_sql_l}
               {end_date_sql}
-              {partner_sql}
-            GROUP BY p.name, l.partner_id, c.currency_code
-            {having_clause}
-            ORDER BY p.name NULLS LAST
-            {limit_sql}""",
-        params,
-    )
+              {unrec_line_filter}
+
+            UNION ALL
+
+            -- Cross-partner partial reconcile: credit side of debit partner
+            SELECT 
+                l_deb.partner_id,
+                l_deb.company_id,
+                l_deb.tenant_id,
+                pr.max_date AS date,
+                0.00 AS debit,
+                pr.amount AS credit,
+                -pr.amount AS balance,
+                NULL AS line_id
+            FROM fact_account_partial_reconciles pr
+            JOIN fact_account_move_lines l_deb ON pr.debit_move_line_id = l_deb.id
+            JOIN fact_account_move_lines l_crd ON pr.credit_move_line_id = l_crd.id
+            WHERE 1=1 {t_sql_pr1}
+              {pr_end_date_sql}
+              {f_sql_deb}
+              {acct_type_filter_deb}
+              {acct_type_filter_crd}
+              AND (l_deb.partner_id IS DISTINCT FROM l_crd.partner_id)
+              {cross_pr_filter}
+
+            UNION ALL
+
+            -- Cross-partner partial reconcile: debit side of credit partner
+            SELECT 
+                l_crd.partner_id,
+                l_crd.company_id,
+                l_crd.tenant_id,
+                pr.max_date AS date,
+                pr.amount AS debit,
+                0.00 AS credit,
+                pr.amount AS balance,
+                NULL AS line_id
+            FROM fact_account_partial_reconciles pr
+            JOIN fact_account_move_lines l_deb ON pr.debit_move_line_id = l_deb.id
+            JOIN fact_account_move_lines l_crd ON pr.credit_move_line_id = l_crd.id
+            WHERE 1=1 {t_sql_pr2}
+              {pr_end_date_sql}
+              {f_sql_crd}
+              {acct_type_filter_deb}
+              {acct_type_filter_crd}
+              AND (l_deb.partner_id IS DISTINCT FROM l_crd.partner_id)
+              {cross_pr_filter}
+        )
+        SELECT 
+            COALESCE(p.name, 'Unknown Partner') AS partner_name,
+            p.odoo_id,
+            u.partner_id,
+            MAX(c.currency_code) AS base_currency,
+            COALESCE(SUM(u.debit), 0) AS total_debit,
+            COALESCE(SUM(u.credit), 0) AS total_credit,
+            COALESCE(SUM(u.balance), 0) AS balance,
+            {init_bal_expr} AS initial_balance,
+            {init_deb_expr} AS initial_debit,
+            {init_crd_expr} AS initial_credit,
+            {period_debit_expr} AS period_debit,
+            {period_credit_expr} AS period_credit
+        FROM unioned_entries u
+        LEFT JOIN dim_partners p ON u.partner_id = p.id AND u.tenant_id = p.tenant_id
+        LEFT JOIN dim_companies c ON u.company_id = c.id
+        LEFT JOIN (
+            SELECT debit_move_line_id, SUM(amount) AS rec_d
+            FROM fact_account_partial_reconciles
+            WHERE 1=1 {t_sql_prd}
+            GROUP BY debit_move_line_id
+        ) pr_d ON u.line_id = pr_d.debit_move_line_id
+        LEFT JOIN (
+            SELECT credit_move_line_id, SUM(amount) AS rec_c
+            FROM fact_account_partial_reconciles
+            WHERE 1=1 {t_sql_prc}
+            GROUP BY credit_move_line_id
+        ) pr_c ON u.line_id = pr_c.credit_move_line_id
+        WHERE 1=1
+          {partner_sql}
+        GROUP BY p.odoo_id, p.name, u.partner_id
+        {having_clause}
+        ORDER BY p.name NULLS LAST
+        {limit_sql}
+    """
+    rows = run_query(query, params)
 
     partners = []
     for r in rows:
         bal = float(r.get('balance') or 0)
         init_bal = float(r.get('initial_balance') or 0)
+        init_deb = float(r.get('initial_debit') or 0)
+        init_crd = float(r.get('initial_credit') or 0)
         deb_val = float(r.get('total_debit') or 0)
         crd_val = float(r.get('total_credit') or 0)
 
         p_dict = {
             "partner_name": r.get('partner_name'),
             "partner_id": r.get('partner_id'),
+            "odoo_id": r.get('odoo_id'),
             "currency": r.get('base_currency') or base_currency or "XAF",
             "debit": deb_val,
             "credit": crd_val,
             "balance": bal,
             "initial_balance": init_bal,
+            "initial_debit": init_deb,
+            "initial_credit": init_crd,
             "period_debit": float(r.get('period_debit') or 0),
             "period_credit": float(r.get('period_credit') or 0),
             "status": "Net Receivable" if bal > 0.01 else "Net Payable" if bal < -0.01 else "Settled",
@@ -1827,13 +1808,19 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
             line_params = params.copy()
             line_params["p_id"] = r.get('partner_id')
             line_params["line_limit"] = int(limit_lines_per_partner)
-            p_filter = "AND l.partner_id = :p_id" if r.get('partner_id') else "AND l.partner_id IS NULL"
-            lines_date_filter = ""
-            if date_from:
-                lines_date_filter = "AND m.date >= :date_from"
+            p_filter_l = "AND l.partner_id = :p_id" if r.get('partner_id') else "AND l.partner_id IS NULL"
+            p_filter_deb = "AND l_deb.partner_id = :p_id" if r.get('partner_id') else "AND l_deb.partner_id IS NULL"
+            p_filter_crd = "AND l_crd.partner_id = :p_id" if r.get('partner_id') else "AND l_crd.partner_id IS NULL"
 
-            lines_data = run_query(
-                f"""SELECT
+            lines_date_filter_l = ""
+            lines_date_filter_pr = ""
+            if date_from:
+                lines_date_filter_l = "AND m.date >= :date_from"
+                lines_date_filter_pr = "AND pr.max_date >= :date_from"
+
+            lines_query = f"""
+                WITH partner_detail_lines AS (
+                    SELECT
                         m.date AS entry_date,
                         COALESCE(j.code, 'MISC') AS journal,
                         l.account_code,
@@ -1844,26 +1831,93 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
                         l.amount_currency,
                         COALESCE({debit_col}, 0) AS debit,
                         COALESCE({credit_col}, 0) AS credit,
-                        COALESCE({balance_col}, 0) AS balance
+                        COALESCE({balance_col}, 0) AS balance,
+                        l.id AS sort_id
                     FROM fact_account_move_lines l
                     JOIN fact_account_moves m ON l.account_move_id = m.id
                     LEFT JOIN dim_account_journals j ON m.journal_id = j.id
                     JOIN dim_companies c ON l.company_id = c.id
                     WHERE 1=1 {t_sql_l}
                       AND m.state = 'posted'
-                      {acct_type_filter}
-                      {p_filter}
-                      {f_sql}
+                      {acct_type_filter_l}
+                      {p_filter_l}
+                      {f_sql_l}
                       {end_date_sql}
-                      {lines_date_filter}
-                    ORDER BY m.date ASC, l.id ASC
-                    LIMIT :line_limit""",
-                line_params,
-            )
+                      {lines_date_filter_l}
+                      {unrec_line_filter}
+
+                    UNION ALL
+
+                    -- Cross-partner partial reconcile credit side (for debit partner)
+                    SELECT
+                        pr.max_date AS entry_date,
+                        COALESCE(j_crd.code, 'RECON') AS journal,
+                        l_deb.account_code,
+                        pr.max_date AS invoice_date,
+                        NULL AS due_date,
+                        COALESCE(m_crd.odoo_name, m_crd.ref, 'Cross-Partner Reconcile Offset') AS matching,
+                        l_deb.currency_code,
+                        -pr.amount AS amount_currency,
+                        0.00 AS debit,
+                        pr.amount AS credit,
+                        -pr.amount AS balance,
+                        999999999 AS sort_id
+                    FROM fact_account_partial_reconciles pr
+                    JOIN fact_account_move_lines l_deb ON pr.debit_move_line_id = l_deb.id
+                    JOIN fact_account_move_lines l_crd ON pr.credit_move_line_id = l_crd.id
+                    JOIN fact_account_moves m_crd ON l_crd.account_move_id = m_crd.id
+                    LEFT JOIN dim_account_journals j_crd ON m_crd.journal_id = j_crd.id
+                    WHERE 1=1 {t_sql_pr1}
+                      {pr_end_date_sql}
+                      {lines_date_filter_pr}
+                      {f_sql_deb}
+                      {acct_type_filter_deb}
+                      {acct_type_filter_crd}
+                      {p_filter_deb}
+                      AND (l_deb.partner_id IS DISTINCT FROM l_crd.partner_id)
+                      {cross_pr_filter}
+
+                    UNION ALL
+
+                    -- Cross-partner partial reconcile debit side (for credit partner)
+                    SELECT
+                        pr.max_date AS entry_date,
+                        COALESCE(j_deb.code, 'RECON') AS journal,
+                        l_crd.account_code,
+                        pr.max_date AS invoice_date,
+                        NULL AS due_date,
+                        COALESCE(m_deb.odoo_name, m_deb.ref, 'Cross-Partner Reconcile Offset') AS matching,
+                        l_crd.currency_code,
+                        pr.amount AS amount_currency,
+                        pr.amount AS debit,
+                        0.00 AS credit,
+                        pr.amount AS balance,
+                        999999999 AS sort_id
+                    FROM fact_account_partial_reconciles pr
+                    JOIN fact_account_move_lines l_deb ON pr.debit_move_line_id = l_deb.id
+                    JOIN fact_account_move_lines l_crd ON pr.credit_move_line_id = l_crd.id
+                    JOIN fact_account_moves m_deb ON l_deb.account_move_id = m_deb.id
+                    LEFT JOIN dim_account_journals j_deb ON m_deb.journal_id = j_deb.id
+                    WHERE 1=1 {t_sql_pr2}
+                      {pr_end_date_sql}
+                      {lines_date_filter_pr}
+                      {f_sql_crd}
+                      {acct_type_filter_deb}
+                      {acct_type_filter_crd}
+                      {p_filter_crd}
+                      AND (l_deb.partner_id IS DISTINCT FROM l_crd.partner_id)
+                      {cross_pr_filter}
+                )
+                SELECT *
+                FROM partner_detail_lines
+                ORDER BY entry_date ASC, sort_id ASC
+                LIMIT :line_limit
+            """
+            lines_data = run_query(lines_query, line_params)
 
             p_lines = []
             running_bal = init_bal
-            if date_from and abs(init_bal) > 0.001:
+            if date_from and (abs(init_deb) > 0.001 or abs(init_crd) > 0.001 or abs(init_bal) > 0.001):
                 p_lines.append({
                     "date": date_from,
                     "journal": "INIT",
@@ -1873,8 +1927,8 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
                     "matching": "Initial Balance",
                     "currency": p_dict["currency"],
                     "amount_currency": init_bal,
-                    "debit": init_bal if init_bal > 0 else 0.0,
-                    "credit": abs(init_bal) if init_bal < 0 else 0.0,
+                    "debit": init_deb,
+                    "credit": init_crd,
                     "balance": init_bal,
                 })
 
@@ -1917,6 +1971,7 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
         "period": period_label,
         "date_from": date_from,
         "date_to": target_end_date,
+        "unreconciled_only": unreconciled_only,
         "columns": [
             "Journal", "Account", "Invoice Date", "Due Date",
             "Matching", "Debit", "Credit", "Amount Currency", "Balance"
@@ -1940,13 +1995,12 @@ def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_
     Generates the Customer Statement (Relevé Client, Odoo Report 15) matching Odoo exactly.
     Columns presented:
     - Invoice Date, Due Date, Amount, Amount Currency, Balance
-    - Queries local PostgreSQL fact_customer_statement_snapshots for 100% exact parity with Odoo.
-    - Falls back dynamically to local SQL queries on fact_account_move_lines when no snapshot exists.
+    - Calculates dynamically via SQL queries on fact_account_move_lines.
     """
     target_end_date = date_to or as_of_date
-    period_key = f"{date_from}_{target_end_date}" if date_from and target_end_date else None
 
     raw_cids = normalize_company_ids(company_ids=company_ids)
+    t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
     resolved_company_ids = []
     company_names = []
     try:
@@ -1964,7 +2018,7 @@ def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_
             company_names = list(c_qs.values_list('name', flat=True))
     except Exception:
         resolved_company_ids = raw_cids
-    scope_str = ", ".join(company_names) if company_names else ("Consolidated" if not company_id else f"Company {company_id}")
+    scope_str = ", ".join(company_names) if company_names else ("Consolidated" if not raw_cids else f"Companies {raw_cids}")
 
     # Format period label
     if date_from and target_end_date:
@@ -1974,138 +2028,7 @@ def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_
     else:
         period_label = "All Time"
 
-    # 1. Check local PostgreSQL fact_customer_statement_snapshots
-    candidate_keys = []
-    if period_key:
-        if raw_cids:
-            if len(raw_cids) == 1:
-                cid = raw_cids[0]
-                matched_odoo = list(c_qs.filter(id=cid).values_list('odoo_id', flat=True)) if 'c_qs' in locals() else []
-                odoo_cid = matched_odoo[0] if matched_odoo else cid
-                candidate_keys.extend([f"{period_key}_comp_{odoo_cid}", f"{period_key}_comp_{cid}"])
-            else:
-                sorted_c = sorted(raw_cids)
-                candidate_keys.append(f"{period_key}_comps_{'_'.join(map(str, sorted_c))}")
-                matched_odoo = sorted(list(c_qs.filter(id__in=raw_cids).values_list('odoo_id', flat=True))) if 'c_qs' in locals() else []
-                if matched_odoo:
-                    candidate_keys.append(f"{period_key}_comps_{'_'.join(map(str, matched_odoo))}")
-        else:
-            candidate_keys.append(period_key)
-
-    if candidate_keys:
-        s_filter = ""
-        t_snap_sql, t_snap_params = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_snap")
-        s_params = dict(t_snap_params)
-        placeholders = [f":ckey_{i}" for i in range(len(candidate_keys))]
-        for i, ck in enumerate(candidate_keys):
-            s_params[f"ckey_{i}"] = ck
-
-        matched_k = run_query(
-            f"""SELECT period_key FROM fact_customer_statement_snapshots
-                WHERE 1=1 {t_snap_sql} AND period_key IN ({', '.join(placeholders)}) LIMIT 1""",
-            s_params,
-        )
-
-        if matched_k:
-            actual_key = matched_k[0]['period_key']
-            s_params_act = dict(t_snap_params)
-            s_params_act["pkey"] = actual_key
-            if partner_name:
-                s_filter += " AND partner_name ILIKE :p_name"
-                s_params_act["p_name"] = f"%{partner_name}%"
-            if partner_id:
-                s_filter += " AND partner_id = :p_id"
-                s_params_act["p_id"] = partner_id
-
-            snapshot_rows = run_query(
-                f"""SELECT partner_name, partner_id, currency, amount, balance, status
-                    FROM fact_customer_statement_snapshots
-                    WHERE 1=1 {t_snap_sql} AND period_key = :pkey {s_filter}
-                    ORDER BY partner_name NULLS LAST""",
-                s_params_act,
-            )
-
-            if snapshot_rows:
-                tot_snapshot = run_query(
-                    f"""SELECT COALESCE(SUM(amount), 0) AS total_amount,
-                               COALESCE(SUM(balance), 0) AS net_balance
-                        FROM fact_customer_statement_snapshots
-                        WHERE 1=1 {t_snap_sql} AND period_key = :pkey {s_filter}""",
-                    s_params_act,
-                )
-                tot = tot_snapshot[0] if tot_snapshot else {}
-                grand_total_amount = float(tot.get("total_amount") or 0)
-                grand_net_balance = float(tot.get("net_balance") or 0)
-
-            partners = []
-            for r in snapshot_rows:
-                amt_val = float(r.get("amount") or 0)
-                bal_val = float(r.get("balance") or 0)
-                p_dict = {
-                    "partner_name": r.get("partner_name") or "Unknown Partner",
-                    "partner_id": r.get("partner_id"),
-                    "currency": base_currency or r.get("currency") or "XAF",
-                    "amount": amt_val,
-                    "amount_currency": None,
-                    "balance": bal_val,
-                    "status": r.get("status") or ("Net Receivable" if bal_val > 0.01 else "Net Payable" if bal_val < -0.01 else "Settled"),
-                }
-
-                if include_lines or partner_name or partner_id:
-                    t_line_sql, t_line_params = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_line")
-                    p_lines_params = {"pid": r.get("partner_id"), "end_d": target_end_date, "limit_lines": int(limit_lines_per_partner)}
-                    p_lines_params.update(t_line_params)
-                    p_lines_data = run_query(f"""SELECT
-                                m.invoice_date,
-                                m.invoice_date_due AS due_date,
-                                COALESCE(m.odoo_name, m.ref, l.name, '') AS name,
-                                l.currency_code,
-                                l.amount_currency,
-                                COALESCE(l.balance, 0) AS amount,
-                                COALESCE(l.balance, 0) AS balance
-                            FROM fact_account_move_lines l
-                            JOIN fact_account_moves m ON l.account_move_id = m.id
-                            LEFT JOIN dim_partners p ON l.partner_id = p.id
-                            WHERE 1=1 {t_line_sql}
-                              AND m.state = 'posted'
-                              AND (l.partner_id = :pid OR p.odoo_id = :pid)
-                              AND m.date <= :end_d
-                            ORDER BY m.date ASC, l.id ASC
-                            LIMIT :limit_lines""", p_lines_params)
-                    p_lines = []
-                    running_bal = 0.0
-                    for line in p_lines_data:
-                        l_amt = float(line.get("amount") or 0)
-                        running_bal += l_amt
-                        p_lines.append({
-                            "invoice_date": str(line.get("invoice_date")) if line.get("invoice_date") else None,
-                            "due_date": str(line.get("due_date")) if line.get("due_date") else None,
-                            "name": line.get("name") or "",
-                            "amount": l_amt,
-                            "currency": line.get("currency_code") or p_dict["currency"],
-                            "amount_currency": float(line.get("amount_currency")) if line.get("amount_currency") is not None else None,
-                            "balance": round(running_bal, 2),
-                        })
-                    p_dict["lines"] = p_lines
-
-                partners.append(p_dict)
-
-            return {
-                "tool_name": "get_customer_statement_tool",
-                "scope": scope_str,
-                "period": period_label,
-                "date_from": date_from,
-                "date_to": target_end_date,
-                "columns": ["Invoice Date", "Due Date", "Amount", "Amount Currency", "Balance"],
-                "total_partners_count": len(partners),
-                "total_amount": grand_total_amount,
-                "net_balance": grand_net_balance,
-                "currency": base_currency or "XAF",
-                "status": "Net Receivable" if grand_net_balance > 0 else "Net Payable",
-                "partners": partners[:limit_partners] if limit_partners else partners,
-            }
-
-    # 2. Dynamic SQL fallback
+    # Dynamic SQL query on fact_account_move_lines
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_l")
     balance_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
 
@@ -2198,19 +2121,20 @@ def get_followup_report_tool(tenant_ids: Optional[list[str]] = None, company_ids
     Generates the Follow-Up Report (Rapport de Relance, Odoo Report 16) matching Odoo exactly.
     Columns presented:
     - Invoice Date, Due Date, Amount, Amount Currency, Balance
-    - Queries local PostgreSQL fact_followup_report_snapshots for exact parity with Odoo.
-    - Falls back dynamically to local SQL queries on fact_account_move_lines (account_type='asset_receivable')
-      when no snapshot exists.
+    - Calculates dynamically via SQL queries on fact_account_move_lines (account_type='asset_receivable').
     """
     raw_date = date_to or as_of_date
     if raw_date and str(raw_date).lower() == "today":
         import datetime
         target_end_date = datetime.date.today().isoformat()
+    elif raw_date and str(raw_date).strip().isdigit() and len(str(raw_date).strip()) == 4:
+        target_end_date = f"{str(raw_date).strip()}-12-31"
     else:
         target_end_date = raw_date
 
     # Resolve company scope display name
     raw_cids = normalize_company_ids(company_ids=company_ids)
+    t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
     resolved_company_ids = []
     company_names = []
     try:
@@ -2228,142 +2152,11 @@ def get_followup_report_tool(tenant_ids: Optional[list[str]] = None, company_ids
             company_names = list(c_qs.values_list('name', flat=True))
     except Exception:
         resolved_company_ids = raw_cids
-    scope_str = ", ".join(company_names) if company_names else ("Consolidated" if not company_id else f"Company {company_id}")
+    scope_str = ", ".join(company_names) if company_names else ("Consolidated" if not raw_cids else f"Companies {raw_cids}")
 
     period_label = f"As of {target_end_date}" if target_end_date else "All Time"
 
-    # 1. Check local PostgreSQL fact_followup_report_snapshots
-    candidate_keys = []
-    if target_end_date:
-        if raw_cids:
-            if len(raw_cids) == 1:
-                cid = raw_cids[0]
-                matched_odoo = list(c_qs.filter(id=cid).values_list('odoo_id', flat=True)) if 'c_qs' in locals() else []
-                odoo_cid = matched_odoo[0] if matched_odoo else cid
-                candidate_keys.extend([f"as_of_{target_end_date}_comp_{odoo_cid}", f"as_of_{target_end_date}_comp_{cid}"])
-            else:
-                sorted_c = sorted(raw_cids)
-                candidate_keys.append(f"as_of_{target_end_date}_comps_{'_'.join(map(str, sorted_c))}")
-                matched_odoo = sorted(list(c_qs.filter(id__in=raw_cids).values_list('odoo_id', flat=True))) if 'c_qs' in locals() else []
-                if matched_odoo:
-                    candidate_keys.append(f"as_of_{target_end_date}_comps_{'_'.join(map(str, matched_odoo))}")
-        else:
-            candidate_keys.extend([f"as_of_{target_end_date}", target_end_date, f"None_{target_end_date}", f"as_of_{target_end_date}_consolidated", f"as_of_{target_end_date}_all"])
-
-    if candidate_keys:
-        s_filter = ""
-        t_snap_sql, t_snap_params = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_snap")
-        s_params = dict(t_snap_params)
-        placeholders = [f":ckey_{i}" for i in range(len(candidate_keys))]
-        for i, ck in enumerate(candidate_keys):
-            s_params[f"ckey_{i}"] = ck
-
-        matched_k = run_query(
-            f"""SELECT period_key FROM fact_followup_report_snapshots
-                WHERE 1=1 {t_snap_sql} AND period_key IN ({', '.join(placeholders)}) LIMIT 1""",
-            s_params,
-        )
-
-        if matched_k:
-            actual_key = matched_k[0]['period_key']
-            s_params_act = dict(t_snap_params)
-            s_params_act["pkey"] = actual_key
-            if partner_name:
-                s_filter += " AND partner_name ILIKE :p_name"
-                s_params_act["p_name"] = f"%{partner_name}%"
-            if partner_id:
-                s_filter += " AND partner_id = :p_id"
-                s_params_act["p_id"] = partner_id
-
-            snapshot_rows = run_query(
-                f"""SELECT partner_name, partner_id, currency, amount, balance, status
-                    FROM fact_followup_report_snapshots
-                    WHERE 1=1 {t_snap_sql} AND period_key = :pkey {s_filter}
-                    ORDER BY partner_name NULLS LAST""",
-                s_params_act,
-            )
-
-            if snapshot_rows:
-                tot_snapshot = run_query(
-                    f"""SELECT COALESCE(SUM(amount), 0) AS total_amount,
-                               COALESCE(SUM(balance), 0) AS net_balance
-                        FROM fact_followup_report_snapshots
-                        WHERE 1=1 {t_snap_sql} AND period_key = :pkey {s_filter}""",
-                    s_params_act,
-                )
-                tot = tot_snapshot[0] if tot_snapshot else {}
-                grand_total_amount = float(tot.get("total_amount") or 0)
-                grand_net_balance = float(tot.get("net_balance") or 0)
-
-                partners = []
-                for r in snapshot_rows:
-                    amt_val = float(r.get("amount") or 0)
-                    bal_val = float(r.get("balance") or 0)
-                    p_dict = {
-                        "partner_name": r.get("partner_name") or "Unknown Partner",
-                        "partner_id": r.get("partner_id"),
-                        "currency": base_currency or r.get("currency") or "XAF",
-                        "amount": amt_val,
-                        "amount_currency": None,
-                        "balance": bal_val,
-                        "status": r.get("status") or ("Net Receivable" if bal_val > 0.01 else "Net Payable" if bal_val < -0.01 else "Settled"),
-                    }
-
-                    if include_lines or partner_name or partner_id:
-                        t_line_sql, t_line_params = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_line")
-                        p_lines_params = {"pid": r.get("partner_id"), "end_d": target_end_date, "limit_lines": int(limit_lines_per_partner)}
-                        p_lines_params.update(t_line_params)
-                        p_lines_data = run_query(f"""SELECT
-                                    m.invoice_date,
-                                    m.invoice_date_due AS due_date,
-                                    COALESCE(m.odoo_name, m.ref, l.name, '') AS name,
-                                    l.currency_code,
-                                    l.amount_currency,
-                                    COALESCE(l.balance, 0) AS amount,
-                                    COALESCE(l.balance, 0) AS balance
-                                FROM fact_account_move_lines l
-                                JOIN fact_account_moves m ON l.account_move_id = m.id
-                                LEFT JOIN dim_partners p ON l.partner_id = p.id
-                                WHERE 1=1 {t_line_sql}
-                              AND m.state = 'posted'
-                                  AND l.account_type = 'asset_receivable'
-                                  AND (l.partner_id = :pid OR p.odoo_id = :pid)
-                                  AND m.date <= :end_d
-                                ORDER BY m.date ASC, l.id ASC
-                                LIMIT :limit_lines""", p_lines_params)
-                        p_lines = []
-                        running_bal = 0.0
-                        for line in p_lines_data:
-                            l_amt = float(line.get("amount") or 0)
-                            running_bal += l_amt
-                            p_lines.append({
-                                "invoice_date": str(line.get("invoice_date")) if line.get("invoice_date") else None,
-                                "due_date": str(line.get("due_date")) if line.get("due_date") else None,
-                                "name": line.get("name") or "",
-                                "amount": l_amt,
-                                "currency": line.get("currency_code") or p_dict["currency"],
-                                "amount_currency": float(line.get("amount_currency")) if line.get("amount_currency") is not None else None,
-                                "balance": round(running_bal, 2),
-                            })
-                        p_dict["lines"] = p_lines
-
-                    partners.append(p_dict)
-
-                return {
-                    "tool_name": "get_followup_report_tool",
-                    "scope": scope_str,
-                    "period": period_label,
-                    "as_of_date": target_end_date,
-                    "columns": ["Invoice Date", "Due Date", "Amount", "Amount Currency", "Balance"],
-                    "total_partners_count": len(partners),
-                    "total_amount": grand_total_amount,
-                    "net_balance": grand_net_balance,
-                    "currency": base_currency or "XAF",
-                    "status": "Net Receivable" if grand_net_balance > 0 else "Net Payable",
-                    "partners": partners[:limit_partners] if limit_partners else partners,
-                }
-
-    # 2. Dynamic SQL fallback (receivables only)
+    # Dynamic SQL query (receivables only)
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_l")
     balance_col = build_currency_case_sql('l.balance', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
 
@@ -2403,8 +2196,8 @@ def get_followup_report_tool(tenant_ids: Optional[list[str]] = None, company_ids
               {end_date_sql}
               {partner_sql}
             GROUP BY p.name, l.partner_id
-            HAVING ABS(COALESCE(SUM({balance_col}), 0)) > 0.001
-            ORDER BY p.name NULLS LAST
+            HAVING COALESCE(SUM({balance_col}), 0) > 0.001
+            ORDER BY balance DESC, p.name NULLS LAST
             {limit_sql}""",
         params,
     )
@@ -2413,15 +2206,60 @@ def get_followup_report_tool(tenant_ids: Optional[list[str]] = None, company_ids
     for r in rows:
         bal = float(r.get('balance') or 0)
         amt = float(r.get('amount') if r.get('amount') is not None else bal)
-        partners.append({
+        p_dict = {
             "partner_name": r.get('partner_name') or "Unknown Partner",
             "partner_id": r.get('partner_id'),
             "currency": base_currency or "XAF",
             "amount": amt,
             "amount_currency": None,
             "balance": bal,
-            "status": "Net Receivable" if bal > 0.01 else "Net Payable" if bal < -0.01 else "Settled",
-        })
+            "status": "Overdue" if bal > 0.01 else "Settled",
+        }
+
+        if include_lines or partner_name or partner_id:
+            line_params = params.copy()
+            line_params["p_id"] = r.get('partner_id')
+            line_params["line_limit"] = int(limit_lines_per_partner)
+            p_filter = "AND l.partner_id = :p_id" if r.get('partner_id') else "AND l.partner_id IS NULL"
+            lines_data = run_query(
+                f"""SELECT
+                        m.invoice_date,
+                        m.invoice_date_due AS due_date,
+                        COALESCE(m.odoo_name, m.ref, l.name, '') AS name,
+                        l.currency_code,
+                        l.amount_currency,
+                        COALESCE({balance_col}, 0) AS amount,
+                        COALESCE({balance_col}, 0) AS balance
+                    FROM fact_account_move_lines l
+                    JOIN fact_account_moves m ON l.account_move_id = m.id
+                    LEFT JOIN dim_partners p ON l.partner_id = p.id
+                    WHERE 1=1 {t_sql_l}
+                      AND m.state = 'posted'
+                      AND l.account_type = 'asset_receivable'
+                      {p_filter}
+                      {f_sql}
+                      {end_date_sql}
+                    ORDER BY m.date ASC, l.id ASC
+                    LIMIT :line_limit""",
+                line_params,
+            )
+            p_lines = []
+            running_bal = 0.0
+            for line in lines_data:
+                l_amt = float(line.get("amount") or 0)
+                running_bal += l_amt
+                p_lines.append({
+                    "invoice_date": str(line.get("invoice_date")) if line.get("invoice_date") else None,
+                    "due_date": str(line.get("due_date")) if line.get("due_date") else None,
+                    "name": line.get("name") or "",
+                    "amount": l_amt,
+                    "currency": line.get("currency_code") or p_dict["currency"],
+                    "amount_currency": float(line.get("amount_currency")) if line.get("amount_currency") is not None else None,
+                    "balance": round(running_bal, 2),
+                })
+            p_dict["lines"] = p_lines
+
+        partners.append(p_dict)
 
     grand_total_amount = sum(p["amount"] for p in partners)
     grand_net_balance = sum(p["balance"] for p in partners)

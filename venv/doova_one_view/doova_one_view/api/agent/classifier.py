@@ -25,7 +25,7 @@ class IntentClassifier:
         - get_receivables_analysis_tool: For overdue invoices, accounts receivable, who owes money.
         - get_unrealized_currency_gains_losses_tool: For unrealized currency gains/losses, balance sheet FX revaluation, foreign currency adjustments.
         - get_general_ledger_tool: For general ledger, grand livre, full account balances, debit/credit totals.
-        - get_partner_ledger_tool: For partner ledger, grand livre des tiers, customer/supplier balances and ledger lines.
+        - get_partner_ledger_tool: For partner ledger, grand livre des tiers, customer/supplier balances, unreconciled entries, and ledger lines.
         - get_customer_statement_tool: For customer statement, releve client, statement of account, customer open invoices and balances.
         - get_followup_report_tool: For follow up report, rapport de relance, customer follow up, overdue receivables list.
         - get_business_health_score_tool: For overall company performance and health status.
@@ -36,6 +36,7 @@ class IntentClassifier:
         - start_date / end_date (ISO format YYYY-MM-DD if mentioned)
         - limit (integer, default 10)
         - company_id (if mentioned)
+        - unreconciled_only (boolean, true if user asks for unreconciled entries, open items, or unpaid/unsettled balances)
 
         RETURN ONLY JSON:
         {{

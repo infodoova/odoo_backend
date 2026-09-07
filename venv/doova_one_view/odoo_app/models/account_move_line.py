@@ -18,6 +18,7 @@ class AccountMoveLine(models.Model):
     account_code = models.CharField(max_length=50, null=True, blank=True)
     account_name = models.CharField(max_length=255, null=True, blank=True)
     account_type = models.CharField(max_length=50, null=True, blank=True)
+    full_reconcile_id = models.IntegerField(null=True, blank=True, db_index=True)
 
     debit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     credit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
