@@ -24,7 +24,7 @@ class IntentClassifier:
         - get_inventory_efficiency_tool: For turnover ratio, days inventory on hand.
         - get_receivables_analysis_tool: For overdue invoices, accounts receivable, who owes money.
         - get_unrealized_currency_gains_losses_tool: For unrealized currency gains/losses, balance sheet FX revaluation, foreign currency adjustments.
-        - get_general_ledger_tool: For general ledger, grand livre, full account balances, debit/credit totals.
+        - get_general_ledger_tool: For general ledger, grand livre, cumulative position, full account balances, debit/credit totals.
         - get_partner_ledger_tool: For partner ledger, grand livre des tiers, customer/supplier balances, unreconciled entries, and ledger lines.
         - get_customer_statement_tool: For customer statement, releve client, statement of account, customer open invoices and balances.
         - get_followup_report_tool: For follow up report, rapport de relance, customer follow up, overdue receivables list.
@@ -34,6 +34,7 @@ class IntentClassifier:
 
         EXTRACT PARAMETERS:
         - start_date / end_date (ISO format YYYY-MM-DD if mentioned)
+        - as_of_date (ISO format YYYY-MM-DD; for general ledger when user asks about cumulative position, cumulative general ledger, or 'as of' a date, populate as_of_date with that target end date, e.g. 2025-12-31, and leave start_date null)
         - limit (integer, default 10)
         - company_id (if mentioned)
         - unreconciled_only (boolean, true if user asks for unreconciled entries, open items, or unpaid/unsettled balances)
@@ -44,8 +45,11 @@ class IntentClassifier:
             "parameters": {{
                 "start_date": "...",
                 "end_date": "...",
+                "as_of_date": "...",
                 "limit": 10
             }},
+            "reasoning": "brief explanation"
+        }}
             "reasoning": "brief explanation"
         }}
 

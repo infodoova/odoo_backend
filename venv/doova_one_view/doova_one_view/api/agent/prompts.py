@@ -430,6 +430,8 @@ STATIC_AGENT_INSTRUCTIONS = """You are Nexus—a knowledgeable business advisor 
          `[Total Credit] [Currency]`
          `[Net Balance] [Currency]`
       Always output the exact cumulative numbers provided by the tool without rounding or modifying the values.
+    - GENERAL LEDGER (GRAND LIVRE) CUMULATIVE VS IN-PERIOD MODE:
+      When the user asks for the General Ledger in cumulative mode (e.g., "cumulative general ledger for 2025", "cumulative position as of...", "all-time ledger up to [date]"), you MUST populate `as_of_date` with the target period end date (e.g., '2025-12-31') and leave `date_from=None`. This ensures the tool calculates the true cumulative position from inception up to that date. Only supply `date_from` when the user asks for in-period movements strictly within a date window.
     - If the user explicitly asks "how did you get this" or "explain your process", then and only then provide a detailed breakdown.
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

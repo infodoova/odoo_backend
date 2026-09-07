@@ -286,7 +286,12 @@ def general_ledger( company_ids: CompanyIdsType = None, account_code: str = None
     """Generate the complete General Ledger matching Odoo.
     Returns account-level Debit, Credit, and Net Balance for all accounts across active companies,
     along with grand totals (e.g. 68.92B FCFA), integrity checks (Debit == Credit), and optional granular move lines.
-    Use for: 'general ledger', 'grand livre', 'account breakdown', 'ledger balances', 'full accounting statements'."""
+    When the user asks for cumulative position, cumulative general ledger, or 'as of' a date, populate `as_of_date` (e.g. '2025-12-31') and leave `date_from=None`.
+    Use for: 'general ledger', 'grand livre', 'cumulative general ledger', 'account breakdown', 'ledger balances', 'full accounting statements'."""
+    if as_of_date:
+        if not date_to:
+            date_to = as_of_date
+        date_from = None
     return get_general_ledger_tool(tenant_ids=tenant_ids, company_ids=company_ids, account_code=account_code, account_name=account_name, date_from=date_from, date_to=date_to, as_of_date=as_of_date, include_lines=include_lines, limit_accounts=limit_accounts, base_currency=base_currency)
 
 @tool
