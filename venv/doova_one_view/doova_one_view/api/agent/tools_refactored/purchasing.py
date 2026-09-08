@@ -305,11 +305,30 @@ def get_purchase_vs_sales_margin_tool(
     params.update(f_params_po)
     params.update(f_params_so)
 
+    if not base_currency:
+        from doova_one_view.api.agent.utils import get_tenant_currency
+        base_currency = get_tenant_currency(tenant_ids=tenant_ids) or "XAF"
+
+    buy_price_col = build_currency_case_sql(
+        "pl.price_unit",
+        tenant_ids=tenant_ids,
+        base_currency=base_currency,
+        currency_column="po.currency_code",
+        is_transaction_currency=True,
+    )
+    sell_price_col = build_currency_case_sql(
+        "sl.price_unit",
+        tenant_ids=tenant_ids,
+        base_currency=base_currency,
+        currency_column="so.currency_code",
+        is_transaction_currency=True,
+    )
+
     rows = run_query(
         f"""WITH buy AS (
                 SELECT
                     pl.product_id,
-                    AVG(pl.price_unit)                AS avg_buy_price,
+                    AVG({buy_price_col})              AS avg_buy_price,
                     SUM(pl.product_qty)               AS total_qty_bought
                 FROM fact_purchase_order_lines pl
                 JOIN fact_purchase_orders po
@@ -323,7 +342,7 @@ def get_purchase_vs_sales_margin_tool(
             sell AS (
                 SELECT
                     sl.product_id,
-                    AVG(sl.price_unit)                AS avg_sell_price,
+                    AVG({sell_price_col})             AS avg_sell_price,
                     SUM(sl.product_uom_qty)           AS total_qty_sold
                 FROM fact_sales_order_lines sl
                 JOIN fact_sales_orders so

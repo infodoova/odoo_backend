@@ -32,3 +32,7 @@ class FastPathNode:
             is_voice=is_voice,
             language=language
         )
+
+    def get_last_token_usage(self) -> dict:
+        """Retrieve the exact token usage and financial cost of the most recent turn."""
+        return self.lc_agent.get_last_token_usage()

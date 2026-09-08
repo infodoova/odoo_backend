@@ -113,12 +113,25 @@ class CashFlowEngine:
             logger.warning(f"Live Odoo connection failed for tenant {tenant.id}: {e}")
             return None
 
+        # Resolve company_ids to odoo_company_ids (remote Odoo expects odoo_id, e.g. Pittura is 3, not DB PK 37)
+        odoo_company_ids = []
+        if company_ids:
+            from odoo_app.models import Company
+            for cid in company_ids:
+                comp = Company.objects.filter(id=cid, tenant=tenant).first()
+                if comp and comp.odoo_id:
+                    odoo_company_ids.append(comp.odoo_id)
+                elif Company.objects.filter(odoo_id=cid, tenant=tenant).exists():
+                    odoo_company_ids.append(cid)
+                else:
+                    odoo_company_ids.append(cid)
+
         # Build RPC Context for Multi-Company
         rpc_context = {}
-        if company_ids:
-            rpc_context["allowed_company_ids"] = company_ids
-            rpc_context["company_ids"] = company_ids
-            rpc_context["company_id"] = company_ids[0]
+        if odoo_company_ids:
+            rpc_context["allowed_company_ids"] = odoo_company_ids
+            rpc_context["company_ids"] = odoo_company_ids
+            rpc_context["company_id"] = odoo_company_ids[0]
 
         # Helper for execute_kw
         req_id = 2
@@ -160,8 +173,8 @@ class CashFlowEngine:
             prev_options = {
                 "unfold_all": True
             }
-            if company_ids:
-                prev_options["companies"] = [{"id": cid} for cid in company_ids]
+            if odoo_company_ids:
+                prev_options["companies"] = [{"id": cid} for cid in odoo_company_ids]
 
             if start_date or end_date:
                 prev_options["date"] = {
@@ -183,18 +196,24 @@ class CashFlowEngine:
             # 5. Determine source company currency
             source_currency = "XAF"
             try:
-                co_data = rpc_call("res.company", "search_read", [[["id", "in", company_ids or [1]]]], {"fields": ["currency_id"]})
+                co_data = rpc_call("res.company", "search_read", [[["id", "in", odoo_company_ids or [1]]]], {"fields": ["currency_id"]})
                 if co_data and co_data[0].get("currency_id"):
                     source_currency = co_data[0]["currency_id"][1]
             except Exception:
                 pass
 
-            return cls._normalize_odoo_lines(
+            date_info = options.get("date", {}) if isinstance(options, dict) else {}
+            res = cls._normalize_odoo_lines(
                 lines=report_data.get("lines", []),
                 tenant_id=str(tenant.id),
                 source_currency=source_currency,
                 base_currency=base_currency
             )
+            if res:
+                res["date_from"] = date_info.get("date_from")
+                res["date_to"] = date_info.get("date_to")
+                res["period_label"] = date_info.get("string")
+            return res
 
         except Exception as e:
             logger.error(f"Error fetching live Odoo Cash Flow for tenant {tenant.id}: {e}")
@@ -867,6 +886,9 @@ class CashFlowEngine:
             'actual_net_change_in_cash': actual_net_change,
             'unexplained_difference': unexplained_difference,
             'closing_balance': closing_balance,
+            'date_from': start_date,
+            'date_to': end_date,
+            'period_label': f"{start_date} to {end_date}" if (start_date or end_date) else "All Time",
             'is_validated_fixture': False,
             'source_engine': 'local_ias7_reconciler',
         }

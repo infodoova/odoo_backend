@@ -23,6 +23,10 @@ def enrich(
     comparison_label: str = "",
 ) -> None:
     """Enriches data dict with Cash Flow & Liquidity telemetry matching Odoo Enterprise Cash Flow Statement."""
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+    tenant_ids = normalize_tenant_ids(tenant_ids)
+    company_ids = normalize_company_ids(company_ids)
+
     from doova_one_view.api.agent.tools_refactored import reporting_v2
     get_balance_sheet_tool = getattr(reporting_v2, "get_balance_sheet_tool", None)
     get_cash_flow_statement_tool = getattr(reporting_v2, "get_cash_flow_statement_tool", None)

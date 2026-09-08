@@ -265,7 +265,7 @@ def generate_pdf(text: str, filename: str = "output.pdf") -> str:
 def calculate_ratio(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator != 0 else 0.0
 
-def build_currency_case_sql(column: str, tenant_ids: Optional[list[str]] = None, base_currency: str | None = None, currency_column: str = "currency_code") -> str:
+def build_currency_case_sql(column: str, tenant_ids: Optional[list[str]] = None, base_currency: str | None = None, currency_column: str = "currency_code", is_transaction_currency: bool = False) -> str:
     """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""
     if not base_currency:
         return column
@@ -281,6 +281,11 @@ def build_currency_case_sql(column: str, tenant_ids: Optional[list[str]] = None,
         tenant_base = get_tenant_currency(tenant_ids=t_ids)
         if tenant_base and tenant_base not in rate_map:
             rate_map[tenant_base] = 1.0
+
+        is_doc_tx = is_transaction_currency or any(p in currency_column.lower() for p in ['po.', 'so.', 'pol.', 'o.currency_code'])
+
+        if not is_doc_tx and tenant_base and base_currency and str(tenant_base).strip().upper() == str(base_currency).strip().upper():
+            return column
 
         if not rate_map or base_currency not in rate_map:
             return column

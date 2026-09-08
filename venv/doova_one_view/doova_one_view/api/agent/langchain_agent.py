@@ -12,6 +12,7 @@ from .logger import log_agent_start, log_agent_complete, log_summarization, log_
 
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
+from langchain_core.outputs import LLMResult
 
 
 # ── Thinking-safe LLM wrapper ────────────────────────────────────────
@@ -68,10 +69,177 @@ class ThinkingSafeChatAnthropic(ChatAnthropic):
         yield from super()._stream(messages, stop=stop, run_manager=run_manager, **kwargs)
 
 
-# ── Agent Callback Handler ────────────────────────────────────────────
+# ── Agent Callback Handler & Pricing Model ───────────────────────────
+
+ANTHROPIC_PRICING_PER_1M = {
+    # Active Project Models (AgentConfig & .env)
+    "claude-sonnet-5":            {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
+    "claude-haiku-4-5-20251001":  {"input": 0.80, "cache_write": 1.00, "cache_read": 0.08, "output": 4.00},
+    "claude-opus-5":              {"input": 15.00, "cache_write": 18.75, "cache_read": 1.50, "output": 75.00},
+
+    # Standard Model Identifiers & Aliases
+    "claude-3-7-sonnet-20250219": {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
+    "claude-3-7-sonnet":          {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
+    "claude-3-5-sonnet-20241022": {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
+    "claude-3-5-sonnet":          {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
+    "claude-3-5-haiku-20241022":  {"input": 0.80, "cache_write": 1.00, "cache_read": 0.08, "output": 4.00},
+    "claude-3-5-haiku":           {"input": 0.80, "cache_write": 1.00, "cache_read": 0.08, "output": 4.00},
+    "claude-haiku-4-5":           {"input": 0.80, "cache_write": 1.00, "cache_read": 0.08, "output": 4.00},
+    "claude-3-opus-20240229":     {"input": 15.00, "cache_write": 18.75, "cache_read": 1.50, "output": 75.00},
+    "claude-3-opus":              {"input": 15.00, "cache_write": 18.75, "cache_read": 1.50, "output": 75.00},
+    "claude-3-haiku-20240307":    {"input": 0.25, "cache_write": 0.30, "cache_read": 0.03, "output": 1.25},
+    "claude-3-haiku":             {"input": 0.25, "cache_write": 0.30, "cache_read": 0.03, "output": 1.25},
+}
+DEFAULT_MODEL_PRICING = ANTHROPIC_PRICING_PER_1M["claude-sonnet-5"]
+
 
 class AgentCallbackHandler(BaseCallbackHandler):
-    """Custom handler to bridge LangChain events with our specialized logger."""
+    """Custom handler to bridge LangChain events with our specialized logger
+    and track exact token usage and Anthropic API spend."""
+    def __init__(self, model_name: str = "claude-sonnet-5"):
+        super().__init__()
+        self.default_model_name = model_name
+        self._seen_run_ids = set()
+        self.reset()
+
+    def reset(self):
+        """Reset token accumulators for a new agent turn."""
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.total_cache_read_tokens = 0
+        self.total_cache_write_tokens = 0
+        self.detected_models = set()
+        self.llm_call_count = 0
+        self._seen_run_ids.clear()
+
+    def on_llm_end(self, response: LLMResult, *, run_id=None, **kwargs):
+        """Extract exact token accounting and prompt-cache statistics from Anthropic LLM result."""
+        try:
+            if run_id:
+                if run_id in self._seen_run_ids:
+                    return
+                self._seen_run_ids.add(run_id)
+
+            self.llm_call_count += 1
+            extracted = False
+
+            # 1. Inspect AIMessage from generations
+            if hasattr(response, "generations") and response.generations:
+                for gen_list in response.generations:
+                    for gen in gen_list:
+                        msg = getattr(gen, "message", None)
+                        if not msg:
+                            continue
+
+                        resp_meta = getattr(msg, "response_metadata", {}) or {}
+                        raw_usage = resp_meta.get("usage")
+                        model = resp_meta.get("model")
+                        if model:
+                            self.detected_models.add(model)
+
+                        if isinstance(raw_usage, dict):
+                            inp = raw_usage.get("input_tokens", 0) or 0
+                            out = raw_usage.get("output_tokens", 0) or 0
+                            cread = raw_usage.get("cache_read_input_tokens", 0) or 0
+                            cwrite = raw_usage.get("cache_creation_input_tokens", 0) or 0
+
+                            self.total_input_tokens += inp
+                            self.total_output_tokens += out
+                            self.total_cache_read_tokens += cread
+                            self.total_cache_write_tokens += cwrite
+                            extracted = True
+                            continue
+
+                        # Fallback to LangChain usage_metadata
+                        usage_meta = getattr(msg, "usage_metadata", None)
+                        if isinstance(usage_meta, dict):
+                            inp = usage_meta.get("input_tokens", 0) or 0
+                            out = usage_meta.get("output_tokens", 0) or 0
+                            details = usage_meta.get("input_token_details", {}) or {}
+                            cread = details.get("cache_read", 0) or 0
+                            cwrite = details.get("cache_creation", 0) or 0
+                            base_inp = max(0, inp - cread - cwrite)
+
+                            self.total_input_tokens += base_inp
+                            self.total_output_tokens += out
+                            self.total_cache_read_tokens += cread
+                            self.total_cache_write_tokens += cwrite
+                            extracted = True
+
+            # 2. Fallback: Inspect response.llm_output
+            if not extracted and hasattr(response, "llm_output") and isinstance(response.llm_output, dict):
+                token_usage = response.llm_output.get("token_usage") or response.llm_output.get("usage")
+                if isinstance(token_usage, dict):
+                    inp = token_usage.get("prompt_tokens") or token_usage.get("input_tokens") or 0
+                    out = token_usage.get("completion_tokens") or token_usage.get("output_tokens") or 0
+                    cread = token_usage.get("cache_read_input_tokens") or 0
+                    cwrite = token_usage.get("cache_creation_input_tokens") or 0
+
+                    self.total_input_tokens += inp
+                    self.total_output_tokens += out
+                    self.total_cache_read_tokens += cread
+                    self.total_cache_write_tokens += cwrite
+                    extracted = True
+
+            log_chain_event(
+                "TOKEN_USAGE",
+                f"LLM Call #{self.llm_call_count} | Base In: {self.total_input_tokens} | "
+                f"Out: {self.total_output_tokens} | Cache Read: {self.total_cache_read_tokens} | "
+                f"Cache Write: {self.total_cache_write_tokens}"
+            )
+        except Exception as e:
+            log_error("AgentCallbackHandler.on_llm_end", e)
+
+    def get_turn_token_usage(self) -> dict:
+        """Calculate exact token counts and financial costs for this turn."""
+        model_name = next(iter(self.detected_models)) if self.detected_models else self.default_model_name
+        model_key = (model_name or "").lower().strip()
+
+        # Direct dictionary match
+        if model_key in ANTHROPIC_PRICING_PER_1M:
+            rates = ANTHROPIC_PRICING_PER_1M[model_key]
+        elif "haiku" in model_key:
+            if any(k in model_key for k in ("4-5", "4.5", "3-5", "3.5")):
+                rates = ANTHROPIC_PRICING_PER_1M["claude-haiku-4-5-20251001"]
+            elif "3" in model_key:
+                rates = ANTHROPIC_PRICING_PER_1M["claude-3-haiku"]
+            else:
+                rates = ANTHROPIC_PRICING_PER_1M["claude-haiku-4-5-20251001"]
+        elif "opus" in model_key:
+            rates = ANTHROPIC_PRICING_PER_1M["claude-opus-5"]
+        elif "sonnet" in model_key:
+            rates = ANTHROPIC_PRICING_PER_1M["claude-sonnet-5"]
+        else:
+            rates = DEFAULT_MODEL_PRICING
+
+        cost_input = (self.total_input_tokens * rates["input"]) / 1_000_000.0
+        cost_cache_write = (self.total_cache_write_tokens * rates["cache_write"]) / 1_000_000.0
+        cost_cache_read = (self.total_cache_read_tokens * rates["cache_read"]) / 1_000_000.0
+        cost_output = (self.total_output_tokens * rates["output"]) / 1_000_000.0
+
+        total_cost_usd = cost_input + cost_cache_write + cost_cache_read + cost_output
+        cache_savings_usd = max(0.0, ((self.total_cache_read_tokens * (rates["input"] - rates["cache_read"])) / 1_000_000.0))
+
+        total_tokens = (
+            self.total_input_tokens +
+            self.total_cache_read_tokens +
+            self.total_cache_write_tokens +
+            self.total_output_tokens
+        )
+
+        return {
+            "model": model_name,
+            "input_tokens": self.total_input_tokens,
+            "output_tokens": self.total_output_tokens,
+            "cache_read_tokens": self.total_cache_read_tokens,
+            "cache_write_tokens": self.total_cache_write_tokens,
+            "total_tokens": total_tokens,
+            "cost_usd": round(total_cost_usd, 6),
+            "cache_savings_usd": round(cache_savings_usd, 6),
+            "llm_calls": self.llm_call_count,
+            "is_exact": True
+        }
+
     def on_tool_start(self, serialized, input_str, **kwargs):
         self.tool_start_time = time.time()
         self.current_tool = serialized.get("name")
@@ -90,10 +258,15 @@ class AgentCallbackHandler(BaseCallbackHandler):
 class DoovaLangChainAgent:
     def __init__(self, model_name=None, max_tokens=None):
         self.summarizer = SummarizerNode()
+        self.model_name = model_name or AgentConfig.FAST_MODEL
+        self.callback_handler = AgentCallbackHandler(model_name=self.model_name)
+        self.last_token_usage = None
+
         llm_kwargs = {
-            "model": model_name or AgentConfig.FAST_MODEL,
+            "model": self.model_name,
             "anthropic_api_key": AgentConfig.ANTHROPIC_API_KEY,
             "max_tokens": max_tokens or AgentConfig.MAX_FAST_TOKENS,
+            "callbacks": [self.callback_handler],
             "model_kwargs": {
                 "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31,pdfs-2024-09-25"}
             }
@@ -113,8 +286,12 @@ class DoovaLangChainAgent:
             max_iterations=15,
             early_stopping_method="force",
             handle_parsing_errors=True,
-            callbacks=[AgentCallbackHandler()]
+            callbacks=[self.callback_handler]
         )
+
+    def get_last_token_usage(self) -> dict:
+        """Retrieve the exact token usage and financial cost of the most recent turn."""
+        return getattr(self, "last_token_usage", None) or self.callback_handler.get_turn_token_usage()
 
     def _format_history(self, history: list) -> list:
         formatted = []
@@ -178,6 +355,7 @@ class DoovaLangChainAgent:
         language: str | None = None
     ) -> str:
         start = time.time()
+        self.callback_handler.reset()
         formatted_history = self._format_history(chat_history or [])
         
         from .query_context import normalize_company_ids, normalize_tenant_ids
@@ -248,9 +426,12 @@ class DoovaLangChainAgent:
                 base_prompt = (base_prompt + "\n\n" + extracted_text).strip()
 
             if claude_blocks:
+                # Strip internal-only fields (_audit_meta) before sending to Anthropic API.
+                # _audit_meta is for internal ETL/test use; the API rejects unknown fields.
+                api_blocks = [{k: v for k, v in b.items() if k != "_audit_meta"} for b in claude_blocks]
                 user_input = [
                     {"type": "text", "text": base_prompt or "Please analyze the attached document(s) / image(s)."}
-                ] + claude_blocks
+                ] + api_blocks
             else:
                 user_input = base_prompt or "[No prompt provided]"
 
@@ -365,6 +546,7 @@ class DoovaLangChainAgent:
                 else:
                     target_language_label = "English (Default)"
 
+            self.callback_handler.reset()
             response = self.executor.invoke({
                 "input": input_payload,
                 "tenant_id": primary_tenant_id,
@@ -377,8 +559,9 @@ class DoovaLangChainAgent:
                 "language": target_language_label,
                 "is_voice": "TRUE" if is_voice else "FALSE",
                 "voice_instruction": voice_instruction
-            })
+            }, config={"callbacks": [self.callback_handler]})
             raw_output = response["output"]
+            self.last_token_usage = self.callback_handler.get_turn_token_usage()
 
             # Normalize: handle cases where LLM returns a list of content blocks
             if isinstance(raw_output, list):

@@ -61,18 +61,34 @@ class SessionManager:
             session.save()
         return session
 
-    def save_message(self, session_id: str, role: str, content: str, message_type: str = "text", payload: dict = None):
+    def save_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        message_type: str = "text",
+        payload: dict = None,
+        token_usage: dict = None
+    ) -> ChatMessage:
         session = ChatSession.objects.get(session_id=session_id)
-        ChatMessage.objects.create(
+        final_payload = dict(payload) if isinstance(payload, dict) else ({} if payload is None else payload)
+        if token_usage:
+            if isinstance(final_payload, dict):
+                final_payload["token_usage"] = token_usage
+            else:
+                final_payload = {"raw_payload": final_payload, "token_usage": token_usage}
+
+        msg = ChatMessage.objects.create(
             session=session,
             role=role,
             content=content,
             message_type=message_type,
-            payload=payload
+            payload=final_payload if final_payload else None
         )
         session.last_message = content
         session.turn_count += 1
         session.save()
+        return msg
 
     def save_summary(self, session_id: str, summary_text: str):
         """Persist a generated memory summary to the session record."""

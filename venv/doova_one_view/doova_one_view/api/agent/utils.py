@@ -11,24 +11,22 @@ def parse_json_chart_from_text(text: str) -> dict | None:
     if not text:
         return None
 
-    # Look for ```json ... ``` fence first
-    match = re.search(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE)
-    if match:
+    # Look for ```json ... ``` fences first
+    for match in re.finditer(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE):
         try:
             parsed = json.loads(match.group(1))
-            if parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
+            if isinstance(parsed, dict) and parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
                 return parsed
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError, AttributeError):
             pass
 
     # Fallback: bare JSON object containing "type": "chart"
-    match = re.search(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}(?=\s*$|\s*\n)', text)
-    if match:
+    for match in re.finditer(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}(?=\s*$|\s*\n)', text):
         try:
             parsed = json.loads(match.group(0))
-            if parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
+            if isinstance(parsed, dict) and parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
                 return parsed
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError, AttributeError):
             pass
 
     return None

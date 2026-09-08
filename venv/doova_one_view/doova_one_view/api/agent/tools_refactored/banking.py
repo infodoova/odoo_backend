@@ -20,6 +20,7 @@ def get_dashboard_impl(
         companies = normalize_company_ids(company_ids)
 
         def _local_base_qs(c_ids):
+            clean_cids = normalize_company_ids(c_ids)
             from odoo_app.models.account_move import AccountMove
             q = AccountMove.objects.all()
             if tenants:
@@ -27,15 +28,15 @@ def get_dashboard_impl(
                     q = q.filter(tenant_id=tenants[0])
                 else:
                     q = q.filter(tenant_id__in=tenants)
-            if c_ids:
-                if len(c_ids) == 1:
-                    q = q.filter(company_id=c_ids[0])
+            if clean_cids:
+                if len(clean_cids) == 1:
+                    q = q.filter(company_id=clean_cids[0])
                 else:
-                    q = q.filter(company_id__in=c_ids)
+                    q = q.filter(company_id__in=clean_cids)
             return q
 
         qs = AccountingService._date_qs(
-            _local_base_qs(company_ids), start_date, end_date
+            _local_base_qs(companies), start_date, end_date
         )
         
         rate_map = _get_rate_map()
@@ -96,7 +97,7 @@ def get_dashboard_impl(
         ebit = gross_profit - (true_expenses - true_taxes_interest) - true_depreciation
         net_profit = gross_profit - total_all_expenses
         
-        cumulative_qs = _local_base_qs(company_ids)
+        cumulative_qs = _local_base_qs(companies)
         if end_date:
             cumulative_qs = cumulative_qs.filter(date__lte=end_date)
         cumulative_qs = cumulative_qs.filter(state='posted')
@@ -131,7 +132,7 @@ def get_dashboard_impl(
         
         # Opening balance (moves strictly before start_date)
         if start_date:
-            opening_qs = _local_base_qs(company_ids).filter(
+            opening_qs = _local_base_qs(companies).filter(
                 date__lt=start_date, state='posted'
             )
             opening_aggs = AccountMoveLine.objects.filter(
@@ -149,7 +150,7 @@ def get_dashboard_impl(
 
         # Cash In & Out (moves within the date range)
         period_qs = AccountingService._date_qs(
-            _local_base_qs(company_ids), start_date, end_date
+            _local_base_qs(companies), start_date, end_date
         ).filter(state='posted')
         period_aggs = AccountMoveLine.objects.filter(
             account_move__in=period_qs,
@@ -365,9 +366,10 @@ def get_dashboard_impl(
                 sql += " AND pay_move.date <= %s"
                 params.append(end_date)
             if company_ids:
-                placeholders = ','.join(['%s'] * len(company_ids))
-                sql += f" AND pay_line.company_id IN ({placeholders})"
-                params.extend(company_ids)
+                if companies:
+                    placeholders = ','.join(['%s'] * len(companies))
+                    sql += f" AND pay_line.company_id IN ({placeholders})"
+                    params.extend(companies)
                 
             cursor.execute(sql, params)
             columns = [col[0] for col in cursor.description]
@@ -494,7 +496,7 @@ def get_dashboard_impl(
             "tenant_ids": tenants,
             "start_date": start_date,
             "end_date": end_date,
-            "company_ids": company_ids,
+            "company_ids": companies,
         }
         
         # --- Intelligent Alerts Engine ---
@@ -816,13 +818,17 @@ def get_bank_cash_summary_tool(
     end_date: Optional[str] = None,
     base_currency: Optional[str] = None,
 ) -> dict:
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+    clean_tenants = normalize_tenant_ids(tenant_ids)
+    clean_companies = normalize_company_ids(company_ids)
+
     from doova_one_view.api.agent.tools_refactored.finance import get_balance_sheet_tool
-    bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=end_date, base_currency=base_currency)
+    bs = get_balance_sheet_tool(tenant_ids=clean_tenants, company_ids=clean_companies, as_of_date=end_date, base_currency=base_currency)
     total_balance = float(bs.get("bank_and_cash_accounts", 0.0) or 0.0)
 
     data = get_dashboard_impl(
-        tenant_ids=tenant_ids,
-        company_ids=company_ids,
+        tenant_ids=clean_tenants,
+        company_ids=clean_companies,
         start_date=start_date,
         end_date=end_date,
         base_currency=base_currency,
@@ -861,18 +867,57 @@ def get_bank_statement_summary_tool(
     tenant_ids: Optional[list[str]] = None,
     company_ids: Optional[list[int]] = None,
 ) -> dict:
-    t_sql, params = build_tenant_filter_sql(tenant_ids, prefix="t", column_name="s.tenant_id")
-    c_sql, c_params = build_company_filter_sql(company_ids, column_name="s.company_id", prefix="company")
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+    clean_tenants = normalize_tenant_ids(tenant_ids)
+    clean_companies = normalize_company_ids(company_ids)
+
+    t_sql, params = build_tenant_filter_sql(clean_tenants, prefix="t", column_name="s.tenant_id")
+    c_sql, c_params = build_company_filter_sql(clean_companies, column_name="s.company_id", prefix="company")
     params.update(c_params)
 
+    # 1. Structured latest balances per bank account / journal
+    latest_rows = run_query(f"""
+        SELECT DISTINCT ON (s.company_id, COALESCE(s.journal_id, 0), COALESCE(s.journal_name, ''))
+            COALESCE(j.name, s.journal_name, 'Unknown Bank') AS journal_name,
+            j.code AS journal_code,
+            c.name AS company_name,
+            s.odoo_name AS latest_statement_name,
+            s.date AS latest_statement_date,
+            s.balance_end_real AS current_closing_balance,
+            COALESCE(s.currency_code, j.currency_code, c.currency_code, 'XAF') AS currency
+        FROM fact_bank_statements s
+        LEFT JOIN dim_account_journals j ON s.journal_id = j.id
+        LEFT JOIN dim_companies c ON s.company_id = c.id
+        WHERE 1=1 {t_sql} {c_sql}
+          AND s.date IS NOT NULL
+        ORDER BY s.company_id, COALESCE(s.journal_id, 0), COALESCE(s.journal_name, ''), s.date DESC, s.id DESC
+    """, params)
+
+    latest_by_bank = [
+        {
+            "bank_name": str(r.get("journal_name")),
+            "journal_code": str(r.get("journal_code") or ""),
+            "company_name": str(r.get("company_name") or ""),
+            "latest_statement": str(r.get("latest_statement_name")),
+            "date": str(r.get("latest_statement_date")),
+            "current_closing_balance": float(r.get("current_closing_balance") or 0),
+            "currency": str(r.get("currency") or "XAF")
+        }
+        for r in latest_rows
+    ]
+
+    # 2. Chronological stream of recent statements with bank account names
     rows = run_query(f"""
         SELECT 
+            COALESCE(j.name, s.journal_name, 'Unknown Bank') AS journal_name,
+            j.code AS journal_code,
             s.odoo_name AS statement_name, 
             s.date, 
             s.balance_start, 
             s.balance_end_real, 
-            s.currency_code
+            COALESCE(s.currency_code, j.currency_code, 'XAF') AS currency_code
         FROM fact_bank_statements s
+        LEFT JOIN dim_account_journals j ON s.journal_id = j.id
         WHERE 1=1 {t_sql} {c_sql}
         ORDER BY s.date DESC
         LIMIT 20
@@ -880,13 +925,16 @@ def get_bank_statement_summary_tool(
 
     return {
         "tool_name": "get_bank_statement_summary_tool",
+        "latest_balances_by_bank": latest_by_bank,
         "recent_statements": [
             {
+                "bank_name": str(r.get("journal_name")),
+                "journal_code": str(r.get("journal_code") or ""),
                 "statement": str(r.get("statement_name")),
                 "date": str(r.get("date")),
                 "opening_balance": float(r.get("balance_start") or 0),
                 "closing_balance": float(r.get("balance_end_real") or 0),
-                "currency": str(r.get("currency_code") or "")
+                "currency": str(r.get("currency_code") or "XAF")
             }
             for r in rows
         ]
@@ -1001,14 +1049,57 @@ def get_journal_audit_tool(
     for tr in tax_rows:
         t_deb = float(tr.get("total_debit") or 0.0)
         t_crd = float(tr.get("total_credit") or 0.0)
-        t_due = t_crd - t_deb
         taxes.append({
-            "code": tr.get("account_code"),
-            "name": tr.get("account_name"),
-            "debit": round(t_deb, 2),
-            "credit": round(t_crd, 2),
-            "due_amount": round(t_due, 2)
+            "code":       tr.get("account_code"),
+            "name":       tr.get("account_name"),
+            "debit":      round(t_deb, 2),
+            "credit":     round(t_crd, 2),
+            "due_amount": round(t_crd - t_deb, 2),
+            "tax_source": "sub_account_44xx",
         })
+
+    # ── Fallback: companies without 44xx COA setup store tax in amount_tax ──
+    # (e.g. entities that post tax via JV entries rather than dedicated sub-accounts)
+    # This ensures tax_summary is never silently empty for any company.
+    if not taxes:
+        amount_col_m = build_currency_case_sql(
+            'amount_tax', tenant_ids=tenant_ids,
+            base_currency=base_currency, currency_column='c2.currency_code'
+        )
+        fallback_query = f"""
+            SELECT
+                m.move_type,
+                COALESCE(SUM({amount_col_m}), 0) AS total_tax
+            FROM fact_account_moves m
+            LEFT JOIN dim_companies c2 ON m.company_id = c2.id
+            WHERE 1=1 {t_sql_m}
+              AND m.state = 'posted'
+              AND m.amount_tax <> 0
+              {f_sql_m}
+              {date_sql}
+            GROUP BY m.move_type
+            ORDER BY m.move_type
+        """
+        fallback_rows = run_query(fallback_query, params)
+        _MOVE_TYPE_LABELS = {
+            "out_invoice": ("OUTPUT_TAX", "Output VAT — collected on sales invoices"),
+            "in_invoice":  ("INPUT_TAX",  "Input VAT — paid on vendor invoices"),
+            "out_refund":  ("OUT_REFUND", "Output VAT refund (credit note)"),
+            "in_refund":   ("IN_REFUND",  "Input VAT refund (vendor credit note)"),
+        }
+        for fb in fallback_rows:
+            mtype = fb.get("move_type") or "other"
+            total = float(fb.get("total_tax") or 0.0)
+            code, name = _MOVE_TYPE_LABELS.get(mtype, (mtype.upper(), mtype))
+            is_output = mtype in ("out_invoice",)
+            taxes.append({
+                "code":       code,
+                "name":       name,
+                "debit":      round(total if not is_output else 0.0, 2),
+                "credit":     round(total if is_output else 0.0, 2),
+                "due_amount": round(total if is_output else -total, 2),
+                "tax_source": "amount_tax_fallback",
+            })
 
     return {
         "tool_name": "get_journal_audit_tool",
@@ -1028,4 +1119,3 @@ def get_journal_audit_tool(
         "journals": journals,
         "tax_summary": taxes
     }
-

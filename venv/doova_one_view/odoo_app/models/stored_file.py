@@ -11,6 +11,8 @@ class StoredFile(models.Model):
     content_type = models.TextField(null=True, blank=True)
     storage_path = models.TextField()
     description = models.TextField(null=True, blank=True)
+    page_count = models.IntegerField(null=True, blank=True,
+                                     help_text='Total page count for PDF files.')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

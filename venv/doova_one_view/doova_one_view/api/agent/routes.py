@@ -268,7 +268,9 @@ async def background_retry_executor(
                     company_ids=company_ids
                 )
             
-            await sync_to_async(session_manager.save_message)(session_id, "assistant", answer)
+            token_usage = (fast_path_node.get_last_token_usage() if mode == "EXECUTE" else reasoning_node.get_last_token_usage())
+            bg_payload = {"token_usage": token_usage} if (token_usage and token_usage.get("total_tokens", 0) > 0) else None
+            await sync_to_async(session_manager.save_message)(session_id, "assistant", answer, payload=bg_payload)
             logger.info(f"BACKGROUND RETRY SUCCESS | Session: {session_id} on attempt {attempt}")
             return
             
@@ -549,7 +551,9 @@ async def chat_endpoint(request: Request):
             session.plan_state = None
             await sync_to_async(session.save)()
             
-            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+            plan_token_usage = reasoning_node.get_last_token_usage()
+            exec_payload = {"token_usage": plan_token_usage} if (plan_token_usage and plan_token_usage.get("total_tokens", 0) > 0) else None
+            await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, payload=exec_payload)
             duration = (time.time() - request_start) * 1000
             logger.info(f"PLAN EXECUTION COMPLETE in {duration:.0f}ms")
             return make_chat_response(
@@ -755,9 +759,12 @@ async def chat_endpoint(request: Request):
 
                 answer = await asyncio.to_thread(run_fast_path)
 
-            message_payload = {"citations": citations} if citations else None
+            message_payload = {"citations": citations} if citations else {}
+            token_usage = fast_path_node.get_last_token_usage()
+            if token_usage and token_usage.get("total_tokens", 0) > 0:
+                message_payload["token_usage"] = token_usage
             await sync_to_async(session_manager.save_message)(
-                current_session_id, "assistant", answer, payload=message_payload
+                current_session_id, "assistant", answer, payload=message_payload or None
             )
             duration = (time.time() - request_start) * 1000
             logger.info(f"EXECUTE COMPLETE in {duration:.0f}ms | Response: \"{answer[:80]}...\"")
@@ -854,6 +861,9 @@ async def chat_endpoint(request: Request):
         answer = plan_summary
         
         # Save assistant message and plan state
+        plan_token_usage = reasoning_node.get_last_token_usage()
+        if plan_token_usage and plan_token_usage.get("total_tokens", 0) > 0:
+            plan["token_usage"] = plan_token_usage
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, message_type="plan", payload=plan)
         from django.utils import timezone
         session.plan_state = plan
@@ -1083,6 +1093,9 @@ async def run_analysis(request: Request):
         structured = _extract_json_block(answer)
         if not structured:
             raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
+        analysis_token_usage = fast_path_node.get_last_token_usage()
+        if analysis_token_usage and analysis_token_usage.get("total_tokens", 0) > 0:
+            structured["token_usage"] = analysis_token_usage
         await sync_to_async(session_manager.save_message)(
             session_id, "assistant",
             structured.get("summary", structured.get("title", "Analysis complete.")),
@@ -1156,6 +1169,9 @@ async def run_forecast(request: Request):
         structured = _extract_json_block(answer)
         if not structured:
             raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
+        forecast_token_usage = fast_path_node.get_last_token_usage()
+        if forecast_token_usage and forecast_token_usage.get("total_tokens", 0) > 0:
+            structured["token_usage"] = forecast_token_usage
         await sync_to_async(session_manager.save_message)(
             session_id, "assistant",
             structured.get("title", "Forecast complete."),
@@ -1234,6 +1250,9 @@ async def run_audit(request: Request):
         structured = _extract_json_block(answer)
         if not structured:
             raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
+        audit_token_usage = fast_path_node.get_last_token_usage()
+        if audit_token_usage and audit_token_usage.get("total_tokens", 0) > 0:
+            structured["token_usage"] = audit_token_usage
         await sync_to_async(session_manager.save_message)(
             session_id, "assistant",
             structured.get("title", "Audit complete."),

@@ -1593,10 +1593,16 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
     debit_col = build_currency_case_sql('l.debit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
     credit_col = build_currency_case_sql('l.credit', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='l.currency_code')
 
-    if account_type:
-        acct_type_filter_l = f"AND l.account_type = '{account_type}'"
-        acct_type_filter_deb = f"AND l_deb.account_type = '{account_type}'"
-        acct_type_filter_crd = f"AND l_crd.account_type = '{account_type}'"
+    norm_acct_type = str(account_type).lower().strip() if account_type else None
+    if norm_acct_type in ("receivable", "asset_receivable", "customer", "customers"):
+        norm_acct_type = "asset_receivable"
+    elif norm_acct_type in ("payable", "liability_payable", "vendor", "supplier", "suppliers", "vendors"):
+        norm_acct_type = "liability_payable"
+
+    if norm_acct_type:
+        acct_type_filter_l = f"AND l.account_type = '{norm_acct_type}'"
+        acct_type_filter_deb = f"AND l_deb.account_type = '{norm_acct_type}'"
+        acct_type_filter_crd = f"AND l_crd.account_type = '{norm_acct_type}'"
     else:
         acct_type_filter_l = "AND l.account_type IN ('asset_receivable', 'liability_payable')"
         acct_type_filter_deb = "AND l_deb.account_type IN ('asset_receivable', 'liability_payable')"
@@ -1990,12 +1996,12 @@ def get_partner_ledger_tool(tenant_ids: Optional[list[str]] = None, company_ids:
 # 15. CUSTOMER STATEMENT (Report 15)
 # ────────────────────────────────────────────────────────────────────────────────
 
-def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None, partner_name: str | None = None, partner_id: int | None = None, date_from: str | None = None, date_to: str | None = None, as_of_date: str | None = None, include_lines: bool = False, limit_partners: int | None = None, limit_lines_per_partner: int = 50, base_currency: str | None = None) -> dict:
+def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None, partner_name: str | None = None, partner_id: int | None = None, account_type: str | None = "asset_receivable", date_from: str | None = None, date_to: str | None = None, as_of_date: str | None = None, include_lines: bool = False, limit_partners: int | None = None, limit_lines_per_partner: int = 50, base_currency: str | None = None) -> dict:
     """
     Generates the Customer Statement (Relevé Client, Odoo Report 15) matching Odoo exactly.
     Columns presented:
     - Invoice Date, Due Date, Amount, Amount Currency, Balance
-    - Calculates dynamically via SQL queries on fact_account_move_lines.
+    - Calculates dynamically via SQL queries on fact_account_move_lines (account_type='asset_receivable').
     """
     target_end_date = date_to or as_of_date
 
@@ -2050,6 +2056,13 @@ def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_
     params.update(t_params_l)
     params.update(f_params)
 
+    if account_type == "liability_payable":
+        acct_type_sql = "AND l.account_type = 'liability_payable'"
+    elif account_type in ("both", "all"):
+        acct_type_sql = "AND l.account_type IN ('asset_receivable', 'liability_payable')"
+    else:
+        acct_type_sql = "AND l.account_type = 'asset_receivable'"
+
     limit_sql = f"LIMIT {int(limit_partners)}" if limit_partners else ""
 
     date_from_check = "m.date >= :date_from" if date_from else "1=1"
@@ -2067,7 +2080,7 @@ def get_customer_statement_tool(tenant_ids: Optional[list[str]] = None, company_
             LEFT JOIN dim_partners p ON l.partner_id = p.id AND l.tenant_id = p.tenant_id
             WHERE 1=1 {t_sql_l}
               AND m.state = 'posted'
-              AND l.account_type IN ('asset_receivable', 'liability_payable')
+              {acct_type_sql}
               {f_sql}
               {end_date_sql}
               {partner_sql}

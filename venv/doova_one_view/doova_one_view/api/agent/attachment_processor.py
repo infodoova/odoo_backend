@@ -81,6 +81,31 @@ def sanitize_filename(name: str) -> str:
     return safe_chars or "attachment"
 
 
+def _count_pdf_pages(data_bytes: bytes) -> Optional[int]:
+    """
+    Returns the number of pages in a PDF byte stream.
+    Tries pypdf first (fastest), falls back to PyPDF2, then raw byte count.
+    """
+    try:
+        import pypdf  # type: ignore
+        reader = pypdf.PdfReader(io.BytesIO(data_bytes))
+        return len(reader.pages)
+    except Exception:
+        pass
+    try:
+        import PyPDF2  # type: ignore
+        reader = PyPDF2.PdfReader(io.BytesIO(data_bytes))
+        return len(reader.pages)
+    except Exception:
+        pass
+    # Last resort: count /Type /Page occurrences in raw bytes
+    try:
+        count = data_bytes.count(b"/Type /Page")
+        return count if count > 0 else None
+    except Exception:
+        return None
+
+
 def validate_file_security(filename: str, data_bytes: bytes) -> Tuple[bool, str, str]:
     """
     Validates file against:
@@ -216,7 +241,8 @@ def save_attachment_to_db(
     content_type: str,
     tenant_ids: Optional[List[str]] = None,
     company_ids: Optional[List[int]] = None,
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
+    page_count: Optional[int] = None,
 ) -> Optional[int]:
     """Persists uploaded attachment metadata into the `stored_files` database table."""
     try:
@@ -225,8 +251,11 @@ def save_attachment_to_db(
         
         uploaded_at = timezone.now()
         description = f"AI Agent User Input | Session: {session_id or 'general'}"
-        tenant_id = tenant_ids[0] if tenant_ids else None
-        company_id = company_ids[0] if company_ids else None
+        from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
+        clean_tenants = normalize_tenant_ids(tenant_ids)
+        clean_companies = normalize_company_ids(company_ids)
+        tenant_id = clean_tenants[0] if clean_tenants else None
+        company_id = clean_companies[0] if clean_companies else None
         
         # Verify if tenant exists in odoo_app_tenant to avoid foreign key errors
         db_tenant_id = None
@@ -256,8 +285,8 @@ def save_attachment_to_db(
                     """
                     INSERT INTO stored_files
                         (tenant_id, company_id, file_name, stored_filename, file_size,
-                         content_type, storage_path, description, uploaded_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         content_type, storage_path, description, page_count, uploaded_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     [
@@ -269,6 +298,7 @@ def save_attachment_to_db(
                         content_type or "application/octet-stream",
                         str(storage_path),
                         description,
+                        page_count,
                         uploaded_at,
                     ]
                 )
@@ -279,8 +309,8 @@ def save_attachment_to_db(
                     """
                     INSERT INTO stored_files
                         (tenant_id, company_id, file_name, stored_filename, file_size,
-                         content_type, storage_path, description, uploaded_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         content_type, storage_path, description, page_count, uploaded_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     [
                         db_tenant_id,
@@ -291,6 +321,7 @@ def save_attachment_to_db(
                         content_type or "application/octet-stream",
                         str(storage_path),
                         description,
+                        page_count,
                         uploaded_at,
                     ]
                 )
@@ -443,6 +474,9 @@ def process_attachments(
             continue
             
         # 1. Save validated copy to disk (only for active turn, not history rehydration)
+        lower_name = safe_name.lower()
+        lower_media = media_type.lower()
+
         if persist:
             dest_path = None
             try:
@@ -453,6 +487,10 @@ def process_attachments(
             # 2. Save metadata record to database `stored_files` table
             if dest_path:
                 try:
+                    # Count pages for PDFs so the audit stamp knows total scope
+                    pdf_pages = None
+                    if lower_name.endswith(".pdf") or "pdf" in lower_media:
+                        pdf_pages = _count_pdf_pages(data_bytes)
                     save_attachment_to_db(
                         filename=name,
                         stored_filename=dest_path.name,
@@ -461,7 +499,8 @@ def process_attachments(
                         content_type=media_type,
                         tenant_ids=tenant_ids,
                         company_ids=company_ids,
-                        session_id=session_id
+                        session_id=session_id,
+                        page_count=pdf_pages,
                     )
                 except Exception as e:
                     logger.warning(f"[Attachments] Could not save attachment record to DB: {e}")
@@ -497,15 +536,28 @@ def process_attachments(
 
         # 2. Native PDF Document -> Claude 'document' block
         if "pdf" in lower_media or lower_name.endswith(".pdf"):
-            claude_blocks.append({
+            pdf_pages = _count_pdf_pages(data_bytes)
+            # Use official Anthropic 'title' field so Claude sees the file name.
+            # 'context' carries the page count — both are valid Anthropic API fields.
+            # _audit_meta is NOT sent to the API; it's attached for internal use
+            # (e.g. tests, ETL stamp logic) and stripped before the API call.
+            block = {
                 "type": "document",
+                "title": safe_name,          # official Anthropic field — Claude reads this
                 "source": {
                     "type": "base64",
                     "media_type": "application/pdf",
                     "data": base64_str.strip()
                 },
-                "cache_control": {"type": "ephemeral"}  # Anthropic Prompt Caching
-            })
+                "context": f"Source file: {safe_name} | Pages: {pdf_pages or 'unknown'}",
+                "cache_control": {"type": "ephemeral"},  # Anthropic Prompt Caching
+            }
+            # Attach audit metadata for internal/test use — must be stripped before API call
+            block["_audit_meta"] = {
+                "source_file_name": safe_name,
+                "page_count": pdf_pages,
+            }
+            claude_blocks.append(block)
             continue
 
         # 3. Excel Spreadsheets (.xlsx, .xls) -> Markdown Tables

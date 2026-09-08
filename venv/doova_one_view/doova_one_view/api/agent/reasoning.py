@@ -22,7 +22,9 @@ class ReasoningNode:
         full_message = f"{context}USER REQUEST: {message}"
         tools_list_str = ", ".join([t.name for t in agent_tools])
         prompt = PLAN_JSON_GENERATION_PROMPT.format(message=full_message, tools_list=tools_list_str)
-        response = self.agent.llm.invoke(prompt)
+        self.agent.callback_handler.reset()
+        response = self.agent.llm.invoke(prompt, config={"callbacks": [self.agent.callback_handler]})
+        self.agent.last_token_usage = self.agent.callback_handler.get_turn_token_usage()
         try:
             return json.loads(response.content)
         except:
@@ -61,3 +63,7 @@ class ReasoningNode:
             memory_summary=memory_summary,
             language=language
         )
+
+    def get_last_token_usage(self) -> dict:
+        """Retrieve the exact token usage and financial cost of the most recent turn."""
+        return self.agent.get_last_token_usage()
