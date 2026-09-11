@@ -136,39 +136,199 @@ class SalesService:
         """Search sales orders with filters and optional company restriction."""
         request = AdvancedSearchRequest(filters=filters, limit=limit, offset=offset)
 
+        def _clean_date_val(v):
+            if v is None:
+                return None
+            if isinstance(v, (datetime, date)):
+                return v.strftime("%Y-%m-%d")
+            s = str(v).strip()
+            if not s:
+                return None
+            if len(s) >= 10 and s[4] == '-' and s[7] == '-':
+                return s[:10]
+            return s
+
         def _search():
             qs = SalesOrder.objects.filter(tenant_id=tenant_id)
             if company_ids:
                 qs = qs.filter(company_id__in=company_ids)
 
+            field_map = {
+                "id": "id",
+                "odoo_id": "odoo_id",
+                "odoo_name": "odoo_name",
+                "name": "odoo_name",
+                "partner_name": "partner__name",
+                "customer_name": "partner__name",
+                "customer": "partner__name",
+                "partner_id": "partner_id",
+                "partner": "partner__name",
+                "user_name": "user__name",
+                "salesperson_name": "user__name",
+                "salesperson": "user__name",
+                "user_id": "user_id",
+                "user": "user__name",
+                "company_name": "company__name",
+                "company": "company__name",
+                "company_id": "company_id",
+                "date": "date_order",
+                "date_order": "date_order",
+                "order_date": "date_order",
+                "validity_date": "validity_date",
+                "commitment_date": "commitment_date",
+                "state": "state",
+                "invoice_status": "invoice_status",
+                "amount_untaxed": "amount_untaxed",
+                "amount_tax": "amount_tax",
+                "amount_total": "amount_total",
+                "margin": "margin",
+                "currency_code": "currency_code",
+                "synced_at": "synced_at",
+                "odoo_create_date": "odoo_create_date",
+                "odoo_write_date": "odoo_write_date",
+            }
+
+            DATE_FIELDS = {
+                "date_order",
+                "validity_date",
+                "commitment_date",
+                "synced_at",
+                "odoo_create_date",
+                "odoo_write_date",
+            }
+
             for f in request.filters:
-                field = f.field
-                op = f.operator.lower().strip()
-                val = f.value
-                field_mapping = {
-                    'partner_name': 'partner__name',
-                    'user_name': 'user__name',
-                    'company_name': 'company__name',
-                }
-                field = field_mapping.get(field, field)
-                if op in ['contain', 'contains']:
-                    qs = qs.filter(**{f"{field}__icontains": val})
-                elif op in ['starts with', 'startswith', 'starts_with']:
-                    qs = qs.filter(**{f"{field}__istartswith": val})
-                elif op in ['ends with', 'endswith', 'ends_with']:
-                    qs = qs.filter(**{f"{field}__iendswith": val})
-                elif op in ['eq', 'equal', 'equals']:
-                    qs = qs.filter(**{field: val})
-                elif op in ['gt', 'greater than', 'greater_than', 'after']:
-                    qs = qs.filter(**{f"{field}__gt": val})
-                elif op in ['lt', 'less than', 'less_than', 'before']:
-                    qs = qs.filter(**{f"{field}__lt": val})
-                elif op in ['gte', 'greater than or equal', 'greater_than_or_equal']:
-                    qs = qs.filter(**{f"{field}__gte": val})
-                elif op in ['lte', 'less than or equal', 'less_than_or_equal']:
-                    qs = qs.filter(**{f"{field}__lte": val})
-                elif op == 'between' and isinstance(val, list) and len(val) == 2:
-                    qs = qs.filter(**{f"{field}__range": (val[0], val[1])})
+                raw_field = getattr(f, "field", None) or (f.get("field") if isinstance(f, dict) else None)
+                if not raw_field:
+                    continue
+                raw_field = str(raw_field).strip()
+                op = (getattr(f, "operator", None) or (f.get("operator") if isinstance(f, dict) else "")).lower().strip()
+                val = getattr(f, "value", None) if hasattr(f, "value") else (f.get("value") if isinstance(f, dict) else None)
+                max_val = (
+                    getattr(f, "max_value", None)
+                    or getattr(f, "maxValue", None)
+                    or (f.get("max_value") if isinstance(f, dict) else None)
+                    or (f.get("maxValue") if isinstance(f, dict) else None)
+                )
+
+                orm_field = field_map.get(raw_field, raw_field)
+                is_date = orm_field in DATE_FIELDS
+
+                if is_date:
+                    if op in ["contain", "contains", "startswith", "starts with", "starts_with", "endswith", "ends with", "ends_with"]:
+                        clean_v = _clean_date_val(val)
+                        if clean_v:
+                            qs = qs.filter(**{f"{orm_field}__date__icontains": clean_v})
+                    elif op in ["eq", "equal", "equals", "=", "exact", "is"]:
+                        clean_v = _clean_date_val(val)
+                        if clean_v:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date = CAST(%s AS date)"],
+                                params=[str(clean_v)]
+                            )
+                    elif op in ["gt", "greater than", "greater_than", "after"]:
+                        clean_v = _clean_date_val(val)
+                        if clean_v:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date > CAST(%s AS date)"],
+                                params=[str(clean_v)]
+                            )
+                    elif op in ["gte", "greater than or equal", "greater_than_or_equal"]:
+                        clean_v = _clean_date_val(val)
+                        if clean_v:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date >= CAST(%s AS date)"],
+                                params=[str(clean_v)]
+                            )
+                    elif op in ["lt", "less than", "less_than", "before"]:
+                        clean_v = _clean_date_val(val)
+                        if clean_v:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date < CAST(%s AS date)"],
+                                params=[str(clean_v)]
+                            )
+                    elif op in ["lte", "less than or equal", "less_than_or_equal"]:
+                        clean_v = _clean_date_val(val)
+                        if clean_v:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date <= CAST(%s AS date)"],
+                                params=[str(clean_v)]
+                            )
+                    elif op == "between":
+                        v1 = None
+                        v2 = None
+                        if max_val is not None and str(max_val).strip() != "":
+                            v1 = _clean_date_val(val)
+                            v2 = _clean_date_val(max_val)
+                        elif isinstance(val, (list, tuple)) and len(val) >= 2:
+                            v1 = _clean_date_val(val[0])
+                            v2 = _clean_date_val(val[1])
+                        elif isinstance(val, str) and ("," in val or " to " in val or " - " in val):
+                            parts = [p.strip() for p in val.replace(" to ", ",").replace(" - ", ",").split(",") if p.strip()]
+                            if len(parts) >= 2:
+                                v1 = _clean_date_val(parts[0])
+                                v2 = _clean_date_val(parts[1])
+                            elif len(parts) == 1:
+                                v1 = _clean_date_val(parts[0])
+                        else:
+                            v1 = _clean_date_val(val)
+
+                        if v1 and v2:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date BETWEEN CAST(%s AS date) AND CAST(%s AS date)"],
+                                params=[str(v1), str(v2)]
+                            )
+                        elif v1:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date >= CAST(%s AS date)"],
+                                params=[str(v1)]
+                            )
+                        elif v2:
+                            qs = qs.extra(
+                                where=[f"({orm_field})::date <= CAST(%s AS date)"],
+                                params=[str(v2)]
+                            )
+                    elif op in ["in"]:
+                        if isinstance(val, (list, tuple, set)):
+                            clean_list = [_clean_date_val(x) for x in val if _clean_date_val(x)]
+                            if clean_list:
+                                qs = qs.filter(**{f"{orm_field}__date__in": clean_list})
+                else:
+                    # Non-date fields
+                    if op in ['contain', 'contains']:
+                        if val is not None and str(val).strip() != "":
+                            qs = qs.filter(**{f"{orm_field}__icontains": val})
+                    elif op in ['starts with', 'startswith', 'starts_with']:
+                        if val is not None and str(val).strip() != "":
+                            qs = qs.filter(**{f"{orm_field}__istartswith": val})
+                    elif op in ['ends with', 'endswith', 'ends_with']:
+                        if val is not None and str(val).strip() != "":
+                            qs = qs.filter(**{f"{orm_field}__iendswith": val})
+                    elif op in ['eq', 'equal', 'equals', '=', 'exact', 'is']:
+                        if val is not None:
+                            qs = qs.filter(**{orm_field: val})
+                    elif op in ['gt', 'greater than', 'greater_than', 'after']:
+                        if val is not None:
+                            qs = qs.filter(**{f"{orm_field}__gt": val})
+                    elif op in ['lt', 'less than', 'less_than', 'before']:
+                        if val is not None:
+                            qs = qs.filter(**{f"{orm_field}__lt": val})
+                    elif op in ['gte', 'greater than or equal', 'greater_than_or_equal']:
+                        if val is not None:
+                            qs = qs.filter(**{f"{orm_field}__gte": val})
+                    elif op in ['lte', 'less than or equal', 'less_than_or_equal']:
+                        if val is not None:
+                            qs = qs.filter(**{f"{orm_field}__lte": val})
+                    elif op == 'between':
+                        if max_val is not None and str(max_val).strip() != "":
+                            qs = qs.filter(**{f"{orm_field}__range": (val, max_val)})
+                        elif isinstance(val, (list, tuple)) and len(val) == 2:
+                            qs = qs.filter(**{f"{orm_field}__range": (val[0], val[1])})
+                        elif val is not None:
+                            qs = qs.filter(**{f"{orm_field}__gte": val})
+                    elif op in ['in']:
+                        if isinstance(val, (list, tuple, set)):
+                            qs = qs.filter(**{f"{orm_field}__in": val})
 
             total = qs.count()
             qs = qs.select_related('partner', 'user', 'company').order_by('-date_order')
@@ -260,55 +420,9 @@ class SalesService:
     @staticmethod
     async def advanced_search(tenant_id: str, request: AdvancedSearchRequest) -> PaginatedResponse[SalesOrderRead]:
         """Advanced search for sales orders with complex filters"""
-        def _search():
-            qs = SalesOrder.objects.filter(tenant_id=tenant_id)
-            
-            for f in request.filters:
-                field = f.field
-                # Clean up the operator
-                op = f.operator.lower().strip()
-                val = f.value
-                
-                # Map friendly field names to ORM paths
-                field_mapping = {
-                    'partner_name': 'partner__name',
-                    'user_name': 'user__name',
-                    'company_name': 'company__name',
-                }
-                field = field_mapping.get(field, field)
-                
-                # String operators
-                if op in ['contain', 'contains']:
-                    qs = qs.filter(**{f"{field}__icontains": val})
-                elif op in ['starts with', 'startswith', 'starts_with']:
-                    qs = qs.filter(**{f"{field}__istartswith": val})
-                elif op in ['ends with', 'endswith', 'ends_with']:
-                    qs = qs.filter(**{f"{field}__iendswith": val})
-                
-                # Numerical / Date operators
-                elif op in ['eq', 'equal', 'equals']:
-                    qs = qs.filter(**{field: val})
-                elif op in ['gt', 'greater than', 'greater_than', 'after']:
-                    qs = qs.filter(**{f"{field}__gt": val})
-                elif op in ['lt', 'less than', 'less_than', 'before']:
-                    qs = qs.filter(**{f"{field}__lt": val})
-                elif op in ['gte', 'greater than or equal', 'greater_than_or_equal']:
-                    qs = qs.filter(**{f"{field}__gte": val})
-                elif op in ['lte', 'less than or equal', 'less_than_or_equal']:
-                    qs = qs.filter(**{f"{field}__lte": val})
-                elif op == 'between':
-                    if isinstance(val, list) and len(val) == 2:
-                        qs = qs.filter(**{f"{field}__range": (val[0], val[1])})
-            
-            total = qs.count()
-            qs = qs.select_related('partner', 'user', 'company').order_by('-date_order')
-            items = list(qs[request.offset : request.offset + request.limit])
-            return items, total
-
-        orders, total = await asyncio.to_thread(_search)
-        return PaginatedResponse(
-            items=[SalesOrderRead.model_validate(o) for o in orders],
-            total=total,
+        return await SalesService.search_orders(
+            tenant_id=tenant_id,
+            filters=request.filters,
             limit=request.limit,
             offset=request.offset
         )
@@ -325,6 +439,44 @@ class SalesService:
             raise ValidationError(
                 f"Invalid date format for dashboard filter: '{value}'. Expected YYYY-MM-DD"
             )
+
+    @staticmethod
+    def _apply_date_filter(qs, start_date=None, end_date=None, date_column="date_order"):
+        """
+        Apply strict date filtering without timezone conversion:
+        (date_column)::date BETWEEN CAST(%s AS date) AND CAST(%s AS date)
+        """
+        s_date = SalesService._parse_date(start_date)
+        e_date = SalesService._parse_date(end_date)
+        if s_date and e_date:
+            return qs.extra(
+                where=[f"({date_column})::date BETWEEN CAST(%s AS date) AND CAST(%s AS date)"],
+                params=[str(s_date), str(e_date)]
+            )
+        elif s_date:
+            return qs.extra(
+                where=[f"({date_column})::date >= CAST(%s AS date)"],
+                params=[str(s_date)]
+            )
+        elif e_date:
+            return qs.extra(
+                where=[f"({date_column})::date <= CAST(%s AS date)"],
+                params=[str(e_date)]
+            )
+        return qs
+
+    @staticmethod
+    def _apply_day_filter(qs, day, date_column="date_order"):
+        """
+        Apply single calendar day filter: (date_column)::date = CAST(%s AS date)
+        """
+        d_date = SalesService._parse_date(day)
+        if not d_date:
+            raise ValidationError(f"Invalid date format: '{day}'. Expected YYYY-MM-DD")
+        return qs.extra(
+            where=[f"({date_column})::date = CAST(%s AS date)"],
+            params=[str(d_date)]
+        )
 
     @staticmethod
     async def get_dashboard(
@@ -377,8 +529,9 @@ class SalesService:
                 return {'revenue': rev, 'margin': margin_val, 'count': count, 'avg_val': avg_val}
             
             confirmed_qs = base_qs.filter(state__in=['sale', 'done'])
-            current_stats = get_stats(confirmed_qs.filter(date_order__date__range=(initial_date, final_date)))
-            prev_stats = get_stats(confirmed_qs.filter(date_order__date__range=(prev_start, prev_end)))
+            confirmed_range_qs = SalesService._apply_date_filter(confirmed_qs, initial_date, final_date)
+            current_stats = get_stats(confirmed_range_qs)
+            prev_stats = get_stats(SalesService._apply_date_filter(confirmed_qs, prev_start, prev_end))
             
             def make_kpi(curr, prev):
                 curr_val = float(curr or 0)
@@ -399,7 +552,7 @@ class SalesService:
             conversion = (sales / drafts * 100) if drafts > 0 else 0
             
             # 2. Trends (Revenue within range)
-            trend_rows = list(confirmed_qs.filter(date_order__date__range=(initial_date, final_date))
+            trend_rows = list(confirmed_range_qs
                 .annotate(date=TruncDate('date_order'))
                 .values('date', 'currency_code')
                 .annotate(value=Sum('amount_total'))
@@ -414,9 +567,7 @@ class SalesService:
             trend = [{'date': d, 'value': v} for d, v in sorted(trend_map.items())]
             
             # 3. Rankings (Within range)
-            range_filter = {'date_order__date__range': (initial_date, final_date)}
-            
-            cust_rows = list(confirmed_qs.filter(**range_filter)
+            cust_rows = list(confirmed_range_qs
                 .values('partner__name', 'partner_id', 'currency_code')
                 .annotate(value=Sum('amount_total')))
             cust_map = {}
@@ -428,11 +579,14 @@ class SalesService:
                 cust_map[pid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
             top_customers = [{'partner_id': k, 'partner__name': v['name'], 'value': v['value']} for k, v in sorted(cust_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]]
             
-            prod_rows = list(SalesOrderLine.objects.filter(
+            prod_qs = SalesOrderLine.objects.filter(
                 tenant_id=tenant_id, 
-                sales_order__state__in=['sale', 'done'],
-                sales_order__date_order__date__range=(initial_date, final_date)
-            ).exclude(product__product_type='service').exclude(product__name__icontains='discount')
+                sales_order__state__in=['sale', 'done']
+            )
+            prod_qs = SalesService._apply_date_filter(
+                prod_qs, initial_date, final_date, date_column="fact_sales_orders.date_order"
+            )
+            prod_rows = list(prod_qs.exclude(product__product_type='service').exclude(product__name__icontains='discount')
             .values('product__name', 'product_id', 'sales_order__currency_code')
              .annotate(value=Sum('price_total')))
             prod_map = {}
@@ -444,7 +598,7 @@ class SalesService:
                 prod_map[pid]['value'] += _to_float(r['value']) * _get_conversion_rate(code, effective_base, rate_map)
             top_products = [{'product_id': k, 'product__name': v['name'], 'value': v['value']} for k, v in sorted(prod_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]]
             
-            sp_rows = list(confirmed_qs.filter(**range_filter)
+            sp_rows = list(confirmed_range_qs
                 .values('user__name', 'user_id', 'currency_code')
                 .annotate(value=Sum('amount_total')))
             sp_map = {}
@@ -534,12 +688,16 @@ class SalesService:
                 base_qs = base_qs.filter(company_id__in=company_ids)
 
             # Apply specific metric filters
-            # Use date_order__date__range for date-only comparison, consistent
+            # Use (date_order)::date BETWEEN CAST(%s AS date) AND CAST(%s AS date), consistent
             # with get_dashboard() so both endpoints return matching totals.
             if metric == 'pipeline_value':
                 qs = base_qs.filter(state__in=['draft', 'sent'])
             elif metric in ['total_revenue', 'total_profit', 'order_count', 'avg_order_value']:
-                qs = base_qs.filter(state__in=['sale', 'done'], date_order__date__range=(initial_date, final_date))
+                qs = SalesService._apply_date_filter(
+                    base_qs.filter(state__in=['sale', 'done']),
+                    initial_date,
+                    final_date
+                )
             else:
                 raise ValidationError(f"Metric drill-down not supported for: {metric}")
 
@@ -649,12 +807,14 @@ class SalesService:
             if not target_date:
                 raise ValidationError("'day' parameter is required in YYYY-MM-DD format")
 
-            # Use date_order__date for date-only comparison, consistent
+            # Use (date_order)::date = CAST(%s AS date) for date-only comparison, consistent
             # with get_dashboard()'s TruncDate grouping so totals match.
-            base_qs = SalesOrder.objects.filter(
-                tenant_id=tenant_id,
-                state__in=['sale', 'done'],
-                date_order__date=target_date
+            base_qs = SalesService._apply_day_filter(
+                SalesOrder.objects.filter(
+                    tenant_id=tenant_id,
+                    state__in=['sale', 'done']
+                ),
+                target_date
             )
             if company_ids:
                 base_qs = base_qs.filter(company_id__in=company_ids)
@@ -760,9 +920,9 @@ class SalesService:
 
             base_qs = SalesOrder.objects.filter(
                 tenant_id=tenant_id,
-                state__in=['sale', 'done'],
-                date_order__date__range=(initial_date, final_date)
+                state__in=['sale', 'done']
             )
+            base_qs = SalesService._apply_date_filter(base_qs, initial_date, final_date)
             if company_ids:
                 base_qs = base_qs.filter(company_id__in=company_ids)
 
@@ -942,8 +1102,10 @@ class SalesService:
             lines_qs = SalesOrderLine.objects.filter(
                 tenant_id=tenant_id,
                 product_id=product_id,
-                sales_order__state__in=['sale', 'done'],
-                sales_order__date_order__date__range=(initial_date, final_date)
+                sales_order__state__in=['sale', 'done']
+            )
+            lines_qs = SalesService._apply_date_filter(
+                lines_qs, initial_date, final_date, date_column="fact_sales_orders.date_order"
             ).select_related(
                 'sales_order', 'sales_order__company', 'sales_order__partner', 'product'
             ).order_by('-sales_order__date_order')
@@ -1050,12 +1212,7 @@ class SalesService:
             )
             
             # Apply date filters if provided
-            if initial_date:
-                start_dt = timezone.make_aware(datetime.combine(initial_date, time.min))
-                qs = qs.filter(date_order__gte=start_dt)
-            if final_date:
-                end_dt = timezone.make_aware(datetime.combine(final_date, time.max))
-                qs = qs.filter(date_order__lte=end_dt)
+            qs = SalesService._apply_date_filter(qs, initial_date, final_date)
                 
             # Apply company filters if provided
             if company_ids:

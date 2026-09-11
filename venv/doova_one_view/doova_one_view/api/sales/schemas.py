@@ -78,7 +78,11 @@ class SearchFilter(BaseModel):
     """Filter criteria for advanced search"""
     field: str
     operator: str  # eq, gt, lt, between, contains, startswith, endswith, after, before
-    value: Union[str, int, float, List[Any], None]
+    value: Optional[Union[str, int, float, List[Any], None]] = None
+    max_value: Optional[Union[str, int, float, None]] = None
+    maxValue: Optional[Union[str, int, float, None]] = None
+
+    model_config = ConfigDict(extra='allow')
 
 
 class AdvancedSearchRequest(BaseModel):
@@ -86,6 +90,8 @@ class AdvancedSearchRequest(BaseModel):
     filters: List[SearchFilter]
     limit: int = Field(50, ge=1, le=500)
     offset: int = Field(0, ge=0)
+
+    model_config = ConfigDict(extra='allow')
 
 
 class KPIMetric(BaseModel):
@@ -217,6 +223,9 @@ class SearchRequest(BaseModel):
     limit: int = 50
     offset: int = 0
     companies: Optional[str] = None
+    company_id: Optional[Union[int, str, list[int]]] = None
+
+    model_config = ConfigDict(extra='allow')
 
 class MetricDetailOrder(BaseModel):
     id: int

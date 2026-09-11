@@ -406,11 +406,15 @@ def get_multi_currency_conversions(
                 WHERE 1=1 {t_sql_def} {f_sql_def} AND {state_filter}
             """
             params = {**t_params_def, **f_params_def}
-            if start_date:
-                comp_query += f" AND t.{date_col} >= :start_date"
+            if start_date and end_date:
+                comp_query += f" AND (t.{date_col})::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
                 params["start_date"] = start_date
-            if end_date:
-                comp_query += f" AND t.{date_col} <= :end_date"
+                params["end_date"] = end_date
+            elif start_date:
+                comp_query += f" AND (t.{date_col})::date >= CAST(:start_date AS date)"
+                params["start_date"] = start_date
+            elif end_date:
+                comp_query += f" AND (t.{date_col})::date <= CAST(:end_date AS date)"
                 params["end_date"] = end_date
             comp_query += " GROUP BY COALESCE(t.currency_code, c.currency_name, c.currency_code, 'XAF')"
             

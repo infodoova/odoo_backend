@@ -391,25 +391,55 @@ class DoovaLangChainAgent:
             )
         ]
 
-        # Use pre-loaded DB summary if available; otherwise generate if history is long
+        # Determine total completed prior messages in session to govern rolling summarization
+        prior_count = len(formatted_history)
+        if session_id:
+            try:
+                from odoo_app.models.agent import ChatMessage
+                total_db_msgs = ChatMessage.objects.filter(
+                    session_id=session_id, role__in=["user", "assistant"]
+                ).count()
+                # If current user message was already saved to DB in routes.py, completed count is total - 1
+                if total_db_msgs > 1:
+                    prior_count = total_db_msgs - 1
+            except Exception as e:
+                log_error("DoovaLangChainAgent.check_prior_count", e)
+
+        # Rolling summarization triggers:
+        # 1. At SUMMARIZE_EVERY_N (4 messages) when no summary exists yet
+        # 2. Every SUMMARIZE_EVERY_N messages (at 4, 8, 12, 16...) to incrementally incorporate new turns
+        every_n = AgentConfig.SUMMARIZE_EVERY_N
+        should_summarize = (
+            (prior_count >= every_n and not memory_summary)
+            or (prior_count >= every_n and (prior_count % every_n == 0))
+        )
+
+        if should_summarize and len(formatted_history) >= 2:
+            sum_start = time.time()
+            # If rolling from an existing summary, summarize the new turns since last cycle
+            to_summarize = formatted_history[-every_n:] if len(formatted_history) >= every_n else formatted_history
+            raw_summary = self.summarizer.summarize(to_summarize, existing_summary=memory_summary)
+            new_summary_generated = raw_summary
+            sum_duration = (time.time() - sum_start) * 1000
+            log_summarization(len(to_summarize), len(raw_summary), sum_duration)
+            if raw_summary:
+                memory_summary = raw_summary
+
+        # Format memory_summary for executor prompt and enforce passing ONLY the last 2 messages
         if memory_summary:
-            # Wrap the raw summary in structured context so the model knows how to use it
+            clean_summary = memory_summary
+            if "PRIOR SESSION FACTS" in clean_summary:
+                parts = clean_summary.split("):\n", 1)
+                if len(parts) == 2:
+                    clean_summary = parts[1].strip()
             memory_summary = (
                 "PRIOR SESSION FACTS (use this to avoid redundant tool calls and to contextualize "
                 "follow-up questions — do not re-fetch data that is already summarized here):\n"
-                + memory_summary
+                + clean_summary
             )
-            # DB has a persisted summary — use it with only the recent messages
-            active_history = formatted_history  # already limited to recent N in routes.py
-        elif len(formatted_history) >= AgentConfig.SUMMARIZE_EVERY_N:
-            # No persisted summary yet — generate and signal caller to save it
-            sum_start = time.time()
-            to_summarize = formatted_history[:-4]
-            active_history = list(formatted_history[-4:])
-            memory_summary = self.summarizer.summarize(to_summarize)
-            new_summary_generated = memory_summary
-            sum_duration = (time.time() - sum_start) * 1000
-            log_summarization(len(to_summarize), len(memory_summary), sum_duration)
+            # Pass strictly the last 2 messages (user + assistant) along with the summary
+            active_history = list(formatted_history[-2:]) if len(formatted_history) >= 2 else formatted_history
+
 
         # Guarantee that all multimodal image/document blocks remain present in active_history
         for mm_msg in multimodal_history_messages:

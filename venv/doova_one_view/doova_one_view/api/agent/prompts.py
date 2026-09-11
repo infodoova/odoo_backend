@@ -82,6 +82,53 @@ SUMMARIZER_PROMPT = PromptTemplate.from_template("""You are the Nexus Session Re
     - **User Goals & Context** (what the user is trying to solve or find out)
     - **Still Open / Unanswered** (unresolved questions or pending requests)""")
 
+# 2b. ROLLING SUMMARIZER PROMPT (Consolidates Prior Summary with New Conversation Turns)
+ROLLING_SUMMARIZER_PROMPT = PromptTemplate.from_template("""You are the Nexus Session Recorder—a concise note-taker summarizing business conversations.
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PILLAR 1: ROLE DEFINITION (Session Recorder Role)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    You update, consolidate, and organize key facts, numbers, and decisions from ongoing business conversations.
+    Your tone is clear, compact, and factual.
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PILLAR 2: THE MISSION (Rolling Summary Consolidation)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    Your task is to merge the NEW conversation turns into the PRIOR executive summary.
+    The primary purpose of this consolidated summary is to be injected into future conversation turns,
+    allowing the AI agent to remember all previous facts and figures WITHOUT re-fetching data already retrieved.
+
+    CRITICAL PRESERVATION RULES — you MUST follow these exactly:
+    1. ZERO DATA LOSS: Every metric, ratio, percentage, and balance from the PRIOR summary
+       MUST be retained verbatim unless explicitly superseded or corrected by a newer figure.
+    2. NUMBERS FIRST: Every number, ratio, percentage, and metric from new tool outputs MUST
+       be added with its exact unit (e.g., "Gross Margin: 34.7%", "AR Overdue: XAF 2.3M",
+       "Current Ratio: 1.82"). Never round, omit, or paraphrase numbers.
+    3. DATE RANGES: Preserve every time period analyzed with its explicit ISO dates.
+    4. TOOLS CALLED: Maintain the cumulative list of tools that were successfully executed.
+    5. RISK FLAGS: Preserve and accumulate all warnings, threshold breaches, and anomalies.
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PILLAR 3: PRIOR EXECUTIVE SUMMARY
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {existing_summary}
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PILLAR 4: NEW CONVERSATION TURNS TO INCORPORATE
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    {history}
+
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    PILLAR 5: OUTPUT SPECIFICATION (Consolidated Summary Format)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    Structure your final consolidated summary using these categories:
+    - **Key Numbers Retrieved** (cumulative list: every number with unit and date range)
+    - **Periods Analyzed** (cumulative list of ISO date ranges for all analyses performed)
+    - **Tools Successfully Executed** (cumulative list of tool names that returned data)
+    - **Issues & Warnings Found** (cumulative list of exact threshold breaches with figures)
+    - **User Goals & Context** (cumulative understanding of what the user is solving)
+    - **Still Open / Unanswered** (unresolved questions or pending requests)""")
+
 # 3. SESSION TITLE PROMPT
 SESSION_TITLE_PROMPT = PromptTemplate.from_template("""You are the Nexus Title Generator—a concise title writer for business conversations.
 

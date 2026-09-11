@@ -35,11 +35,15 @@ def get_salesperson_performance_tool(
     query += f_sql
     params.update(f_params)
     
-    if start_date: 
-        query += " AND o.date_order >= :start_date"
+    if start_date and end_date: 
+        query += " AND (o.date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date: 
-        query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (o.date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (o.date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
         
     query += " GROUP BY u.name ORDER BY total_revenue DESC"
@@ -90,11 +94,15 @@ def get_sales_pipeline_tool(
     query += f_sql
     params.update(f_params)
     
-    if start_date: 
-        query += " AND date_order >= :start_date"
+    if start_date and end_date: 
+        query += " AND (date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date: 
-        query += " AND date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
         
     query += " GROUP BY state"
@@ -161,11 +169,15 @@ def get_discount_leakage_tool(
     query += f_sql
     params.update(f_params)
     
-    if start_date: 
-        query += " AND o.date_order >= :start_date"
+    if start_date and end_date: 
+        query += " AND (o.date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date: 
-        query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (o.date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (o.date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
         
     rows = run_query(query, params)
@@ -182,8 +194,12 @@ def get_discount_leakage_tool(
         WHERE 1=1 {t_sql_l} AND o.state IN ('sale', 'done') AND COALESCE(l.discount, 0) > 0
     """
     top_query += f_sql
-    if start_date: top_query += " AND o.date_order >= :start_date"
-    if end_date: top_query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+    if start_date and end_date:
+        top_query += " AND (o.date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
+    elif start_date:
+        top_query += " AND (o.date_order)::date >= CAST(:start_date AS date)"
+    elif end_date:
+        top_query += " AND (o.date_order)::date <= CAST(:end_date AS date)"
     top_query += " GROUP BY p.name ORDER BY discount_value DESC LIMIT 5"
     
     top_rows = run_query(top_query, params)
@@ -288,11 +304,15 @@ def get_order_to_cash_cycle_tool(
     query += f_sql
     params.update(f_params)
     
-    if start_date: 
-        query += " AND o.date_order >= :start_date"
+    if start_date and end_date: 
+        query += " AND (o.date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date: 
-        query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (o.date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (o.date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
         
     rows = run_query(query, params)
@@ -334,11 +354,15 @@ def get_revenue_by_category_tool(
     query += f_sql
     params.update(f_params)
     
-    if start_date: 
-        query += " AND o.date_order >= :start_date"
+    if start_date and end_date: 
+        query += " AND (o.date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date: 
-        query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (o.date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (o.date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
         
     query += " GROUP BY c.complete_name ORDER BY revenue DESC"

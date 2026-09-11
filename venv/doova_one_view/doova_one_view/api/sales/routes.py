@@ -261,7 +261,9 @@ async def search_sales_orders(
 ) -> PaginatedResponse[SalesOrderRead]:
     """Advanced search for sales orders with complex filters"""
     await TenantService.get_tenant(tenant_id, str(user.id))
-    company_ids = parse_company_ids(request.companies)
+    company_ids = parse_company_ids(
+        request.company_id if getattr(request, "company_id", None) is not None else request.companies
+    )
     return await SalesService.search_orders(
         tenant_id, request.filters, request.limit, request.offset, company_ids
     )

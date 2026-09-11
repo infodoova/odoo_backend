@@ -257,7 +257,10 @@ class WebSearchAgent:
 
         # Build message history for Anthropic API
         messages: List[Dict[str, Any]] = []
-        for msg in (chat_history or []):
+        raw_history = list(chat_history or [])
+        if memory_summary and len(raw_history) >= 2:
+            raw_history = raw_history[-2:]
+        for msg in raw_history:
             role = msg.get("role", "user")
             content = msg.get("content", "")
             if role in ("user", "assistant") and content:

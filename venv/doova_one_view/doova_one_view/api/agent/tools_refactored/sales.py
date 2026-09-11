@@ -31,11 +31,15 @@ def get_sales_summary_tool(
     f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids)
     query += f_sql
     params.update(f_params)
-    if start_date:
-        query += " AND date_order >= :start_date"
+    if start_date and end_date:
+        query += " AND (date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date:
-        query += " AND date_order <= :end_date"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
     rows = run_query(query, params)
     row = rows[0] if rows else {}
@@ -86,11 +90,15 @@ def get_top_products_tool(
     f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids, column_name="l.company_id")
     query += f_sql
     params.update(f_params)
-    if start_date:
-        query += " AND o.date_order >= :start_date"
+    if start_date and end_date:
+        query += " AND (o.date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date:
-        query += " AND o.date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        query += " AND (o.date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        query += " AND (o.date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
     query += " GROUP BY l.product_id, p.name ORDER BY revenue DESC LIMIT :limit"
     rows = run_query(query, params)
@@ -117,11 +125,15 @@ def get_time_series_data_tool(
     params.update(f_params)
 
     date_filter = ""
-    if start_date:
-        date_filter += " AND date_order >= :start_date"
+    if start_date and end_date:
+        date_filter += " AND (date_order)::date BETWEEN CAST(:start_date AS date) AND CAST(:end_date AS date)"
         params["start_date"] = start_date
-    if end_date:
-        date_filter += " AND date_order < (CAST(:end_date AS date) + INTERVAL '1 day')"
+        params["end_date"] = end_date
+    elif start_date:
+        date_filter += " AND (date_order)::date >= CAST(:start_date AS date)"
+        params["start_date"] = start_date
+    elif end_date:
+        date_filter += " AND (date_order)::date <= CAST(:end_date AS date)"
         params["end_date"] = end_date
 
     query = f"SELECT DATE_TRUNC('{granularity}', date_order) AS period, COALESCE(SUM({amount_col}), 0) AS revenue, COUNT(*) AS order_count FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done') AND date_order IS NOT NULL {date_filter} {f_sql} GROUP BY period ORDER BY period ASC"

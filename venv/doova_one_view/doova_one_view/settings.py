@@ -128,10 +128,9 @@ if db_url:
             'PASSWORD': urllib.parse.unquote(url.password) if url.password else '',
             'HOST': url.hostname,
             'PORT': url.port or 5432,
+            'TIME_ZONE': os.environ.get('DB_TIME_ZONE', 'America/Los_Angeles'),
             'CONN_MAX_AGE': int(os.environ.get('CONN_MAX_AGE', 60)),
             'CONN_HEALTH_CHECKS': True,
-            # Integration tests require live ETL data — point test runner at the real DB
-            'TEST': {'NAME': url.path[1:] if url.path else ''},
         }
     }
 else:
@@ -143,10 +142,9 @@ else:
             'PASSWORD': os.environ.get('DB_PASSWORD', '123456'),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
+            'TIME_ZONE': os.environ.get('DB_TIME_ZONE', 'America/Los_Angeles'),
             'CONN_MAX_AGE': int(os.environ.get('CONN_MAX_AGE', 60)),
             'CONN_HEALTH_CHECKS': True,
-            # Integration tests require live ETL data — point test runner at the real DB
-            'TEST': {'NAME': os.environ.get('DB_NAME', 'odoo')},
         }
     }
 
@@ -175,7 +173,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Los_Angeles'
 
 USE_I18N = True
 
