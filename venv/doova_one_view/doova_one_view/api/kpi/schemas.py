@@ -82,6 +82,8 @@ class KPILineItem(BaseModel):
     purchase_price: Optional[float] = None
     description: Optional[str] = None
     date_planned: Optional[str] = None
+    currency: Optional[str] = None
+    currency_code: Optional[str] = None
 
 
 class KPIOrder(BaseModel):
@@ -103,6 +105,7 @@ class KPIOrder(BaseModel):
     time: Optional[str] = None
     state: str
     invoice_status: Optional[str] = None
+    currency: Optional[str] = None
     currency_code: str
     type: str
     line_count: int
@@ -159,13 +162,14 @@ class AgingInvoiceItem(BaseModel):
     id: int
     odoo_id: int
     invoice_number: str
-    invoice_reference: str
-    invoice_origin: str
+    invoice_reference: str = ""
+    invoice_origin: str = ""
     # Amounts
     amount_total: float
     amount_untaxed: float
     amount_tax: float
     amount_residual: float
+    currency: Optional[str] = None
     currency_code: str
     # Dates
     invoice_date: Optional[str] = None
@@ -174,8 +178,8 @@ class AgingInvoiceItem(BaseModel):
     payment_state: str
     # Client & company
     client: AgingClientDetail
-    partner_name: str
-    company_name: str
+    partner_name: str = ""
+    company_name: str = ""
     tenant_id: str
     tenant_name: str
 
@@ -199,24 +203,31 @@ class AgingBucketDetailResponse(BaseModel):
 class CustomerContact(BaseModel):
     email: str = ""
     phone: str = ""
+    mobile: str = ""
+    street: str = ""
     city: str = ""
     country: str = ""
+    website: str = ""
     is_customer: bool = True
 
 
 class CustomerOrderLine(BaseModel):
     id: int
+    odoo_id: Optional[int] = None
+    product_id: Optional[int] = None
     product_name: str
-    product_code: str
-    description: str
+    product_code: str = ""
+    description: str = ""
     quantity: float
-    qty_delivered: float
-    qty_invoiced: float
+    qty_delivered: Optional[float] = None
+    qty_invoiced: Optional[float] = None
     price_unit: float
-    discount: float
+    discount: Optional[float] = None
     price_subtotal: float
     price_total: float
-    margin: float
+    margin: Optional[float] = None
+    currency: Optional[str] = None
+    currency_code: Optional[str] = None
 
 
 class CustomerOrderReceipt(BaseModel):
@@ -227,6 +238,7 @@ class CustomerOrderReceipt(BaseModel):
     order_datetime: Optional[str] = None
     state: str
     invoice_status: str
+    currency: Optional[str] = None
     currency_code: str
     amount_untaxed: float
     amount_tax: float
@@ -272,6 +284,8 @@ class ProductOrderReceipt(BaseModel):
     company_name: str
     tenant_id: str
     tenant_name: str
+    currency: Optional[str] = None
+    currency_code: Optional[str] = None
 
 
 class ProductDetail(BaseModel):

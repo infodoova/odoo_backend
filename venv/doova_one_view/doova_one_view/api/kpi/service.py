@@ -1193,6 +1193,7 @@ class KPIService:
             def _line_to_receipt(line: SOLine) -> dict[str, Any]:
                 so = line.sales_order
                 partner = so.partner
+                so_curr = so.currency_code or ""
                 return {
                     "order_id": so.id,
                     "order_number": so.odoo_name or "",
@@ -1208,6 +1209,8 @@ class KPIService:
                     "company_name": so.company.name if so.company else "",
                     "tenant_id": str(so.tenant_id),
                     "tenant_name": so.tenant.name if so.tenant else "",
+                    "currency": so_curr,
+                    "currency_code": so_curr,
                 }
 
             return {
@@ -1369,6 +1372,7 @@ class KPIService:
 
             def _order_to_receipt(order: SalesOrder) -> dict[str, Any]:
                 order_lines = list(order.lines.all())
+                curr = order.currency_code or ""
                 return {
                     "id": order.id,
                     "odoo_id": order.odoo_id,
@@ -1377,7 +1381,8 @@ class KPIService:
                     "order_datetime": order.date_order.isoformat() if order.date_order else None,
                     "state": order.state,
                     "invoice_status": order.invoice_status or "",
-                    "currency_code": order.currency_code or "",
+                    "currency": curr,
+                    "currency_code": curr,
                     "amount_untaxed": _to_float(order.amount_untaxed),
                     "amount_tax": _to_float(order.amount_tax),
                     "amount_total": _to_float(order.amount_total),
@@ -1388,6 +1393,8 @@ class KPIService:
                     "lines": [
                         {
                             "id": line.id,
+                            "odoo_id": getattr(line, "odoo_id", None) or line.id,
+                            "product_id": line.product_id,
                             "product_name": line.product.name if line.product else "",
                             "product_code": getattr(line.product, "default_code", "") or "" if line.product else "",
                             "description": getattr(line, "name", "") or "",
@@ -1399,6 +1406,8 @@ class KPIService:
                             "price_subtotal": _to_float(line.price_subtotal),
                             "price_total": _to_float(line.price_total),
                             "margin": _to_float(line.margin),
+                            "currency": curr,
+                            "currency_code": curr,
                         }
                         for line in order_lines
                     ],
@@ -1752,6 +1761,7 @@ class KPIService:
                             "amount_untaxed": _to_float(m.amount_untaxed),
                             "amount_tax": _to_float(m.amount_tax),
                             "amount_residual": residual_val,
+                            "currency": m.currency_code or "XAF",
                             "currency_code": m.currency_code or "XAF",
                             "invoice_date": m.invoice_date.isoformat() if m.invoice_date else (m.date.isoformat() if m.date else None),
                             "invoice_date_due": m.invoice_date_due.isoformat() if m.invoice_date_due else None,
@@ -1856,6 +1866,7 @@ class KPIService:
                     "amount_untaxed": _to_float(m.amount_untaxed),
                     "amount_tax": _to_float(m.amount_tax),
                     "amount_residual": _to_float(m.amount_residual),
+                    "currency": m.currency_code or "",
                     "currency_code": m.currency_code or "",
                     # Dates
                     "invoice_date": m.invoice_date.isoformat() if m.invoice_date else (m.date.isoformat() if m.date else None),
@@ -2707,7 +2718,7 @@ class KPIService:
         return qs
 
     @staticmethod
-    def _so_line_to_item(line) -> dict[str, Any]:
+    def _so_line_to_item(line, currency: str = "") -> dict[str, Any]:
         product = line.product
         return {
             "id": line.id,
@@ -2724,6 +2735,8 @@ class KPIService:
             "discount": _to_float(line.discount),
             "margin": _to_float(line.margin),
             "purchase_price": _to_float(line.purchase_price),
+            "currency": currency,
+            "currency_code": currency,
         }
 
     @staticmethod
@@ -2734,6 +2747,7 @@ class KPIService:
         categories = list(dict.fromkeys(
             line.product.name for line in order_lines if line.product and line.product.name
         ))
+        curr = order.currency_code or ""
         return {
             "id": order.id,
             "odoo_id": order.odoo_id,
@@ -2753,14 +2767,15 @@ class KPIService:
             "time": order.date_order.isoformat() if order.date_order else None,
             "state": order.state,
             "invoice_status": order.invoice_status,
-            "currency_code": order.currency_code,
+            "currency": curr,
+            "currency_code": curr,
             "type": "revenue",
-            "lines": [KPIService._so_line_to_item(l) for l in order_lines],
+            "lines": [KPIService._so_line_to_item(l, curr) for l in order_lines],
             "line_count": len(order_lines),
         }
 
     @staticmethod
-    def _po_line_to_item(line) -> dict[str, Any]:
+    def _po_line_to_item(line, currency: str = "") -> dict[str, Any]:
         product = line.product
         return {
             "id": line.id,
@@ -2776,6 +2791,8 @@ class KPIService:
             "price_subtotal": _to_float(line.price_subtotal),
             "price_total": _to_float(line.price_total),
             "date_planned": line.date_planned.isoformat() if line.date_planned else None,
+            "currency": currency,
+            "currency_code": currency,
         }
 
     @staticmethod
@@ -2786,6 +2803,7 @@ class KPIService:
         categories = list(dict.fromkeys(
             line.product.name for line in order_lines if line.product and line.product.name
         ))
+        curr = order.currency_code or ""
         return {
             "id": order.id,
             "odoo_id": order.odoo_id,
@@ -2805,9 +2823,10 @@ class KPIService:
             "time": order.date_order.isoformat() if order.date_order else None,
             "state": order.state,
             "invoice_status": order.invoice_status,
-            "currency_code": order.currency_code,
+            "currency": curr,
+            "currency_code": curr,
             "type": "expense",
-            "lines": [KPIService._po_line_to_item(l) for l in order_lines],
+            "lines": [KPIService._po_line_to_item(l, curr) for l in order_lines],
             "line_count": len(order_lines),
         }
 
