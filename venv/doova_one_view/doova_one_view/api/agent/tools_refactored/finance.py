@@ -921,7 +921,6 @@ def get_executive_summary_tool(tenant_ids: Optional[list[str]] = None, company_i
     from doova_one_view.api.accounting.service import AccountingService
     c_ids = normalize_company_ids(company_ids=company_ids)
     summary = AccountingService._calc_executive_summary_sync(
-        tenant_id=tenant_id,
         start_date=start_date,
         end_date=end_date,
         company_ids=c_ids,

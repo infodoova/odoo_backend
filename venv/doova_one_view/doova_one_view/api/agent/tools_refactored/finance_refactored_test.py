@@ -510,9 +510,8 @@ def detect_anomalies_tool(tenant_ids: Optional[list[str]] = None, company_ids: O
 
     from doova_one_view.api.jobs.alert_prechecks import run_all_prechecks
     prechecks = run_all_prechecks(
-        tenant_id,
-        company_ids=normalize_company_ids(company_ids=company_ids),
         tenant_ids=tenant_ids,
+        company_ids=normalize_company_ids(company_ids=company_ids),
     )
 
     return {
@@ -876,7 +875,6 @@ def calculate_pnl_tool(tenant_ids: Optional[list[str]] = None, company_ids: Opti
     from doova_one_view.api.accounting.service import AccountingService
     c_ids = normalize_company_ids(company_ids=company_ids)
     stats = AccountingService._calc_pnl_sync(
-        tenant_id=tenant_id,
         start_date=start_date,
         end_date=end_date,
         company_ids=c_ids,
@@ -924,7 +922,6 @@ def get_executive_summary_tool(tenant_ids: Optional[list[str]] = None, company_i
     from doova_one_view.api.accounting.service import AccountingService
     c_ids = normalize_company_ids(company_ids=company_ids)
     summary = AccountingService._calc_executive_summary_sync(
-        tenant_id=tenant_id,
         start_date=start_date,
         end_date=end_date,
         company_ids=c_ids,
@@ -1113,7 +1110,7 @@ def get_trial_balance_tool(tenant_ids: Optional[list[str]] = None, company_ids: 
 
 def get_financial_ratios_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None, start_date: str | None = None, end_date: str | None = None, as_of_date: str | None = None, base_currency: str | None = None) -> dict:
     bs = get_balance_sheet_tool(tenant_ids=tenant_ids, company_ids=company_ids, as_of_date=as_of_date or end_date, base_currency=base_currency)
-    pnl = calculate_pnl_tool(tenant_id, company_id=company_id, company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
+    pnl = calculate_pnl_tool(company_ids=company_ids, start_date=start_date, end_date=end_date, base_currency=base_currency, tenant_ids=tenant_ids)
     inv_data = get_inventory_efficiency_tool(tenant_ids=tenant_ids, company_ids=company_ids)
     inventory_value = inv_data.get("total_inventory_value", 0)
 

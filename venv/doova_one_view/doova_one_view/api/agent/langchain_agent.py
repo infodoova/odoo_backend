@@ -294,12 +294,28 @@ class DoovaLangChainAgent:
         return getattr(self, "last_token_usage", None) or self.callback_handler.get_turn_token_usage()
 
     def _format_history(self, history: list) -> list:
+        # Canned rejection apologies — skip these turns from context (they carry no business info
+        # and, if recent, would displace substantive entity references like company names)
+        _REJECTION_STARTERS = (
+            "عذراً، يمكنني المساعدة فقط",
+            "I'm sorry, I can only assist with business",
+            "Lo siento, solo puedo responder",
+            "Désolé, je ne peux répondre",
+        )
+
         formatted = []
         for msg in history:
             content = msg.get("content", "")
             payload = msg.get("payload") or {}
             attachments = msg.get("attachments") or payload.get("attachments") or []
-            
+
+            # Skip rejection turns — they carry no useful business context
+            if payload.get("is_rejected"):
+                continue
+            if msg.get("role") == "assistant" and isinstance(content, str):
+                if any(content.strip().startswith(s) for s in _REJECTION_STARTERS):
+                    continue
+
             if msg.get("role") == "user":
                 if attachments:
                     from .attachment_processor import process_attachments
@@ -352,15 +368,18 @@ class DoovaLangChainAgent:
         attachments: list = None,
         session_id: str | None = None,
         is_voice: bool = False,
-        language: str | None = None
+        language: str | None = None,
+        tenant_id: str | None = None,
     ) -> str:
         start = time.time()
         self.callback_handler.reset()
         formatted_history = self._format_history(chat_history or [])
         
         from .query_context import normalize_company_ids, normalize_tenant_ids
+        if tenant_id and not tenant_ids:
+            tenant_ids = [tenant_id]
         resolved_tenant_ids = normalize_tenant_ids(tenant_ids)
-        primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else "default"
+        primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else (tenant_id or "default")
 
         resolved_company_ids = normalize_company_ids(company_ids)
         resolved_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
@@ -437,8 +456,10 @@ class DoovaLangChainAgent:
                 "follow-up questions — do not re-fetch data that is already summarized here):\n"
                 + clean_summary
             )
-            # Pass strictly the last 2 messages (user + assistant) along with the summary
-            active_history = list(formatted_history[-2:]) if len(formatted_history) >= 2 else formatted_history
+            # Pass the last 6 messages (3 turns) along with the summary.
+            # Using 6 instead of 2 preserves entity context (e.g. company names) that the
+            # LLM needs for pronoun resolution in follow-up questions.
+            active_history = list(formatted_history[-6:]) if len(formatted_history) >= 2 else formatted_history
 
 
         # Guarantee that all multimodal image/document blocks remain present in active_history

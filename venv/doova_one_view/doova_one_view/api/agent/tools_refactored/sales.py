@@ -21,7 +21,10 @@ def get_sales_summary_tool(
     end_date: str | None = None,
     period: str = "selected_period",
     base_currency: str | None = None,
+    tenant_id: Optional[str] = None,
 ) -> dict:
+    if tenant_id and not tenant_ids:
+        tenant_ids = [tenant_id]
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     selected_company_ids = normalize_company_ids(company_ids=company_ids)
     amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
@@ -68,7 +71,10 @@ def get_top_products_tool(
     end_date: str | None = None,
     limit: int = 10,
     base_currency: str | None = None,
+    tenant_id: Optional[str] = None,
 ) -> dict:
+    if tenant_id and not tenant_ids:
+        tenant_ids = [tenant_id]
     t_sql_l, t_params_l = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="l.tenant_id", prefix="t_l")
     selected_company_ids = normalize_company_ids(company_ids=company_ids)
     price_col = build_currency_case_sql('l.price_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code')
@@ -116,7 +122,10 @@ def get_time_series_data_tool(
     base_currency: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
+    tenant_id: Optional[str] = None,
 ) -> dict:
+    if tenant_id and not tenant_ids:
+        tenant_ids = [tenant_id]
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
     params = {}
@@ -145,15 +154,19 @@ def get_sales_chart_data_tool(
     company_ids: Optional[list[int]] = None,
     granularity: str = "month",
     base_currency: str | None = None,
+    tenant_id: Optional[str] = None,
 ) -> dict:
-    data = get_time_series_data_tool(tenant_ids=tenant_ids, company_ids=company_ids, granularity=granularity, base_currency=base_currency)
+    data = get_time_series_data_tool(tenant_ids=tenant_ids, company_ids=company_ids, granularity=granularity, base_currency=base_currency, tenant_id=tenant_id)
     return {"tool_name": "get_sales_chart_data_tool", "chart": {"type": "line", "data": data.get('points')}}
 
 def analyze_variance_tool(
     tenant_ids: Optional[list[str]] = None,
     company_ids: Optional[list[int]] = None,
     base_currency: str | None = None,
+    tenant_id: Optional[str] = None,
 ) -> dict:
+    if tenant_id and not tenant_ids:
+        tenant_ids = [tenant_id]
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     selected_company_ids = normalize_company_ids(company_ids=company_ids)
     f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids)
@@ -173,7 +186,10 @@ def forecast_sales_tool(
     tenant_ids: Optional[list[str]] = None,
     company_ids: Optional[list[int]] = None,
     base_currency: str | None = None,
+    tenant_id: Optional[str] = None,
 ) -> dict:
+    if tenant_id and not tenant_ids:
+        tenant_ids = [tenant_id]
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     params = {}
     params.update(t_params_def)

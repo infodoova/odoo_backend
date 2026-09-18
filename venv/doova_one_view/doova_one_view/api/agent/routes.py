@@ -38,8 +38,10 @@ class ChatRequest(BaseModel):
     prompt: Optional[str] = Field(default=None)
 
     tenant_ids: Optional[Union[List[str], str]] = Field(alias="tenantIds", default=None)
+    tenant_id: Optional[str] = Field(alias="tenantId", default=None)
     session_id: str = Field(alias="sessionId", default="default_session")
     company_ids: Optional[Union[List[Union[int, str]], Union[int, str]]] = Field(alias="companyIds", default=None)
+    company_id: Optional[Union[int, str]] = Field(alias="companyId", default=None)
 
     chat_history: Optional[List[dict]] = Field(default=[])
     web_search: Optional[bool] = Field(alias="webSearch", default=False)
@@ -51,38 +53,30 @@ class ChatRequest(BaseModel):
     @classmethod
     def normalize_aliases(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            # Map legacy or frontend aliases to tenant_ids
-            if "tenant_ids" not in data and "tenantIds" not in data:
-                if "tenantId" in data:
-                    data["tenant_ids"] = data["tenantId"]
-                elif "tenant_id" in data:
-                    data["tenant_ids"] = data["tenant_id"]
-            # Map legacy or frontend aliases to company_ids
-            if "company_ids" not in data and "companyIds" not in data:
-                if "companyId" in data:
-                    data["company_ids"] = data["companyId"]
-                elif "company_id" in data:
-                    data["company_ids"] = data["company_id"]
+            t_id = data.get("tenant_id") or data.get("tenantId")
+            t_ids = data.get("tenant_ids") or data.get("tenantIds")
+            if t_id and not data.get("tenant_id"):
+                data["tenant_id"] = t_id
+            if t_id and t_ids:
+                if isinstance(t_ids, list):
+                    data["tenant_ids"] = [t_id] + [x for x in t_ids if x != t_id]
+                else:
+                    data["tenant_ids"] = [t_id, t_ids]
+            elif t_id and not t_ids:
+                data["tenant_ids"] = t_id
+
+            c_id = data.get("company_id") or data.get("companyId")
+            c_ids = data.get("company_ids") or data.get("companyIds")
+            if c_id is not None and not data.get("company_id"):
+                data["company_id"] = c_id
+            if c_id is not None and c_ids is not None:
+                if isinstance(c_ids, list):
+                    data["company_ids"] = [c_id] + [x for x in c_ids if x != c_id]
+                else:
+                    data["company_ids"] = [c_id, c_ids]
+            elif c_id is not None and c_ids is None:
+                data["company_ids"] = c_id
         return data
-
-    @property
-    def tenant_id(self) -> Optional[str]:
-        if isinstance(self.tenant_ids, list):
-            return self.tenant_ids[0] if self.tenant_ids else None
-        return self.tenant_ids
-
-    @property
-    def company_id(self) -> Optional[int]:
-        if isinstance(self.company_ids, list):
-            val = self.company_ids[0] if self.company_ids else None
-        else:
-            val = self.company_ids
-        if val is None:
-            return None
-        try:
-            return int(val)
-        except (ValueError, TypeError):
-            return None
 
     # Fallback for 'message' vs 'text'
     @property
@@ -95,17 +89,42 @@ def extract_context_ids(req_data: Union[ChatRequest, dict]):
     Returns: (primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids)
     """
     if isinstance(req_data, ChatRequest):
-        raw_tenants = req_data.tenant_ids
-        raw_companies = req_data.company_ids
+        t_single = getattr(req_data, "tenant_id", None)
+        t_multi = getattr(req_data, "tenant_ids", None)
+        c_single = getattr(req_data, "company_id", None)
+        c_multi = getattr(req_data, "company_ids", None)
     else:
-        raw_tenants = req_data.get("tenant_ids") or req_data.get("tenantIds") or req_data.get("tenant_id") or req_data.get("tenantId")
-        raw_companies = req_data.get("company_ids") or req_data.get("companyIds") or req_data.get("company_id") or req_data.get("companyId")
+        t_single = req_data.get("tenant_id") or req_data.get("tenantId")
+        t_multi = req_data.get("tenant_ids") or req_data.get("tenantIds")
+        c_single = req_data.get("company_id") or req_data.get("companyId")
+        c_multi = req_data.get("company_ids") or req_data.get("companyIds")
+
+    raw_tenants = []
+    if t_single:
+        raw_tenants.append(t_single)
+    if t_multi:
+        if isinstance(t_multi, list):
+            raw_tenants.extend(t_multi)
+        else:
+            raw_tenants.append(t_multi)
+
+    raw_companies = []
+    if c_single is not None:
+        raw_companies.append(c_single)
+    if c_multi is not None:
+        if isinstance(c_multi, list):
+            raw_companies.extend(c_multi)
+        else:
+            raw_companies.append(c_multi)
 
     resolved_tenant_ids = normalize_tenant_ids(raw_tenants)
     resolved_company_ids = normalize_company_ids(raw_companies)
 
-    primary_tenant_id = resolved_tenant_ids[0] if resolved_tenant_ids else None
-    primary_company_id = resolved_company_ids[0] if len(resolved_company_ids) == 1 else None
+    clean_single_t = normalize_tenant_ids([t_single])[0] if t_single and normalize_tenant_ids([t_single]) else None
+    primary_tenant_id = clean_single_t or (resolved_tenant_ids[0] if resolved_tenant_ids else None)
+
+    clean_single_c = normalize_company_ids([c_single])[0] if c_single is not None and normalize_company_ids([c_single]) else None
+    primary_company_id = clean_single_c if clean_single_c is not None else (resolved_company_ids[0] if len(resolved_company_ids) == 1 else None)
 
     return primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids
 
@@ -342,9 +361,28 @@ async def chat_endpoint(request: Request):
     session_tenant_id = primary_tenant_id or "default"
     session = await sync_to_async(session_manager.get_or_create_session)(current_session_id, session_tenant_id, user_message)
     
-    # Initialize thread-safe session context with active date window
-    from .session_context import set_session_context
-    set_session_context(current_session_id, session.active_date_window)
+    # Initialize thread-safe session context with active date window + scope IDs
+    from .session_context import set_session_context, get_active_tenant_ids, get_active_company_ids
+    set_session_context(
+        current_session_id,
+        session.active_date_window,
+        tenant_ids=resolved_tenant_ids or None,
+        company_ids=resolved_company_ids or None,
+    )
+
+    # If the request did not supply tenant/company scope (e.g. voice mode sends bare query),
+    # inherit the active scope from the persisted session context.
+    if not resolved_tenant_ids:
+        inherited_tids = get_active_tenant_ids(current_session_id)
+        if inherited_tids:
+            resolved_tenant_ids = inherited_tids
+            primary_tenant_id = inherited_tids[0]
+            logger.info(f"SCOPE INHERIT | Session {current_session_id}: tenant_ids inherited from session -> {inherited_tids}")
+    if not resolved_company_ids:
+        inherited_cids = get_active_company_ids(current_session_id)
+        if inherited_cids:
+            resolved_company_ids = inherited_cids
+            logger.info(f"SCOPE INHERIT | Session {current_session_id}: company_ids inherited from session -> {inherited_cids}")
 
     # Retrieve persisted summary (from last summarization cycle)
     db_summary = session.summary or ""
@@ -635,8 +673,20 @@ async def chat_endpoint(request: Request):
             "hoy", "ayer", "año", "mes", "trimestre", "semana", "ventas", "ingresos", "ganancias", "ambos",
             "clientes", "proveedores", "facturas", "pedidos", "compras", "inventario", "productos", "detalle",
             "competidores", "competencia", "mercado",
-            # Arabic & Transliterated
-            "مبيعات", "ارباح", "عملاء", "موردين", "مخزون", "فواتير", "منتجات", "منافسين", "المنافسين", "السوق", "mabi3at", "arba7", "omala"
+            # Arabic & Transliterated (including inflected pronouns attached to stems)
+            "مبيعات", "مبيعاتها", "مبيعاتهم", "مبيعاتنا",
+            "ارباح", "أرباح", "أرباحها", "أرباحهم",
+            "ايراد", "إيراد", "ايراداتها",
+            "عملاء", "عملائها",
+            "موردين", "موردينها",
+            "مخزون", "مخزونها",
+            "فواتير", "فواتيرها",
+            "منتجات", "منتجاتها",
+            "تكاليف", "تكاليفها",
+            "منافسين", "المنافسين", "السوق",
+            "مشتريات", "مشترياتها",
+            "مصروفات", "مصروفاتها",
+            "mabi3at", "arba7", "omala"
         }
         clean_word_set = {w.lower().strip("!?.,;:'\"") for w in clean_words}
         # Override REJECT if the utterance contains explicit business keywords, timeframe adjustments, or web search is requested
@@ -659,7 +709,7 @@ async def chat_endpoint(request: Request):
             answer = "عذراً، يمكنني المساعدة فقط في الأسئلة المالية والتجارية المتعلقة ببيانات Odoo الخاصة بك."
         else:
             answer = "I'm sorry, I can only assist with business and financial questions related to your Odoo data."
-        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, payload={"is_rejected": True})
         duration = (time.time() - request_start) * 1000
         logger.info(f"REQUEST REJECTED in {duration:.0f}ms")
         return {"answer": answer}

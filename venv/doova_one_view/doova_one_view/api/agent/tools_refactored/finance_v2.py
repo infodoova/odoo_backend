@@ -13,9 +13,12 @@ def get_cash_flow_statement_tool(
     end_date: str | None = None,
     base_currency: str | None = None,
     source: str = "auto",
+    tenant_id: Optional[str] = None,
 ) -> dict:
     """Generate the structured Cash Flow Statement (Operating, Investing, Financing, Unclassified) matching Odoo with full itemized details."""
     from doova_one_view.api.accounting.service import AccountingService
+    if tenant_id and not tenant_ids:
+        tenant_ids = [tenant_id]
     cf = AccountingService._calc_cash_flow_sync(
         tenant_ids=tenant_ids,
         company_ids=company_ids,

@@ -1261,7 +1261,7 @@ class AccountingService:
             elif atype == "expense_depreciation":
                 depreciation += net_d
             elif atype == "expense":
-                if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                if not AccountingService._is_tag4_purchase_expense(tenant_ids=tenant_ids, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
                     opex += net_d
             elif atype in ("asset_cash", "liability_credit_card"):
                 cash_received += deb
@@ -1273,7 +1273,7 @@ class AccountingService:
         cash_surplus = cash_received + cash_spent
         
         # 2. Cumulative Balance Sheet up to end_date
-        cum_qs = AccountingService._base_qs(tenant_id, company_ids)
+        cum_qs = AccountingService._base_qs(tenant_ids=tenant_ids, company_ids=company_ids)
         if end_date:
             cum_qs = cum_qs.filter(date__lte=end_date)
         cum_qs = cum_qs.filter(state='posted')
