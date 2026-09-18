@@ -117,23 +117,30 @@ def normalize_tenant_ids(tenant_ids: Any = None) -> List[str]:
         return []
 
     processed_ids: List[str] = []
-    items = []
-    if isinstance(tenant_ids, (list, tuple, set)):
-        items = list(tenant_ids)
-    elif isinstance(tenant_ids, str):
-        s = tenant_ids.strip()
-        if s.lower() in ("none", "null", "all", ""):
-            items = []
-        else:
+    items = list(tenant_ids) if isinstance(tenant_ids, (list, tuple, set)) else [tenant_ids]
+
+    flattened = []
+    for item in items:
+        if item is None:
+            continue
+        if isinstance(item, (list, tuple, set)):
+            flattened.extend(list(item))
+        elif isinstance(item, str):
+            s = item.strip()
+            if s.lower() in ("none", "null", "all", ""):
+                continue
             found_uuids = re.findall(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', s)
             if found_uuids:
-                items = found_uuids
+                flattened.extend(found_uuids)
             else:
-                items = [t.strip().strip("'\"") for t in s.strip("[]").split(",") if t.strip()]
-    else:
-        items = [tenant_ids]
+                for t in s.strip("[]").split(","):
+                    clean_t = t.strip().strip("'\"")
+                    if clean_t and clean_t.lower() not in ("none", "null", "all", ""):
+                        flattened.append(clean_t)
+        else:
+            flattened.append(item)
 
-    for val in items:
+    for val in flattened:
         clean = resolve_tenant_id(str(val))
         if clean:
             processed_ids.append(clean)

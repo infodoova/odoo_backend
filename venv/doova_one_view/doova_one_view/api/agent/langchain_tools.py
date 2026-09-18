@@ -65,18 +65,11 @@ def _resolve_and_sync_tenant(tenant_ids: "TenantIdsType" = None) -> "TenantIdsTy
     from .session_context import get_active_tenant_ids, update_active_tenant_ids
     from .query_context import normalize_tenant_ids as _norm_tids
 
-    # Normalise whatever the LLM passed (string, list, None)
-    if isinstance(tenant_ids, str):
-        tenant_ids = [tenant_ids] if tenant_ids.strip() and tenant_ids.strip() not in ("[]", "null", "none") else []
-    elif isinstance(tenant_ids, list):
-        tenant_ids = [str(t).strip() for t in tenant_ids if t and str(t).strip() not in ("[]", "null", "none")]
-    else:
-        tenant_ids = []
-
-    if tenant_ids:
+    clean = _norm_tids(tenant_ids)
+    if clean:
         # Explicit scope provided — persist for future turns
-        update_active_tenant_ids(tenant_ids)
-        return tenant_ids
+        update_active_tenant_ids(clean)
+        return clean
 
     # No explicit scope — try to inherit from active session
     active = get_active_tenant_ids()
@@ -97,37 +90,13 @@ def _resolve_and_sync_company(company_ids: "CompanyIdsType" = None) -> "CompanyI
     - Always returns a list or None.
     """
     from .session_context import get_active_company_ids, update_active_company_ids
+    from .query_context import normalize_company_ids as _norm_cids
 
-    # Normalise whatever the LLM passed (string, list, None, "[]")
-    raw = company_ids
-    if isinstance(raw, str):
-        raw = raw.strip()
-        if raw in ("[]", "", "null", "none"):
-            raw = []
-        else:
-            import re as _re
-            nums = _re.findall(r'\d+', raw)
-            raw = [int(n) for n in nums]
-    elif isinstance(raw, (list, tuple)):
-        parsed = []
-        for item in raw:
-            try:
-                parsed.append(int(item))
-            except (TypeError, ValueError):
-                pass
-        raw = parsed
-    elif raw is not None:
-        try:
-            raw = [int(raw)]
-        except (TypeError, ValueError):
-            raw = []
-    else:
-        raw = []
-
-    if raw:
+    clean = _norm_cids(company_ids)
+    if clean:
         # Explicit scope provided — persist for future turns
-        update_active_company_ids(raw)
-        return raw
+        update_active_company_ids(clean)
+        return clean
 
     # No explicit scope — try to inherit from active session
     active = get_active_company_ids()

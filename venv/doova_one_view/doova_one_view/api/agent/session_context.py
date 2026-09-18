@@ -68,14 +68,35 @@ def set_session_context(
 
     # ── Tenant IDs ────────────────────────────────────────────────────
     if session_id and tenant_ids is not None:
-        _session_tenants[session_id] = tenant_ids
+        from .query_context import normalize_tenant_ids
+        clean_tids = normalize_tenant_ids(tenant_ids)
+        if clean_tids:
+            _session_tenants[session_id] = clean_tids
+            # Persist explicit scope to DB immediately so follow-up requests
+            # (including voice mode bare payloads) can inherit it.
+            try:
+                from odoo_app.models.agent import ChatSession
+                ChatSession.objects.filter(session_id=session_id).update(active_tenant_ids=clean_tids)
+            except Exception:
+                pass
+            tenant_ids = clean_tids
     elif session_id and session_id in _session_tenants:
         tenant_ids = _session_tenants[session_id]
     _current_active_tenant_ids.set(tenant_ids)
 
     # ── Company IDs ───────────────────────────────────────────────────
     if session_id and company_ids is not None:
-        _session_companies[session_id] = company_ids
+        from .query_context import normalize_company_ids
+        clean_cids = normalize_company_ids(company_ids)
+        if clean_cids:
+            _session_companies[session_id] = clean_cids
+            # Persist explicit scope to DB immediately.
+            try:
+                from odoo_app.models.agent import ChatSession
+                ChatSession.objects.filter(session_id=session_id).update(active_company_ids=clean_cids)
+            except Exception:
+                pass
+            company_ids = clean_cids
     elif session_id and session_id in _session_companies:
         company_ids = _session_companies[session_id]
     _current_active_company_ids.set(company_ids)
@@ -138,7 +159,7 @@ def get_active_tenant_ids(session_id: Optional[str] = None) -> Optional[List[str
     return _current_active_tenant_ids.get()
 
 
-def update_active_tenant_ids(tenant_ids: List[str], session_id: Optional[str] = None):
+def update_active_tenant_ids(tenant_ids: Any, session_id: Optional[str] = None):
     """
     Persists tenant_ids in ContextVar, process store, and PostgreSQL ChatSession.
     No-op if tenant_ids is empty/None.
@@ -146,7 +167,8 @@ def update_active_tenant_ids(tenant_ids: List[str], session_id: Optional[str] = 
     if not tenant_ids:
         return
 
-    tids = [str(t).strip() for t in tenant_ids if t]
+    from .query_context import normalize_tenant_ids
+    tids = normalize_tenant_ids(tenant_ids)
     if not tids:
         return
 
@@ -174,7 +196,7 @@ def get_active_company_ids(session_id: Optional[str] = None) -> Optional[List[in
     return _current_active_company_ids.get()
 
 
-def update_active_company_ids(company_ids: List[int], session_id: Optional[str] = None):
+def update_active_company_ids(company_ids: Any, session_id: Optional[str] = None):
     """
     Persists company_ids in ContextVar, process store, and PostgreSQL ChatSession.
     No-op if company_ids is empty/None.
@@ -182,10 +204,8 @@ def update_active_company_ids(company_ids: List[int], session_id: Optional[str] 
     if not company_ids:
         return
 
-    try:
-        cids = [int(c) for c in company_ids if c is not None]
-    except (TypeError, ValueError):
-        return
+    from .query_context import normalize_company_ids
+    cids = normalize_company_ids(company_ids)
     if not cids:
         return
 
