@@ -13,6 +13,7 @@ from . import (
     balance_sheet,
     financial_analysis,
     income_statement,
+    proforma,
 )
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ def _fetch_domain_report_data(
         (("balance_sheet", "solvency", "financial_position"), balance_sheet.enrich),
         (("financial_analysis", "financial_health", "ratios"), financial_analysis.enrich),
         (("income_statement", "pnl"), income_statement.enrich),
+        (("proforma", "forecast", "projections"), proforma.enrich),
     ]
 
     for domain_keys, enrich_fn in domain_dispatch:

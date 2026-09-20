@@ -4,7 +4,7 @@ Purchase API service.
 
 import asyncio
 from typing import Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
 from django.utils import timezone
 from django.db.models import Avg, Count, Prefetch, Sum
@@ -15,6 +15,8 @@ from pydantic import ValidationError
 
 from odoo_app.models.purchase_order import PurchaseOrder
 from odoo_app.models.purchase_order_line import PurchaseOrderLine
+from odoo_app.models.stock_picking import StockPicking
+from odoo_app.models.company import Company
 from doova_one_view.api.common.exceptions import NotFoundError
 from doova_one_view.api.kpi.service import (
     _get_rate_map, _get_conversion_rate, _sum_converted
@@ -302,7 +304,7 @@ class PurchaseService:
                 PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
             )
             
-            rate_map = _get_rate_map()
+            rate_map = _get_rate_map([tenant_id])
             effective_base = base_currency or "XAF"
             
             total_amount = _sum_converted(qs, "amount_total", effective_base, rate_map)
@@ -338,7 +340,7 @@ class PurchaseService:
                 PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
             )
             
-            rate_map = _get_rate_map()
+            rate_map = _get_rate_map([tenant_id])
             effective_base = base_currency or "XAF"
             
             total_spend = _sum_converted(qs, "amount_total", effective_base, rate_map)
@@ -367,7 +369,153 @@ class PurchaseService:
                     "count": vdata['count'],
                     "orders": vdata['count']
                 })
+
+            top_vendor_spend = sum(v['spend'] for v in top_vendors)
+            vendor_concentration = (top_vendor_spend / total_spend * 100.0) if total_spend else 0.0
+
+            top_products = []
+            line_qs = PurchaseOrderLine.objects.filter(
+                purchase_order__in=qs,
+                product__isnull=False,
+            )
+            prod_rows = list(
+                line_qs.values("product_id", "product__name", "purchase_order__currency_code")
+                .annotate(
+                    spend=Sum("price_total"),
+                    order_count=Count("purchase_order_id", distinct=True),
+                    qty=Sum("product_qty"),
+                )
+            )
+            prod_map = {}
+            for r in prod_rows:
+                pid = r['product_id']
+                if pid not in prod_map:
+                    prod_map[pid] = {'name': r['product__name'], 'spend': 0.0, 'count': 0, 'qty': 0.0}
+                code = r['purchase_order__currency_code'] or "COMPANY_BASE"
+                rate = _get_conversion_rate(code, effective_base, rate_map)
+                prod_map[pid]['spend'] += _to_float(r['spend']) * rate
+                prod_map[pid]['count'] += r['order_count']
+                prod_map[pid]['qty'] += _to_float(r['qty'])
+
+            sorted_prods = sorted(prod_map.items(), key=lambda x: x[1]['spend'], reverse=True)[:5]
+            for pid, pdata in sorted_prods:
+                top_products.append({
+                    "id": pid,
+                    "product_id": pid,
+                    "name": pdata['name'] or "Unknown Product",
+                    "value": pdata['spend'],
+                    "spend": pdata['spend'],
+                    "count": pdata['count'],
+                    "orders": pdata['count'],
+                    "qty": pdata['qty'],
+                    "quantity": pdata['qty'],
+                })
+
+            qty_agg = line_qs.aggregate(tot_qty=Sum("product_qty"), rec_qty=Sum("qty_received"))
+            tot_qty = _to_float(qty_agg.get("tot_qty"))
+            rec_qty = _to_float(qty_agg.get("rec_qty"))
+            received_pct = (rec_qty / tot_qty * 100.0) if tot_qty > 0 else 0.0
                 
+            app_diffs = [
+                (o.date_approve - o.date_order).total_seconds() / 3600.0
+                for o in qs
+                if o.date_approve and o.date_order and o.date_approve >= o.date_order
+            ]
+            avg_approval_time_hrs = sum(app_diffs) / len(app_diffs) if app_diffs else 0.0
+
+            po_names = [o.odoo_name for o in qs if o.odoo_name]
+            po_date_map = {o.odoo_name: o.date_order for o in qs if o.odoo_name and o.date_order}
+            lead_times = []
+            if po_names:
+                pickings = StockPicking.objects.filter(
+                    tenant_id=tenant_id,
+                    origin__in=po_names,
+                    state="done",
+                    date_done__isnull=False,
+                ).values("origin", "date_done")
+                for p in pickings:
+                    d_order = po_date_map.get(p["origin"])
+                    d_done = p.get("date_done")
+                    if d_order and d_done:
+                        lt = (d_done - d_order).total_seconds() / 86400.0
+                        if lt >= 0:
+                            lead_times.append(lt)
+
+            if lead_times:
+                delivery_lead_time_days = sum(lead_times) / len(lead_times)
+            else:
+                plan_diffs = [
+                    (o.date_planned - o.date_order).total_seconds() / 86400.0
+                    for o in qs
+                    if o.date_planned and o.date_order and o.date_planned >= o.date_order
+                ]
+                delivery_lead_time_days = sum(plan_diffs) / len(plan_diffs) if plan_diffs else 0.0
+
+            # Odoo's exact "Lead Time to Purchase": time from RFQ/creation to PO approval
+            lead_to_purchase_diffs = [
+                (o.date_approve - (o.odoo_create_date or o.date_order)).total_seconds() / 86400.0
+                for o in qs
+                if o.date_approve and (o.odoo_create_date or o.date_order) and o.date_approve >= (o.odoo_create_date or o.date_order)
+            ]
+            lead_time_to_purchase_days = sum(lead_to_purchase_diffs) / len(lead_to_purchase_diffs) if lead_to_purchase_diffs else 0.0
+
+            # In Odoo multi-company mode:
+            # The order list / count represents all allowed companies (e.g. 508 orders), while the
+            # headline KPI banner cards (Avg Order Value & Lead Time to Purchase) evaluate for the
+            # primary active company context (SUPERNOVA,S.L.).
+            primary_comp = Company.objects.filter(tenant_id=tenant_id).order_by("id").first()
+            if not company_ids and primary_comp:
+                primary_qs = qs.filter(company=primary_comp)
+                primary_conf = primary_qs.filter(state__in=["purchase", "done"])
+                primary_spend = _sum_converted(primary_qs, "amount_total", effective_base, rate_map)
+                primary_conf_cnt = primary_conf.count()
+                headline_aov = primary_spend / primary_conf_cnt if primary_conf_cnt > 0 else (primary_spend / primary_qs.count() if primary_qs.count() > 0 else 0.0)
+
+                primary_lead_diffs = [
+                    (o.date_approve - (o.odoo_create_date or o.date_order)).total_seconds() / 86400.0
+                    for o in primary_qs
+                    if o.date_approve and (o.odoo_create_date or o.date_order) and o.date_approve >= (o.odoo_create_date or o.date_order)
+                ]
+                headline_lead_time_days = sum(primary_lead_diffs) / len(primary_lead_diffs) if primary_lead_diffs else lead_time_to_purchase_days
+            else:
+                headline_aov = avg_order_value
+                headline_lead_time_days = lead_time_to_purchase_days
+
+            base_all = PurchaseService._base_qs(tenant_id, company_ids)
+            all_time_spend = _sum_converted(base_all, "amount_total", effective_base, rate_map)
+
+            ref_date = timezone.now().date()
+            if end_date:
+                try:
+                    ref_date = date.fromisoformat(str(end_date)[:10])
+                except (ValueError, TypeError):
+                    pass
+
+            today_spend = _sum_converted(
+                base_all.filter(date_order__date=ref_date),
+                "amount_total",
+                effective_base,
+                rate_map,
+            )
+            month_spend = _sum_converted(
+                base_all.filter(date_order__year=ref_date.year, date_order__month=ref_date.month),
+                "amount_total",
+                effective_base,
+                rate_map,
+            )
+            year_spend = _sum_converted(
+                base_all.filter(date_order__year=ref_date.year),
+                "amount_total",
+                effective_base,
+                rate_map,
+            )
+            spend_summary = {
+                "today": round(today_spend, 2),
+                "month": round(month_spend, 2),
+                "year": round(year_spend, 2),
+                "all_time": round(all_time_spend, 2),
+            }
+
             trend_rows = list(qs.annotate(day=TruncDate("date_order"))
                 .values("day", "currency_code")
                 .annotate(spend=Sum("amount_total")))
@@ -395,30 +543,27 @@ class PurchaseService:
                 "total_purchase_value": total_spend,
                 "total_spend": _metric(total_spend),
                 "total_spend_value": total_spend,
-                "avg_order_value": _metric(avg_order_value),
-                "avg_order_value_value": avg_order_value,
-                "average_order_value": _metric(avg_order_value),
-                "average_order_value_value": avg_order_value,
+                "avg_order_value": _metric(headline_aov),
+                "avg_order_value_value": headline_aov,
+                "average_order_value": _metric(headline_aov),
+                "average_order_value_value": headline_aov,
                 "outstanding_value": _metric(0.0),
                 "outstanding_value_value": 0.0,
                 "order_count": order_count,
                 "draft_count": state_distribution.get("draft", 0),
                 "confirmed_count": state_distribution.get("purchase", 0)
                 + state_distribution.get("to approve", 0),
-                "received_percentage": 0.0,
-                "avg_lead_time_days": 0.0,
-                "avg_fulfillment_rate": 0.0,
-                "avg_approval_time_hrs": 0.0,
-                "vendor_concentration_ratio": 0.0,
-                "spend_summary": {
-                    "today": 0.0,
-                    "month": 0.0,
-                    "year": 0.0,
-                    "all_time": total_spend,
-                },
+                "received_percentage": round(received_pct, 2),
+                "avg_lead_time_days": round(headline_lead_time_days, 2),
+                "delivery_lead_time_days": round(delivery_lead_time_days, 2),
+                "lead_time_to_purchase_days": round(headline_lead_time_days, 2),
+                "avg_fulfillment_rate": round(received_pct, 2),
+                "avg_approval_time_hrs": round(avg_approval_time_hrs, 2),
+                "vendor_concentration_ratio": round(vendor_concentration, 2),
+                "spend_summary": spend_summary,
                 "top_vendors": top_vendors,
                 "top_suppliers": top_vendors,
-                "top_products": [],
+                "top_products": top_products,
                 "spend_trend": spend_trend,
                 "state_distribution": state_distribution,
                 "applied_filters": applied,
@@ -631,7 +776,7 @@ class PurchaseService:
                 'lines', 'lines__product'
             ).order_by('-date_order')
 
-            rate_map = _get_rate_map()
+            rate_map = _get_rate_map([tenant_id])
             effective_base = (base_currency or "XAF").upper()
             
             groups = {}
@@ -739,7 +884,7 @@ class PurchaseService:
             ).order_by('-id')
 
             effective_base = (base_currency or 'XAF').upper()
-            rate_map = _get_rate_map()
+            rate_map = _get_rate_map([tenant_id])
 
             groups = {}
             total_spend = 0.0
@@ -817,14 +962,6 @@ class PurchaseService:
             from doova_one_view.api.purchase.schemas import (
                 PurchaseMetricDetailOrder, MetricDetailCompanyGroup, MarketBreakdownResponse
             )
-            initial_date = PurchaseService._parse_date(start_date)
-            final_date = PurchaseService._parse_date(end_date)
-            
-            if not final_date:
-                final_date = timezone.now().date()
-            if not initial_date:
-                initial_date = final_date - timedelta(days=30)
-
             SECTION_FILTER = {
                 'top_vendors':   ('partner_id',           'partner__name'),
                 'top_suppliers': ('partner_id',           'partner__name'),
@@ -837,12 +974,9 @@ class PurchaseService:
 
             fk_field, name_field = SECTION_FILTER[section]
 
-            base_qs = PurchaseOrder.objects.filter(
-                tenant_id=tenant_id,
-                date_order__date__range=(initial_date, final_date)
+            base_qs = PurchaseService._date_qs(
+                PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
             )
-            if company_ids:
-                base_qs = base_qs.filter(company_id__in=company_ids)
 
             base_qs = base_qs.filter(**{fk_field: entity_id})
 
@@ -863,7 +997,7 @@ class PurchaseService:
             ).distinct().order_by('-date_order')
 
             effective_base = (base_currency or 'XAF').upper()
-            rate_map = _get_rate_map()
+            rate_map = _get_rate_map([tenant_id])
 
             groups = {}
             flat_orders = []
@@ -948,26 +1082,20 @@ class PurchaseService:
             except Product.DoesNotExist:
                 raise ValidationError(f"Product not found: {product_id}")
 
-            initial_date = PurchaseService._parse_date(start_date)
-            final_date = PurchaseService._parse_date(end_date)
-            if not final_date:
-                final_date = timezone.now().date()
-            if not initial_date:
-                initial_date = final_date - timedelta(days=30)
+            base_orders = PurchaseService._date_qs(
+                PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
+            )
 
             lines_qs = PurchaseOrderLine.objects.filter(
                 tenant_id=tenant_id,
                 product_id=product_id,
-                purchase_order__date_order__date__range=(initial_date, final_date)
+                purchase_order__in=base_orders,
             ).select_related(
                 'purchase_order', 'purchase_order__company', 'purchase_order__partner', 'product'
             ).order_by('-purchase_order__date_order')
 
-            if company_ids:
-                lines_qs = lines_qs.filter(purchase_order__company_id__in=company_ids)
-
             effective_base = (base_currency or 'XAF').upper()
-            rate_map = _get_rate_map()
+            rate_map = _get_rate_map([tenant_id])
 
             groups = {}
             flat_lines = []

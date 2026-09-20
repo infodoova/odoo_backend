@@ -59,7 +59,10 @@ class AgentConfig:
     WEB_FETCH_TOOL_VERSION: str = os.getenv("WEB_FETCH_TOOL_VERSION", "web_fetch_20260318")
 
     # ── Extended Capabilities ─────────────────────────────────────────
-    ENABLE_THINKING = True
+    ENABLE_THINKING: bool = (
+        os.getenv("ENABLE_THINKING", "true").lower() in ("true", "1", "yes")
+        or getattr(django_settings, "ENABLE_THINKING", True)
+    )
     THINKING_BUDGET = 32000
 
     # ── Token budgets ─────────────────────────────────────────────────

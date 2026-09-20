@@ -328,7 +328,8 @@ ODOO_URL = os.environ.get('ODOO_URL', '')
 ODOO_DB = os.environ.get('ODOO_DB', '')
 ODOO_USERNAME = os.environ.get('ODOO_USERNAME', '')
 ODOO_API_KEY = os.environ.get('ODOO_API_KEY', '')
-ODOO_VERIFY_SSL = os.environ.get('ODOO_VERIFY_SSL', 'True').lower() in ('true', '1', 'yes')
+# Deepgram STT Settings
+DEEPGRAM_API_KEY = os.environ.get('DEEPGRAM_API_KEY') or os.environ.get('DEEPGRAM_API_URL', '')
 
 # Collect static files for production use with ASGI
 # Run: python manage.py collectstatic

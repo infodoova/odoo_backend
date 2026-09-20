@@ -618,7 +618,10 @@ class AccountingService:
                 for k, v in sorted(exp_vend_map.items(), key=lambda x: x[1]['value'], reverse=True)[:5]
             ]
 
-            trend_aggs = line_base.values("account_move__date", "account_type", "company__currency_code").annotate(
+            trend_aggs = line_base.values(
+                "account_move__date", "company_id", "account_odoo_id", "account_type",
+                "account_code", "account_name", "company__currency_code"
+            ).annotate(
                 total_debit=Sum("debit"),
                 total_credit=Sum("credit")
             )
@@ -637,11 +640,19 @@ class AccountingService:
                 net_debit = (_to_float(row["total_debit"]) - _to_float(row["total_credit"])) * rate
                 
                 atype = row["account_type"] or ""
+                acode = row["account_code"] or ""
+                aname = row["account_name"] or ""
+                cid = row["company_id"]
+                a_odoo_id = row["account_odoo_id"]
+
+                if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
+                    continue
                 
                 if atype.startswith("income"):
                     revenue_trend_map[d_str] = revenue_trend_map.get(d_str, 0.0) + net_credit
-                elif atype.startswith("expense"):
-                    expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + net_debit
+                elif atype == "expense":
+                    if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                        expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + net_debit
                     
                 if atype in ["asset_cash", "liability_credit_card"]:
                     cash_flow_map[d_str] = cash_flow_map.get(d_str, 0.0) + net_debit # debit increases cash
@@ -2053,6 +2064,7 @@ class AccountingService:
 
             rate_map = _get_rate_map()
             effective_base = (base_currency or "XAF").upper()
+            tag4_ids = AccountingService._get_tag4_account_ids(tenant_ids=[tenant_id] if tenant_id else None)
             
             groups = {}
             total_revenue = 0.0
@@ -2084,6 +2096,7 @@ class AccountingService:
                     exp = 0.0
                     cogs = 0.0
                     opex = 0.0
+                    dep = 0.0
                     cf = 0.0
                     for l in move.lines.all():
                         company_currency = l.company.currency_code if l.company and hasattr(l.company, 'currency_code') else "COMPANY_BASE"
@@ -2093,21 +2106,21 @@ class AccountingService:
                         atype = l.account_type or ""
                         acode = l.account_code or ""
                         aname = l.account_name or ""
+                        a_odoo_id = l.account_odoo_id
 
                         if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
                             continue
 
                         if atype.startswith("income"):
                             rev += net_credit
-                        elif atype.startswith("expense"):
-                            exp += net_debit
-                            if atype == "expense_direct_cost":
-                                cogs += net_debit
-                            elif atype in ("expense", "expense_depreciation"):
-                                if acode.startswith("67") or acode.startswith("69"):
-                                    pass  # financial charges + income tax excluded from opex
-                                else:
-                                    opex += net_debit
+                        elif atype == "expense_direct_cost":
+                            cogs += net_debit
+                        elif atype == "expense_depreciation":
+                            dep += net_debit
+                        elif atype == "expense":
+                            if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                                exp += net_debit
+                                opex += net_debit
                         elif atype in ["asset_cash", "liability_credit_card"]:
                             cf += net_debit
                                 
@@ -2124,7 +2137,7 @@ class AccountingService:
                     elif metric == 'ebit':
                         move_value = rev - cogs - opex
                     elif metric == 'net_profit':
-                        move_value = rev - exp
+                        move_value = rev - cogs - exp - dep
                     elif metric == 'net_cash_flow':
                         move_value = cf
                         
@@ -2202,10 +2215,13 @@ class AccountingService:
 
             effective_base = (base_currency or 'XAF').upper()
             rate_map = _get_rate_map()
+            tag4_ids = AccountingService._get_tag4_account_ids(tenant_ids=[tenant_id] if tenant_id else None)
 
             groups = {}
             total_revenue = 0.0
             total_expenses = 0.0
+            total_cogs = 0.0
+            total_dep = 0.0
             total_cash_flow = 0.0
             flat_moves = []
 
@@ -2229,6 +2245,8 @@ class AccountingService:
                 if move.state == 'posted':
                     rev = 0.0
                     exp = 0.0
+                    cogs = 0.0
+                    dep = 0.0
                     cf = 0.0
                     for l in move.lines.all():
                         company_currency = l.company.currency_code if l.company and hasattr(l.company, 'currency_code') else "COMPANY_BASE"
@@ -2238,21 +2256,29 @@ class AccountingService:
                         atype = l.account_type or ""
                         acode = l.account_code or ""
                         aname = l.account_name or ""
+                        a_odoo_id = l.account_odoo_id
 
                         if AccountingService._is_inventory_scrap_adjustment(atype, acode, aname, net_debit):
                             continue
 
                         if atype.startswith("income"):
                             rev += net_credit
-                        elif atype.startswith("expense"):
-                            exp += net_debit
+                        elif atype == "expense_direct_cost":
+                            cogs += net_debit
+                        elif atype == "expense_depreciation":
+                            dep += net_debit
+                        elif atype == "expense":
+                            if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
+                                exp += net_debit
                         elif atype in ["asset_cash", "liability_credit_card"]:
                             cf += net_debit
                             
                     total_revenue += rev
                     total_expenses += exp
+                    total_cogs += cogs
+                    total_dep += dep
                     total_cash_flow += cf
-                    groups[cid]['metric_value'] += (rev - exp)
+                    groups[cid]['metric_value'] += (rev - cogs - exp - dep)
 
                 flat_moves.append(AccountingDetailMove(
                     id=move.id,
@@ -2287,7 +2313,7 @@ class AccountingService:
                 base_currency=effective_base,
                 total_revenue=total_revenue,
                 total_expenses=total_expenses,
-                net_profit=total_revenue - total_expenses,
+                net_profit=total_revenue - total_cogs - total_expenses - total_dep,
                 net_cash_flow=total_cash_flow,
                 move_count=total_items,
                 company_groups=company_groups,

@@ -388,18 +388,6 @@ class KPIService:
             )
             nwc_inv_value = _sum(inv_gl_moves, "balance") * base_multiplier if inv_gl_moves.exists() else inventory_value
 
-            # GL Payables Moves (liability_payable)
-            ap_gl_moves = _apply_tenant_company_filter(
-                AccountMoveLine.objects.filter(
-                    account_type='liability_payable',
-                    account_move__state='posted',
-                    tenant__is_active=True,
-                    account_move__date__lte=as_of_date,
-                ),
-                tenant_ids, company_ids, company_field="account_move__company_id"
-            )
-            nwc_ap_value = -1 * _sum(ap_gl_moves, "balance") * base_multiplier if ap_gl_moves.exists() else payables_value
-
             # Batched Cash by Company
             cash_by_comp = {
                 r["account_move__company_id"]: _to_float(r["tot"]) * base_multiplier
@@ -416,12 +404,6 @@ class KPIService:
             inv_gl_by_comp = {
                 r["account_move__company_id"]: _to_float(r["tot"]) * base_multiplier
                 for r in inv_gl_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
-            }
-
-            # Batched GL Payables by Company
-            ap_gl_by_comp = {
-                r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
-                for r in ap_gl_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
             }
 
             # Batched Receivables & Overdue by Company (from Invoices)
@@ -462,23 +444,11 @@ class KPIService:
                 ar_overdue_map[cid] = ar_overdue_map.get(cid, 0.0) + val
             
             from odoo_app.models import TenantFinancialMapping, Company
-            
-            mappings = TenantFinancialMapping.objects.select_related('tenant').filter(tenant__is_active=True)
-            if tenant_ids:
-                mappings = mappings.filter(tenant_id__in=tenant_ids)
 
-            q_accrued = Q()
-            q_short_term = Q()
-            
-            for mapping in mappings:
-                for prefix in mapping.accrued_expense_prefixes:
-                    q_accrued |= Q(tenant=mapping.tenant, account_code__startswith=prefix)
-                for prefix in mapping.short_term_debt_prefixes:
-                    q_short_term |= Q(tenant=mapping.tenant, account_code__startswith=prefix)
-
-            other_liabilities_moves = _apply_tenant_company_filter(
+            # ── Net Working Capital Current Liabilities Classification ──────────────
+            liability_moves = _apply_tenant_company_filter(
                 AccountMoveLine.objects.filter(
-                    account_type__in=['liability_current', 'liability_credit_card'],
+                    account_type__in=['liability_payable', 'liability_current', 'liability_credit_card'],
                     account_move__state='posted',
                     tenant__is_active=True,
                     account_move__date__lte=as_of_date,
@@ -486,18 +456,78 @@ class KPIService:
                 tenant_ids, company_ids, company_field="account_move__company_id"
             )
 
-            total_other_liabilities = -1 * _sum(other_liabilities_moves, "balance") * base_multiplier
+            # Detect open operating bills (operating expenses, utilities, rent, transport, services, legal)
+            open_operating_bills = _apply_tenant_company_filter(
+                AccountMove.objects.filter(
+                    move_type__in=['in_invoice', 'in_refund', 'in_receipt'],
+                    state='posted',
+                    payment_state__in=['not_paid', 'partial', 'in_payment'],
+                    tenant__is_active=True,
+                    date__lte=as_of_date,
+                ),
+                tenant_ids, company_ids, company_field="company_id"
+            )
 
-            accrued_expenses_value = 0.0
-            if q_accrued:
-                accrued_expenses_value = -1 * _sum(other_liabilities_moves.filter(q_accrued), "balance") * base_multiplier
+            comp_op_bill_res: dict[int, float] = {}
+            for b in open_operating_bills:
+                lines = b.lines.exclude(account_type__in=['liability_payable', 'liability_current', 'liability_credit_card', 'expense_depreciation'])
+                is_op = False
+                for l in lines:
+                    name = (l.account_name or '').lower()
+                    code = l.account_code or ''
+                    if any(k in name for k in ['rent', 'salary', 'salaries', 'electric', 'legal', 'tax', 'transport', 'internet', 'insurance', 'service', 'maintenance', 'worker', 'wages', 'consulting', 'customs', 'forwarder', 'audit', 'cleaning', 'utility']) or (code.startswith('61') or code.startswith('62') or code.startswith('63') or code.startswith('64')):
+                        is_op = True
+                        break
+                if is_op:
+                    cid = b.company_id
+                    comp_op_bill_res[cid] = comp_op_bill_res.get(cid, 0.0) + float(b.amount_residual or 0.0) * base_multiplier
 
-            short_term_debt_value = 0.0
-            if q_short_term:
-                short_term_debt_value = -1 * _sum(other_liabilities_moves.filter(q_short_term), "balance") * base_multiplier
+            DEBT_KEYWORDS = ['bank loan', 'loan', 'bange', 'emprunt', 'overdraft', 'découvert', 'credit line', 'crédit']
+            ACCRUED_KEYWORDS = ['personnel', 'salary', 'salaries', 'wages', 'tax', 'taxes', 'social security', 'operating', 'accrued', 'provision', 'customs', 'freight', 'transport', 'forwarder', 'forwader', 'logistics', 'audit', 'legal', 'rent', 'electricity', 'electric', 'internet', 'maintenance', 'cleaning', 'service', 'utility', 'ey']
 
-            other_liabilities_value = total_other_liabilities - accrued_expenses_value - short_term_debt_value
-            
+            comp_ap: dict[int, float] = {}
+            comp_accrued: dict[int, float] = {}
+            comp_debt: dict[int, float] = {}
+            comp_other: dict[int, float] = {}
+
+            if liability_moves.exists():
+                grouped_liab = list(liability_moves.values(
+                    'account_move__company_id', 'account_odoo_id', 'account_code', 'account_name', 'account_type'
+                ).annotate(tot=Coalesce(Sum('balance'), Decimal('0'))))
+
+                for row in grouped_liab:
+                    cid = row['account_move__company_id']
+                    bal = -1 * _to_float(row['tot']) * base_multiplier
+                    name = (row['account_name'] or '').lower()
+                    code = row['account_code'] or ''
+                    atype = row['account_type']
+
+                    if any(k in name for k in DEBT_KEYWORDS) or code.startswith('16') or code.startswith('512') or code.startswith('52'):
+                        comp_debt[cid] = comp_debt.get(cid, 0.0) + bal
+                    elif any(k in name for k in ACCRUED_KEYWORDS) or (code.startswith('42') or code.startswith('43') or code.startswith('44') or code.startswith('408') or code.startswith('428') or code.startswith('448')):
+                        comp_accrued[cid] = comp_accrued.get(cid, 0.0) + bal
+                    elif atype in ['liability_current', 'liability_credit_card']:
+                        comp_other[cid] = comp_other.get(cid, 0.0) + bal
+                    else:
+                        comp_ap[cid] = comp_ap.get(cid, 0.0) + bal
+
+                # Carve out operating bills residual from Accounts Payable into Accrued Expenses per company
+                for cid in list(comp_ap.keys()):
+                    op_res = comp_op_bill_res.get(cid, 0.0)
+                    if op_res > 0:
+                        carve = min(comp_ap[cid], op_res)
+                        comp_ap[cid] -= carve
+                        comp_accrued[cid] = comp_accrued.get(cid, 0.0) + carve
+            else:
+                for cid, val in ap_map.items():
+                    if cid is not None:
+                        comp_ap[cid] = val
+
+            nwc_ap_value = sum(comp_ap.values())
+            accrued_expenses_value = sum(comp_accrued.values())
+            short_term_debt_value = sum(comp_debt.values())
+            other_liabilities_value = sum(comp_other.values())
+
             current_assets = cash_value + nwc_ar_value + nwc_inv_value
             current_liabilities = nwc_ap_value + accrued_expenses_value + short_term_debt_value + other_liabilities_value
             net_working_capital = current_assets - current_liabilities
@@ -505,24 +535,6 @@ class KPIService:
             working_capital_ratio = round(current_assets / current_liabilities, 2) if current_liabilities > 0 else 0.0
             quick_ratio = round((cash_value + nwc_ar_value) / current_liabilities, 2) if current_liabilities > 0 else 0.0
             health_status = "healthy" if working_capital_ratio >= 1.5 else ("warning" if working_capital_ratio >= 1.0 else "critical")
-
-            # Batched Other Liabilities by Company
-            tot_other_liab_by_comp = {
-                r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
-                for r in other_liabilities_moves.values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
-            }
-            accrued_by_comp = {}
-            if q_accrued:
-                accrued_by_comp = {
-                    r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
-                    for r in other_liabilities_moves.filter(q_accrued).values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
-                }
-            debt_by_comp = {}
-            if q_short_term:
-                debt_by_comp = {
-                    r["account_move__company_id"]: -1 * _to_float(r["tot"]) * base_multiplier
-                    for r in other_liabilities_moves.filter(q_short_term).values("account_move__company_id").annotate(tot=Coalesce(Sum("balance"), Decimal("0")))
-                }
 
             # ── Per-Company Net Working Capital Breakdown ─────────────────────────────
             company_qs = Company.objects.all()
@@ -537,11 +549,10 @@ class KPIService:
                 c_ar_val = ar_gl_by_comp.get(comp.id, ar_map.get(comp.id, 0.0))
                 c_ar_overdue = ar_overdue_map.get(comp.id, 0.0)
                 c_inv_val = inv_gl_by_comp.get(comp.id, _calculate_inventory_value([comp.id]))
-                c_ap_val = ap_gl_by_comp.get(comp.id, ap_map.get(comp.id, 0.0))
-                c_tot_other_liab = tot_other_liab_by_comp.get(comp.id, 0.0)
-                c_accrued = accrued_by_comp.get(comp.id, 0.0)
-                c_debt = debt_by_comp.get(comp.id, 0.0)
-                c_other = c_tot_other_liab - c_accrued - c_debt
+                c_ap_val = comp_ap.get(comp.id, 0.0)
+                c_accrued = comp_accrued.get(comp.id, 0.0)
+                c_debt = comp_debt.get(comp.id, 0.0)
+                c_other = comp_other.get(comp.id, 0.0)
 
                 c_assets = c_cash + c_ar_val + c_inv_val
                 c_liabilities = c_ap_val + c_accrued + c_debt + c_other

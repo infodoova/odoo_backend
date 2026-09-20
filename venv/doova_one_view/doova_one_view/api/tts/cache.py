@@ -32,13 +32,17 @@ class TTSCacheManager:
         self.default_max_age_days: int = getattr(api_settings, "tts_cache_max_age_days", 14)
         self.default_max_files: int = getattr(api_settings, "tts_cache_max_files", 2500)
         self.default_max_size_mb: int = getattr(api_settings, "tts_cache_max_size_mb", 500)
+        self._last_expired_check: float = 0.0
 
     def generate_key(self, engine: str, voice: str, speed: float, text: str) -> str:
         """
         Creates a deterministic SHA-256 hash key for given parameters.
+        Includes engine prefix (e.g. 'elevenlabs_abc123') to guarantee 100% isolation between engines.
         """
-        raw = f"{engine}:{voice}:{speed:.2f}:{text.strip()}"
-        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        clean_engine = "".join(c for c in (engine or "tts").lower() if c.isalnum()) or "tts"
+        raw = f"{clean_engine}:{voice.strip()}:{speed:.2f}:{text.strip()}"
+        hash_str = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return f"{clean_engine}_{hash_str}"
 
     def get_cached_file(self, cache_key: str, ext: str) -> Optional[Path]:
         """
@@ -203,10 +207,21 @@ class TTSCacheManager:
 
     def save_cached_audio(self, cache_key: str, ext: str, audio_bytes: bytes) -> Optional[Path]:
         """
-        Saves audio bytes to cache file after ensuring capacity limits.
+        Saves audio bytes to cache file after ensuring capacity limits and TTL expiration.
         """
         if not audio_bytes:
             return None
+
+        # Periodically purge files older than max_age_days (e.g. 14 days)
+        now = time.time()
+        if now - self._last_expired_check > 21600:  # 6 hours
+            self._last_expired_check = now
+            try:
+                self.prune_expired_voices()
+            except Exception as e:
+                logger.debug(f"TTL check error: {e}")
+
+        # Enforce LRU file count & 500 MB capacity ceiling
         self.prune_by_capacity()
         file_path = self.cache_dir / f"{cache_key}.{ext}"
         try:

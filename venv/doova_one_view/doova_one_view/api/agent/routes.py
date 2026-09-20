@@ -4,6 +4,8 @@ import re as _re
 import json
 import time
 import asyncio
+import uuid
+from datetime import date as _date
 from asgiref.sync import sync_to_async
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field, ConfigDict, model_validator
@@ -19,15 +21,104 @@ from .session_manager import SessionManager
 from .query_context import resolve_tenant_id, normalize_tenant_ids, normalize_company_ids
 from .config import AgentConfig
 from doova_one_view.api.auth.permissions import require_permissions
+from .revenue_forecast import execute_cfo_forecast
+from .forensic_audit import execute_forensic_audit
+
+from .langchain_tools import (
+    tenant_profile, list_companies, sales_forecast, sales_trend, sales_pipeline,
+    period_comparison, variance_analysis, order_to_cash_cycle, top_products,
+    purchase_vs_sales_margin, financial_ratios, working_capital, working_capital_efficiency,
+    cash_flow_statement, calculate_pnl, inventory_efficiency, inventory_valuation,
+    inventory_stock_table, reorder_recommendations, abc_analysis, inventory_dashboard_alerts,
+    detect_anomalies, journal_audit, trial_balance, payment_reconciliation,
+    tax_summary, partner_ledger, aging_analysis, receivables_analysis,
+    payables_analysis, general_ledger, bank_cash_summary, bank_statement_summary,
+    balance_sheet, discount_leakage, sales_summary, cash_flow_health, journal_cards,
+)
+
+FORECAST_TOOLS = [
+    tenant_profile, list_companies, sales_forecast, sales_trend, sales_pipeline,
+    period_comparison, variance_analysis, order_to_cash_cycle, top_products,
+    purchase_vs_sales_margin, financial_ratios, working_capital, working_capital_efficiency,
+    cash_flow_statement, calculate_pnl, inventory_efficiency, inventory_valuation,
+    inventory_stock_table, reorder_recommendations, abc_analysis, inventory_dashboard_alerts
+]
+
+AUDIT_TOOLS = [
+    tenant_profile, list_companies, detect_anomalies, journal_audit,
+    trial_balance, payment_reconciliation, tax_summary, calculate_pnl,
+    partner_ledger, aging_analysis, receivables_analysis, payables_analysis,
+    general_ledger, bank_cash_summary, bank_statement_summary, balance_sheet,
+    discount_leakage, sales_summary, purchase_vs_sales_margin, cash_flow_health,
+    financial_ratios, journal_cards
+]
 
 # Initialize Nodes
 router_node = RouterNode()
-fast_path_node = FastPathNode()
+fast_path_node = FastPathNode(enable_thinking=True)
+forecast_node = FastPathNode(
+    enable_thinking=False,
+    max_tokens=AgentConfig.MAX_REPORT_TOKENS,
+    tools=FORECAST_TOOLS,
+    max_iterations=4,
+    early_stopping_method="generate",
+)
+audit_node = FastPathNode(
+    enable_thinking=False,
+    max_tokens=AgentConfig.MAX_REPORT_TOKENS,
+    tools=AUDIT_TOOLS,
+    max_iterations=5,
+    early_stopping_method="generate",
+)
 reasoning_node = ReasoningNode()
 router = APIRouter(prefix="/financial-advisor", tags=["Agent"])
 session_manager = SessionManager()
 
 _use_agent = Depends(require_permissions("use_agent"))
+
+# ── Deterministic Affirmation & Rejection Token Dictionaries ─────────────
+_HARD_AFFIRMATIVE_TOKENS = {
+    # English
+    "yes", "ye", "yeah", "yep", "yup", "ya", "yaa", "yess", "yesss",
+    "sure", "ok", "okay", "proceed", "go", "ahead", "confirm", "approve",
+    "right", "fine", "alright", "perfect", "great", "cool", "do",
+    # French
+    "oui", "ouais", "bien", "entendu", "d'accord", "daccord",
+    # Spanish
+    "si", "sí", "claro", "vale", "dale", "bueno",
+    # Arabic
+    "\u0646\u0639\u0645", "\u0623\u064a\u0648\u0629", "\u0627\u064a\u0648\u0629", "\u062a\u0645\u0627\u0645", "\u0645\u0627\u0634\u064a", "\u064a\u0644\u0627", "\u0627\u062a\u0643\u0644",
+    "\u062e\u0644\u0627\u0635", "\u0623\u0643\u064a\u062f", "\u0627\u0643\u064a\u062f", "\u0637\u0628\u0639\u0627\u064b", "\u0637\u0628\u0639\u0627", "\u0645\u0648\u0627\u0641\u0642", "\u064a\u0627\u0644\u0644\u0647",
+    "\u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644", "\u0627\u0628\u062f\u0623",
+}
+_SHORT_MSG_THRESHOLD = 8  # words
+
+_REJECTION_KEYWORDS = {"no", "nope", "nah", "cancel", "stop", "abort", "dont", "don't", "refuse", "reject", "nevermind", "nvm"}
+
+_AFFIRMATIVE_KEYWORDS = {
+    # English
+    "yes", "ye", "yeah", "yep", "yup", "ya", "yaa", "yess", "yesss", "sure", "ok", "okay", "k", "kk",
+    "proceed", "confirm", "confirmed", "approve", "approved", "accepted", "agreed", "correct",
+    "right", "fine", "alright", "perfect", "awesome", "great", "nice", "good", "super", "cool",
+    # French
+    "oui", "ouais", "d'accord", "daccord", "bien", "entendu",
+    # Spanish / Portuguese
+    "si", "sí", "claro", "vale", "dale", "bueno", "sim",
+    # Arabic affirmations
+    "\u0646\u0639\u0645", "\u0623\u064a\u0648\u0629", "\u0627\u064a\u0648\u0629", "\u062a\u0645\u0627\u0645", "\u0645\u0627\u0634\u064a", "\u064a\u0644\u0627", "\u0627\u062a\u0643\u0644", "\u062e\u0644\u0627\u0635",
+    "\u0623\u0643\u064a\u062f", "\u0627\u0643\u064a\u062f", "\u0637\u0628\u0639\u0627\u064b", "\u0637\u0628\u0639\u0627", "\u0645\u0648\u0627\u0641\u0642", "\u064a\u0627\u0644\u0644\u0647",
+}
+
+_AFFIRMATIVE_PHRASES = [
+    "sounds good", "looks good", "let's do", "lets do", "go ahead", "do it",
+    "run it", "why not", "of course", "do that", "do this", "all right",
+    "execute plan", "start plan", "proceed with plan",
+    # French
+    "c'est bon", "vas-y", "vas y",
+    # Arabic affirmative phrases
+    "\u0627\u062a\u0643\u0644 \u0639\u0644\u0649 \u0627\u0644\u0644\u0647", "\u0639\u0644\u0649 \u0628\u0631\u0643\u0629 \u0627\u0644\u0644\u0647", "\u064a\u0644\u0627 \u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644 \u0644\u0646\u0627", "\u0627\u0639\u0645\u0644\u0647\u0627",
+]
+
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -83,12 +174,62 @@ class ChatRequest(BaseModel):
     def query(self) -> str:
         return self.message
 
-def extract_context_ids(req_data: Union[ChatRequest, dict]):
+
+class _StructuredBaseRequest(BaseModel):
+    """Shared tenant/company/date fields for structured feature endpoints."""
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+    session_id:   Optional[str]                              = Field(default=None, alias="sessionId")
+    start_date:   Optional[str]                              = Field(default=None, alias="startDate")
+    end_date:     Optional[str]                              = Field(default=None, alias="endDate")
+    tenant_id:    Optional[str]                              = Field(default=None, alias="tenantId")
+    tenant_ids:   Optional[Union[List[str], str]]            = Field(default=None, alias="tenantIds")
+    company_id:   Optional[Union[int, str]]                  = Field(default=None, alias="companyId")
+    company_ids:  Optional[Union[List[Union[int, str]], Union[int, str]]] = Field(default=None, alias="companyIds")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_dates_and_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("start_date") and not data.get("startDate"):
+                if data.get("from_date"):
+                    data["start_date"] = data["from_date"]
+                elif data.get("fromDate"):
+                    data["start_date"] = data["fromDate"]
+            if not data.get("end_date") and not data.get("endDate"):
+                if data.get("to_date"):
+                    data["end_date"] = data["to_date"]
+                elif data.get("toDate"):
+                    data["end_date"] = data["toDate"]
+        return data
+
+
+class AnalysisRequest(_StructuredBaseRequest):
+    focus_area: str = Field(default="Sales & Revenue", alias="focusArea")
+    dimension:  str = Field(default="Overall Performance")
+
+
+class ForecastRequest(_StructuredBaseRequest):
+    scope:                  str = Field(default="Next 30 Days")
+    risk_profile:           str = Field(default="Balanced (Standard)", alias="riskProfile")
+    currency:               Optional[str] = Field(default=None)
+    target_revenue:         Optional[float] = Field(default=None, alias="targetRevenue")
+    fiscal_year_end_month:  Optional[int] = Field(default=12, alias="fiscalYearEndMonth")
+
+
+class AuditRequest(_StructuredBaseRequest):
+    priority:               str = Field(default="Duplicate Detection")
+    depth:                  str = Field(default="Full Depth (Last Quarter)")
+    currency:               Optional[str] = Field(default=None)
+    materiality_override:   Optional[float] = Field(default=None, alias="materialityOverride")
+    fiscal_year_end_month:  Optional[int] = Field(default=12, alias="fiscalYearEndMonth")
+
+
+def extract_context_ids(req_data: Union[BaseModel, dict]):
     """
-    Extracts and normalizes tenant and company parameters from a ChatRequest or dict.
+    Extracts and normalizes tenant and company parameters from a BaseModel (e.g. ChatRequest, _StructuredBaseRequest) or dict.
     Returns: (primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids)
     """
-    if isinstance(req_data, ChatRequest):
+    if isinstance(req_data, BaseModel):
         t_single = getattr(req_data, "tenant_id", None)
         t_multi = getattr(req_data, "tenant_ids", None)
         c_single = getattr(req_data, "company_id", None)
@@ -387,18 +528,34 @@ async def chat_endpoint(request: Request):
     # Retrieve persisted summary (from last summarization cycle)
     db_summary = session.summary or ""
     
-    # Only load the most recent N messages to keep context lean
+    # Load messages: recent 10 messages + any older messages in the session that contain attachments
     RECENT_MSG_LIMIT = 10
-    def _get_recent_messages():
-        return list(
-            session_manager.get_messages(current_session_id)
-            .order_by('-created_at')[:RECENT_MSG_LIMIT]
+    def _get_history_messages():
+        all_session_msgs = list(
+            session_manager.get_messages(current_session_id).order_by('created_at')
         )
-    all_db_messages = await sync_to_async(_get_recent_messages)()
-    all_db_messages.reverse()  # restore chronological order
+        if len(all_session_msgs) <= RECENT_MSG_LIMIT:
+            return all_session_msgs
+        
+        recent_msgs = all_session_msgs[-RECENT_MSG_LIMIT:]
+        older_msgs = all_session_msgs[:-RECENT_MSG_LIMIT]
+        
+        # Retain any older messages in the session that contain attachments so files are never lost
+        older_with_attachments = [
+            m for m in older_msgs
+            if m.payload and isinstance(m.payload, dict) and m.payload.get("attachments")
+        ]
+        return older_with_attachments + recent_msgs
+
+    all_db_messages = await sync_to_async(_get_history_messages)()
     
     chat_history_from_db = [
-        {"role": m.role, "content": m.content}
+        {
+            "role": m.role,
+            "content": m.content,
+            "payload": m.payload or {},
+            "attachments": (m.payload.get("attachments") if m.payload and isinstance(m.payload, dict) else []) or []
+        }
         for m in all_db_messages
         if m.role in ("user", "assistant")
     ]
@@ -454,7 +611,7 @@ async def chat_endpoint(request: Request):
     # Handle empty messages / simple social phrases before hitting the router (only if no attachments)
     if not req_data.attachments and (not user_message or not user_message.strip() or is_arabic_greeting or is_french_greeting or is_spanish_greeting or is_english_greeting):
         if is_arabic_greeting:
-            answer = "أهلاً وسهلاً بك! أنا Nexus. كيف يمكنني مساعدتك في بيانات أعمالك اليوم؟"
+            answer = "أَهْلًا وَسَهْلًا بِكَ! أَنَا Nexus. كَيْفَ يُمْكِنُنِي مُسَاعَدَتُكَ فِي بَيَانَاتِ أَعْمَالِكَ اليَوْمَ؟"
         elif is_french_greeting:
             answer = "Bonjour ! Je suis Nexus. Comment puis-je vous aider avec vos données d'entreprise aujourd'hui ?"
         elif is_spanish_greeting:
@@ -491,21 +648,6 @@ async def chat_endpoint(request: Request):
     # Short affirmations MUST NOT go through the LLM router. The router is
     # unreliable for 1-3 word messages and may misclassify "yes" as PLAN.
     # Instead, we deterministically resolve them here.
-    _HARD_AFFIRMATIVE_TOKENS = {
-        # English
-        "yes", "ye", "yeah", "yep", "yup", "ya", "yaa", "yess", "yesss",
-        "sure", "ok", "okay", "proceed", "go", "ahead", "confirm", "approve",
-        "right", "fine", "alright", "perfect", "great", "cool", "do",
-        # French
-        "oui", "ouais", "bien", "entendu", "d'accord", "daccord",
-        # Spanish
-        "si", "sí", "claro", "vale", "dale", "bueno",
-        # Arabic
-        "\u0646\u0639\u0645", "\u0623\u064a\u0648\u0629", "\u0627\u064a\u0648\u0629", "\u062a\u0645\u0627\u0645", "\u0645\u0627\u0634\u064a", "\u064a\u0644\u0627", "\u0627\u062a\u0643\u0644",
-        "\u062e\u0644\u0627\u0635", "\u0623\u0643\u064a\u062f", "\u0627\u0643\u064a\u062f", "\u0637\u0628\u0639\u0627\u064b", "\u0637\u0628\u0639\u0627", "\u0645\u0648\u0627\u0641\u0642", "\u064a\u0627\u0644\u0644\u0647",
-        "\u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644", "\u0627\u0628\u062f\u0623",
-    }
-    _SHORT_MSG_THRESHOLD = 8  # words
     _pre_router_words = clean_user_message.strip().split()
     _pre_router_word_set = {w.lower().strip("!?.,;:'\"") for w in _pre_router_words}
 
@@ -527,33 +669,15 @@ async def chat_endpoint(request: Request):
             decision = "EXECUTE"
 
     # 2.1 Handle Plan Approval (CONFIRM path with deterministic affirmative matching)
-    REJECTION_KEYWORDS = {"no", "nope", "nah", "cancel", "stop", "abort", "dont", "don't", "refuse", "reject", "nevermind", "nvm"}
-    AFFIRMATIVE_KEYWORDS = {
-        "yes", "ye", "yeah", "yep", "yup", "ya", "yaa", "yess", "yesss", "sure", "ok", "okay", "k", "kk",
-        "proceed", "go", "ahead", "do", "it", "confirm", "approve", "accepted", "agreed", "correct",
-        "right", "fine", "alright", "please", "pls", "plsn", "execute", "run", "start", "plan", "show",
-        "give", "perfect", "awesome", "great", "nice", "good", "super", "cool", "thx", "thanks", "thank",
-        "si", "oui", "claro", "vale", "sy", "sim", "create", "generate", "build", "make", "fetch", "pull",
-        # Arabic affirmations
-        "\u0646\u0639\u0645", "\u0623\u064a\u0648\u0629", "\u0627\u064a\u0648\u0629", "\u062a\u0645\u0627\u0645", "\u0645\u0627\u0634\u064a", "\u064a\u0644\u0627", "\u0627\u062a\u0643\u0644", "\u062e\u0644\u0627\u0635",
-        "\u0623\u0643\u064a\u062f", "\u0627\u0643\u064a\u062f", "\u0637\u0628\u0639\u0627\u064b", "\u0637\u0628\u0639\u0627", "\u0645\u0648\u0627\u0641\u0642", "\u064a\u0627\u0644\u0644\u0647", "\u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644", "\u0627\u0628\u062f\u0623",
-    }
-    AFFIRMATIVE_PHRASES = [
-        "give me", "sounds good", "looks good", "let's do", "lets do", "go ahead", "do it",
-        "run it", "give it", "show me", "why not", "of course", "do that", "do this", "all right",
-        # Arabic affirmative phrases
-        "\u0627\u062a\u0643\u0644 \u0639\u0644\u0649 \u0627\u0644\u0644\u0647", "\u0639\u0644\u0649 \u0628\u0631\u0643\u0629 \u0627\u0644\u0644\u0647", "\u064a\u0644\u0627 \u0627\u0645\u0634\u064a", "\u0627\u0639\u0645\u0644 \u0644\u0646\u0627", "\u0627\u0639\u0645\u0644\u0647\u0627",
-    ]
-
     lower_msg = clean_user_message.lower()
     user_words = set(_re.findall(r'\b\w+\b', lower_msg))
-    is_explicit_rejection = bool(user_words.intersection(REJECTION_KEYWORDS))
+    is_explicit_rejection = bool(user_words.intersection(_REJECTION_KEYWORDS))
 
     # If plan is pending and message is NOT an explicit rejection:
     # treat explicit positive token or phrase as an approval
     is_affirmative = not is_explicit_rejection and (
-        bool(user_words.intersection(AFFIRMATIVE_KEYWORDS)) or
-        any(phrase in lower_msg for phrase in AFFIRMATIVE_PHRASES)
+        bool(user_words.intersection(_AFFIRMATIVE_KEYWORDS)) or
+        any(phrase in lower_msg for phrase in _AFFIRMATIVE_PHRASES)
     )
 
     if session.plan_state and (decision == "CONFIRM" or is_affirmative):
@@ -649,10 +773,11 @@ async def chat_endpoint(request: Request):
             )
 
     # 2.2 Conversational Continuation Handling:
-    # If the user gives an affirmative reply ("yes", "ok", "sure", "proceed") or router returned CONFIRM,
+    # If the router returned CONFIRM or an affirmative confirmation,
     # but there is NO pending plan in session: treat as a conversational follow-up/execution.
-    if not session.plan_state and (decision == "CONFIRM" or is_affirmative):
-        logger.info(f"ROUTER OVERRIDE | No active plan in session {current_session_id}. Converting CONFIRM/affirmative to EXECUTE for conversational continuation.")
+    # Must only convert CONFIRM, NEVER override a PLAN decision.
+    if not session.plan_state and decision == "CONFIRM":
+        logger.info(f"ROUTER OVERRIDE | No active plan in session {current_session_id}. Converting CONFIRM to EXECUTE for conversational continuation.")
         decision = "EXECUTE"
 
     # Fail-safe guard against accidental rejections on follow-up phrases, market research, or active sessions
@@ -694,6 +819,23 @@ async def chat_endpoint(request: Request):
             logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE for business/market prompt: '{clean_user_message}'")
             decision = "EXECUTE"
 
+        # Override REJECT if session has attachments and user query references documents or content
+        has_prior_attachments = any(
+            bool(m.get("attachments")) or bool((m.get("payload") or {}).get("attachments"))
+            for m in chat_history_from_db
+        )
+        if (has_prior_attachments or req_data.attachments) and decision == "REJECT":
+            doc_context_keywords = {
+                "file", "files", "pdf", "image", "img", "photo", "picture", "doc", "document",
+                "attachment", "attachments", "invoice", "receipt", "table", "chart", "graph",
+                "page", "pages", "it", "this", "that", "these", "summarize", "extract", "read",
+                "show", "what", "how", "who", "when", "amount", "total", "date", "name", "price",
+                "ملف", "صورة", "مستند", "فاتورة", "مرفق", "اقرأ", "لخص", "صفحة", "كم", "ماذا", "من"
+            }
+            if bool(clean_word_set.intersection(doc_context_keywords)) or bool(req_data.attachments):
+                logger.info(f"ROUTER OVERRIDE | Converting REJECT to EXECUTE due to session attachments context: '{clean_user_message}'")
+                decision = "EXECUTE"
+
     if decision == "REJECT":
         french_words = {"les", "des", "est", "que", "pourquoi", "comment", "bonjour", "salut", "qui", "combien", "quels", "quelles", "quel", "quelle", "dans", "avec", "par", "pour", "sur", "donne", "moi", "affiche", "montre", "acteurs", "détaille"}
         spanish_words = {"hola", "que", "quien", "cuanto", "cuantos", "cual", "cuales", "como", "donde", "por", "para", "muestra", "dame", "ventas", "gracias", "ambos"}
@@ -718,26 +860,33 @@ async def chat_endpoint(request: Request):
     if decision != "PLAN":
         decision = "EXECUTE"
 
-    # ── Defense 2: PLAN Gate ──────────────────────────────────────────────
-    # Even if the router returned PLAN, only allow it if the user's message
-    # contains explicit strategic planning language. Without this, a simple
-    # "yes" that slips past Defense 1 would still reach create_plan().
+    # ── Defense 2: Intelligent Strategic PLAN Guard ───────────────────────
+    # Protects against router false positives on simple queries or short phrases,
+    # while allowing genuine strategic architecture requests (e.g., "sales strategy",
+    # "roadmap", "transformation plan", "marketing strategy") to invoke Claude Opus.
     if decision == "PLAN":
-        _PLAN_TRIGGER_KEYWORDS = {
-            "roadmap", "strategic plan", "transformation", "multi-phase",
-            "multi phase", "enterprise audit", "5 year", "five year",
-            "long term", "long-term", "comprehensive audit", "full audit",
-            "action plan", "implementation plan", "project plan",
-            # Arabic
-            "\u062e\u0637\u0629 \u0627\u0633\u062a\u0631\u0627\u062a\u064a\u062c\u064a\u0629", "\u062e\u0627\u0631\u0637\u0629 \u0637\u0631\u064a\u0642", "\u062e\u0637\u0629 \u0639\u0645\u0644",
+        _STRATEGIC_INTENT_TERMS = {
+            # English
+            "strategy", "strategies", "strategize", "strategic", "roadmap", "roadmaps",
+            "transformation", "action plan", "implementation plan", "turnaround",
+            "growth plan", "business plan", "expansion plan", "go to market", "go-to-market",
+            "multi-phase", "multi phase", "long term", "long-term", "5 year", "five year",
+            "enterprise audit", "comprehensive audit", "full audit", "commercial strategy",
             # French
-            "feuille de route", "plan strategique", "plan strat\u00e9gique",
+            "stratégie", "strategie", "stratégique", "strategique", "feuille de route",
+            "plan d'action", "plan d action", "transformation", "plan stratégique",
+            # Arabic
+            "استراتيجية", "إستراتيجية", "خطة استراتيجية", "خارطة طريق", "خطة عمل",
+            "خطة نمو", "خطة تحول", "استراتيجي",
+            # Spanish
+            "estrategia", "estratégico", "estratégica", "hoja de ruta", "plan de acción",
         }
-        _plan_msg_lower = clean_user_message.lower()
-        _has_plan_language = any(kw in _plan_msg_lower for kw in _PLAN_TRIGGER_KEYWORDS)
-        if not _has_plan_language:
+        _plan_msg_lower = (clean_user_message or user_message).lower()
+        _has_strategic_intent = any(term in _plan_msg_lower for term in _STRATEGIC_INTENT_TERMS)
+
+        if not _has_strategic_intent:
             logger.info(
-                f"PLAN GATE | Router returned PLAN but no planning keywords found in message. "
+                f"PLAN GUARD | Router returned PLAN on non-strategic query lacking strategy/roadmap intent. "
                 f"Converting to EXECUTE. | msg='{clean_user_message[:100]}'"
             )
             decision = "EXECUTE"
@@ -978,14 +1127,120 @@ async def chat_endpoint(request: Request):
 # ── Structured AI Feature Endpoints ─────────────
 
 def _extract_json_block(text: str) -> dict | None:
-    """Extract the first ```json ... ``` block from agent text output."""
-    match = _re.search(r'```json\s*([\s\S]*?)\s*```', text, _re.IGNORECASE)
-    if match:
-        try:
-            return json.loads(match.group(1))
-        except (json.JSONDecodeError, ValueError):
+    """Extract a JSON object from agent text: tries ```json```, bare ```, then {…}, with trailing-comma repair."""
+    if not text or not isinstance(text, str):
+        return None
+
+    def _try_parse(raw: str) -> dict | None:
+        if not raw:
             return None
+        # Strip single-line JS-style comments
+        s = _re.sub(r'//.*$', '', raw, flags=_re.MULTILINE)
+        # Strip trailing commas
+        cleaned = _re.sub(r',\s*([}\]])', r'\1', s).strip()
+        try:
+            result = json.loads(cleaned)
+            return result if isinstance(result, dict) else None
+        except (json.JSONDecodeError, ValueError):
+            # Attempt to balance and close open delimiters (quotes, braces, brackets) if truncated
+            stack = []
+            in_string = False
+            escape = False
+            for ch in cleaned:
+                if escape:
+                    escape = False
+                    continue
+                if ch == '\\':
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if not in_string:
+                    if ch in ('{', '['):
+                        stack.append(ch)
+                    elif ch == '}':
+                        if stack and stack[-1] == '{':
+                            stack.pop()
+                    elif ch == ']':
+                        if stack and stack[-1] == '[':
+                            stack.pop()
+
+            candidate = cleaned.rstrip()
+            if in_string:
+                candidate += '"'
+            while stack:
+                candidate = _re.sub(r',\s*$', '', candidate)
+                open_delim = stack.pop()
+                candidate += "}" if open_delim == "{" else "]"
+
+            try:
+                result = json.loads(candidate)
+                return result if isinstance(result, dict) else None
+            except Exception:
+                pass
+            return None
+
+    # Tier 1: All ```json … ``` fences (last block first)
+    matches = list(_re.finditer(r'```json\s*([\s\S]*?)\s*```', text, _re.IGNORECASE))
+    for m in reversed(matches):
+        r = _try_parse(m.group(1))
+        if r is not None:
+            return r
+
+    # Tier 2: All ``` … ``` fences (no language tag, last block first)
+    matches = list(_re.finditer(r'```\s*([\s\S]*?)\s*```', text))
+    for m in reversed(matches):
+        r = _try_parse(m.group(1))
+        if r is not None:
+            return r
+
+    # Tier 3: Unclosed ```json { ...
+    m = _re.search(r'```json\s*(\{[\s\S]*)', text, _re.IGNORECASE)
+    if m:
+        r = _try_parse(m.group(1))
+        if r is not None:
+            return r
+
+    # Tier 4: Bare outermost { … }
+    m = _re.search(r'\{[\s\S]*\}', text)
+    if m:
+        return _try_parse(m.group(0))
+
     return None
+
+
+def _hydrate_from_session_sync(session_id: str, root_keys: tuple = ()) -> tuple[dict, str | None]:
+    """Synchronous helper to query ChatMessage and extract structured payload & message type.
+    Intelligently merges multiple assistant messages across the session so that multi-turn discussions
+    (e.g. Revenue Growth forecast + Inventory Demand forecast) are unified.
+    """
+    from odoo_app.models.agent import ChatMessage
+    msgs = list(ChatMessage.objects.filter(
+        session_id=session_id,
+        role="assistant",
+        message_type__in=["audit", "analysis", "forecast", "proforma", "financial_analysis", "accounting"]
+    ).exclude(payload__isnull=True).order_by("created_at"))
+    if not msgs:
+        msgs = list(ChatMessage.objects.filter(
+            session_id=session_id,
+            role="assistant"
+        ).exclude(payload__isnull=True).order_by("created_at"))
+
+    if msgs:
+        merged = {}
+        latest_type = msgs[-1].message_type
+        for m in msgs:
+            if isinstance(m.payload, dict):
+                for k, v in m.payload.items():
+                    if isinstance(v, list):
+                        if k not in merged:
+                            merged[k] = []
+                        merged[k].extend(v)
+                    else:
+                        merged[k] = v
+        return merged, latest_type
+    return {}, None
 
 
 @router.post("/report", dependencies=[_use_agent])
@@ -1001,67 +1256,124 @@ async def generate_ai_report(request: Request):
         raw_type=raw_type,
     )
     report_data = body.get("report_data")
-    data = body.get("data", {})
+    data = body.get("data")
+    if not isinstance(data, dict):
+        data = {}
+
+    # Check if a full session object with messages is supplied directly in request body
+    messages_list = body.get("messages")
+    if isinstance(messages_list, list) and messages_list:
+        merged_msgs_payload = {}
+        latest_msg_type = None
+        for m in messages_list:
+            if isinstance(m, dict) and m.get("role") == "assistant" and isinstance(m.get("payload"), dict):
+                latest_msg_type = m.get("message_type") or latest_msg_type
+                for k, v in m["payload"].items():
+                    if isinstance(v, list):
+                        if k not in merged_msgs_payload:
+                            merged_msgs_payload[k] = []
+                        merged_msgs_payload[k].extend(v)
+                    else:
+                        merged_msgs_payload[k] = v
+        if merged_msgs_payload:
+            if not raw_type or raw_type in ("auto", "none", "", "health", "general"):
+                if latest_msg_type == "forecast":
+                    report_type = "proforma"
+                elif latest_msg_type == "analysis":
+                    report_type = "financial_analysis"
+                elif latest_msg_type == "audit":
+                    report_type = "accounting"
+                else:
+                    report_type = "proforma"
+            for k, v in merged_msgs_payload.items():
+                if k not in data or not data[k]:
+                    data[k] = v
+            if body.get("title") and "title" not in data:
+                data["title"] = body["title"]
+
+    # Dynamic top-level body parameter extraction: bridge any structured fields into data
+    exclude_body_keys = {
+        "tenant_ids", "company_ids", "tenant_id", "company_id", "report_type", "type",
+        "prompt", "message", "custom_content", "logo_path", "base_currency", "start_date",
+        "end_date", "from_date", "to_date", "reporting_period", "comparison_label",
+        "token_usage", "messages", "data", "report_data"
+    }
+    for k, v in body.items():
+        if k not in exclude_body_keys and not k.startswith("_"):
+            if k not in data or not data[k]:
+                data[k] = v
+
+    # Session-based fallback: if findings/details/steps/insights/alerts are missing, hydrate from stored ChatMessage payload
+    session_id = body.get("session_id") or data.get("session_id")
+    if session_id and not (data.get("findings") or data.get("details") or data.get("insights") or data.get("alerts") or data.get("steps") or data.get("levers") or data.get("revenue_bridge") or data.get("reorder_recommendations")):
+        try:
+            session_payload, session_msg_type = await sync_to_async(_hydrate_from_session_sync)(session_id)
+            if session_msg_type and (not raw_type or raw_type in ("auto", "none", "", "health", "general")):
+                if session_msg_type == "forecast":
+                    report_type = "proforma"
+                elif session_msg_type == "analysis":
+                    report_type = "financial_analysis"
+                elif session_msg_type == "audit":
+                    report_type = "accounting"
+
+            for k, v in session_payload.items():
+                if k not in data or not data[k]:
+                    data[k] = v
+        except Exception as e:
+            logger.warning(f"Failed to hydrate report data from session {session_id}: {e}")
+
+    # Bridge structured forecast KPIs and ALL data details into report_data completely dynamically
+    if not report_data or not isinstance(report_data, dict):
+        report_data = {}
+    for k, v in data.items():
+        if k == "token_usage":
+            continue
+        if k not in report_data or not report_data[k]:
+            report_data[k] = v
+
+        if "projected_revenue" not in report_data and data.get("value"):
+            val_str = str(data["value"])
+            m = _re.search(r'([A-Z]{3}|\$|€|£)?\s*([\d,]+(?:\.\d+)?)', val_str)
+            if m:
+                clean_num = m.group(2).replace(",", "")
+                try:
+                    num_val = float(clean_num)
+                    curr_prefix = m.group(1) or ""
+                    report_data["projected_revenue"] = {
+                        "raw": num_val,
+                        "formatted": f"{curr_prefix} {m.group(2)}".strip()
+                    }
+                except ValueError:
+                    pass
+        if "projection_confidence" not in report_data and data.get("confidence"):
+            conf_num = data["confidence"]
+            report_data["projection_confidence"] = {
+                "raw": conf_num,
+                "formatted": f"{conf_num}%" if str(conf_num).isdigit() else str(conf_num)
+            }
 
     lines = []
     if body.get("custom_content"):
         custom_content = body["custom_content"]
     else:
-        if report_type in ("analysis", "health", "executive", "general"):
-            lines += [
-                f"## {data.get('title', 'Financial Analysis')}",
-                f"**Primary Metric:** {data.get('value', 'N/A')}  |  **Trend:** {data.get('trend', 'N/A')}",
-                "",
-            ]
-            if data.get("summary"):
-                lines += ["### Executive Summary", data["summary"], ""]
-            if data.get("insights"):
-                lines.append("### Key Insights")
-                lines += [f"- {i}" for i in data["insights"]]
-                lines.append("")
-            if data.get("details"):
-                lines.append("### Key Findings")
-                for d in data["details"]:
-                    lines += [f"**{d['title']}**", d["description"], ""]
-            if data.get("levers"):
-                lines.append("### Optimization Levers")
-                lines += [f"- {l}" for l in data["levers"]]
+        from .tools_refactored.reporting._format_ai_body import format_dynamic_ai_analysis
+        ai_md = format_dynamic_ai_analysis(data=data, session_messages=body.get("messages"))
+        if ai_md:
+            lines.append(ai_md)
 
-        elif report_type in ("forecast", "proforma"):
-            lines += [
-                f"## {data.get('title', 'Sales Forecast')}",
-                f"**Projected Value:** {data.get('value', 'N/A')}  |  "
-                f"**Period:** {data.get('period', 'N/A')}  |  "
-                f"**Confidence:** {data.get('confidence', 'N/A')}%",
-                "",
-            ]
-            if data.get("insights"):
-                lines.append("### Key Insights")
-                lines += [f"- {i}" for i in data["insights"]]
-                lines.append("")
-            if data.get("steps"):
-                lines.append("### Strategic Action Plan")
-                for idx, s in enumerate(data["steps"], 1):
-                    lines += [f"**Phase {idx}: {s['title']}**", s["description"], ""]
-
-        elif report_type in ("audit", "accounting"):
-            lines += [
-                f"## {data.get('title', 'Integrity Audit')}",
-                f"**Score:** {data.get('score', 'N/A')}/100  |  "
-                f"**Status:** {data.get('status', 'N/A')}  |  "
-                f"**Grade:** {data.get('grade', 'N/A')}",
-                "",
-            ]
-            if data.get("findings"):
-                lines.append("### Audit Findings")
-                for f in data["findings"]:
-                    sev = f.get("severity", "info").upper()
-                    lines += [f"**[{sev}] {f['title']}**", f["description"], ""]
-        else:
-            if data.get("title"):
-                lines.append(f"## {data['title']}\n")
-            if data.get("summary"):
-                lines.append(f"### Summary\n{data['summary']}\n")
+        # Ensure any chart embedded in data payload is included as a chart block
+        chart_obj = data.get("chart") or data.get("charts") or data.get("graph")
+        if chart_obj:
+            if isinstance(chart_obj, dict):
+                lines.append("\n```chart")
+                lines.append(json.dumps(chart_obj))
+                lines.append("```\n")
+            elif isinstance(chart_obj, list):
+                for c in chart_obj:
+                    if isinstance(c, dict):
+                        lines.append("\n```chart")
+                        lines.append(json.dumps(c))
+                        lines.append("```\n")
 
         custom_content = "\n".join(lines)
     logo_path = body.get("logo_path")
@@ -1088,232 +1400,232 @@ async def generate_ai_report(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/analysis", dependencies=[_use_agent])
-async def run_analysis(request: Request):
-    import uuid
-    body = await request.json()
-    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
-    focus_area = body.get("focus_area", "Sales & Revenue")
-    dimension = body.get("dimension", "Overall Performance")
-    session_id = body.get("session_id") or str(uuid.uuid4())
-
-    tool_map = {
-        "Sales & Revenue": "sales_summary, period_comparison, top_products",
-        "Inventory Velocity": "inventory_dashboard_alerts, inventory_efficiency",
-        "Operational Costs": "calculate_pnl, expense_breakdown",
-    }
-    tool_hint = tool_map.get(focus_area, "sales_summary, period_comparison")
-
-    prompt = (
-        f"[STRUCTURED ANALYSIS REQUEST]\n\n"
-        f"Perform a deep financial analysis on: {focus_area} | Dimension: {dimension}\n"
-        f"Use these tools: {tool_hint}\n\n"
-        f"After completing the analysis, output ONLY this JSON block at the very end of your response:\n\n"
-        "```json\n"
-        "{\n"
-        '  "title": "<3-5 word analysis title>",\n'
-        '  "value": "<primary headline KPI with currency>",\n'
-        '  "trend": "<% change vs prior period, e.g. +12.4%>",\n'
-        '  "isPositive": <true or false>,\n'
-        '  "insights": ["<insight with real number>", "<insight with real number>", "<insight with real number>"],\n'
-        '  "summary": "<2-sentence executive summary with real figures>",\n'
-        '  "details": [\n'
-        '    {"title": "<finding title>", "description": "<detailed finding with data>"},\n'
-        '    {"title": "<finding title>", "description": "<detailed finding with data>"}\n'
-        '  ],\n'
-        '  "levers": ["<action recommendation 1>", "<action recommendation 2>"]\n'
-        "}\n"
-        "```"
-    )
-
-    user_label = f"Analysis: {focus_area} — {dimension}"
-    session_tenant_id = primary_tenant_id or "default"
-    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
-    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
-
+async def _run_structured_node(
+    prompt: str,
+    user_label: str,
+    msg_type: str,
+    session_id: str,
+    session_tenant_id: str,
+    resolved_tenant_ids: list,
+    resolved_company_ids: list,
+    timeout: Optional[float] = None,
+) -> dict:
+    """
+    Execute forecast_node or audit_node (thinking disabled, early_stopping_method="generate")
+    for forecast and audit, or fast_path_node (thinking enabled) for analysis in a worker
+    thread without timeout restrictions, extract JSON, and atomically persist session
+    messages on success only. Raises HTTPException on 422 (no JSON) or 500 (other).
+    """
+    if msg_type == "forecast":
+        node = forecast_node
+    elif msg_type == "audit":
+        node = audit_node
+    else:
+        node = fast_path_node
     try:
-        answer = await asyncio.to_thread(
-            fast_path_node.run,
+        coro = asyncio.to_thread(
+            node.run,
             message=prompt,
             tenant_ids=resolved_tenant_ids,
             company_ids=resolved_company_ids,
             chat_history=[],
-            memory_summary=""
+            memory_summary="",
+            session_id=session_id,
         )
-        structured = _extract_json_block(answer)
-        if not structured:
-            raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
-        analysis_token_usage = fast_path_node.get_last_token_usage()
-        if analysis_token_usage and analysis_token_usage.get("total_tokens", 0) > 0:
-            structured["token_usage"] = analysis_token_usage
-        await sync_to_async(session_manager.save_message)(
-            session_id, "assistant",
-            structured.get("summary", structured.get("title", "Analysis complete.")),
-            message_type="analysis", payload=structured
+        if timeout is not None:
+            answer = await asyncio.wait_for(coro, timeout=timeout)
+        else:
+            answer = await coro
+    except asyncio.TimeoutError:
+        log_error(f"run_{msg_type}", Exception(f"Timeout waiting for {msg_type}"))
+        raise HTTPException(
+            status_code=504,
+            detail=f"The {msg_type} request timed out. Please retry.",
+        )
+    except Exception as e:
+        log_error(f"run_{msg_type}", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to execute {msg_type}. Please try again.",
+        )
+
+    structured = _extract_json_block(answer)
+    if not structured:
+        raise HTTPException(
+            status_code=422,
+            detail="The AI did not return structured data. Please refine your request and retry.",
+        )
+
+    token_usage = node.get_last_token_usage()
+    if token_usage and token_usage.get("total_tokens", 0) > 0:
+        structured["token_usage"] = token_usage
+
+    # Atomic: only write DB records after successful generation
+    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
+    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
+    await sync_to_async(session_manager.save_message)(
+        session_id, "assistant",
+        structured.get("summary", structured.get("title", f"{msg_type.capitalize()} complete.")),
+        message_type=msg_type, payload=structured,
+    )
+    return structured
+
+
+@router.post("/analysis", dependencies=[_use_agent])
+async def run_analysis(req: AnalysisRequest):
+    primary_tenant_id, resolved_tenant_ids, _, resolved_company_ids = extract_context_ids(req)
+    focus_area  = req.focus_area.strip() if req.focus_area else "Sales & Revenue"
+    dimension   = req.dimension.strip() if req.dimension else "Overall Performance"
+    session_id  = req.session_id or str(uuid.uuid4())
+    today       = _date.today().strftime("%Y-%m-%d")
+
+    tool_map = {
+        "Sales & Revenue": (
+            "sales_summary, period_comparison, top_products, variance_analysis, "
+            "discount_leakage, revenue_segmentation"
+        ),
+        "Profitability & Margins": (
+            "calculate_pnl, period_comparison_pnl, financial_ratios, "
+            "purchase_vs_sales_margin, expense_breakdown"
+        ),
+        "Profitability": (
+            "calculate_pnl, period_comparison_pnl, financial_ratios, "
+            "purchase_vs_sales_margin, expense_breakdown"
+        ),
+        "Operational Costs": (
+            "calculate_pnl, expense_breakdown, period_comparison_pnl, "
+            "purchase_summary, procurement_spend_by_category"
+        ),
+        "Cash Flow": (
+            "cash_flow_statement, cash_flow_health, bank_cash_summary, "
+            "working_capital, working_capital_efficiency, payment_reconciliation"
+        ),
+        "Working Capital & Liquidity": (
+            "working_capital, working_capital_efficiency, aging_analysis, "
+            "receivables_analysis, payables_analysis, inventory_efficiency"
+        ),
+        "Inventory Velocity": (
+            "inventory_dashboard_alerts, inventory_efficiency, inventory_valuation, "
+            "abc_analysis, reorder_recommendations"
+        ),
+        "Customer Economics": (
+            "customer_metrics, receivables_analysis, aging_analysis, "
+            "order_to_cash_cycle, revenue_segmentation"
+        ),
+        "Procurement & Vendor Spend": (
+            "purchase_summary, top_vendors, vendor_performance, "
+            "procurement_spend_by_category, purchase_vs_sales_margin"
+        ),
+    }
+    tool_hint = tool_map.get(focus_area, "calculate_pnl, executive_summary, sales_summary, cash_flow_health")
+
+    date_context = (
+        f"Analysis Date Range: {req.start_date} to {req.end_date}. Filter all tool calls to this range."
+        if req.start_date and req.end_date
+        else "Date Range: Full historical data to date (no date filter supplied)."
+    )
+
+    prompt = f"""<request_context>
+Today's Date: {today}
+{date_context}
+<focus_area>{focus_area}</focus_area>
+<dimension>{dimension}</dimension>
+Recommended Tools: {tool_hint}
+</request_context>
+
+<role>
+You are a Senior FP&A Director and CFO Strategic Advisor conducting a deep financial performance and diagnostic analysis.
+Your objective is to provide executive-level quantitative insights, diagnose root causes behind margin or revenue variances, and deliver high-impact, mathematically grounded financial levers.
+</role>
+
+<instructions>
+1. Tool Execution:
+   - Execute the recommended tools to retrieve actual financial and operational data for the focus area and dimension.
+   - When tools accept date filters, pass the explicit ISO dates from the context above (or leave empty if full historical).
+   - If a tool requires company_id or tenant_id, supply the appropriate context.
+
+2. Financial Analytical Methodology in <thinking>:
+   In your internal <thinking> block, perform the following 4-step financial analysis before generating the final JSON:
+   a. Baseline & Variance Decomposition: Compute period-over-period variances: ((Current - Prior) / Prior * 100). Decompose swings into volume effects vs price/mix changes vs cost drift.
+   b. Margin Quality Audit: Calculate Gross Margin % ((Revenue - COGS) / Revenue), Operating Margin %, and basis point (bps) swings. Check if revenue growth is profitable or margin-dilutive.
+   c. Working Capital & Cash Conversion: Examine whether earnings translate to cash. Note DSO, overdue AR concentration, unapplied cash, or inventory holding drag.
+   d. Lever Modeling: Formulate 2-3 specific operational interventions with estimated monetary or basis point impact.
+
+3. Data Grounding & Anti-Hallucination:
+   - Ground every single figure in tool results. Cite exact numbers and currency symbols.
+   - If a tool returns no data or zero records, state "N/A" or 0 — NEVER hallucinate mock financial metrics.
+
+4. Format Compliance:
+   - Output the final result as a single JSON object inside a ```json ``` fence.
+   - Adhere strictly to the JSON schema below. Do not add commentary outside the code fence.
+</instructions>
+
+<output_schema>
+```json
+{{
+  "title": "3-5 word executive headline (e.g. 'Margin Compression Amid Top-Line Growth')",
+  "value": "$X,XXX.XX — primary headline metric with currency and context (e.g. '$1,240,500 Gross Revenue (34.2% GM)')",
+  "trend": "+X.X% vs prior period (+XXX bps), or N/A",
+  "isPositive": true,
+  "insights": [
+    "Revenue / Volume: Exact metric, percentage change vs prior, and primary volume/product driver.",
+    "Margin / Cost: Exact gross/net margin %, basis point expansion or compression, and cost root cause.",
+    "Working Capital / Liquidity: Cash impact, overdue AR/AP pressure, or inventory velocity friction."
+  ],
+  "summary": "Two to three sentence CFO executive briefing bridging headline performance to operational drivers and cash/margin health.",
+  "details": [
+    {{"title": "Variance & Volume Decomposition", "description": "Specific data-backed explanation of volume, pricing, and category contributions."}},
+    {{"title": "Margin Quality & Cost Structure", "description": "Specific data-backed explanation of COGS, OPEX ratios, and margin drift."}},
+    {{"title": "Working Capital & Cash Flow Drag", "description": "Specific data-backed explanation of receivables aging, inventory drag, or liquidity exposure."}}
+  ],
+  "levers": [
+    "Prioritized, quantified operational intervention 1 (e.g., 'Cap discounting at 5% on top SKUs to recover ~$14,000 in lost margin')",
+    "Prioritized, quantified operational intervention 2 (e.g., 'Accelerate collections on 60+ day accounts to unlock ~$35,000 in working capital')",
+    "Prioritized, quantified operational intervention 3 (e.g., 'Consolidate category purchases with primary vendor to qualify for 3% volume rebate')"
+  ]
+}}
+```
+</output_schema>"""
+
+    user_label = f"Analysis: {focus_area} — {dimension}"
+    session_tenant_id = primary_tenant_id or "default"
+
+    try:
+        structured = await _run_structured_node(
+            prompt=prompt, user_label=user_label, msg_type="analysis",
+            session_id=session_id, session_tenant_id=session_tenant_id,
+            resolved_tenant_ids=resolved_tenant_ids, resolved_company_ids=resolved_company_ids,
         )
         return {**structured, "session_id": session_id}
     except HTTPException:
         raise
     except Exception as e:
         log_error("run_analysis", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to run financial analysis. Please try again.")
 
 
 @router.post("/forecast", dependencies=[_use_agent])
-async def run_forecast(request: Request):
-    import uuid
-    body = await request.json()
-    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
-    scope = body.get("scope", "Next 30 Days")
-    risk_profile = body.get("risk_profile", "Balanced (Standard)")
-    session_id = body.get("session_id") or str(uuid.uuid4())
-
-    scope_hint = {
-        "Next 30 Days": "next 30 days",
-        "Quarterly Growth": "next quarter",
-        "Year-End Outlook": "remainder of the current year",
-    }.get(scope, "next 30 days")
-
-    risk_hint = {
-        "Conservative (Safe)": "apply a conservative 15% downward buffer to projections",
-        "Balanced (Standard)": "use base trend projections without adjustment",
-        "Aggressive (High Growth)": "apply an aggressive 20% upward growth multiplier",
-    }.get(risk_profile, "use base trend projections without adjustment")
-
-    prompt = (
-        f"[STRUCTURED FORECAST REQUEST]\n\n"
-        f"Generate a financial sales forecast for: {scope} using {risk_profile} risk parameters.\n"
-        f"Time horizon: {scope_hint}. Risk guidance: {risk_hint}.\n"
-        f"Use these tools: sales_forecast, sales_summary, sales_trend, period_comparison\n\n"
-        f"After completing the forecast, output ONLY this JSON block at the very end of your response:\n\n"
-        "```json\n"
-        "{\n"
-        '  "title": "<3-5 word forecast title>",\n'
-        '  "value": "<projected revenue/value with currency>",\n'
-        '  "period": "<forecast period description>",\n'
-        '  "confidence": <integer 0-100 confidence level>,\n'
-        '  "insights": ["<data-driven insight 1>", "<data-driven insight 2>", "<data-driven insight 3>"],\n'
-        '  "steps": [\n'
-        '    {"title": "<action phase title>", "description": "<what to do and expected outcome>"},\n'
-        '    {"title": "<action phase title>", "description": "<what to do and expected outcome>"},\n'
-        '    {"title": "<action phase title>", "description": "<what to do and expected outcome>"}\n'
-        '  ]\n'
-        "}\n"
-        "```"
+async def run_forecast(req: ForecastRequest):
+    primary_tenant_id, resolved_tenant_ids, _, resolved_company_ids = extract_context_ids(req)
+    return await execute_cfo_forecast(
+        req=req,
+        primary_tenant_id=primary_tenant_id,
+        resolved_tenant_ids=resolved_tenant_ids,
+        resolved_company_ids=resolved_company_ids,
+        run_node_fn=_run_structured_node,
     )
-
-    user_label = f"Forecast: {scope} ({risk_profile})"
-    session_tenant_id = primary_tenant_id or "default"
-    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
-    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
-
-    try:
-        answer = await asyncio.to_thread(
-            fast_path_node.run,
-            message=prompt,
-            tenant_ids=resolved_tenant_ids,
-            company_ids=resolved_company_ids,
-            chat_history=[],
-            memory_summary=""
-        )
-        structured = _extract_json_block(answer)
-        if not structured:
-            raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
-        forecast_token_usage = fast_path_node.get_last_token_usage()
-        if forecast_token_usage and forecast_token_usage.get("total_tokens", 0) > 0:
-            structured["token_usage"] = forecast_token_usage
-        await sync_to_async(session_manager.save_message)(
-            session_id, "assistant",
-            structured.get("title", "Forecast complete."),
-            message_type="forecast", payload=structured
-        )
-        return {**structured, "session_id": session_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_error("run_forecast", e)
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/audit", dependencies=[_use_agent])
-async def run_audit(request: Request):
-    import uuid
-    body = await request.json()
-    primary_tenant_id, resolved_tenant_ids, primary_company_id, resolved_company_ids = extract_context_ids(body)
-    priority = body.get("priority", "Duplicate Detection")
-    depth = body.get("depth", "Full Depth (Last Quarter)")
-    session_id = body.get("session_id") or str(uuid.uuid4())
-
-    depth_hint = {
-        "Quick Scan (Last 7 days)": "last 7 days",
-        "Full Depth (Last Quarter)": "last quarter",
-        "Comprehensive (Full Year)": "full year to date",
-    }.get(depth, "last quarter")
-
-    tool_map = {
-        "Duplicate Detection": "detect_anomalies, trial_balance",
-        "Tax Compliance": "tax_summary, detect_anomalies",
-        "Incomplete Records": "aging_analysis, receivables_analysis, detect_anomalies",
-    }
-    tool_hint = tool_map.get(priority, "detect_anomalies, trial_balance")
-
-    prompt = (
-        f"[STRUCTURED AUDIT REQUEST]\n\n"
-        f"Perform an integrity audit focused on: {priority} | Depth: {depth} ({depth_hint}).\n"
-        f"Use these tools: {tool_hint}\n\n"
-        f"Calculate an overall integrity score (0-100) based on findings:\n"
-        f"- 90-100: No critical issues → status: Verified, grade: AA\n"
-        f"- 70-89: Minor issues → status: Attention Needed, grade: A\n"
-        f"- 50-69: Notable issues → status: Issues Found, grade: B\n"
-        f"- Below 50: Critical issues → status: Critical, grade: C\n\n"
-        f"After completing the audit, output ONLY this JSON block at the very end of your response:\n\n"
-        "```json\n"
-        "{\n"
-        '  "title": "<audit result title>",\n'
-        '  "score": <integer 0-100>,\n'
-        '  "status": "<Verified | Attention Needed | Issues Found | Critical>",\n'
-        '  "grade": "<AA | A | B | C>",\n'
-        '  "alerts": [\n'
-        '    {"text": "<short finding title>", "sub": "<one-line detail with real data>"}\n'
-        '  ],\n'
-        '  "findings": [\n'
-        '    {"title": "<finding title>", "description": "<detailed finding with amounts or counts>", "severity": "<critical | urgent | review | info>"}\n'
-        '  ]\n'
-        "}\n"
-        "```"
+async def run_audit(req: AuditRequest):
+    primary_tenant_id, resolved_tenant_ids, _, resolved_company_ids = extract_context_ids(req)
+    return await execute_forensic_audit(
+        req=req,
+        primary_tenant_id=primary_tenant_id,
+        resolved_tenant_ids=resolved_tenant_ids,
+        resolved_company_ids=resolved_company_ids,
+        run_node_fn=_run_structured_node,
     )
-
-    user_label = f"Audit: {priority} — {depth}"
-    session_tenant_id = primary_tenant_id or "default"
-    await sync_to_async(session_manager.get_or_create_session)(session_id, session_tenant_id, user_label)
-    await sync_to_async(session_manager.save_message)(session_id, "user", user_label)
-
-    try:
-        answer = await asyncio.to_thread(
-            fast_path_node.run,
-            message=prompt,
-            tenant_ids=resolved_tenant_ids,
-            company_ids=resolved_company_ids,
-            chat_history=[],
-            memory_summary=""
-        )
-        structured = _extract_json_block(answer)
-        if not structured:
-            raise HTTPException(status_code=422, detail="AI did not return structured data. Please retry.")
-        audit_token_usage = fast_path_node.get_last_token_usage()
-        if audit_token_usage and audit_token_usage.get("total_tokens", 0) > 0:
-            structured["token_usage"] = audit_token_usage
-        await sync_to_async(session_manager.save_message)(
-            session_id, "assistant",
-            structured.get("title", "Audit complete."),
-            message_type="audit", payload=structured
-        )
-        return {**structured, "session_id": session_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_error("run_audit", e)
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Session Management Endpoints ────────────────

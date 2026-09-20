@@ -230,10 +230,112 @@ def send_alert_tool(
         return {"tool_name": "send_alert_tool", "alert": alert, "alert_id": alert["alert_id"], "sent": False, "errors": errors}
 
 
+def _add_file_to_attachments(file_path, attachments_list: list[dict]):
+    import base64
+    import mimetypes
+    from pathlib import Path
+    p = Path(file_path)
+    try:
+        if not p.is_file():
+            return
+        content_bytes = p.read_bytes()
+        b64_content = base64.b64encode(content_bytes).decode("utf-8")
+        content_type = mimetypes.guess_type(p.name)[0] or "application/pdf"
+        if not any(a.get("filename") == p.name for a in attachments_list):
+            attachments_list.append({
+                "filename": p.name,
+                "content": b64_content,
+                "contentType": content_type,
+            })
+            logger.info(f"Attached file '{p.name}' ({len(content_bytes)} bytes) to email payload.")
+    except Exception as e:
+        logger.error(f"Failed to read and encode attachment file '{p}': {e}")
+
+
+def _resolve_email_attachments(
+    attachment_path: Optional[str] = None,
+    attachments: Optional[list] = None,
+    tenant_ids: Optional[list[str]] = None,
+    company_ids: Optional[list[int]] = None,
+    subject: str = "",
+    body: str = "",
+) -> list[dict]:
+    from pathlib import Path
+    from urllib.parse import urlparse
+    from django.conf import settings
+    from .reporting._template_router import _get_reports_dir
+
+    resolved: list[dict] = []
+
+    # 1. Process explicit attachments list
+    if attachments and isinstance(attachments, list):
+        for att in attachments:
+            if isinstance(att, dict) and "content" in att and "filename" in att:
+                resolved.append(att)
+            elif isinstance(att, (str, Path)):
+                _add_file_to_attachments(Path(att), resolved)
+
+    # 2. Process attachment_path if specified
+    if attachment_path:
+        val = str(attachment_path).strip()
+        if val.lower() in ("latest", "auto", "recent", "true", "last"):
+            from .reporting.generate_report_tool import get_last_report_tool
+            last_rep = get_last_report_tool(tenant_ids=tenant_ids, company_ids=company_ids)
+            if last_rep.get("status") != "no_reports" and last_rep.get("filename"):
+                rep_dir = _get_reports_dir()
+                candidate = rep_dir / last_rep["filename"]
+                if candidate.is_file():
+                    _add_file_to_attachments(candidate, resolved)
+        else:
+            parsed = urlparse(val)
+            path_str = parsed.path if parsed.path else val
+            target_name = Path(path_str).name
+
+            direct_p = Path(val)
+            rep_dir = _get_reports_dir()
+            base_reports = Path(getattr(settings, "REPORTS_DIR", Path("reports"))).resolve()
+
+            candidate = None
+            if direct_p.is_file():
+                candidate = direct_p
+            elif (rep_dir / target_name).is_file():
+                candidate = rep_dir / target_name
+            elif (base_reports / target_name).is_file():
+                candidate = base_reports / target_name
+            elif (Path(settings.BASE_DIR) / target_name).is_file():
+                candidate = Path(settings.BASE_DIR) / target_name
+
+            if candidate and candidate.is_file():
+                _add_file_to_attachments(candidate, resolved)
+            else:
+                logger.warning(f"Attachment path '{attachment_path}' could not be resolved to a local file on disk.")
+
+    # 3. Auto-detection fallback: if no attachment resolved yet, but the subject or body
+    # indicates intent to send a PDF report (e.g. 'sales strategy as pdf', 'report attached', etc.)
+    if not resolved:
+        full_text = f"{subject} {body}".lower()
+        has_attachment_intent = bool(
+            re.search(r'\b(pdf|attached|attachment)\b', full_text)
+        )
+        if has_attachment_intent:
+            from .reporting.generate_report_tool import get_last_report_tool
+            last_rep = get_last_report_tool(tenant_ids=tenant_ids, company_ids=company_ids)
+            if last_rep.get("status") != "no_reports" and last_rep.get("filename"):
+                rep_dir = _get_reports_dir()
+                candidate = rep_dir / last_rep["filename"]
+                if candidate.is_file():
+                    _add_file_to_attachments(candidate, resolved)
+                    logger.info(f"Auto-detected attachment intent; attached latest report '{last_rep['filename']}'.")
+
+    return resolved
+
+
 def send_email_tool(
     to_email: str,
     subject: str,
     body: str,
+    attachment_path: Optional[str] = None,
+    attachments: Optional[list] = None,
     tenant_ids: Optional[list[str]] = None,
     company_ids: Optional[list[int]] = None,
     source_tool: str | None = None,
@@ -248,6 +350,15 @@ def send_email_tool(
     clean_tenants = normalize_tenant_ids(tenant_ids)
     clean_companies = normalize_company_ids(company_ids)
 
+    resolved_attachments = _resolve_email_attachments(
+        attachment_path=attachment_path,
+        attachments=attachments,
+        tenant_ids=clean_tenants,
+        company_ids=clean_companies,
+        subject=subject,
+        body=body,
+    )
+
     email = {
         "email_id": str(uuid4()),
         "tenant_ids": clean_tenants,
@@ -256,6 +367,7 @@ def send_email_tool(
         "subject": subject,
         "body": body,
         "source_tool": source_tool,
+        "attachments": [a["filename"] for a in resolved_attachments],
         "created_at": datetime.now().isoformat(),
         "status": "prepared",
     }
@@ -263,6 +375,14 @@ def send_email_tool(
     from doova_one_view.api.email.service import EmailService
 
     body_html = md_to_html(body)
+
+    attachment_badges = ""
+    if resolved_attachments:
+        names = ", ".join([att["filename"] for att in resolved_attachments])
+        attachment_badges = f"""
+    <div style="margin-top: 20px; padding: 12px 16px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 13px; color: #166534;">
+      &#128206; <strong>Attached Document:</strong> {names}
+    </div>"""
 
     html_body = f"""<!DOCTYPE html>
 <html>
@@ -274,6 +394,7 @@ def send_email_tool(
     </div>
     <div style="padding: 24px; line-height: 1.7; font-size: 14px; color: #374151;">
       {body_html}
+      {attachment_badges}
     </div>
     <div style="background-color: #f9fafb; padding: 12px 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
       Sent by Nexus Business Advisor &mdash; Doova
@@ -289,9 +410,19 @@ def send_email_tool(
             html_body=html_body,
             text_body=body,
             priority="NORMAL",
+            attachments=resolved_attachments or None,
         )
         email["status"] = "sent"
-        return {"tool_name": "send_email_tool", "email": email, "sent": True}
+        return {
+            "tool_name": "send_email_tool",
+            "email": email,
+            "sent": True,
+            "attachments_count": len(resolved_attachments),
+            "message": (
+                f"SUCCESS: Email successfully dispatched to {to_email} with {len(resolved_attachments)} attachment(s). "
+                "Task completed! You must now STOP calling tools and output your final response to the user summarizing the key findings and confirming that the report was emailed with the PDF attached."
+            ),
+        }
     except Exception as e:
         logger.error(f"send_email_tool failed to send email to {to_email}: {e}")
         email["status"] = "failed"

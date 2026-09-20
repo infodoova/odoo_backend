@@ -253,10 +253,55 @@ class AgentCallbackHandler(BaseCallbackHandler):
         log_chain_event("ACTION", f"Agent selecting tool: {action.tool}")
 
 
+def _patch_runnable_agent_early_stopping():
+    """
+    Ensure RunnableAgent in LangChain supports early_stopping_method='generate'.
+    When max iterations is reached with early_stopping_method='generate',
+    performs a final forward pass over intermediate steps to synthesize the
+    response rather than raising ValueError or forcing a static error message.
+    """
+    from langchain_classic.agents.agent import RunnableAgent
+    from langchain_core.agents import AgentAction, AgentFinish
+
+    _orig_return_stopped_response = RunnableAgent.return_stopped_response
+
+    def return_stopped_response(self, early_stopping_method: str, intermediate_steps: list, **kwargs):
+        if early_stopping_method == "generate":
+            try:
+                # Forward pass over gathered intermediate steps to generate final answer
+                decision = self.plan(intermediate_steps, **kwargs)
+                if isinstance(decision, AgentFinish):
+                    return decision
+                if isinstance(decision, list):
+                    for d in decision:
+                        if isinstance(d, AgentFinish):
+                            return d
+                # If model emitted text inside an AgentAction log, extract and return it
+                log = getattr(decision, "log", "") if not isinstance(decision, list) else (decision[0].log if decision else "")
+                if log and ("```json" in log or len(log.strip()) > 20):
+                    return AgentFinish({"output": log}, log)
+            except Exception as e:
+                logger.warning(f"early_stopping_method='generate' forward pass encountered: {e}")
+            return AgentFinish({"output": "Agent stopped due to max iterations."}, "")
+        return _orig_return_stopped_response(self, early_stopping_method, intermediate_steps, **kwargs)
+
+    RunnableAgent.return_stopped_response = return_stopped_response
+
+_patch_runnable_agent_early_stopping()
+
+
 # ── Main Agent ────────────────────────────────────────────────────────
 
 class DoovaLangChainAgent:
-    def __init__(self, model_name=None, max_tokens=None):
+    def __init__(
+        self,
+        model_name=None,
+        max_tokens=None,
+        enable_thinking=None,
+        tools=None,
+        max_iterations=None,
+        early_stopping_method=None,
+    ):
         self.summarizer = SummarizerNode()
         self.model_name = model_name or AgentConfig.FAST_MODEL
         self.callback_handler = AgentCallbackHandler(model_name=self.model_name)
@@ -272,19 +317,24 @@ class DoovaLangChainAgent:
             }
         }
         
-        if getattr(AgentConfig, "ENABLE_THINKING", False):
+        use_thinking = enable_thinking if enable_thinking is not None else getattr(AgentConfig, "ENABLE_THINKING", True)
+        if use_thinking:
             llm_kwargs["thinking"] = {"type": "adaptive"}
+        else:
+            llm_kwargs["thinking"] = {"type": "disabled"}
 
         self.llm = ThinkingSafeChatAnthropic(**llm_kwargs)
         
+        active_tools = tools if tools is not None else agent_tools
         self.prompt = AGENT_SYSTEM_PROMPT
-        self.agent = create_tool_calling_agent(self.llm, agent_tools, self.prompt)
+        self.agent = create_tool_calling_agent(self.llm, active_tools, self.prompt)
+        stopping_method = early_stopping_method or "force"
         self.executor = AgentExecutor(
             agent=self.agent, 
-            tools=agent_tools, 
+            tools=active_tools, 
             verbose=True,
-            max_iterations=15,
-            early_stopping_method="force",
+            max_iterations=max_iterations or 25,
+            early_stopping_method=stopping_method,
             handle_parsing_errors=True,
             callbacks=[self.callback_handler]
         )
@@ -329,7 +379,8 @@ class DoovaLangChainAgent:
                         user_blocks = []
                         if base_text:
                             user_blocks.append({"type": "text", "text": base_text})
-                        user_blocks.extend(claude_blocks)
+                        clean_blocks = [{k: v for k, v in b.items() if k not in ("_audit_meta", "cache_control")} for b in claude_blocks]
+                        user_blocks.extend(clean_blocks)
                         formatted.append(HumanMessage(content=user_blocks))
                     elif base_text:
                         formatted.append(HumanMessage(content=base_text))
@@ -501,97 +552,37 @@ class DoovaLangChainAgent:
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                 )
                 # Resolve language code as the absolute master key for voice calls
-                lang_str = (language or "").strip()
-                if lang_str and lang_str.lower() not in ("auto", "none", "null", ""):
-                    code_lower = lang_str.lower().replace("_", "-")
-                    if code_lower.startswith("fr") or "french" in code_lower or "français" in code_lower:
-                        target_language_label = (
-                            "FRENCH (fr / fr-FR) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is FRENCH (Français).\n"
-                            "You MUST formulate 100% of your response in French.\n"
-                            "STRICT RULE: Even if the user spoke in English, Arabic, or another language, "
-                            "YOU ARE STRICTLY FORBIDDEN from replying in any language other than French. Reply 100% in French."
-                        )
-                    elif code_lower.startswith("ar") or "arab" in code_lower or "العربية" in code_lower:
-                        target_language_label = (
-                            "ARABIC (ar / ar-SA) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is ARABIC (العربية).\n"
-                            "You MUST formulate 100% of your response in Arabic.\n"
-                            "STRICT RULE: Even if the user spoke in English, French, or another language, "
-                            "YOU ARE STRICTLY FORBIDDEN from replying in English or any other language. Reply 100% in Arabic."
-                        )
-                    elif code_lower.startswith("es") or "span" in code_lower or "español" in code_lower:
-                        target_language_label = (
-                            "SPANISH (es / es-ES) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is SPANISH (Español).\n"
-                            "You MUST formulate 100% of your response in Spanish.\n"
-                            "STRICT RULE: Even if the user spoke in English, Arabic, or another language, reply 100% in Spanish."
-                        )
-                    elif code_lower.startswith("en") or "english" in code_lower:
-                        target_language_label = (
-                            "ENGLISH (en / en-US) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is ENGLISH.\n"
-                            "You MUST formulate 100% of your response in English."
-                        )
-                    elif code_lower.startswith("de") or "german" in code_lower or "deutsch" in code_lower:
-                        target_language_label = (
-                            "GERMAN (de / de-DE) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is GERMAN (Deutsch).\n"
-                            "You MUST formulate 100% of your response in German."
-                        )
-                    elif code_lower.startswith("it") or "italian" in code_lower:
-                        target_language_label = (
-                            "ITALIAN (it / it-IT) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is ITALIAN (Italiano).\n"
-                            "You MUST formulate 100% of your response in Italian."
-                        )
-                    elif code_lower.startswith("tr") or "turkish" in code_lower:
-                        target_language_label = (
-                            "TURKISH (tr / tr-TR) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is TURKISH (Türkçe).\n"
-                            "You MUST formulate 100% of your response in Turkish."
-                        )
-                    elif code_lower.startswith("ru") or "russian" in code_lower:
-                        target_language_label = (
-                            "RUSSIAN (ru / ru-RU) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is RUSSIAN (Русский).\n"
-                            "You MUST formulate 100% of your response in Russian."
-                        )
-                    elif code_lower.startswith("pt") or "portuguese" in code_lower:
-                        target_language_label = (
-                            "PORTUGUESE (pt / pt-PT) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is PORTUGUESE (Português).\n"
-                            "You MUST formulate 100% of your response in Portuguese."
-                        )
-                    elif code_lower.startswith("zh") or "chinese" in code_lower:
-                        target_language_label = (
-                            "CHINESE (zh / zh-CN) — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            "The active voice call language is CHINESE (中文).\n"
-                            "You MUST formulate 100% of your response in Chinese."
-                        )
-                    else:
-                        # Dynamic arbitrary language support
-                        target_language_label = (
-                            f"'{lang_str}' — VOICE CALL ABSOLUTE MASTER OVERRIDE:\n"
-                            f"The active voice call language is '{lang_str}'.\n"
-                            f"You MUST formulate 100% of your response strictly in '{lang_str}'.\n"
-                            f"STRICT RULE: Even if the user spoke in English or any other language, "
-                            f"YOU ARE STRICTLY FORBIDDEN from replying in any language other than '{lang_str}'. Reply 100% in '{lang_str}'."
-                        )
+                import re as _re
+                has_arabic = bool(_re.search(r'[\u0600-\u06FF]', message or ""))
+                has_latin = bool(_re.search(r'[a-zA-Z]', message or ""))
+                lang_str = (language or "").strip().lower().replace("_", "-")
+
+                if has_arabic:
+                    target_language_label = (
+                        "ARABIC (ar / ar-SA) — DYNAMIC VOICE MATCH:\n"
+                        "The user spoke in Arabic (العربية).\n"
+                        "You MUST formulate 100% of your response in clean, natural, modern standard Arabic (العربية الفصحى المعاصرة بدون تشكيل مفرط) so ElevenLabs Neural Voice (Rachel) speaks with natural native cadence and flawless pronunciation."
+                    )
+                elif has_latin and (not lang_str or lang_str in ("auto", "none", "null", "") or lang_str.startswith("en")):
+                    target_language_label = (
+                        "ENGLISH (en / en-US) — DYNAMIC VOICE MATCH:\n"
+                        "The user spoke in English.\n"
+                        "You MUST formulate 100% of your response in English."
+                    )
+                elif lang_str.startswith("fr") or "french" in lang_str:
+                    target_language_label = "FRENCH (fr / fr-FR) — DYNAMIC VOICE MATCH:\nYou MUST formulate 100% of your response in French."
+                elif lang_str.startswith("es") or "span" in lang_str:
+                    target_language_label = "SPANISH (es / es-ES) — DYNAMIC VOICE MATCH:\nYou MUST formulate 100% of your response in Spanish."
+                elif has_latin:
+                    target_language_label = "ENGLISH (en / en-US) — DYNAMIC VOICE MATCH:\nYou MUST formulate 100% of your response in English."
                 else:
-                    import re as _re
-                    if _re.search(r'[\u0600-\u06FF]', message or ""):
-                        target_language_label = "ARABIC (ar) — STRICT REQUIREMENT: The user spoke in Arabic. You MUST reply 100% in Arabic (العربية)."
-                    elif _re.search(r'[a-zA-Z]', message or ""):
-                        target_language_label = "ENGLISH (en) — STRICT REQUIREMENT: The user spoke in English. You MUST reply 100% in English."
-                    else:
-                        target_language_label = "English (Default)"
+                    target_language_label = "Dynamic Language Matching (Match User Input)"
             else:
                 # Regular AI Chat Mode: Natural language matching ("as it was")
                 voice_instruction = ""
                 import re as _re
                 if _re.search(r'[\u0600-\u06FF]', message or ""):
-                    target_language_label = "ARABIC (ar) — STRICT REQUIREMENT: The user's latest query is in Arabic. You MUST reply 100% in Arabic (العربية)."
+                    target_language_label = "ARABIC (ar) — STRICT REQUIREMENT: The user's latest query is in Arabic. You MUST reply 100% in clean, natural, modern Arabic (العربية الفصحى المعاصرة السلسة بدون تشكيل مفرط) for beautiful frontend reading and natural ElevenLabs speech synthesis."
                 elif _re.search(r'[a-zA-Z]', message or ""):
                     target_language_label = "ENGLISH (en) — STRICT REQUIREMENT: The user's latest query is in English (e.g. 'let\\'s continue', 'go on', 'what about...'). You MUST switch and reply 100% in ENGLISH. NEVER continue in Arabic or any previous conversation language when the current user utterance is in English."
                 else:

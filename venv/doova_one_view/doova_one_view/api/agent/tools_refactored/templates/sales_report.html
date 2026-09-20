@@ -118,7 +118,6 @@
                 <th>Product / SKU</th>
                 <th class="text-right">Quantity Sold</th>
                 <th class="text-right">Total Revenue</th>
-                <th class="text-right">Gross Margin</th>
             </tr>
         </thead>
         <tbody>
@@ -127,7 +126,6 @@
                 <td class="font-bold">{{ item.get('product', item.get('name', item.get('product_name', 'Product'))) }}</td>
                 <td class="text-right">{{ item.get('quantity', item.get('qty', '—')) }}</td>
                 <td class="text-right font-bold">{{ item.get('revenue', item.get('total_sales', '—')) }}</td>
-                <td class="text-right">{{ item.get('gross_margin', item.get('margin', '—')) }}</td>
             </tr>
             {% endfor %}
         </tbody>

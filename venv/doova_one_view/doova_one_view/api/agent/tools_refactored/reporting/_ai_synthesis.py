@@ -129,11 +129,18 @@ def _generate_ai_domain_analysis(
             "in Sections 1 and 2. Do NOT write a single-period snapshot analysis when comparative data is provided.\n"
         ) if has_prior else ""
 
+        # Sanitize prompt to remove delivery/format commands that confuse the model
+        clean_prompt = prompt or ""
+        if clean_prompt:
+            clean_prompt = re.sub(r'(?i)\b(send|email)\s+(?:it\s+)?(?:as\s+pdf\s+)?(?:to\s+)?[\w\.\-]+@[\w\.\-]+', '', clean_prompt).strip()
+            clean_prompt = re.sub(r'(?i)\b(as\s+pdf|in\s+pdf|export\s+pdf|download\s+pdf|generate\s+pdf)\b', '', clean_prompt).strip()
+
         system_instruction = (
-            f"You are a top-tier Chief Financial Officer (CFO) and Strategic Executive Advisor preparing an official management report for {company_name}.\n"
+            f"You are a top-tier Chief Financial Officer (CFO) and Strategic Executive Advisor preparing the official written analysis section for {company_name}'s management report.\n"
             f"Report Type: {title}\n"
             f"Reporting Period: {period_label} (vs {comparison_label})\n\n"
-            "Your objective is to write a deeply intelligent, highly structured, data-grounded strategic briefing in Markdown.\n\n"
+            "Your objective is to write a deeply intelligent, highly structured, data-grounded strategic briefing in Markdown.\n"
+            "CRITICAL: This text will be embedded directly into the report PDF document. Do NOT discuss email delivery, file export capabilities, or technical limitations. Write purely the professional business and financial analysis.\n\n"
             "MANDATORY STRUCTURE:\n"
             f"## {title}\n"
             f"*{subtitle}*\n\n"
@@ -151,12 +158,22 @@ def _generate_ai_domain_analysis(
             f"{comparative_rule}"
             "- Bold all key financial numbers and dates.\n"
             "- If the user provided a specific prompt/question, directly answer every aspect of their request in the narrative.\n"
-            "- Write in clean, publication-ready executive language."
+            "- Write in clean, publication-ready executive language.\n"
+            "- OPTIONAL CHARTS: To embed an executive visual chart, output a fenced code block with language `chart`:\n"
+            "  ```chart\n"
+            "  {\n"
+            "    \"chart_type\": \"bar\",\n"
+            "    \"title\": \"Example Metric Breakdown\",\n"
+            "    \"labels\": [\"Cat A\", \"Cat B\"],\n"
+            "    \"values\": [100, 200]\n"
+            "  }\n"
+            "  ```\n"
+            "  Supported types: 'bar', 'horizontal_bar', 'line', 'pie', 'donut', 'waterfall'."
         )
 
         user_content = f"Live ERP Database Telemetry for {domain.upper()}:\n```json\n{json.dumps(report_data, indent=2, default=str)}\n```\n"
-        if prompt:
-            user_content += f"\nUser Prompt / Executive Inquiries:\n\"{prompt}\"\n"
+        if clean_prompt:
+            user_content += f"\nUser Focus / Executive Inquiries:\n\"{clean_prompt}\"\n"
 
         response = llm.invoke([
             SystemMessage(content=system_instruction),

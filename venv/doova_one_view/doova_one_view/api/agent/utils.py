@@ -7,46 +7,122 @@ from pathlib import Path
 from typing import Any, Optional
 
 def parse_json_chart_from_text(text: str) -> dict | None:
-    """Extract the first {type: 'chart'} JSON block from agent output text."""
+    """
+    Extracts and standardizes the first chart JSON block from agent output text.
+    Supports:
+    - ```chart ... ``` fences (same-line, multiline, with chart_type, labels, values)
+    - ```json ... ``` fences with {type: 'chart', chart: ...} or {chart_type: ...}
+    - Bare JSON objects containing 'type': 'chart' or 'chart_type'
+    Normalizes any schema into the standard frontend Recharts payload format.
+    """
     if not text:
         return None
 
-    # Look for ```json ... ``` fences first
-    for match in re.finditer(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE):
-        try:
-            parsed = json.loads(match.group(1))
-            if isinstance(parsed, dict) and parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
-                return parsed
-        except (json.JSONDecodeError, ValueError, AttributeError):
-            pass
+    import ast
 
-    # Fallback: bare JSON object containing "type": "chart"
-    for match in re.finditer(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}(?=\s*$|\s*\n)', text):
+    def _normalize_payload(parsed: dict) -> dict | None:
+        if not isinstance(parsed, dict):
+            return None
+        # Format 1: Already has "chart" sub-object with "data"
+        if parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
+            return parsed
+        # Format 2: Has "chart_type" (or "type") and ("labels" & "values" or "data")
+        chart_type = str(parsed.get("chart_type") or parsed.get("type") or "").lower()
+        title = parsed.get("title", "")
+        labels = parsed.get("labels") or parsed.get("categories") or parsed.get("x") or []
+        values = parsed.get("values") or parsed.get("y") or []
+        data_arr = parsed.get("data")
+
+        chart_data = []
+        if isinstance(data_arr, list) and data_arr and isinstance(data_arr[0], dict):
+            for d in data_arr:
+                lbl = str(d.get("name") or d.get("label") or d.get("x") or "")
+                raw_v = d.get("value") or d.get("y") or 0
+                clean_v = re.sub(r'[^\d.-]', '', str(raw_v))
+                try:
+                    chart_data.append({"name": lbl, "value": float(clean_v)})
+                except ValueError:
+                    chart_data.append({"name": lbl, "value": 0.0})
+        elif labels and values:
+            for l, v in zip(labels, values):
+                clean_v = re.sub(r'[^\d.-]', '', str(v))
+                try:
+                    num_v = float(clean_v) if clean_v else 0.0
+                except ValueError:
+                    num_v = 0.0
+                chart_data.append({"name": str(l), "value": num_v})
+
+        if chart_data or chart_type in ("bar", "line", "pie", "donut", "waterfall"):
+            return {
+                "type": "chart",
+                "title": title,
+                "chart": {
+                    "type": chart_type or "bar",
+                    "data": chart_data
+                }
+            }
+        return None
+
+    # 1. Look for ```chart ... ``` fences first
+    for match in re.finditer(r'```chart[:\s]*(\{[\s\S]*?\})\s*```', text, re.IGNORECASE):
+        raw_json = match.group(1).strip()
         try:
-            parsed = json.loads(match.group(0))
-            if isinstance(parsed, dict) and parsed.get("type") in ("chart", "graph") and parsed.get("chart"):
-                return parsed
-        except (json.JSONDecodeError, ValueError, AttributeError):
-            pass
+            parsed = json.loads(raw_json)
+        except Exception:
+            try:
+                parsed = ast.literal_eval(raw_json)
+            except Exception:
+                parsed = None
+        norm = _normalize_payload(parsed)
+        if norm:
+            return norm
+
+    # 2. Look for ```json ... ``` fences
+    for match in re.finditer(r'```json\s*(\{[\s\S]*?\})\s*```', text, re.IGNORECASE):
+        raw_json = match.group(1).strip()
+        try:
+            parsed = json.loads(raw_json)
+        except Exception:
+            try:
+                parsed = ast.literal_eval(raw_json)
+            except Exception:
+                parsed = None
+        norm = _normalize_payload(parsed)
+        if norm:
+            return norm
+
+    # 3. Fallback: bare JSON object containing "type": "chart" or "chart_type"
+    for match in re.finditer(r'\{\s*"(?:type|chart_type)"\s*:\s*"(?:chart|graph|bar|line|pie|donut|waterfall)"[\s\S]*?\}(?=\s*$|\s*\n)', text):
+        raw_json = match.group(0).strip()
+        try:
+            parsed = json.loads(raw_json)
+        except Exception:
+            try:
+                parsed = ast.literal_eval(raw_json)
+            except Exception:
+                parsed = None
+        norm = _normalize_payload(parsed)
+        if norm:
+            return norm
 
     return None
 
 
 def strip_json_chart_from_text(text: str) -> str:
-    """Remove the JSON chart block (fenced, bare, or trailing fragments) from text, clean trailing whitespace."""
+    """Remove all chart blocks (```chart, ```json, bare, unclosed) from text, clean whitespace."""
     if not text:
         return ""
-    # 1. Remove ```json ... ``` blocks containing chart/graph definition
-    text = re.sub(r'```json\s*\{[\s\S]*?"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}\s*```', '', text, flags=re.IGNORECASE)
+    # 1. Remove ```chart ... ``` fences (multiline and single-line)
+    text = re.sub(r'```chart[\s\S]*?```', '', text, flags=re.IGNORECASE)
+    # 2. Remove ```json ... ``` blocks containing chart/graph definition
+    text = re.sub(r'```json\s*\{[\s\S]*?"(?:type|chart_type)"\s*:\s*"(?:chart|graph|bar|line|pie)"[\s\S]*?\}\s*```', '', text, flags=re.IGNORECASE)
     text = re.sub(r'```json\s*[\s\S]*?"chart"\s*:[\s\S]*?```', '', text, flags=re.IGNORECASE)
-
-    # 2. Remove complete bare JSON objects containing "type": "chart" or "graph"
-    text = re.sub(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}(?=\s*$|\s*\n)', '', text)
-    text = re.sub(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*?\}\s*$', '', text)
-
-    # 3. Remove unclosed or truncated chart JSON fragments at the end of the text
-    text = re.sub(r'\{\s*"type"\s*:\s*"(?:chart|graph)"[\s\S]*$', '', text)
-
+    # 3. Remove complete bare JSON objects containing chart definitions
+    text = re.sub(r'\{\s*"(?:type|chart_type)"\s*:\s*"(?:chart|graph|bar|line|pie)"[\s\S]*?\}(?=\s*$|\s*\n)', '', text)
+    text = re.sub(r'\{\s*"(?:type|chart_type)"\s*:\s*"(?:chart|graph|bar|line|pie)"[\s\S]*?\}\s*$', '', text)
+    # 4. Remove unclosed or truncated chart fences at the end of the text
+    text = re.sub(r'```chart[\s\S]*$', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\{\s*"(?:type|chart_type)"\s*:\s*"(?:chart|graph|bar|line|pie)"[\s\S]*$', '', text)
     # Collapse excess blank lines and strip trailing whitespace
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()

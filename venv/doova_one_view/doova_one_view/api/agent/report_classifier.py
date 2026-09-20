@@ -130,19 +130,19 @@ class ReportTypeClassifier:
 
         combined_text = f"{prompt} {custom_content}".lower().strip()
 
-        # Tier 1: Fast Rule / Keyword Matcher directly on prompt text (0ms, 0 tokens)
+        # Tier 1: Explicit specific raw_type parameter (if not generic 'auto'/'health'/'general')
+        if raw_type and raw_type not in ("auto", "none", "", "default", "health", "general"):
+            norm = cls.normalize_report_type(raw_type)
+            if norm in TEMPLATE_REGISTRY:
+                return norm
+
+        # Tier 2: Fast Rule / Keyword Matcher directly on prompt text (0ms, 0 tokens)
         if combined_text:
             tier1_result = cls._keyword_score(combined_text)
             if tier1_result:
                 duration = (time.time() - start) * 1000
                 logger.debug(f"ReportTypeClassifier Tier 1 Match: {tier1_result} in {duration:.1f}ms")
                 return tier1_result
-
-        # Tier 2: Explicit specific raw_type parameter (if not generic 'auto'/'health'/'general')
-        if raw_type and raw_type not in ("auto", "none", "", "default", "health", "general"):
-            norm = cls.normalize_report_type(raw_type)
-            if norm in TEMPLATE_REGISTRY:
-                return norm
 
         # Tier 3: Fast LLM Classifier Fallback
         classifier = cls.get_instance()

@@ -2,141 +2,117 @@
 
 {% block cover_accent_color %}#9333ea{% endblock %}
 {% block watermark_accent %}#9333ea{% endblock %}
-{% block watermark_title %}FINANCIAL FORECAST{% endblock %}
-{% block cover_badge %}Financial Forecast{% endblock %}
-{% block cover_title %}Pro Forma & Growth Projections{% endblock %}
-{% block cover_subtitle %}Forward-looking revenue forecasts, expense modeling, scenario analysis, and targets.{% endblock %}
+{% block watermark_title %}{{ report_data.get('watermark') or watermark or "FINANCIAL FORECAST" }}{% endblock %}
+{% block cover_badge %}{{ badge or report_data.get('badge') or "Financial Forecast" }}{% endblock %}
+{% block cover_title %}{{ report_data.get('title') or title or "Pro Forma & Growth Projections" }}{% endblock %}
+{% block cover_subtitle %}{{ report_data.get('subtitle') or report_data.get('period') or subtitle or "Forward-looking forecast modeling, scenario decomposition, and operational targets." }}{% endblock %}
+
+{% block cover_meta_fields %}
+<!-- Cover metadata grid removed per executive specification -->
+{% endblock %}
 
 {% block cover_callout %}
-<div class="management-callout">
-    <strong>Projection Advisory:</strong> Evaluate forward growth trajectories, baseline extrapolation scenarios, required operational levers, and capital commitments for the target forecast period.
+<div class="management-callout" style="border-left-color: #9333ea; color: #581c87; background-color: #faf5ff;">
+    <strong>Strategic Advisory:</strong> {{ report_data.get('callout') or report_data.get('summary') or "Comprehensive outlook synthesized from quantitative baseline extrapolations, pipeline telemetry, and operational parameters. Variances should be monitored continuously against actual posted results." }}
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Section 12 (AI Detailed Analysis Body) and dynamic tables */
+    .analysis-body h2 {
+        font-size: 11pt;
+        color: #0f172a;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+        margin-top: 18px;
+        margin-bottom: 10px;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    .analysis-body h3 {
+        font-size: 9pt;
+        color: #6b21a8;
+        border-left: 3px solid #9333ea;
+        padding-left: 6px;
+        margin-top: 14px;
+        margin-bottom: 6px;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    .analysis-body h4 {
+        font-size: 8pt;
+        color: #1e293b;
+        margin-top: 8px;
+        margin-bottom: 4px;
+        font-weight: 700;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    .analysis-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8px 0 14px 0;
+        font-size: 7pt;
+        background-color: #ffffff;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    .analysis-body th {
+        background-color: #1e1b4b;
+        color: #ffffff;
+        padding: 5px 7px;
+        text-align: left;
+        font-size: 6.8pt;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .analysis-body td {
+        padding: 4px 7px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: top;
+        font-size: 7pt;
+        color: #1e293b;
+    }
+    .analysis-body tr:nth-child(even) {
+        background-color: #fbfbfe;
+    }
+    .analysis-body ul, .analysis-body ol {
+        margin-top: 4px;
+        margin-bottom: 8px;
+        padding-left: 18px;
+    }
+    .analysis-body li {
+        margin-bottom: 3px;
+        color: #334155;
+        line-height: 1.4;
+    }
+    hr {
+        border: 0;
+        height: 1px;
+        background: #e2e8f0;
+        margin: 18px 0;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+</style>
 {% endblock %}
 
 {% block report_body %}
 <div class="page-break">
-    <h1 class="section-title">1. Pro Forma Projections & Target KPIs</h1>
-
-    <!-- 6 Core Forecast KPI Cards -->
-    <div class="kpi-grid-6">
-        <div class="kpi-card">
-            <div class="kpi-card-top-bar bar-purple"></div>
-            <div class="kpi-title">Projected Revenue</div>
-            <div class="kpi-value">{{ report_data.get('projected_revenue', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('projected_revenue', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('projected_revenue', {}).get('var_class', 'variance-positive') }}">
-                {{ report_data.get('projected_revenue', {}).get('arrow', '▲') }} {{ report_data.get('projected_revenue', {}).get('var_text', '') }}
-            </div>
-            {% endif %}
-            <div class="kpi-source">Target Run-Rate Forecast</div>
-        </div>
-
-        <div class="kpi-card">
-            <div class="kpi-card-top-bar bar-blue"></div>
-            <div class="kpi-title">Projected Growth %</div>
-            <div class="kpi-value">{{ report_data.get('projected_growth', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('projected_growth', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('projected_growth', {}).get('var_class', 'variance-positive') }}">
-                {{ report_data.get('projected_growth', {}).get('arrow', '▲') }} {{ report_data.get('projected_growth', {}).get('var_text', '') }}
-            </div>
-            {% endif %}
-            <div class="kpi-source">Growth over Prior Baseline</div>
-        </div>
-
-        <div class="kpi-card">
-            <div class="kpi-card-top-bar bar-cyan"></div>
-            <div class="kpi-title">Projected Gross Margin</div>
-            <div class="kpi-value">{{ report_data.get('projected_margin', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('projected_margin', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('projected_margin', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('projected_margin', {}).get('arrow', '') }} {{ report_data.get('projected_margin', {}).get('var_text', '') }}
-            </div>
-            {% endif %}
-            <div class="kpi-source">Expected Margin Efficiency</div>
-        </div>
-
-        <div class="kpi-card">
-            <div class="kpi-card-top-bar bar-green"></div>
-            <div class="kpi-title">Projected Net Profit</div>
-            <div class="kpi-value">{{ report_data.get('projected_net_profit', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('projected_net_profit', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('projected_net_profit', {}).get('var_class', 'variance-positive') }}">
-                {{ report_data.get('projected_net_profit', {}).get('arrow', '▲') }} {{ report_data.get('projected_net_profit', {}).get('var_text', '') }}
-            </div>
-            {% endif %}
-            <div class="kpi-source">Projected Bottom-Line Result</div>
-        </div>
-
-        <div class="kpi-card">
-            <div class="kpi-card-top-bar bar-green"></div>
-            <div class="kpi-title">Projected Cash Position</div>
-            <div class="kpi-value">{{ report_data.get('projected_cash', {}).get('formatted', '—') }}</div>
-            {% if report_data.get('projected_cash', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('projected_cash', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('projected_cash', {}).get('arrow', '') }} {{ report_data.get('projected_cash', {}).get('var_text', '') }}
-            </div>
-            {% endif %}
-            <div class="kpi-source">Ending Cash Buffer</div>
-        </div>
-
-        <div class="kpi-card">
-            <div class="kpi-card-top-bar bar-amber"></div>
-            <div class="kpi-title">Projection Confidence</div>
-            <div class="kpi-value">{{ report_data.get('projection_confidence', {}).get('formatted', '85%') }}</div>
-            {% if report_data.get('projection_confidence', {}).get('var_text') %}
-            <div class="kpi-variance {{ report_data.get('projection_confidence', {}).get('var_class', 'variance-neutral') }}">
-                {{ report_data.get('projection_confidence', {}).get('arrow', '') }} {{ report_data.get('projection_confidence', {}).get('var_text', '') }}
-            </div>
-            {% endif %}
-            <div class="kpi-source">Confidence & Variance Band</div>
-        </div>
-    </div>
-
-    <!-- Charts -->
-    {% if chart_1_b64 %}
-    <div class="chart-box">
-        <div class="chart-box-title">Forecast Trajectory & Scenario Projections</div>
-        <img src="data:image/png;base64,{{ chart_1_b64 }}" class="chart-img" alt="Forecast Projections Chart" />
-    </div>
-    {% endif %}
-
-    <!-- Scenarios Table -->
-    {% set scenarios = report_data.get('proforma_scenarios', report_data.get('scenarios', [])) %}
-    {% if scenarios %}
-    <h2 class="sub-title">Scenario Sensitivity Analysis (Bull / Base / Bear)</h2>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Scenario Case</th>
-                <th class="text-right">Growth Rate</th>
-                <th class="text-right">Projected Revenue</th>
-                <th class="text-right">Projected Net Profit</th>
-                <th class="text-right">Likelihood</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for sc in scenarios %}
-            <tr>
-                <td class="font-bold">{{ sc.get('name', sc.get('case', sc.get('scenario', 'Scenario'))) }}</td>
-                <td class="text-right">{{ sc.get('growth', sc.get('growth_rate', '—')) }}</td>
-                <td class="text-right font-bold">{{ sc.get('revenue', sc.get('projected_revenue', '—')) }}</td>
-                <td class="text-right font-bold">{{ sc.get('net_profit', sc.get('projected_net_profit', '—')) }}</td>
-                <td class="text-right"><span class="badge {{ sc.get('badge_class', 'badge-info') }}">{{ sc.get('likelihood', 'Moderate') }}</span></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-
-    <!-- AI Detailed Analysis -->
-    <h1 class="section-title">2. Strategic Action Plan & Projection Drivers</h1>
+    <!-- =========================================================================
+         SECTION: AI DETAILED ANALYSIS & STRATEGIC PROJECTIONS
+         ========================================================================= -->
+    {% if body_html and body_html|striptags|trim|length > 0 %}
+    <h1 class="section-title">{{ report_data.get('section_title') or section_title or "AI Detailed Analysis & Strategic Projections" }}</h1>
     <div class="analysis-body">
         {{ body_html|safe }}
     </div>
+    {% endif %}
 
     <!-- Accounting Reference Footer -->
     <div class="ref-footer">
-        <strong>Forward-Looking Disclaimer:</strong> Pro forma statements are model projections based on historical run-rates and strategic assumptions. Actual results may vary with market conditions.
+        <strong>Strategic Disclaimer:</strong> {{ report_data.get('disclaimer') or disclaimer or "Projections and analysis represent model forecasts synthesized from historical general ledger run-rates, pipeline probability weighting, and operational parameters. Forward-looking measures are subject to market conditions and supplier fulfillment." }}
     </div>
 </div>
 {% endblock %}

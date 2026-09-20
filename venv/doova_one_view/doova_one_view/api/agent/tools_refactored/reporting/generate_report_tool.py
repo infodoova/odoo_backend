@@ -51,7 +51,13 @@ from ._date_utils import (
 )
 from ._formatters import _fmt_money, _fmt_pct, _highlight_negative_numbers_html, _friendly_axis_formatter
 from ._variance import _compute_variance, _build_kpi_variance
-from ._charts import _render_trend_chart, _render_waterfall_chart, _render_working_capital_chart
+from ._charts import (
+    _render_trend_chart,
+    _render_waterfall_chart,
+    _render_working_capital_chart,
+    _render_custom_chart_blocks,
+    _sanitize_rendered_report_html,
+)
 from ._series import _get_monthly_pnl_series, _get_domain_trend_series
 from ._normalize import _normalize_report_data, _normalize_markdown_tables, _render_charts_from_report_data
 from ._ai_synthesis import _generate_ai_executive_summary_llm, _generate_ai_domain_analysis
@@ -304,63 +310,63 @@ def generate_report_tool(
         # Process Markdown Custom Content
         custom_content = replace_tenant_ids_with_names(custom_content, clean_tenant_ids)
         custom_content = normalize_status_emoji(custom_content)
+        custom_content = _render_custom_chart_blocks(custom_content)
 
-        def _chart_block_replacer_agent(match):
-            json_str = match.group(1)
-            try:
-                cfg = json.loads(json_str)
-                labels = [str(l) for l in cfg.get("labels", [])]
-                values = [float(v) for v in cfg.get("values", [])]
-                title = cfg.get("title", "")
-                if labels and values:
-                    fig, ax = plt.subplots(figsize=(7, 3.2), facecolor='white')
-                    ax.bar(labels, values, color='#2563eb', width=0.55, edgecolor='white', linewidth=1)
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    ax.spines['left'].set_color('#cbd5e1')
-                    ax.spines['bottom'].set_color('#cbd5e1')
-                    ax.tick_params(colors='#64748b', labelsize=7.5)
-                    ax.yaxis.grid(True, linestyle=':', color='#e2e8f0', alpha=0.8)
-                    ax.xaxis.grid(False)
-                    if hasattr(ax.yaxis, "offsetText"):
-                        ax.yaxis.offsetText.set_visible(False)
-                    ax.yaxis.set_major_formatter(ticker.FuncFormatter(_friendly_axis_formatter))
-                    if len(labels) > 4:
-                        plt.xticks(rotation=20, ha='right', fontsize=7.5)
-                    if title:
-                        plt.title(title, fontsize=9.5, fontweight='bold', pad=10, color='#0f172a')
-                    plt.tight_layout()
-                    buf = io.BytesIO()
-                    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-                    buf.seek(0)
-                    b64 = base64.b64encode(buf.read()).decode('utf-8')
-                    plt.close(fig)
-                    return f'<div class="chart-box" style="margin: 10px 0; text-align: center;"><img class="chart-img" style="max-width: 100%; border-radius: 6px;" src="data:image/png;base64,{b64}" /></div>'
-            except Exception as e:
-                logger.warning(f"Custom chart block render failed: {e}")
-            return ""
-
-        custom_content = re.sub(r'```chart\s*\n(.*?)\n```', _chart_block_replacer_agent, custom_content, flags=re.DOTALL | re.IGNORECASE)
-
-        # Autonomous AI Agent Invocation whenever prompt is provided or custom_content is empty
+        # Autonomous AI Agent Invocation or Dynamic Structured Data Formatting when custom_content is empty
         effective_prompt = prompt or prompt_text
-        if not custom_content.strip() or effective_prompt:
-            ai_analysis = _generate_ai_domain_analysis(
-                domain=resolved_domain,
-                report_data=report_data,
-                prompt=effective_prompt or custom_content,
-                company_name=company_name,
-                period_label=resolved_period_label,
-                comparison_label=resolved_comparison_label,
-                currency=currency,
-                meta=meta,
+        if not custom_content.strip():
+            has_rich_data = bool(
+                report_data.get("messages")
+                or report_data.get("revenue_bridge")
+                or report_data.get("reorder_recommendations")
+                or report_data.get("metrics")
+                or report_data.get("insights")
+                or report_data.get("scenarios")
+                or report_data.get("demand_scenarios")
+                or report_data.get("risks")
+                or report_data.get("steps")
+                or report_data.get("inventory_position")
+                or report_data.get("assumptions")
+                or any(isinstance(v, (list, dict)) and v for k, v in report_data.items() if not k.startswith("_") and k not in ("company_name", "currency", "company_ids", "tenant_ids"))
             )
-            if ai_analysis:
-                custom_content = ai_analysis
+            if has_rich_data:
+                from ._format_ai_body import format_dynamic_ai_analysis
+                custom_content = format_dynamic_ai_analysis(
+                    data=report_data,
+                    session_messages=report_data.get("messages")
+                )
+            else:
+                ai_analysis = _generate_ai_domain_analysis(
+                    domain=resolved_domain,
+                    report_data=report_data,
+                    prompt=effective_prompt or custom_content,
+                    company_name=company_name,
+                    period_label=resolved_period_label,
+                    comparison_label=resolved_comparison_label,
+                    currency=currency,
+                    meta=meta,
+                )
+                if ai_analysis:
+                    custom_content = _render_custom_chart_blocks(ai_analysis)
 
         if not custom_content.strip():
-            rev_display = _fmt_money(report_data.get("revenue", 0) if isinstance(report_data.get("revenue"), (int, float)) else 0, currency)
-            ebit_display = _fmt_money(report_data.get("ebit", 0) if isinstance(report_data.get("ebit"), (int, float)) else 0, currency)
+            def _extract_metric_num(val):
+                if isinstance(val, (int, float)):
+                    return val
+                if isinstance(val, dict):
+                    raw = val.get("raw")
+                    if isinstance(raw, (int, float)):
+                        return raw
+                    fmt = val.get("formatted")
+                    if isinstance(fmt, str):
+                        return fmt
+                return 0
+
+            rev_raw = _extract_metric_num(report_data.get("revenue")) or _extract_metric_num(report_data.get("total_revenue"))
+            ebit_raw = _extract_metric_num(report_data.get("ebit")) or _extract_metric_num(report_data.get("operating_profit"))
+
+            rev_display = _fmt_money(rev_raw, currency) if isinstance(rev_raw, (int, float)) else str(rev_raw or "0 " + currency)
+            ebit_display = _fmt_money(ebit_raw, currency) if isinstance(ebit_raw, (int, float)) else str(ebit_raw or "0 " + currency)
             custom_content = f"""
 ## {meta.get('title', 'Executive Report')}
 {meta.get('subtitle', 'Comprehensive business performance report.')}
@@ -380,6 +386,7 @@ def generate_report_tool(
 
         md = markdown.Markdown(extensions=['tables', 'fenced_code', 'sane_lists'])
         body_html = md.convert(custom_content)
+        body_html = _sanitize_rendered_report_html(body_html)
         body_html = normalize_status_emoji(body_html)
         body_html = add_dynamic_table_widths(body_html)
 
@@ -406,8 +413,8 @@ def generate_report_tool(
             kpis=template_kpis,
             report_data=normalized_data,
             badge=meta.get("badge", "Executive Report"),
-            title=meta.get("title", "Executive Report"),
-            subtitle=meta.get("subtitle", ""),
+            title=report_data.get("title") or meta.get("title", "Executive Report"),
+            subtitle=report_data.get("period") or meta.get("subtitle", ""),
             accent=meta.get("accent", "#2563eb"),
             template_kpis=meta.get("kpi_slots", []),
             trend_chart_b64=chart_1_b64,
@@ -793,46 +800,7 @@ def generate_report_tool(
     # 10. Process Markdown Custom Content
     custom_content = replace_tenant_ids_with_names(custom_content, clean_tenant_ids)
     custom_content = normalize_status_emoji(custom_content)
-
-    def _chart_block_replacer(match):
-        json_str = match.group(1)
-        try:
-            cfg = json.loads(json_str)
-            labels = [str(l) for l in cfg.get("labels", [])]
-            values = [float(v) for v in cfg.get("values", [])]
-            title = cfg.get("title", "")
-            if labels and values:
-                fig, ax = plt.subplots(figsize=(7, 3.2), facecolor='white')
-                ax.bar(labels, values, color='#2563eb', width=0.55, edgecolor='white', linewidth=1)
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.spines['left'].set_color('#cbd5e1')
-                ax.spines['bottom'].set_color('#cbd5e1')
-                ax.tick_params(colors='#64748b', labelsize=7.5)
-                ax.yaxis.grid(True, linestyle=':', color='#e2e8f0', alpha=0.8)
-                ax.xaxis.grid(False)
-
-                if hasattr(ax.yaxis, "offsetText"):
-                    ax.yaxis.offsetText.set_visible(False)
-                ax.yaxis.set_major_formatter(ticker.FuncFormatter(_friendly_axis_formatter))
-
-                if len(labels) > 4:
-                    plt.xticks(rotation=20, ha='right', fontsize=7.5)
-                if title:
-                    plt.title(title, fontsize=9.5, fontweight='bold', pad=10, color='#0f172a')
-                plt.tight_layout()
-
-                buf = io.BytesIO()
-                plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-                buf.seek(0)
-                b64 = base64.b64encode(buf.read()).decode('utf-8')
-                plt.close(fig)
-                return f'<div class="chart-box" style="margin: 10px 0; text-align: center;"><img class="chart-img" style="max-width: 100%; border-radius: 6px;" src="data:image/png;base64,{b64}" /></div>'
-        except Exception as e:
-            logger.warning(f"Custom chart block render failed: {e}")
-        return ""
-
-    custom_content = re.sub(r'```chart\s*\n(.*?)\n```', _chart_block_replacer, custom_content, flags=re.DOTALL | re.IGNORECASE)
+    custom_content = _render_custom_chart_blocks(custom_content)
 
     if not custom_content.strip():
         custom_content = f"""
@@ -854,6 +822,7 @@ The organization generated **{_fmt_money(rev_val, currency)}** in total revenue 
 
     md = markdown.Markdown(extensions=['tables', 'fenced_code', 'sane_lists'])
     body_html = md.convert(custom_content)
+    body_html = _sanitize_rendered_report_html(body_html)
     body_html = normalize_status_emoji(body_html)
     body_html = add_dynamic_table_widths(body_html)
 

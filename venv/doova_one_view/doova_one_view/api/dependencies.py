@@ -74,6 +74,8 @@ async def get_current_user(
     if not token:
         token = request.query_params.get("access_token") or request.query_params.get("token")
     if not token:
+        token = request.cookies.get("access_token")
+    if not token:
         raise AuthenticationError("Authentication credentials were not provided")
 
     return await _user_from_token(token)

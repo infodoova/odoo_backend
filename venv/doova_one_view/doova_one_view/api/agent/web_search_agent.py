@@ -171,7 +171,7 @@ class WebSearchAgent:
             f"{base_prompt_text}\n"
             f"LANGUAGE & VOICE DIRECTIVES:\n"
             f"{lang_directive}\n"
-            f"- If the user's latest query is in Arabic, reply 100% in Arabic.\n"
+            f"- If the user's latest query is in Arabic, reply 100% in clean, natural, modern Arabic without excessive Tashkeel (بدون تشكيل مفرط) for clean frontend display and natural ElevenLabs voice playback.\n"
             f"- If the user's latest query is in English, reply 100% in English.\n"
             f"- NEVER maintain or reply in an older session language if the user switched languages in their latest query.\n\n"
             f"{WEB_SEARCH_SYSTEM_PROMPT_ADDITION}"

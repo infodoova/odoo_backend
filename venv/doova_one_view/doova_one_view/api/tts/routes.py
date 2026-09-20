@@ -61,6 +61,8 @@ async def synthesize_speech_post(request: TTSRequest):
             "Accept-Ranges": "bytes",
             "Cache-Control": "public, max-age=86400",
         }
+        if meta.get("fallback"):
+            headers["X-TTS-Fallback"] = "true"
 
         return StreamingResponse(stream_gen, media_type=media_type, headers=headers)
 
@@ -105,6 +107,8 @@ async def synthesize_speech_get(
             "Accept-Ranges": "bytes",
             "Cache-Control": "public, max-age=86400",
         }
+        if meta.get("fallback"):
+            headers["X-TTS-Fallback"] = "true"
 
         return StreamingResponse(stream_gen, media_type=media_type, headers=headers)
 

@@ -13,6 +13,8 @@ from ._charts import (
     _render_trend_chart,
     _render_waterfall_chart,
     _render_working_capital_chart,
+    _render_custom_chart_blocks,
+    _sanitize_rendered_report_html,
 )
 from ._series import _get_monthly_pnl_series, _get_domain_trend_series
 from ._normalize import (
@@ -42,6 +44,8 @@ __all__ = [
     "_render_trend_chart",
     "_render_waterfall_chart",
     "_render_working_capital_chart",
+    "_render_custom_chart_blocks",
+    "_sanitize_rendered_report_html",
     "_get_monthly_pnl_series",
     "_get_domain_trend_series",
     "_normalize_report_data",

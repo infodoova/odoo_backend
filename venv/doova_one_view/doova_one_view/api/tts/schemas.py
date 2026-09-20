@@ -3,7 +3,12 @@ Pydantic schemas for Text-To-Speech (TTS) module.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+from enum import Enum
+from typing import Optional, List, Literal, Dict
+
+
+class ElevenLabsVoiceEnum(str, Enum):
+    RACHEL = "21m00Tcm4TlvDq8ikWAM"
 
 
 class TTSRequest(BaseModel):
@@ -14,7 +19,7 @@ class TTSRequest(BaseModel):
     )
     voice: Optional[str] = Field(
         default=None,
-        description="Specific voice model/name to use. If omitted, a high-quality default for the language is selected."
+        description="Specific voice model/name or enum to use (e.g. 'RACHEL', 'ADAM', or '21m00Tcm4TlvDq8ikWAM')."
     )
     speed: Optional[float] = Field(
         default=1.0,
@@ -30,14 +35,20 @@ class VoiceInfo(BaseModel):
     language: str = Field(..., description="Language code (en, fr, es, ar)")
     language_name: str = Field(..., description="Language display name")
     gender: Literal["male", "female", "neutral"] = Field(..., description="Voice gender")
-    engine: Literal["piper", "edge-tts"] = Field(..., description="Underlying TTS engine")
+    engine: Literal["piper", "edge-tts", "elevenlabs"] = Field(..., description="Underlying TTS engine")
     is_default: bool = Field(default=False, description="Whether this is the default voice for its language")
+    description: Optional[str] = Field(default=None, description="Voice style or tone description")
+    voice_enum: Optional[str] = Field(default=None, description="Enum key name (e.g. 'RACHEL', 'ADAM')")
 
 
 class VoiceListResponse(BaseModel):
     voices: List[VoiceInfo]
     engines: List[str]
     languages: List[str]
+    voice_enums: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Enum mapping of standard voice keys to ElevenLabs voice IDs"
+    )
 
 
 class TTSCachePolicy(BaseModel):

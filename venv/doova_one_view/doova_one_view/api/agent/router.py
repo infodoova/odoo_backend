@@ -35,8 +35,11 @@ class RouterNode:
                     if isinstance(m, dict):
                         role = "User" if m.get("role") == "user" else "Assistant"
                         content = str(m.get("content") or "").strip()
-                        if content:
-                            history_lines.append(f"{role}: {content[:150]}")
+                        atts = m.get("attachments") or (m.get("payload", {}).get("attachments") if isinstance(m.get("payload"), dict) else None) or []
+                        att_names = [a.get("name") for a in atts if isinstance(a, dict) and a.get("name")]
+                        att_label = f" [Attached: {', '.join(att_names)}]" if att_names else ""
+                        if content or att_label:
+                            history_lines.append(f"{role}: {content[:150]}{att_label}")
                 if history_lines:
                     history_str = "\n".join(history_lines)
 

@@ -4,8 +4,22 @@ from .langchain_agent import DoovaLangChainAgent
 from .config import AgentConfig
 
 class FastPathNode:
-    def __init__(self):
-        self.lc_agent = DoovaLangChainAgent(max_tokens=AgentConfig.MAX_FAST_TOKENS)
+    def __init__(
+        self,
+        max_tokens: int | None = None,
+        enable_thinking: bool | None = None,
+        tools: list | None = None,
+        max_iterations: int | None = None,
+        early_stopping_method: str | None = None,
+    ):
+        use_thinking = enable_thinking if enable_thinking is not None else getattr(AgentConfig, "ENABLE_THINKING", True)
+        self.lc_agent = DoovaLangChainAgent(
+            max_tokens=max_tokens or AgentConfig.MAX_REPORT_TOKENS,
+            enable_thinking=use_thinking,
+            tools=tools,
+            max_iterations=max_iterations,
+            early_stopping_method=early_stopping_method,
+        )
 
     def run(
         self,

@@ -17,15 +17,45 @@ class SummarizerNode:
         self.prompt = SUMMARIZER_PROMPT
         self.rolling_prompt = ROLLING_SUMMARIZER_PROMPT
 
+    @staticmethod
+    def _format_msg_for_summary(msg) -> str:
+        content = getattr(msg, "content", None)
+        if not content:
+            return ""
+        role = getattr(msg, "type", type(msg).__name__)
+        if isinstance(content, str):
+            return f"{role}: {content}"
+        elif isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, dict):
+                    btype = block.get("type")
+                    if btype == "text":
+                        text_val = block.get("text", "").strip()
+                        if text_val:
+                            parts.append(text_val)
+                    elif btype == "image":
+                        parts.append("[Attached Image]")
+                    elif btype == "document":
+                        title = block.get("title") or "Document"
+                        parts.append(f"[Attached Document: {title}]")
+                    else:
+                        parts.append(f"[Attachment: {btype}]")
+                elif isinstance(block, str):
+                    parts.append(block)
+            return f"{role}: {' '.join(parts).strip()}" if parts else ""
+        return f"{role}: {str(content)}"
+
     def summarize(self, history: list, existing_summary: str = "") -> str:
         if not history and not existing_summary:
             return ""
         
-        # Convert history objects to string for the prompt
+        # Convert history objects to string for the prompt without raw base64 payloads
         history_str = "\n".join([
-            f"{getattr(msg, 'type', type(msg).__name__)}: {msg.content}"
+            formatted_line
             for msg in history
-            if getattr(msg, "content", None)
+            for formatted_line in [self._format_msg_for_summary(msg)]
+            if formatted_line
         ])
         
         # Clean any prior context wrapper from existing_summary before sending to prompt

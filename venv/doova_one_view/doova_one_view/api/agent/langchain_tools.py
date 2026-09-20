@@ -651,17 +651,14 @@ def create_report(
     report_data: Optional[dict] = None,
     prompt: Optional[str] = None,
 ):
-    """MANDATORY: When the user asks to 'generate a report' or 'create a report', you MUST call this tool.
-    Generate a professional branded PDF executive report including vital signs and your analysis.
-    Pass your full markdown report analysis into the `custom_content` parameter if available.
-    Pass explicit `start_date` and `end_date` (ISO 'YYYY-MM-DD') and `reporting_period` (e.g. 'Aug 01, 2026 – Aug 31, 2026' or 'Q2 2026') resolved from the user prompt or conversation history per STEP 0B. If no timeframe was specified, default start_date to Jan 01 of current year and end_date to today.
-    Pass `comparison_label` (e.g. 'Prior Month (MoM)', 'Prior Quarter (QoQ)', 'Same Period Prior Year (YoY)') if specified or leave None to auto-infer from date delta.
-    Pass `base_currency` (e.g. 'USD', 'EUR') if the user requested a specific currency.
-    Pass `report_type` (e.g. 'sales', 'purchase', 'inventory', 'cashflow', 'health', 'financial_analysis', etc.) if applicable.
-    Pass `report_data` dictionary with structured KPIs, table rows, and charts if available.
-    Pass original user message or intent into `prompt` if available.
-    Do NOT output the report directly in the chat text. Pass it ALL into `custom_content`.
-    Do NOT call this before you have gathered the data — the report cannot be regenerated mid-session."""
+    """MANDATORY: When the user asks to 'generate a report', 'sales strategy as pdf', 'export report', or 'email a pdf', you MUST call this tool.
+    CRITICAL: Before calling this tool, gather all required telemetry, draft your FULL strategic analysis (Headline, Key Numbers, What Changed, Growth Levers, Account Priorities, Risks & Warnings, Recommended Actions), and PASS IT DIRECTLY into `custom_content`.
+    If you leave `custom_content` empty, the PDF will lack your analysis and contain only empty boilerplate!
+    Pass explicit `start_date` and `end_date` (ISO 'YYYY-MM-DD') and `reporting_period` (e.g. 'Jan 01, 2026 – Sep 19, 2026' or 'Q3 2026').
+    Pass `comparison_label` (e.g. 'Prior Year (YoY)', 'Prior Quarter (QoQ)') if applicable.
+    Pass `base_currency` (e.g. 'XAF', 'USD', 'EUR').
+    Pass `report_type` (e.g. 'sales', 'purchase', 'inventory', 'cashflow', 'health', 'financial_analysis').
+    Pass `report_data` dictionary if available, and pass the user's core intent into `prompt`."""
     
     # Check active session date window if dates omitted
     from .session_context import get_active_date_window, update_active_date_window
@@ -697,21 +694,23 @@ def create_report(
         prompt=prompt,
     )
     url = result.get("download_url", "")
+    filename = result.get("filename", "")
     
-    # Return a loud, explicit string to Claude so it stops looping and responds to the user!
     return (
         f"SUCCESS! The report has been successfully generated and saved.\n"
         f"Download URL: {url}\n"
+        f"Filename: {filename}\n"
         f"[📥 **Download Full PDF Report**]({url})\n\n"
-        f"CRITICAL INSTRUCTION: You must now STOP calling tools. Do NOT call create_report again. "
-        f"Output your final response to the user containing this download link."
+        f"NEXT STEP INSTRUCTIONS:\n"
+        f"1. If the user requested to email this report (e.g. 'send it as pdf to [email]'), IMMEDIATELY call `send_email` with `to_email='...'`, `subject='...'`, `body='...'`, and `attachment_path='{filename}'` (or `attachment_path='latest'`).\n"
+        f"2. Otherwise, you must now STOP calling tools. Do NOT call create_report again. Output your final response to the user containing the download link [📥 **Download Full PDF Report**]({url})."
     )
 
 @tool
 def get_latest_report( company_ids: CompanyIdsType = None, tenant_ids: TenantIdsType = None):
-    """Retrieve the download URL for the most recently generated PDF report for this tenant.
-    Use when the user asks 'give me the report', 'download the last report', or 'send me the PDF'.
-    If no report exists, suggest calling create_report first."""
+    """Retrieve the download URL for an existing PDF report generated in a past conversation.
+    Use ONLY when the user asks to recall or download a prior report (e.g. 'give me the report from earlier').
+    Do NOT call this immediately after create_report, as create_report ALREADY provides the download link and filename!"""
     return get_last_report_tool(tenant_ids=_resolve_and_sync_tenant(tenant_ids), company_ids=_resolve_and_sync_company(company_ids))
 
 # ── Communication Domain ─────────────────────
@@ -724,11 +723,28 @@ def send_alert( title: str = None, message: str = None, company_ids: CompanyIdsT
     return send_alert_tool(tenant_ids=_resolve_and_sync_tenant(tenant_ids), title=title, message=message, company_ids=_resolve_and_sync_company(company_ids))
 
 @tool
-def send_email( to_email: str = None, subject: str = None, body: str = None, company_ids: CompanyIdsType = None, tenant_ids: TenantIdsType = None):
-    """Prepare and queue an email to a specified recipient.
+def send_email(
+    to_email: str = None,
+    subject: str = None,
+    body: str = None,
+    attachment_path: str = None,
+    company_ids: CompanyIdsType = None,
+    tenant_ids: TenantIdsType = None,
+):
+    """Prepare and send an email to a specified recipient with optional PDF attachment.
     Use only when the user explicitly requests an email to be sent — never send without clear instruction.
-    body should be professional, concise, and include the key findings from your analysis."""
-    return send_email_tool(tenant_ids=_resolve_and_sync_tenant(tenant_ids), to_email=to_email, subject=subject, body=body, company_ids=_resolve_and_sync_company(company_ids))
+    to_email: Target recipient email address.
+    subject: Subject of the email.
+    body: Professional, concise markdown body containing the key findings and strategic recommendations.
+    attachment_path: File path, filename, or URL of the PDF report to attach (e.g. returned by create_report, or 'latest' to attach the most recently generated report). Always provide this when the user asks to send a report or PDF!"""
+    return send_email_tool(
+        tenant_ids=_resolve_and_sync_tenant(tenant_ids),
+        to_email=to_email,
+        subject=subject,
+        body=body,
+        attachment_path=attachment_path,
+        company_ids=_resolve_and_sync_company(company_ids),
+    )
 
 @tool
 def cash_flow_statement( company_ids: CompanyIdsType = None, start_date: str = None, end_date: str = None, base_currency: str = None, tenant_ids: TenantIdsType = None):
