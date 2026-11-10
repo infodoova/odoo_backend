@@ -68,6 +68,10 @@ from .reporting_v2 import (
     generate_report_tool,
     get_last_report_tool,
 )
+from .records import (
+    get_invoice_summary_tool,
+    list_records_tool,
+)
 from .communication import (
     send_alert_tool,
     send_email_tool,

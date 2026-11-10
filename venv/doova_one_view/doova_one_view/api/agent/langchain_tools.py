@@ -6,7 +6,8 @@ from typing import Optional, Union, List, Any
 CompanyIdsType = Optional[Union[List[Union[int, str]], str]]
 TenantIdsType = Optional[Union[List[str], str]]
 from langchain_core.tools import tool
-from .sql_agent import run_sql_agent
+from .sql_agent import run_sql_agent, rows_to_markdown
+from .table_sink import register_table
 from .date_engine import resolve_period_dates, resolve_comparison_dates, normalize_iso_date, resolve_as_of_date
 
 
@@ -174,18 +175,45 @@ from .tools_refactored import (
     get_fulfillment_rate_tool,
     get_backorder_aging_tool,
     get_supplier_lead_time_tool,
+    get_invoice_summary_tool,
+    list_records_tool,
 )
 
 # ── SQL Fallback ─────────────────────────────
 
 @tool
-def ask_database_custom_question( question: str = None, tenant_ids: TenantIdsType = None):
+def ask_database_custom_question( question: str = None, company_ids: CompanyIdsType = None, tenant_ids: TenantIdsType = None):
     """Fallback SQL tool for any question that no other tool can answer directly.
     Describe the business intent clearly in plain English (e.g., 'total invoiced revenue by salesperson for Q2').
     Use this when: a specialized tool returns an error, data is not available in pre-built tools,
-    or the user asks a highly specific ad-hoc question. ALWAYS try the specialized tools first."""
-    result = run_sql_agent(user_question=question, tenant_ids=_resolve_and_sync_tenant(tenant_ids))
-    return result.get("message", "Could not answer the question.")
+    or the user asks a highly specific ad-hoc question. ALWAYS try the specialized tools first
+    (for lists of orders, invoices or bills use list_records; for invoice totals use invoice_summary).
+    Returns the answer, the true row_count, up to 100 rows, and a table marker. If the user asked to see
+    the records, put the marker on its own line in your answer and do not retype the rows."""
+    result = run_sql_agent(
+        user_question=question,
+        tenant_ids=_resolve_and_sync_tenant(tenant_ids),
+        company_ids=_resolve_and_sync_company(company_ids),
+    )
+    if not result.get("success"):
+        return result.get("message", "Could not answer the question.")
+
+    rows = result.get("rows") or []
+    reply = {
+        "answer": result.get("message", ""),
+        "row_count": result.get("row_count", len(rows)),
+        "rows": rows,
+    }
+    if len(rows) > 1:
+        marker = register_table(rows_to_markdown(rows), always_show=False)
+        if marker:
+            reply["table"] = marker
+            reply["display_instruction"] = (
+                f"If the user asked to see or list the records, write {marker} on its own line in your answer; "
+                "the server replaces it with the exact rows. Do not retype or rebuild them. "
+                "If they only asked for a number or a summary, ignore the marker."
+            )
+    return reply
 
 # ── Company Discovery ────────────────────────
 
@@ -212,6 +240,8 @@ def sales_summary( company_ids: CompanyIdsType = None, start_date: str = None, e
     Always pass the target base_currency. and order count for a given period.
     Always pass explicit ISO start_date and end_date (YYYY-MM-DD) when a time period is mentioned.
     Use for: revenue totals, order volume, period-specific sales snapshots.
+    IMPORTANT: this counts confirmed SALES ORDERS, not invoices. If the user asks about invoices
+    (how many invoices, total invoiced), use invoice_summary instead.
     Prefer this over sales_trend when the user wants a single aggregate, not a time series."""
     s_iso, e_iso = _resolve_and_sync_period(start_date, end_date)
     return get_sales_summary_tool(tenant_ids=_resolve_and_sync_tenant(tenant_ids), company_ids=_resolve_and_sync_company(company_ids), start_date=s_iso or start_date, end_date=e_iso or end_date, base_currency=base_currency)
@@ -851,6 +881,84 @@ def supplier_lead_time( company_ids: CompanyIdsType = None, tenant_ids: TenantId
     Use for: 'which suppliers are late?', 'supplier delivery performance', 'average delay'."""
     return get_supplier_lead_time_tool(tenant_ids=_resolve_and_sync_tenant(tenant_ids), company_ids=_resolve_and_sync_company(company_ids))
 
+def _explicit_period(start_date: Optional[str], end_date: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Resolve a period only when the caller gave one.
+
+    Unlike the summary tools, the record tools do NOT inherit the session's remembered date
+    window: "list the last 20 invoices" must not be silently limited to an earlier quarter."""
+    if start_date or end_date:
+        s_iso, e_iso = _resolve_and_sync_period(start_date, end_date)
+        return s_iso or start_date, e_iso or end_date
+    return None, None
+
+
+@tool
+def invoice_summary(
+    company_ids: CompanyIdsType = None,
+    start_date: str = None,
+    end_date: str = None,
+    direction: str = "customer",
+    base_currency: str = None,
+    tenant_ids: TenantIdsType = None,
+):
+    """Count and total POSTED INVOICES from the accounting records, with credit notes kept separate.
+    direction='customer' (default) for sales invoices, direction='vendor' for vendor bills.
+    Returns the invoice count and total, the credit note count and total, the net, the average invoice
+    value, the unpaid balance and the date range covered.
+    Use for: 'total invoices', 'how many invoices', 'how much have we invoiced', 'invoiced amount',
+    'vendor bills total'. This is NOT the same as sales orders: use sales_summary only for orders.
+    Pass ISO start_date and end_date only when the user names a period; leave them empty for all time.
+    Report invoices and credit notes separately and say which figure is the net."""
+    s_iso, e_iso = _explicit_period(start_date, end_date)
+    return get_invoice_summary_tool(
+        tenant_ids=_resolve_and_sync_tenant(tenant_ids),
+        company_ids=_resolve_and_sync_company(company_ids),
+        start_date=s_iso,
+        end_date=e_iso,
+        direction=direction,
+        base_currency=base_currency,
+    )
+
+
+@tool
+def list_records(
+    record_type: str = "customer_invoices",
+    company_ids: CompanyIdsType = None,
+    start_date: str = None,
+    end_date: str = None,
+    partner_name: str = None,
+    status: str = None,
+    limit: Optional[Union[int, str]] = 20,
+    offset: Optional[Union[int, str]] = 0,
+    sort: str = "date_desc",
+    tenant_ids: TenantIdsType = None,
+):
+    """List the individual records themselves, row by row, with the true total.
+    record_type: 'sales_orders', 'purchase_orders', 'customer_invoices', 'credit_notes', 'vendor_bills'
+    or 'vendor_credit_notes'.
+    Use for: 'list the last 20 orders', 'show me the invoices for customer X', 'biggest 10 invoices',
+    'which orders did we get in March'. It lists up to 100 rows per call; use offset for the next page.
+    sort: 'date_desc' (newest first, default), 'date_asc', 'amount_desc' (biggest first), 'amount_asc'.
+    status: leave empty for confirmed/posted records, or 'all', or one state such as 'draft'.
+    partner_name: part of a customer or vendor name. Pass ISO dates only when the user names a period.
+    The result contains a table marker. Put that marker on its own line in your answer: the server
+    fills in the exact rows. Never retype or rebuild the rows yourself, and never say that the
+    database limits the number of rows you can show."""
+    s_iso, e_iso = _explicit_period(start_date, end_date)
+    return list_records_tool(
+        tenant_ids=_resolve_and_sync_tenant(tenant_ids),
+        company_ids=_resolve_and_sync_company(company_ids),
+        record_type=record_type,
+        start_date=s_iso,
+        end_date=e_iso,
+        partner_name=partner_name,
+        status=status,
+        limit=limit,
+        offset=offset,
+        sort=sort,
+    )
+
+
 @tool
 def consult_strategic_advisor(
     problem_type: str = None,
@@ -870,6 +978,8 @@ def consult_strategic_advisor(
 agent_tools = [
     # Discovery
     ask_database_custom_question, list_companies, tenant_profile,
+    # Records & invoices
+    invoice_summary, list_records,
     # Sales
     sales_summary, top_products, sales_trend, variance_analysis, sales_forecast,
     salesperson_performance, sales_pipeline, discount_leakage, customer_lifetime_value, order_to_cash_cycle, revenue_by_category,

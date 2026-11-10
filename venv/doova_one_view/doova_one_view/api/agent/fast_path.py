@@ -32,7 +32,8 @@ class FastPathNode:
         attachments: list = None,
         session_id: str | None = None,
         is_voice: bool = False,
-        language: str | None = None
+        language: str | None = None,
+        usage_out: dict | None = None,
     ) -> str:
         return self.lc_agent.run(
             message=message,
@@ -44,7 +45,8 @@ class FastPathNode:
             attachments=attachments,
             session_id=session_id,
             is_voice=is_voice,
-            language=language
+            language=language,
+            usage_out=usage_out,
         )
 
     def get_last_token_usage(self) -> dict:

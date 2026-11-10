@@ -8,7 +8,8 @@ from .config import AgentConfig
 from .langchain_tools import agent_tools
 from .summarizer import SummarizerNode
 from .prompts import AGENT_SYSTEM_PROMPT
-from .logger import log_agent_start, log_agent_complete, log_summarization, log_error, log_tool_call, log_chain_event
+from .table_sink import start_table_sink, end_table_sink, expand_table_markers
+from .logger import logger, log_agent_start, log_agent_complete, log_summarization, log_error, log_tool_call, log_chain_event
 
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
@@ -73,9 +74,9 @@ class ThinkingSafeChatAnthropic(ChatAnthropic):
 
 ANTHROPIC_PRICING_PER_1M = {
     # Active Project Models (AgentConfig & .env)
-    "claude-sonnet-5":            {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
-    "claude-haiku-4-5-20251001":  {"input": 0.80, "cache_write": 1.00, "cache_read": 0.08, "output": 4.00},
-    "claude-opus-5":              {"input": 15.00, "cache_write": 18.75, "cache_read": 1.50, "output": 75.00},
+    "claude-sonnet-5-5":            {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
+    "claude-haiku-5-5":  {"input": 0.80, "cache_write": 1.00, "cache_read": 0.08, "output": 4.00},
+    "claude-opus-5-5":              {"input": 15.00, "cache_write": 18.75, "cache_read": 1.50, "output": 75.00},
 
     # Standard Model Identifiers & Aliases
     "claude-3-7-sonnet-20250219": {"input": 3.00, "cache_write": 3.75, "cache_read": 0.30, "output": 15.00},
@@ -90,13 +91,13 @@ ANTHROPIC_PRICING_PER_1M = {
     "claude-3-haiku-20240307":    {"input": 0.25, "cache_write": 0.30, "cache_read": 0.03, "output": 1.25},
     "claude-3-haiku":             {"input": 0.25, "cache_write": 0.30, "cache_read": 0.03, "output": 1.25},
 }
-DEFAULT_MODEL_PRICING = ANTHROPIC_PRICING_PER_1M["claude-sonnet-5"]
+DEFAULT_MODEL_PRICING = ANTHROPIC_PRICING_PER_1M["claude-sonnet-5-5"]
 
 
 class AgentCallbackHandler(BaseCallbackHandler):
     """Custom handler to bridge LangChain events with our specialized logger
     and track exact token usage and Anthropic API spend."""
-    def __init__(self, model_name: str = "claude-sonnet-5"):
+    def __init__(self, model_name: str = "claude-sonnet-5-5"):
         super().__init__()
         self.default_model_name = model_name
         self._seen_run_ids = set()
@@ -200,15 +201,15 @@ class AgentCallbackHandler(BaseCallbackHandler):
             rates = ANTHROPIC_PRICING_PER_1M[model_key]
         elif "haiku" in model_key:
             if any(k in model_key for k in ("4-5", "4.5", "3-5", "3.5")):
-                rates = ANTHROPIC_PRICING_PER_1M["claude-haiku-4-5-20251001"]
+                rates = ANTHROPIC_PRICING_PER_1M["claude-haiku-5-5"]
             elif "3" in model_key:
                 rates = ANTHROPIC_PRICING_PER_1M["claude-3-haiku"]
             else:
-                rates = ANTHROPIC_PRICING_PER_1M["claude-haiku-4-5-20251001"]
+                rates = ANTHROPIC_PRICING_PER_1M["claude-haiku-5-5"]
         elif "opus" in model_key:
-            rates = ANTHROPIC_PRICING_PER_1M["claude-opus-5"]
+            rates = ANTHROPIC_PRICING_PER_1M["claude-opus-5-5"]
         elif "sonnet" in model_key:
-            rates = ANTHROPIC_PRICING_PER_1M["claude-sonnet-5"]
+            rates = ANTHROPIC_PRICING_PER_1M["claude-sonnet-5-5"]
         else:
             rates = DEFAULT_MODEL_PRICING
 
@@ -421,8 +422,13 @@ class DoovaLangChainAgent:
         is_voice: bool = False,
         language: str | None = None,
         tenant_id: str | None = None,
+        usage_out: dict | None = None,
     ) -> str:
+        """Run one turn. If usage_out is given it is filled with this run's exact token usage
+        (the shared agent object can serve overlapping requests, so callers should not read
+        usage back from it)."""
         start = time.time()
+        sink_token = None
         self.callback_handler.reset()
         formatted_history = self._format_history(chat_history or [])
         
@@ -589,6 +595,11 @@ class DoovaLangChainAgent:
                     target_language_label = "English (Default)"
 
             self.callback_handler.reset()
+            # Tables built by tools are kept here and swapped into the reply at the end,
+            # so the model never has to retype rows.
+            sink_token = start_table_sink()
+            # A fresh counter per run: this agent object is shared by every request.
+            run_handler = AgentCallbackHandler(model_name=self.model_name)
             response = self.executor.invoke({
                 "input": input_payload,
                 "tenant_id": primary_tenant_id,
@@ -601,9 +612,12 @@ class DoovaLangChainAgent:
                 "language": target_language_label,
                 "is_voice": "TRUE" if is_voice else "FALSE",
                 "voice_instruction": voice_instruction
-            }, config={"callbacks": [self.callback_handler]})
+            }, config={"callbacks": [run_handler]})
             raw_output = response["output"]
-            self.last_token_usage = self.callback_handler.get_turn_token_usage()
+            run_usage = run_handler.get_turn_token_usage()
+            self.last_token_usage = run_usage
+            if usage_out is not None:
+                usage_out.update(run_usage)
 
             # Normalize: handle cases where LLM returns a list of content blocks
             if isinstance(raw_output, list):
@@ -624,6 +638,10 @@ class DoovaLangChainAgent:
                 from .utils import strip_json_chart_from_text
                 output = strip_json_chart_from_text(output)
 
+            output = expand_table_markers(output, is_voice=is_voice)
+            end_table_sink(sink_token)
+            sink_token = None
+
             duration = (time.time() - start) * 1000
             log_agent_complete(output, duration)
             
@@ -633,6 +651,8 @@ class DoovaLangChainAgent:
             
             return output
         except Exception as e:
+            if sink_token is not None:
+                end_table_sink(sink_token)
             duration = (time.time() - start) * 1000
             log_error("DoovaLangChainAgent.run", e)
             raise

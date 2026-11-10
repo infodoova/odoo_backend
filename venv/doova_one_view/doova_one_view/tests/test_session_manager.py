@@ -100,6 +100,19 @@ class TestSessionManagerBasic(unittest.TestCase):
         self.manager.delete_session(session_id)
         self.assertFalse(ChatSession.objects.filter(session_id=session_id).exists())
 
+    def test_delete_session_still_deletes_when_attachment_cleanup_fails(self):
+        """A cleanup failure must be logged, not crash the delete (regression: missing logger import)."""
+        session_id = "test_sm_1007"
+        ChatSession.objects.create(session_id=session_id, tenant_id=TENANT_ID)
+        with patch(
+            "doova_one_view.api.agent.attachment_processor.cleanup_session_attachments",
+            side_effect=RuntimeError("disk error"),
+        ), patch("doova_one_view.api.agent.session_manager.logger") as mock_logger:
+            self.manager.delete_session(session_id)
+        self.assertFalse(ChatSession.objects.filter(session_id=session_id).exists())
+        mock_logger.warning.assert_called_once()
+        self.assertIn(session_id, mock_logger.warning.call_args[0][0])
+
 
 class TestPlanStateLifecycle(unittest.TestCase):
     """

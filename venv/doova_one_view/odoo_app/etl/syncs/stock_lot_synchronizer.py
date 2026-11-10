@@ -22,6 +22,19 @@ class LotSynchronizer(BaseSynchronizer):
             domain.append(['write_date', '>', last_sync_date])
 
         try:
+            # Check if user has read permission on stock.lot to avoid crashing or unnecessary retries
+            try:
+                has_access = self.odoo.call_kw('stock.lot', 'check_access_rights', ['read', False])
+            except Exception:
+                has_access = True  # Fallback to standard flow if check_access_rights call fails
+
+            if has_access is False:
+                logger.warning(
+                    f"Skipping stock.lot sync for tenant {tenant_id}: User lacks read permission on 'stock.lot'. "
+                    "Lot tracking is optional; lot references in inventory moves and quants will default to NULL."
+                )
+                return 0, 0
+
             # Pre-fetch for fast lookups
             self.prefetch_ids('dim_products', tenant_id)
             self.prefetch_ids('dim_companies', tenant_id)
@@ -103,5 +116,12 @@ class LotSynchronizer(BaseSynchronizer):
             return synced, failed
 
         except Exception as e:
+            err_str = str(e).lower()
+            if any(k in err_str for k in ["not allowed to access", "accessdenied", "accesserror", "access denied"]):
+                logger.warning(
+                    f"Skipping stock.lot sync for tenant {tenant_id}: User lacks read permission ({e}). "
+                    "Lot tracking is optional; lot references in inventory moves and quants will default to NULL."
+                )
+                return 0, 0
             logger.error(f"Lot sync failed: {e}")
             raise

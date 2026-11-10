@@ -102,13 +102,13 @@ class AdvisorToolTestCase(TestCase):
         mock_client.messages.create.return_value = mock_msg
 
         with patch.object(AgentConfig, "ENABLE_ADVISOR_TOOL", True), \
-             patch.object(AgentConfig, "ADVISOR_MODEL", "claude-sonnet-5"):
+             patch.object(AgentConfig, "ADVISOR_MODEL", "claude-sonnet-5-5"):
             corrected = _attempt_sql_correction(
                 client=mock_client,
                 retry_prompt="Fix query",
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
             )
             self.assertEqual(corrected, "SELECT id FROM fact_sales_orders")
             # Verify the create call targeted ADVISOR_MODEL
             call_kwargs = mock_client.messages.create.call_args[1]
-            self.assertEqual(call_kwargs["model"], "claude-sonnet-5")
+            self.assertEqual(call_kwargs["model"], "claude-sonnet-5-5")

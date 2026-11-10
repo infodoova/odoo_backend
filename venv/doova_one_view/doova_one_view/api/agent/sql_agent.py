@@ -381,8 +381,8 @@ _TABLE_SEMANTIC_NOTES: dict[str, str] = {
     "fact_account_partial_reconciles": (
         "Reconciliation links matching payments to invoices (Odoo account.partial.reconcile). "
         "PK: id. FK: tenant_id, company_id (→dim_companies.id), "
-        "debit_move_id (→fact_account_move_lines.id), "
-        "credit_move_id (→fact_account_move_lines.id). "
+        "debit_move_line_id (→fact_account_move_lines.id), "
+        "credit_move_line_id (→fact_account_move_lines.id). "
         "$$: amount (in company currency). "
         "max_date: the date the reconciliation happened. "
         "Used for tracking exact payment allocations and aging calculations. "
@@ -490,12 +490,68 @@ def extract_sql_from_text(text: str) -> str | None:
     return None
 
 
-def format_rows_for_prompt(rows: list[dict[str, Any]], limit: int = 30) -> str:
+def format_rows_for_prompt(rows: list[dict[str, Any]], limit: int = 100) -> str:
     if not rows:
         return "No rows returned."
 
     preview = rows[:limit]
     return str(preview)
+
+
+# Requests that plainly ask to change data. Ordinary words such as "analyze", "update"
+# (as in "latest update") or "create" must not be refused: the generated SQL is checked
+# separately by is_safe_read_only_sql, which is the real safeguard.
+_DESTRUCTIVE_REQUEST = re.compile(
+    r"\b(?:drop|truncate)\s+(?:table|database|schema)\b"
+    r"|\bdelete\s+(?:from|all|every|the)\b"
+    r"|\balter\s+table\b"
+    r"|\binsert\s+into\b"
+    r"|\bupdate\s+\w+\s+set\b"
+    r"|\b(?:grant|revoke)\s+\w+",
+    re.IGNORECASE,
+)
+
+MAX_RETURNED_ROWS = 100
+
+
+def _plain(value: Any) -> Any:
+    """Make a database value safe to show or serialize (Decimal, date, datetime)."""
+    import datetime as _dt
+    from decimal import Decimal
+
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        number = float(value)
+        return int(number) if number == int(number) else round(number, 2)
+    if isinstance(value, _dt.datetime):
+        return value.isoformat(sep=" ", timespec="seconds")
+    if isinstance(value, _dt.date):
+        return value.isoformat()
+    return value
+
+
+def rows_to_markdown(rows: list[dict[str, Any]], max_rows: int = MAX_RETURNED_ROWS) -> str:
+    """Render query rows as a markdown table, exactly as returned (no summarizing)."""
+    if not rows:
+        return ""
+    columns = list(rows[0].keys())
+
+    def cell(value: Any) -> str:
+        value = _plain(value)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            text = f"{value:,}"
+        else:
+            text = str(value)
+        return text.replace("|", "\\|").replace("\r", " ").replace("\n", " ").strip()
+
+    lines = ["| " + " | ".join(str(c) for c in columns) + " |", "|" + "|".join(["---"] * len(columns)) + "|"]
+    for row in rows[:max_rows]:
+        lines.append("| " + " | ".join(cell(row.get(c)) for c in columns) + " |")
+    shown = min(len(rows), max_rows)
+    lines.append("")
+    lines.append(f"*Showing {shown:,} of {len(rows):,} rows returned by the query.*")
+    return "\n".join(lines)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -534,7 +590,7 @@ def _attempt_sql_correction(
     """Ask the LLM to produce a corrected SQL query. Returns the SQL or None."""
     correction_model = model
     if getattr(AgentConfig, "ENABLE_ADVISOR_TOOL", False):
-        correction_model = getattr(AgentConfig, "ADVISOR_MODEL", "claude-sonnet-5")
+        correction_model = getattr(AgentConfig, "ADVISOR_MODEL", "claude-sonnet-5-5")
 
     response = client.messages.create(
         model=correction_model,
@@ -553,28 +609,29 @@ def run_sql_agent(
     user_question: str,
     chat_history: str = "",
     tenant_ids: list[str] | None = None,
+    company_ids: list[int] | None = None,
 ) -> dict[str, Any]:
-    from doova_one_view.api.agent.query_context import normalize_tenant_ids
+    from doova_one_view.api.agent.query_context import normalize_tenant_ids, normalize_company_ids
     tenants = normalize_tenant_ids(tenant_ids)
+    companies = normalize_company_ids(company_ids)
     question_lower = (user_question or "").lower()
 
-    # Refuse destructive requests before asking Claude to generate SQL.
-    for word in BLOCKED_SQL_WORDS:
-        if re.search(rf"\b{word}\b", question_lower):
-            return {
-                "success": False,
-                "message": "I can only run safe read-only SELECT queries. I cannot modify, delete, drop, or alter database data.",
-                "sql": None,
-                "rows": [],
-            }
+    # Refuse requests that plainly ask to change data before asking Claude to generate SQL.
+    if _DESTRUCTIVE_REQUEST.search(question_lower):
+        return {
+            "success": False,
+            "message": "I can only run safe read-only SELECT queries. I cannot modify, delete, drop, or alter database data.",
+            "sql": None,
+            "rows": [],
+        }
 
     schema = get_database_schema()
 
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     if getattr(AgentConfig, "ENABLE_ADVISOR_TOOL", False):
-        model = getattr(AgentConfig, "EXECUTOR_MODEL", "claude-haiku-4-5-20251001")
+        model = getattr(AgentConfig, "EXECUTOR_MODEL", "claude-haiku-5-5")
     else:
-        model = getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-4-5-20251001")
+        model = getattr(AgentConfig, "SQL_AGENT_MODEL", "claude-haiku-5-5")
     max_retries = getattr(AgentConfig, "MAX_SQL_RETRIES", 3)
 
     tenant_note = ""
@@ -593,7 +650,18 @@ def run_sql_agent(
                 f"- If a table has a tenant_id column, always filter using IN: tenant_id IN ({tenants_list_str}).\n"
             )
 
-    schema_with_tenant = schema + tenant_note
+    company_note = ""
+    if companies:
+        company_list = ", ".join(str(c) for c in companies)
+        company_note = (
+            f"\nImportant company rule:\n"
+            f"- The user selected company id(s) {company_list} (dim_companies.id).\n"
+            f"- If a table has a company_id column, also filter with company_id "
+            f"{'= ' + str(companies[0]) if len(companies) == 1 else 'IN (' + company_list + ')'}.\n"
+            f"- For dim_companies itself, filter with id instead.\n"
+        )
+
+    schema_with_tenant = schema + tenant_note + company_note
 
     prompt = SQL_AGENT_SYSTEM_PROMPT.format(
         schema=schema_with_tenant,
@@ -765,7 +833,8 @@ def run_sql_agent(
         "success": True,
         "message": final_text,
         "sql": sql,
-        "rows": rows[:50],
+        "rows": [{k: _plain(v) for k, v in r.items()} for r in rows[:MAX_RETURNED_ROWS]],
+        "row_count": len(rows),
     }
 
     # Include retry metadata if corrections were needed

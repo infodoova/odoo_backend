@@ -25,19 +25,19 @@ class AgentConfig:
     ODOO_API_KEY = os.getenv("ODOO_API_KEY") or getattr(django_settings, "ODOO_API_KEY", "")
 
     # ── Claude models ─────────────────────────────────────────────────
-    ROUTER_MODEL = "claude-haiku-4-5-20251001"
-    FAST_MODEL = "claude-sonnet-5"
-    REASONING_MODEL = "claude-opus-5"
-    SUMMARIZER_MODEL = "claude-haiku-4-5-20251001"
-    SQL_AGENT_MODEL = "claude-haiku-4-5-20251001"
+    ROUTER_MODEL = "claude-haiku-5-5"
+    FAST_MODEL = "claude-sonnet-5-5"
+    REASONING_MODEL = "claude-opus-5-5"
+    SUMMARIZER_MODEL = "claude-haiku-5-5"
+    SQL_AGENT_MODEL = "claude-haiku-5-5"
 
     # ── Executor–Advisor Pattern ──────────────────────────────────────
     ENABLE_ADVISOR_TOOL: bool = (
         os.getenv("ENABLE_ADVISOR_TOOL", "false").lower() in ("true", "1", "yes")
         or getattr(django_settings, "ENABLE_ADVISOR_TOOL", False)
     )
-    EXECUTOR_MODEL: str = os.getenv("AGENT_EXECUTOR_MODEL", "claude-haiku-4-5-20251001")
-    ADVISOR_MODEL: str = os.getenv("AGENT_ADVISOR_MODEL", "claude-sonnet-5")
+    EXECUTOR_MODEL: str = os.getenv("AGENT_EXECUTOR_MODEL", "claude-haiku-5-5")
+    ADVISOR_MODEL: str = os.getenv("AGENT_ADVISOR_MODEL", "claude-sonnet-5-5")
     MAX_ADVISOR_TOKENS: int = 4096
 
     # ── Web Search ────────────────────────────────────────────────────

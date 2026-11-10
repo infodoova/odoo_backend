@@ -19,6 +19,8 @@ from .langchain_tools import agent_tools
 from .prompts import AGENT_SYSTEM_PROMPT, WEB_SEARCH_SYSTEM_PROMPT_ADDITION, STATIC_AGENT_INSTRUCTIONS
 from .logger import log_agent_start, log_agent_complete, log_error, log_tool_call, log_chain_event
 from .utils import fix_currency_symbols, replace_tenant_ids_with_names
+from .table_sink import start_table_sink, end_table_sink, expand_table_markers
+from .langchain_agent import AgentCallbackHandler
 
 logger = logging.getLogger(__name__)
 
@@ -222,10 +224,12 @@ class WebSearchAgent:
         chat_history: Optional[List[Dict[str, Any]]] = None,
         memory_summary: str = "",
         language: Optional[str] = None,
+        usage_out: Optional[Dict[str, Any]] = None,
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Executes the query using the Anthropic API with web_search enabled.
         Returns: (final_answer_text, citations_list)
+        If usage_out is given it is filled with this run's token usage and cost.
         """
         start_time = time.time()
 
@@ -273,6 +277,9 @@ class WebSearchAgent:
         iteration = 0
         all_citations: List[Dict[str, Any]] = []
         final_text = ""
+        # Tables built by tools are swapped into the reply at the end (the model never retypes rows).
+        sink_token = start_table_sink()
+        usage_tally = AgentCallbackHandler(model_name=self.model)
 
         try:
             while iteration < max_iterations:
@@ -285,6 +292,15 @@ class WebSearchAgent:
                     messages=messages,
                     tools=self._anthropic_tools,
                 )
+
+                call_usage = getattr(response, "usage", None)
+                if call_usage is not None:
+                    usage_tally.llm_call_count += 1
+                    usage_tally.detected_models.add(self.model)
+                    usage_tally.total_input_tokens += getattr(call_usage, "input_tokens", 0) or 0
+                    usage_tally.total_output_tokens += getattr(call_usage, "output_tokens", 0) or 0
+                    usage_tally.total_cache_read_tokens += getattr(call_usage, "cache_read_input_tokens", 0) or 0
+                    usage_tally.total_cache_write_tokens += getattr(call_usage, "cache_creation_input_tokens", 0) or 0
 
                 stop_reason = response.stop_reason
                 logger.info(f"WebSearchAgent turn {iteration} completed with stop_reason: {stop_reason}")
@@ -356,6 +372,11 @@ class WebSearchAgent:
             # Post-process currency and tenant placeholders
             final_text = fix_currency_symbols(final_text, currency)
             final_text = replace_tenant_ids_with_names(final_text, resolved_tenant_ids)
+            final_text = expand_table_markers(final_text)
+            end_table_sink(sink_token)
+            sink_token = None
+            if usage_out is not None:
+                usage_out.update(usage_tally.get_turn_token_usage())
 
             duration = (time.time() - start_time) * 1000
             log_agent_complete(final_text, duration)
@@ -363,6 +384,8 @@ class WebSearchAgent:
             return final_text, all_citations
 
         except Exception as exc:
+            if sink_token is not None:
+                end_table_sink(sink_token)
             duration = (time.time() - start_time) * 1000
             log_error("WebSearchAgent.run", exc)
             logger.exception(f"WebSearchAgent execution failed: {exc}")

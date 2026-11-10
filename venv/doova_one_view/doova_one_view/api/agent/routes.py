@@ -13,7 +13,7 @@ from typing import List, Optional, Union, Any
 
 from .router import RouterNode
 from .fast_path import FastPathNode
-from .reasoning import ReasoningNode
+from .reasoning import ReasoningNode, PlanGenerationError
 from .utils import make_report_url
 from .logger import log_session_event, log_error, logger
 
@@ -361,6 +361,75 @@ def get_user_facing_error_message(e: Exception | None = None) -> str:
     """Standardized user-facing error message for all agent errors."""
     return "⚠️ An error occurred while processing your request. Please try again later or contact support if the problem persists."
 
+def format_plan_for_chat(plan: dict, background: bool = False) -> str:
+    """Render a generated plan as the chat message shown to the user for approval."""
+    objective = plan.get("strategic_objective") or plan.get("objective") or "Strategic Analysis"
+    title = "Strategic Architecture Plan (Completed in Background)" if background else "Strategic Architecture Plan"
+    text = f"### {title}\n\n**Objective:** {objective}\n\n"
+
+    steps = plan.get("steps") or []
+    phases = plan.get("phases") or []
+    if steps:
+        text += "**Execution Plan Steps:**\n"
+        for s in steps:
+            if isinstance(s, dict):
+                step_num = s.get("step", "")
+                desc = s.get("description") or s.get("action") or ""
+                tools = s.get("tools") or []
+            else:
+                step_num, desc, tools = "", str(s), []
+            tools_str = f" *(Tools: {', '.join(tools)})*" if tools else ""
+            text += f"{step_num}. **Step {step_num}**: {desc}{tools_str}\n"
+        text += "\n"
+    elif phases:
+        text += "**Phases:**\n"
+        for i, p in enumerate(phases, 1):
+            title_p = p if isinstance(p, str) else p.get("title", "Phase")
+            desc = "" if isinstance(p, str) else f": {p.get('description', '')}"
+            text += f"{i}. **{title_p}**{desc}\n"
+        text += "\n"
+
+    text += f"**Expected Outcome:** {plan.get('expected_outcome', 'Complete Analysis')}\n\n"
+    if background:
+        text += "---\n*Plan execution is ready. Shall I proceed with this plan?*"
+    else:
+        text += "---\n*This is a high-stakes request. Shall I proceed with this plan?*"
+    return text
+
+
+_QUESTION_STARTERS = {
+    # English
+    "what", "why", "how", "when", "where", "which", "who", "whom", "whose", "is", "are", "was", "were",
+    # French
+    "que", "quoi", "pourquoi", "comment", "combien", "quel", "quelle", "quels", "quelles",
+    # Spanish
+    "qué", "cómo", "cuánto", "cuántos", "cuál", "cuáles", "dónde", "quién",
+    # Arabic
+    "هل", "ماذا", "كيف", "كم", "لماذا", "متى", "أين",
+}
+
+
+def is_plan_approval(message: str) -> bool:
+    """True when a short message approves a pending plan.
+
+    Longer messages never count, and neither do questions: "what is a good margin?"
+    contains an affirmative word ("good") but is a new request, not an approval."""
+    text = (message or "").strip()
+    if len(text.split()) > _SHORT_MSG_THRESHOLD:
+        return False
+    if "?" in text or "؟" in text:
+        return False
+    lower_msg = text.lower()
+    first_word = _re.findall(r"\w+", lower_msg)[:1]
+    if first_word and first_word[0] in _QUESTION_STARTERS:
+        return False
+    # Two views of the words: split on whitespace (keeps "d'accord" whole) and on word characters.
+    words = {w.strip("!?.,;:'\"") for w in lower_msg.split()} | set(_re.findall(r"\b\w+\b", lower_msg))
+    if words & _REJECTION_KEYWORDS:
+        return False
+    return bool(words & _AFFIRMATIVE_KEYWORDS) or any(p in lower_msg for p in _AFFIRMATIVE_PHRASES)
+
+
 async def background_retry_executor(
     session_id: str,
     user_message: str,
@@ -379,6 +448,7 @@ async def background_retry_executor(
             logger.info(f"BACKGROUND RETRY | Session: {session_id} | Attempt {attempt}/{max_retries}")
             from .session_context import set_session_context
             set_session_context(session_id)
+            usage_holder: dict = {}
             
             if mode == "EXECUTE":
                 def save_summary_to_db(summary_text: str):
@@ -391,44 +461,37 @@ async def background_retry_executor(
                     company_ids=company_ids,
                     chat_history=chat_history,
                     memory_summary=db_summary,
-                    on_summary=save_summary_to_db
+                    on_summary=save_summary_to_db,
+                    usage_out=usage_holder,
                 )
             elif mode == "PLAN":
-                plan_result = await asyncio.to_thread(reasoning_node.create_plan, 
+                plan_result = await asyncio.to_thread(
+                    reasoning_node.create_plan,
                     message=user_message,
                     tenant_ids=tenant_ids,
-                    company_ids=company_ids
+                    company_ids=company_ids,
+                    usage_out=usage_holder,
                 )
-                
-                plan_summary = f"### Strategic Architecture Plan (Completed in Background)\n\n"
-                plan_summary += f"**Objective:** {plan_result.get('objective', 'Strategic Audit')}\n\n"
-                phases = plan_result.get('phases', [])
-                if phases:
-                    plan_summary += "**Phases:**\n"
-                    for idx, p in enumerate(phases, 1):
-                        title = p if isinstance(p, str) else p.get('title', 'Phase')
-                        desc = "" if isinstance(p, str) else f": {p.get('description', '')}"
-                        plan_summary += f"{idx}. **{title}**{desc}\n"
-                    plan_summary += "\n"
-                plan_summary += f"**Expected Outcome:** {plan_result.get('expected_outcome', 'Complete Analysis')}\n\n"
-                plan_summary += "---\n*Plan execution is ready. Shall I proceed with this plan?*"
-                answer = plan_summary
-                
+                answer = format_plan_for_chat(plan_result, background=True)
+
                 def _update_session_plan():
+                    from django.utils import timezone
                     primary_tid = tenant_ids[0] if tenant_ids else "default"
                     s = session_manager.get_or_create_session(session_id, primary_tid)
                     s.plan_state = plan_result
-                    s.save()
+                    s.plan_created_at = timezone.now()
+                    s.save(update_fields=["plan_state", "plan_created_at", "updated_at"])
                 await sync_to_async(_update_session_plan)()
             elif mode == "EXECUTE_PLAN":
                 answer = await asyncio.to_thread(reasoning_node.execute_plan, 
                     message=user_message,
                     plan=plan,
                     tenant_ids=tenant_ids,
-                    company_ids=company_ids
+                    company_ids=company_ids,
+                    usage_out=usage_holder,
                 )
             
-            token_usage = (fast_path_node.get_last_token_usage() if mode == "EXECUTE" else reasoning_node.get_last_token_usage())
+            token_usage = usage_holder
             bg_payload = {"token_usage": token_usage} if (token_usage and token_usage.get("total_tokens", 0) > 0) else None
             await sync_to_async(session_manager.save_message)(session_id, "assistant", answer, payload=bg_payload)
             logger.info(f"BACKGROUND RETRY SUCCESS | Session: {session_id} on attempt {attempt}")
@@ -669,16 +732,7 @@ async def chat_endpoint(request: Request):
             decision = "EXECUTE"
 
     # 2.1 Handle Plan Approval (CONFIRM path with deterministic affirmative matching)
-    lower_msg = clean_user_message.lower()
-    user_words = set(_re.findall(r'\b\w+\b', lower_msg))
-    is_explicit_rejection = bool(user_words.intersection(_REJECTION_KEYWORDS))
-
-    # If plan is pending and message is NOT an explicit rejection:
-    # treat explicit positive token or phrase as an approval
-    is_affirmative = not is_explicit_rejection and (
-        bool(user_words.intersection(_AFFIRMATIVE_KEYWORDS)) or
-        any(phrase in lower_msg for phrase in _AFFIRMATIVE_PHRASES)
-    )
+    is_affirmative = is_plan_approval(clean_user_message)
 
     if session.plan_state and (decision == "CONFIRM" or is_affirmative):
         from django.utils import timezone
@@ -696,24 +750,27 @@ async def chat_endpoint(request: Request):
                 )
                 session.plan_state = None
                 session.plan_created_at = None
-                await sync_to_async(session.save)()
+                await sync_to_async(session.save)(update_fields=["plan_state", "plan_created_at", "updated_at"])
 
     if session.plan_state and (decision == "CONFIRM" or is_affirmative):
         try:
             logger.info(f"PLAN APPROVED: Executing strategic architecture for session {current_session_id}")
+            plan_usage: dict = {}
             answer = await asyncio.to_thread(
                 reasoning_node.execute_plan,
                 message=user_message,
                 plan=session.plan_state,
                 tenant_ids=resolved_tenant_ids,
-                company_ids=resolved_company_ids
+                company_ids=resolved_company_ids,
+                usage_out=plan_usage,
             )
             
             # Reset plan state after successful execution
             session.plan_state = None
-            await sync_to_async(session.save)()
+            session.plan_created_at = None
+            await sync_to_async(session.save)(update_fields=["plan_state", "plan_created_at", "updated_at"])
             
-            plan_token_usage = reasoning_node.get_last_token_usage()
+            plan_token_usage = plan_usage
             exec_payload = {"token_usage": plan_token_usage} if (plan_token_usage and plan_token_usage.get("total_tokens", 0) > 0) else None
             await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, payload=exec_payload)
             duration = (time.time() - request_start) * 1000
@@ -752,7 +809,8 @@ async def chat_endpoint(request: Request):
                     )
                 )
                 session.plan_state = None
-                await sync_to_async(session.save)()
+                session.plan_created_at = None
+                await sync_to_async(session.save)(update_fields=["plan_state", "plan_created_at", "updated_at"])
                 
                 answer = "⏳ The AI provider is temporarily overloaded, but I am executing the approved plan in the background. Please wait a moment—your dashboard/chat will automatically update as soon as the results are ready."
                 return make_chat_response(
@@ -900,6 +958,7 @@ async def chat_endpoint(request: Request):
             use_web_search = enable_web_search
 
             citations = None
+            usage_holder: dict = {}
             if use_web_search:
                 from .web_search_agent import WebSearchAgent
                 logger.info(f"WEB SEARCH ACTIVE for session {current_session_id}")
@@ -913,6 +972,7 @@ async def chat_endpoint(request: Request):
                         chat_history=chat_history_from_db,
                         memory_summary=db_summary,
                         language=user_language,
+                        usage_out=usage_holder,
                     )
 
                 try:
@@ -933,6 +993,7 @@ async def chat_endpoint(request: Request):
                             session_id=current_session_id,
                             is_voice=is_voice_mode,
                             language=user_language,
+                            usage_out=usage_holder,
                         )
 
                     answer = await asyncio.to_thread(run_fast_path)
@@ -953,13 +1014,14 @@ async def chat_endpoint(request: Request):
                         attachments=req_data.attachments,
                         session_id=current_session_id,
                         is_voice=is_voice_mode,
-                        language=user_language
+                        language=user_language,
+                        usage_out=usage_holder,
                     )
 
                 answer = await asyncio.to_thread(run_fast_path)
 
             message_payload = {"citations": citations} if citations else {}
-            token_usage = fast_path_node.get_last_token_usage()
+            token_usage = usage_holder
             if token_usage and token_usage.get("total_tokens", 0) > 0:
                 message_payload["token_usage"] = token_usage
             await sync_to_async(session_manager.save_message)(
@@ -1023,51 +1085,26 @@ async def chat_endpoint(request: Request):
     
     # 4. Planning Path (High-Stakes Architecture)
     try:
+        plan_usage: dict = {}
         plan = await asyncio.to_thread(
             reasoning_node.create_plan,
             message=user_message,
             tenant_ids=resolved_tenant_ids,
-            company_ids=resolved_company_ids
+            company_ids=resolved_company_ids,
+            usage_out=plan_usage,
         )
         # Format the plan into a readable answer for the UI
-        plan_objective = plan.get('strategic_objective') or plan.get('objective') or 'Strategic Analysis'
-        plan_summary = f"### Strategic Architecture Plan\n\n"
-        plan_summary += f"**Objective:** {plan_objective}\n\n"
-
-        steps = plan.get('steps', [])
-        phases = plan.get('phases', [])
-
-        if steps:
-            plan_summary += "**Execution Plan Steps:**\n"
-            for s in steps:
-                step_num = s.get('step', '')
-                desc = s.get('description', '')
-                tools = s.get('tools', [])
-                tools_str = f" *(Tools: {', '.join(tools)})*" if tools else ""
-                plan_summary += f"{step_num}. **Step {step_num}**: {desc}{tools_str}\n"
-            plan_summary += "\n"
-        elif phases:
-            plan_summary += "**Phases:**\n"
-            for i, p in enumerate(phases, 1):
-                title = p if isinstance(p, str) else p.get('title', 'Phase')
-                desc = "" if isinstance(p, str) else f": {p.get('description', '')}"
-                plan_summary += f"{i}. **{title}**{desc}\n"
-            plan_summary += "\n"
-
-        plan_summary += f"**Expected Outcome:** {plan.get('expected_outcome', 'Complete Analysis')}\n\n"
-        plan_summary += "---\n*This is a high-stakes request. Shall I proceed with this plan?*"
-        
-        answer = plan_summary
+        answer = format_plan_for_chat(plan)
         
         # Save assistant message and plan state
-        plan_token_usage = reasoning_node.get_last_token_usage()
+        plan_token_usage = plan_usage
         if plan_token_usage and plan_token_usage.get("total_tokens", 0) > 0:
             plan["token_usage"] = plan_token_usage
         await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer, message_type="plan", payload=plan)
         from django.utils import timezone
         session.plan_state = plan
         session.plan_created_at = timezone.now()
-        await sync_to_async(session.save)()
+        await sync_to_async(session.save)(update_fields=["plan_state", "plan_created_at", "updated_at"])
         
         return make_chat_response(
             answer,
@@ -1077,6 +1114,20 @@ async def chat_endpoint(request: Request):
             user_message,
             plan=plan,
             status="AWAITING_APPROVAL"
+        )
+    except PlanGenerationError as e:
+        log_error("chat_endpoint.PLAN", e)
+        answer = (
+            "I couldn't turn that request into a clear plan. "
+            "Please rephrase it, or ask for a specific analysis such as sales, cash flow or inventory."
+        )
+        await sync_to_async(session_manager.save_message)(current_session_id, "assistant", answer)
+        return make_chat_response(
+            answer,
+            "ERROR",
+            current_session_id,
+            session.title if session else "New Chat",
+            user_message
         )
     except Exception as e:
         log_error("chat_endpoint.PLAN", e)
@@ -1126,88 +1177,7 @@ async def chat_endpoint(request: Request):
 
 # ── Structured AI Feature Endpoints ─────────────
 
-def _extract_json_block(text: str) -> dict | None:
-    """Extract a JSON object from agent text: tries ```json```, bare ```, then {…}, with trailing-comma repair."""
-    if not text or not isinstance(text, str):
-        return None
-
-    def _try_parse(raw: str) -> dict | None:
-        if not raw:
-            return None
-        # Strip single-line JS-style comments
-        s = _re.sub(r'//.*$', '', raw, flags=_re.MULTILINE)
-        # Strip trailing commas
-        cleaned = _re.sub(r',\s*([}\]])', r'\1', s).strip()
-        try:
-            result = json.loads(cleaned)
-            return result if isinstance(result, dict) else None
-        except (json.JSONDecodeError, ValueError):
-            # Attempt to balance and close open delimiters (quotes, braces, brackets) if truncated
-            stack = []
-            in_string = False
-            escape = False
-            for ch in cleaned:
-                if escape:
-                    escape = False
-                    continue
-                if ch == '\\':
-                    escape = True
-                    continue
-                if ch == '"':
-                    in_string = not in_string
-                    continue
-                if not in_string:
-                    if ch in ('{', '['):
-                        stack.append(ch)
-                    elif ch == '}':
-                        if stack and stack[-1] == '{':
-                            stack.pop()
-                    elif ch == ']':
-                        if stack and stack[-1] == '[':
-                            stack.pop()
-
-            candidate = cleaned.rstrip()
-            if in_string:
-                candidate += '"'
-            while stack:
-                candidate = _re.sub(r',\s*$', '', candidate)
-                open_delim = stack.pop()
-                candidate += "}" if open_delim == "{" else "]"
-
-            try:
-                result = json.loads(candidate)
-                return result if isinstance(result, dict) else None
-            except Exception:
-                pass
-            return None
-
-    # Tier 1: All ```json … ``` fences (last block first)
-    matches = list(_re.finditer(r'```json\s*([\s\S]*?)\s*```', text, _re.IGNORECASE))
-    for m in reversed(matches):
-        r = _try_parse(m.group(1))
-        if r is not None:
-            return r
-
-    # Tier 2: All ``` … ``` fences (no language tag, last block first)
-    matches = list(_re.finditer(r'```\s*([\s\S]*?)\s*```', text))
-    for m in reversed(matches):
-        r = _try_parse(m.group(1))
-        if r is not None:
-            return r
-
-    # Tier 3: Unclosed ```json { ...
-    m = _re.search(r'```json\s*(\{[\s\S]*)', text, _re.IGNORECASE)
-    if m:
-        r = _try_parse(m.group(1))
-        if r is not None:
-            return r
-
-    # Tier 4: Bare outermost { … }
-    m = _re.search(r'\{[\s\S]*\}', text)
-    if m:
-        return _try_parse(m.group(0))
-
-    return None
+from .utils import _extract_json_block  # noqa: F401  (kept importable from routes; tests import it here)
 
 
 def _hydrate_from_session_sync(session_id: str, root_keys: tuple = ()) -> tuple[dict, str | None]:
@@ -1422,6 +1392,7 @@ async def _run_structured_node(
         node = audit_node
     else:
         node = fast_path_node
+    usage_holder: dict = {}
     try:
         coro = asyncio.to_thread(
             node.run,
@@ -1431,6 +1402,7 @@ async def _run_structured_node(
             chat_history=[],
             memory_summary="",
             session_id=session_id,
+            usage_out=usage_holder,
         )
         if timeout is not None:
             answer = await asyncio.wait_for(coro, timeout=timeout)
@@ -1456,7 +1428,7 @@ async def _run_structured_node(
             detail="The AI did not return structured data. Please refine your request and retry.",
         )
 
-    token_usage = node.get_last_token_usage()
+    token_usage = usage_holder
     if token_usage and token_usage.get("total_tokens", 0) > 0:
         structured["token_usage"] = token_usage
 

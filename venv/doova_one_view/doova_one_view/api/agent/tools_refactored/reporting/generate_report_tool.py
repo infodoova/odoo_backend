@@ -248,9 +248,11 @@ def generate_report_tool(
                 trend_end = ytd_end or datetime.now().strftime("%Y-%m-%d")
                 try:
                     end_dt = datetime.strptime(trend_end, "%Y-%m-%d")
-                    trend_start = (end_dt - timedelta(days=365)).replace(day=1).strftime("%Y-%m-%d")
                 except Exception:
-                    trend_start = f"{current_year - 1}-01-01"
+                    # Unparseable end date: fall back to today for both ends of the window.
+                    end_dt = datetime.now()
+                    trend_end = end_dt.strftime("%Y-%m-%d")
+                trend_start = (end_dt - timedelta(days=365)).replace(day=1).strftime("%Y-%m-%d")
 
                 trend_data_pts = _get_domain_trend_series(
                     domain=resolved_domain,

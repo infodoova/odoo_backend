@@ -398,4 +398,85 @@ def get_project_logo_b64(custom_logo_path: str | None = None) -> tuple[str | Non
             
     return None, None
 
+def _extract_json_block(text: str) -> dict | None:
+    """Extract a JSON object from agent text: tries ```json```, bare ```, then {…}, with trailing-comma repair."""
+    if not text or not isinstance(text, str):
+        return None
 
+    def _try_parse(raw: str) -> dict | None:
+        if not raw:
+            return None
+        # Strip single-line JS-style comments
+        s = re.sub(r'//.*$', '', raw, flags=re.MULTILINE)
+        # Strip trailing commas
+        cleaned = re.sub(r',\s*([}\]])', r'\1', s).strip()
+        try:
+            result = json.loads(cleaned)
+            return result if isinstance(result, dict) else None
+        except (json.JSONDecodeError, ValueError):
+            # Attempt to balance and close open delimiters (quotes, braces, brackets) if truncated
+            stack = []
+            in_string = False
+            escape = False
+            for ch in cleaned:
+                if escape:
+                    escape = False
+                    continue
+                if ch == '\\':
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if not in_string:
+                    if ch in ('{', '['):
+                        stack.append(ch)
+                    elif ch == '}':
+                        if stack and stack[-1] == '{':
+                            stack.pop()
+                    elif ch == ']':
+                        if stack and stack[-1] == '[':
+                            stack.pop()
+
+            candidate = cleaned.rstrip()
+            if in_string:
+                candidate += '"'
+            while stack:
+                candidate = re.sub(r',\s*$', '', candidate)
+                open_delim = stack.pop()
+                candidate += "}" if open_delim == "{" else "]"
+
+            try:
+                result = json.loads(candidate)
+                return result if isinstance(result, dict) else None
+            except Exception:
+                pass
+            return None
+
+    # Tier 1: All ```json … ``` fences (last block first)
+    matches = list(re.finditer(r'```json\s*([\s\S]*?)\s*```', text, re.IGNORECASE))
+    for m in reversed(matches):
+        r = _try_parse(m.group(1))
+        if r is not None:
+            return r
+
+    # Tier 2: All ``` … ``` fences (no language tag, last block first)
+    matches = list(re.finditer(r'```\s*([\s\S]*?)\s*```', text))
+    for m in reversed(matches):
+        r = _try_parse(m.group(1))
+        if r is not None:
+            return r
+
+    # Tier 3: Unclosed ```json { ...
+    m = re.search(r'```json\s*(\{[\s\S]*)', text, re.IGNORECASE)
+    if m:
+        r = _try_parse(m.group(1))
+        if r is not None:
+            return r
+
+    # Tier 4: Bare outermost { … }
+    m = re.search(r'\{[\s\S]*\}', text)
+    if m:
+        return _try_parse(m.group(0))
+
+    return None

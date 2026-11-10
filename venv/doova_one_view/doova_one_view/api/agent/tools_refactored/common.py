@@ -15,20 +15,6 @@ def get_companies_tool(tenant_ids: Optional[list[str]] = None) -> dict:
     rows = run_query(f"SELECT id, odoo_id, name FROM dim_companies WHERE 1=1 {t_sql_def}", t_params_def)
     return {"tool_name": "get_companies_tool", "companies": rows}
 
-def resolve_company_name(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None) -> str:
-    c_ids = normalize_company_ids(company_ids=company_ids)
-    if not c_ids:
-        return "All Companies"
-    if len(c_ids) == 1:
-        try:
-            rows = run_query("SELECT name FROM dim_companies WHERE id = %(cid)s LIMIT 1", {"cid": c_ids[0]})
-            if rows and rows[0].get("name"):
-                return rows[0]["name"]
-        except Exception:
-            pass
-        return f"Company {c_ids[0]}"
-    return f"{len(c_ids)} Companies Selected"
-
 def get_tenant_profile_tool(tenant_ids: Optional[list[str]] = None, company_ids: Optional[list[int]] = None) -> dict:
     """Fetches the company's industry, sector, and operational context from the database."""
     # dim_companies PK is "id", not "company_id"

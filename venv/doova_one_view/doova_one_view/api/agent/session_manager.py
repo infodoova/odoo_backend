@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List
 from langchain_anthropic import ChatAnthropic
 from .config import AgentConfig
 from .prompts import SESSION_TITLE_PROMPT
+from .logger import logger
 from odoo_app.models.agent import ChatSession, ChatMessage
 from django.db import transaction
 
