@@ -439,6 +439,14 @@ def is_safe_read_only_sql(sql: str) -> bool:
     return True
 
 
+def response_text(response) -> str:
+    """Join the text blocks of an Anthropic response, skipping thinking/tool blocks."""
+    return "".join(
+        block.text for block in getattr(response, "content", []) or []
+        if getattr(block, "type", None) == "text" and hasattr(block, "text")
+    )
+
+
 def extract_sql_from_text(text: str) -> str | None:
     def looks_like_sql(candidate: str) -> bool:
         lowered = candidate.lower().strip()
@@ -595,10 +603,9 @@ def _attempt_sql_correction(
     response = client.messages.create(
         model=correction_model,
         max_tokens=2500,
-        temperature=0,
         messages=[{"role": "user", "content": retry_prompt}],
     )
-    return extract_sql_from_text(response.content[0].text)
+    return extract_sql_from_text(response_text(response))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -674,7 +681,6 @@ def run_sql_agent(
     first_response = client.messages.create(
         model=model,
         max_tokens=2500,
-        temperature=0,
         messages=[
             {
                 "role": "user",
@@ -683,7 +689,7 @@ def run_sql_agent(
         ],
     )
 
-    first_text = first_response.content[0].text
+    first_text = response_text(first_response)
     sql = extract_sql_from_text(first_text)
 
     if not sql:
@@ -818,7 +824,6 @@ def run_sql_agent(
     final_response = client.messages.create(
         model=model,
         max_tokens=1200,
-        temperature=0,
         messages=[
             {
                 "role": "user",
@@ -827,7 +832,7 @@ def run_sql_agent(
         ],
     )
 
-    final_text = final_response.content[0].text
+    final_text = response_text(final_response)
 
     result = {
         "success": True,

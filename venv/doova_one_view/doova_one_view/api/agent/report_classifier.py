@@ -70,7 +70,6 @@ class ReportTypeClassifier:
                 model=AgentConfig.ROUTER_MODEL,
                 anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
                 max_tokens=getattr(AgentConfig, "MAX_REPORT_CLASSIFIER_TOKENS", 30),
-                temperature=0.0,
                 model_kwargs={
                     "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
                 }

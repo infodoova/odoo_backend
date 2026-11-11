@@ -60,10 +60,11 @@ class IntentClassifier:
             response = self.client.messages.create(
                 model=AgentConfig.ROUTER_MODEL,
                 max_tokens=500,
-                temperature=0,
                 messages=[{"role": "user", "content": prompt}]
             )
-            content = response.content[0].text
+            content = "".join(
+                b.text for b in response.content if getattr(b, "type", None) == "text"
+            )
             # Simple JSON extraction
             match = content[content.find('{'):content.rfind('}')+1]
             return json.loads(match)
