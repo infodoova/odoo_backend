@@ -546,10 +546,15 @@ class SalesService:
             # Pipeline Value (Quotes) - All time draft/sent
             pipeline = _sum_converted(base_qs.filter(state__in=['draft', 'sent']), 'amount_total', effective_base, rate_map)
             
-            # Conversion Rate (All time)
-            drafts = base_qs.filter(state__in=['draft', 'sent', 'sale', 'done']).count()
-            sales = base_qs.filter(state__in=['sale', 'done']).count()
-            conversion = (sales / drafts * 100) if drafts > 0 else 0
+            # Conversion Rate for the selected period: confirmed orders / all non-cancelled
+            # quotes and orders whose order date falls inside the same date range as the
+            # other dashboard figures.
+            period_qs = SalesService._apply_date_filter(
+                base_qs.filter(state__in=['draft', 'sent', 'sale', 'done']), initial_date, final_date
+            )
+            quotes_and_orders = period_qs.count()
+            confirmed_orders = period_qs.filter(state__in=['sale', 'done']).count()
+            conversion = (confirmed_orders / quotes_and_orders * 100) if quotes_and_orders > 0 else 0
             
             # 2. Trends (Revenue within range)
             trend_rows = list(confirmed_range_qs

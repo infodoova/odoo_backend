@@ -125,7 +125,7 @@ class SalesDashboard(BaseModel):
     
     # Operational Metrics
     order_count: int
-    conversion_rate: float # Draft -> Sale
+    conversion_rate: float # % of quotes/orders in the selected period that are confirmed (Draft -> Sale)
     
     # Trends & Distributions
     revenue_trend: List[TimeSeriesPoint]
