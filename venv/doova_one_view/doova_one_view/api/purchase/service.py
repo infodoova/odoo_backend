@@ -46,6 +46,11 @@ def _iso(value: Any) -> Optional[str]:
         return str(value)
 
 
+# Purchase orders in these states are not real purchases: a draft is an unsent quotation and a
+# cancelled order never happened. They are left out of purchase totals and order counts.
+EXCLUDED_PURCHASE_STATES = ("draft", "cancel")
+
+
 def _metric(value: float, previous_value: float = 0.0) -> dict[str, float]:
     value = _to_float(value)
     previous_value = _to_float(previous_value)
@@ -336,10 +341,13 @@ class PurchaseService:
         base_currency: Optional[str] = None,
     ) -> dict[str, Any]:
         def _dashboard():
-            qs = PurchaseService._date_qs(
+            # Every order in the period, whatever its state (used only for the state breakdown).
+            period_qs = PurchaseService._date_qs(
                 PurchaseService._base_qs(tenant_id, company_ids), start_date, end_date
             )
-            
+            # Money and counts exclude draft quotations and cancelled orders.
+            qs = period_qs.exclude(state__in=EXCLUDED_PURCHASE_STATES)
+
             rate_map = _get_rate_map([tenant_id])
             effective_base = base_currency or "XAF"
             
@@ -481,7 +489,9 @@ class PurchaseService:
                 headline_aov = avg_order_value
                 headline_lead_time_days = lead_time_to_purchase_days
 
-            base_all = PurchaseService._base_qs(tenant_id, company_ids)
+            base_all = PurchaseService._base_qs(tenant_id, company_ids).exclude(
+                state__in=EXCLUDED_PURCHASE_STATES
+            )
             all_time_spend = _sum_converted(base_all, "amount_total", effective_base, rate_map)
 
             ref_date = timezone.now().date()
@@ -530,7 +540,7 @@ class PurchaseService:
             spend_trend = [{"date": d, "value": v, "spend": v} for d, v in sorted(trend_map.items())]
             state_distribution = {
                 row["state"] or "unknown": row["state_count"]
-                for row in qs.values("state").annotate(state_count=Count("id"))
+                for row in period_qs.values("state").annotate(state_count=Count("id"))
             }
             applied = {
                 "tenant_id": tenant_id,
@@ -765,7 +775,10 @@ class PurchaseService:
                 base_qs = base_qs.filter(company_id__in=company_ids)
 
             if metric in ['total_purchase', 'total_spend', 'order_count', 'avg_order_value', 'average_order_value']:
-                qs = base_qs.filter(date_order__date__range=(initial_date, final_date))
+                # Same rule as the dashboard card: draft quotations and cancelled orders are not counted.
+                qs = base_qs.filter(date_order__date__range=(initial_date, final_date)).exclude(
+                    state__in=EXCLUDED_PURCHASE_STATES
+                )
             elif metric in ['draft', 'purchase', 'done', 'cancel', 'to approve']:
                 qs = base_qs.filter(state=metric)
             else:
