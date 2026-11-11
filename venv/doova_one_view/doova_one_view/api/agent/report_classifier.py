@@ -162,7 +162,8 @@ class ReportTypeClassifier:
 
                 chain = classifier.prompt | classifier.llm
                 response = chain.invoke({"text": combined_text[:600], "chat_history": history_str})
-                raw_out = response.content.strip().lower()
+                from .utils import llm_text
+                raw_out = llm_text(response.content).strip().lower()
                 clean_key = re.sub(r'[^a-z_]', '', raw_out.split()[0] if raw_out.split() else '')
 
                 norm = cls.normalize_report_type(clean_key)

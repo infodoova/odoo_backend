@@ -6,6 +6,29 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
+def llm_text(content: Any) -> str:
+    """Return the plain text of a LangChain/Anthropic message content.
+
+    With thinking enabled the content is a list of blocks (thinking, text, ...)
+    instead of a string. Only the text blocks are joined; thinking is dropped.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text") or "")
+            elif getattr(block, "type", None) == "text":
+                parts.append(getattr(block, "text", "") or "")
+        return "".join(parts)
+    return str(content)
+
+
 def parse_json_chart_from_text(text: str) -> dict | None:
     """
     Extracts and standardizes the first chart JSON block from agent output text.

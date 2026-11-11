@@ -62,9 +62,8 @@ class IntentClassifier:
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}]
             )
-            content = "".join(
-                b.text for b in response.content if getattr(b, "type", None) == "text"
-            )
+            from .sql_agent import response_text
+            content = response_text(response)
             # Simple JSON extraction
             match = content[content.find('{'):content.rfind('}')+1]
             return json.loads(match)

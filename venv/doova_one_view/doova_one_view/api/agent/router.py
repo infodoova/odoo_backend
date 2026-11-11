@@ -45,7 +45,8 @@ class RouterNode:
 
             chain = self.prompt | self.llm
             response = chain.invoke({"message": message, "chat_history": history_str})
-            raw_content = response.content.strip()
+            from .utils import llm_text
+            raw_content = llm_text(response.content).strip()
             logger.debug(f"ROUTER RAW RESPONSE: {raw_content}")
             # Extract clean tokens from response
             raw_upper = raw_content.upper()

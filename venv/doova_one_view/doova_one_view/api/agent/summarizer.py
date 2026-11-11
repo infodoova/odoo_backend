@@ -4,6 +4,9 @@ from langchain_anthropic import ChatAnthropic
 from .config import AgentConfig
 from .prompts import SUMMARIZER_PROMPT, ROLLING_SUMMARIZER_PROMPT
 
+from .utils import llm_text
+
+
 class SummarizerNode:
     def __init__(self):
         self.llm = ChatAnthropic(
@@ -70,10 +73,10 @@ class SummarizerNode:
                 "existing_summary": clean_existing,
                 "history": history_str
             })
-            return response.content.strip()
+            return llm_text(response.content).strip()
         elif history_str:
             chain = self.prompt | self.llm
             response = chain.invoke({"history": history_str})
-            return response.content.strip()
+            return llm_text(response.content).strip()
         else:
             return clean_existing

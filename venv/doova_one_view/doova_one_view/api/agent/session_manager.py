@@ -32,7 +32,8 @@ class SessionManager:
         try:
             chain = self.title_prompt | self.llm
             response = chain.invoke({"message": clean_message})
-            raw = str(response.content).strip().strip('"').strip("'")
+            from .utils import llm_text
+            raw = llm_text(response.content).strip().strip('"').strip("'")
             # If the model output multiple lines, take only the first line
             first_line = raw.split("\n")[0].strip().strip('"').strip("'")
             if first_line.lower().startswith("title:"):

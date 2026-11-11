@@ -441,10 +441,16 @@ def is_safe_read_only_sql(sql: str) -> bool:
 
 def response_text(response) -> str:
     """Join the text blocks of an Anthropic response, skipping thinking/tool blocks."""
-    return "".join(
-        block.text for block in getattr(response, "content", []) or []
-        if getattr(block, "type", None) == "text" and hasattr(block, "text")
-    )
+    parts = []
+    for block in getattr(response, "content", []) or []:
+        block_type = getattr(block, "type", None)
+        # Skip thinking / tool blocks; anything else that carries text is the answer.
+        if isinstance(block_type, str) and block_type != "text":
+            continue
+        text = getattr(block, "text", None)
+        if isinstance(text, str):
+            parts.append(text)
+    return "".join(parts)
 
 
 def extract_sql_from_text(text: str) -> str | None:

@@ -15,6 +15,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from .config import AgentConfig
 from .prompts import ADVISOR_SYSTEM_PROMPT
 from .logger import logger, log_error
+from .utils import llm_text
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class StrategicAdvisorService:
 
             llm = cls.get_llm()
             response = llm.invoke(messages)
-            content = response.content if isinstance(response.content, str) else str(response.content)
+            content = llm_text(response.content)
 
             duration_ms = (time.time() - start_time) * 1000
             logger.info(f"Advisor SQL guidance completed in {duration_ms:.1f}ms")
@@ -145,7 +146,7 @@ class StrategicAdvisorService:
 
             llm = cls.get_llm()
             response = llm.invoke(messages)
-            content = response.content if isinstance(response.content, str) else str(response.content)
+            content = llm_text(response.content)
 
             duration_ms = (time.time() - start_time) * 1000
             logger.info(f"Advisor financial strategy completed in {duration_ms:.1f}ms")
