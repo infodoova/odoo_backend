@@ -474,7 +474,11 @@ class AccountingService:
                             true_taxes_interest += net_debit
 
             gross_profit = true_revenue - true_cogs
+            # "Total expenses" is everything deducted from revenue to reach net profit:
+            # cost of revenue + operating expenses (which already include taxes and
+            # interest) + depreciation. Revenue - total_expenses_all = net profit.
             total_all_expenses = true_expenses + true_depreciation
+            total_expenses_all = true_cogs + true_expenses + true_depreciation
             ebit = gross_profit - true_expenses
             net_profit = gross_profit + true_other_income - total_all_expenses
             
@@ -650,6 +654,8 @@ class AccountingService:
                 
                 if atype.startswith("income"):
                     revenue_trend_map[d_str] = revenue_trend_map.get(d_str, 0.0) + net_credit
+                elif atype in ("expense_direct_cost", "expense_depreciation"):
+                    expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + net_debit
                 elif atype == "expense":
                     if not AccountingService._is_tag4_purchase_expense(tenant_ids=[tenant_id] if tenant_id else None, account_odoo_id=a_odoo_id, company_ids=[cid] if cid else None, acode=acode, aname=aname, tag4_ids=tag4_ids):
                         expense_trend_map[d_str] = expense_trend_map.get(d_str, 0.0) + net_debit
@@ -755,7 +761,11 @@ class AccountingService:
 
             return {
                 "total_revenue": _metric(true_revenue),
-                "total_expenses": _metric(true_expenses),
+                "total_expenses": _metric(total_expenses_all),
+                "cost_of_revenue": _metric(true_cogs),
+                "operating_expenses": _metric(true_expenses),
+                "depreciation": _metric(true_depreciation),
+                "taxes_and_interest": _metric(true_taxes_interest),
                 "net_profit": _metric(net_profit),
                 "net_cash_flow": _metric(total_cash_flow),
                 "gross_profit": _metric(gross_profit),
@@ -2125,13 +2135,13 @@ class AccountingService:
                             cf += net_debit
                                 
                     total_revenue += rev
-                    total_expenses += exp
+                    total_expenses += cogs + exp + dep
                     total_cash_flow += cf
                     
                     if metric == 'total_revenue':
                         move_value = rev
                     elif metric == 'total_expenses':
-                        move_value = exp
+                        move_value = cogs + exp + dep
                     elif metric == 'gross_profit':
                         move_value = rev - cogs
                     elif metric == 'ebit':
@@ -2274,7 +2284,7 @@ class AccountingService:
                             cf += net_debit
                             
                     total_revenue += rev
-                    total_expenses += exp
+                    total_expenses += cogs + exp + dep
                     total_cogs += cogs
                     total_dep += dep
                     total_cash_flow += cf
@@ -2313,7 +2323,7 @@ class AccountingService:
                 base_currency=effective_base,
                 total_revenue=total_revenue,
                 total_expenses=total_expenses,
-                net_profit=total_revenue - total_cogs - total_expenses - total_dep,
+                net_profit=total_revenue - total_expenses,
                 net_cash_flow=total_cash_flow,
                 move_count=total_items,
                 company_groups=company_groups,
