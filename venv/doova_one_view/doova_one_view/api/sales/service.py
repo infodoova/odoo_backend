@@ -543,8 +543,12 @@ class SalesService:
                     change = 100.0
                 return KPIMetric(value=curr_val, previous_value=prev_val, change_percentage=change)
 
-            # Pipeline Value (Quotes) - All time draft/sent
-            pipeline = _sum_converted(base_qs.filter(state__in=['draft', 'sent']), 'amount_total', effective_base, rate_map)
+            # Pipeline Value (Quotes) - open quotations (draft/sent) whose order date falls
+            # inside the selected period.
+            pipeline_qs = SalesService._apply_date_filter(
+                base_qs.filter(state__in=['draft', 'sent']), initial_date, final_date
+            )
+            pipeline = _sum_converted(pipeline_qs, 'amount_total', effective_base, rate_map)
             
             # Conversion Rate for the selected period: confirmed orders / all non-cancelled
             # quotes and orders whose order date falls inside the same date range as the
