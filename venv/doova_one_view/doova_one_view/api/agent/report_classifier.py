@@ -19,6 +19,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
 from .config import AgentConfig
+from .llm_params import thinking_kwargs
 from .logger import log_error, logger
 from .tools_refactored.template_registry import TEMPLATE_REGISTRY, get_template_metadata
 
@@ -70,6 +71,7 @@ class ReportTypeClassifier:
                 model=AgentConfig.ROUTER_MODEL,
                 anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
                 max_tokens=getattr(AgentConfig, "MAX_REPORT_CLASSIFIER_TOKENS", 30),
+                **thinking_kwargs(AgentConfig.ROUTER_MODEL),
                 model_kwargs={
                     "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
                 }

@@ -16,8 +16,8 @@ def get_salesperson_performance_tool(
     base_currency: str | None = None,
 ) -> dict:
     t_sql_o, t_params_o = build_tenant_filter_sql(tenant_ids, column_name="o.tenant_id", prefix="t_o")
-    amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
-    margin_col = build_currency_case_sql('o.margin', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code', is_transaction_currency=True)
+    margin_col = build_currency_case_sql('o.margin', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code', is_transaction_currency=True)
     
     query = f"""
         SELECT 
@@ -78,7 +78,7 @@ def get_sales_pipeline_tool(
     base_currency: str | None = None,
 ) -> dict:
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
     
     query = f"""
         SELECT 
@@ -227,7 +227,7 @@ def get_customer_lifetime_value_tool(
     limit: int = 10,
 ) -> dict:
     t_sql_o, t_params_o = build_tenant_filter_sql(tenant_ids, column_name="o.tenant_id", prefix="t_o")
-    amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('o.amount_total', tenant_ids=tenant_ids, base_currency=base_currency, currency_column='o.currency_code', is_transaction_currency=True)
     
     query = f"""
         SELECT 

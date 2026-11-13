@@ -73,7 +73,30 @@ PERMISSIONS = [
     ("view_alerts",                 "View proactive anomaly alerts"),
     ("manage_alerts",               "Create and manage alert schedules"),
     ("use_agent",                   "Send queries to the AI agent"),
+
+    # Permissions the API routes check (see migration 0046_restore_required_permissions)
+    ("export_sales_orders",         "Export sales orders"),
+    ("export_purchase_orders",      "Export purchase orders"),
+    ("export_accounting_moves",     "Export journal entries and invoices"),
+    ("export_account_journals",     "Export accounting journals"),
+    ("export_account_reconciles",   "Export payment reconciliations"),
+    ("export_bank_statements",      "Export bank statements"),
+    ("export_chart_of_accounts",    "Export the chart of accounts"),
+    ("export_inventory_moves",      "Export stock moves"),
+    ("export_inventory_pickings",   "Export transfers (pickings)"),
+    ("export_inventory_quants",     "Export stock on hand"),
+    ("export_lots",                 "Export lots and serial numbers"),
+    ("export_partners",             "Export customers and suppliers"),
+    ("export_products",             "Export products"),
+    ("manage_reports",              "Create, update, delete and send report schedules"),
+    ("manage_storage",              "Upload, download and delete stored files"),
 ]
+
+_ACCOUNTING_EXPORTS = [
+    "export_accounting_moves", "export_account_journals", "export_account_reconciles",
+    "export_bank_statements", "export_chart_of_accounts",
+]
+_INVENTORY_EXPORTS = ["export_inventory_moves", "export_inventory_pickings", "export_inventory_quants", "export_lots"]
 
 ROLES = {
     "owner": [p[0] for p in PERMISSIONS],  # all permissions
@@ -87,6 +110,8 @@ ROLES = {
         "view_inventory", "view_inventory_overview", "view_inventory_moves", "view_inventory_pickings", "view_inventory_quants", "view_storage", "view_products", "view_lots", "view_categories", "export_inventory",
         "view_partners", "view_master_data",
         "view_reports", "export_reports", "view_alerts", "manage_alerts", "use_agent",
+        "export_sales_orders", "export_purchase_orders", *_ACCOUNTING_EXPORTS, *_INVENTORY_EXPORTS,
+        "export_partners", "export_products", "manage_reports", "manage_storage",
     ],
 
     "accountant": [
@@ -97,18 +122,21 @@ ROLES = {
         "view_inventory", "view_products", "view_categories",
         "view_partners", "view_master_data",
         "view_reports", "export_reports", "view_alerts", "use_agent",
+        *_ACCOUNTING_EXPORTS, "export_partners",
     ],
 
     "inventory_clerk": [
         "view_kpi", "view_notifications", "view_support",
         "view_inventory", "view_inventory_overview", "view_inventory_moves", "view_inventory_pickings", "view_inventory_quants", "view_storage", "view_products", "view_lots", "view_categories", "export_inventory",
         "view_master_data",
+        *_INVENTORY_EXPORTS, "export_products", "manage_storage",
     ],
 
     "sales_rep": [
         "view_kpi", "view_notifications", "view_support",
         "view_sales", "view_sales_overview", "view_sales_orders", "view_sales_order_lines", "view_sales_customers", "export_sales",
         "view_products", "view_partners", "view_master_data",
+        "export_sales_orders", "export_partners", "export_products",
     ],
 }
 

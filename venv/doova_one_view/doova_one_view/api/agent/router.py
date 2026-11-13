@@ -3,6 +3,7 @@
 import time
 from langchain_anthropic import ChatAnthropic
 from .config import AgentConfig
+from .llm_params import thinking_kwargs
 from .prompts import ROUTER_PROMPT, RoutingProtocol
 from .logger import log_router_decision, log_error, logger
 
@@ -15,6 +16,7 @@ class RouterNode:
         self.llm = ChatAnthropic(
             model=AgentConfig.ROUTER_MODEL,
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            **thinking_kwargs(AgentConfig.ROUTER_MODEL),
             model_kwargs={
                 "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
             }

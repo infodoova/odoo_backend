@@ -12,6 +12,9 @@ class ChatSession(models.Model):
     active_company_ids = models.JSONField(null=True, blank=True)
     turn_count = models.IntegerField(default=0)
     tenant_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    # Owner of the conversation (AppUser.id). Null only for sessions created before
+    # ownership was recorded; those are readable by users with access to tenant_id.
+    user_id = models.UUIDField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_message = models.TextField(blank=True, default="")

@@ -141,24 +141,22 @@ def get_tenant_profile_tool(tenant_ids: Optional[list[str]] = None, company_ids:
     unique_customers = int(order_stats_rows[0]["unique_customers"]) if order_stats_rows and order_stats_rows[0].get("unique_customers") else 0
     avg_order_val = float(order_stats_rows[0]["avg_order_value"]) if order_stats_rows and order_stats_rows[0].get("avg_order_value") else 0.0
 
-    # Determine Commercial Channel & Supply-Chain Tier
-    top_cat_names = [r["category_name"].lower() for r in cat_rev_rows]
-    has_automotive = any(any(k in c for k in ["vehicle", "auto", "car", "jetour", "truck", "suv"]) for c in top_cat_names)
-    has_appliances = any(any(k in c for k in ["air condition", "ac", "appliance", "refrigerator", "tv", "electronic", "cooling"]) for c in top_cat_names)
-
-    commercial_tiers = []
-    if has_automotive:
-        commercial_tiers.append("Official Brand Concessionaire & Automotive Dealership")
-    if has_appliances or total_revenue > 0:
-        commercial_tiers.append("B2B Master Importer & Wholesale Distributor")
-
-    commercial_tier_label = " & ".join(commercial_tiers) if commercial_tiers else "Commercial Trading & Distribution"
-    supply_chain_position = "Upstream Master Importer / Tier-1 Concessionaire"
-    downstream_channel_note = (
-        "Upstream Master Importer & Concessionaire: Downstream retail stores, supermarkets (e.g. Tienda Ideal, Martinez Hermanos), "
-        "and independent appliance shops are downstream distribution channels/clients, NOT peer competitors. "
-        "Direct competitors are fellow master importers, trading conglomerates, and authorized brand concessionaires (e.g. CFAO, EGTC Group)."
-    )
+    # What the business sells, from its own sales data. Competitors are judged against this,
+    # never against a fixed description: no company names or business type are assumed here.
+    sells_categories = [r["category_name"] for r in cat_rev_rows if r.get("category_name")]
+    if sells_categories:
+        competitor_definition = (
+            "A competitor sells the same kinds of products as this business. Its main product categories are: "
+            + ", ".join(sells_categories)
+            + ". A company that sells other kinds of products is not a competitor, even if it is also an importer "
+            "or distributor. Shops and dealers that buy these products from this business are its customers, "
+            "not its competitors."
+        )
+    else:
+        competitor_definition = (
+            "No sales by category are recorded yet, so the product range is unknown. Do not name competitors "
+            "until the products this business sells are known."
+        )
 
     return {
         "tool_name": "get_tenant_profile_tool",
@@ -167,9 +165,8 @@ def get_tenant_profile_tool(tenant_ids: Optional[list[str]] = None, company_ids:
             for r in rows
         ],
         "inferred_business_model": inferred_type,
-        "commercial_tier": commercial_tier_label,
-        "supply_chain_position": supply_chain_position,
-        "downstream_channel_note": downstream_channel_note,
+        "sells_categories": sells_categories,
+        "competitor_definition": competitor_definition,
         "primary_revenue_driver": primary_driver,
         "customer_and_channel_metrics": {
             "total_orders_analyzed": total_orders,
@@ -252,11 +249,20 @@ def calculate_ratio(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator != 0 else 0.0
 
 def build_currency_case_sql(column: str, tenant_ids: Optional[list[str]] = None, base_currency: str | None = None, currency_column: str = "currency_code", is_transaction_currency: bool = False) -> str:
-    """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column."""
-    if not base_currency:
-        return column
+    """Builds a dynamic SQL CASE WHEN block to apply currency conversion to a column.
 
+    When no ``base_currency`` is given the tenant's own currency is used, so amounts stored in
+    each document's currency (purchase and sales orders) are converted instead of being added
+    up as if they were all in one currency. Columns already in the company currency are
+    unaffected: for them the tenant currency is the identity.
+    """
     try:
+        if not base_currency:
+            from doova_one_view.api.agent.utils import get_tenant_currency
+            base_currency = get_tenant_currency(tenant_ids=tenant_ids)
+        if not base_currency:
+            return column
+
         t_ids = normalize_tenant_ids(tenant_ids=tenant_ids)
         first_tid = t_ids[0] if t_ids else None
 

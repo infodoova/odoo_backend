@@ -10,6 +10,8 @@ import re
 from typing import Any
 import anthropic
 from .db import run_query
+from .sql_guard import ALLOWED_TABLE_PREFIXES, is_safe_read_only, run_scoped_query
+from .llm_params import thinking_kwargs
 from .config import AgentConfig
 from .logger import logger
 from .cache import ttl_cache
@@ -407,6 +409,10 @@ def get_database_schema() -> str:
 
     for row in rows:
         table = row["table_name"]
+        # Only warehouse tables are shown to the model. Application tables (users, tenants,
+        # sessions, OTPs, ...) are neither described nor queryable (see sql_guard).
+        if not table.startswith(ALLOWED_TABLE_PREFIXES):
+            continue
         column = row["column_name"]
         dtype = row["data_type"]
         grouped.setdefault(table, []).append(f"{column} ({dtype})")
@@ -427,16 +433,12 @@ def get_database_schema() -> str:
 
 
 def is_safe_read_only_sql(sql: str) -> bool:
-    lowered = sql.lower().strip()
+    """One plain SELECT/WITH statement with allow-listed functions only (see sql_guard).
 
-    if not lowered.startswith(("select", "with")):
-        return False
-
-    for word in BLOCKED_SQL_WORDS:
-        if re.search(rf"\b{word}\b", lowered):
-            return False
-
-    return True
+    This is a first screen. The database enforces the real limits when the query runs:
+    read-only transaction, statement timeout, and only tenant-filtered warehouse views.
+    """
+    return is_safe_read_only(sql)
 
 
 def response_text(response) -> str:
@@ -568,6 +570,61 @@ def rows_to_markdown(rows: list[dict[str, Any]], max_rows: int = MAX_RETURNED_RO
     return "\n".join(lines)
 
 
+_HEADER_WORDS = {"id": "ID", "qty": "Quantity", "uom": "Unit", "pct": "%", "avg": "Average", "po": "PO", "so": "SO",
+                 "vat": "VAT", "ytd": "YTD", "sku": "SKU",
+                 # currency codes stay upper case in headers ("revenue_xaf" -> "Revenue XAF")
+                 "xaf": "XAF", "xof": "XOF", "usd": "USD", "eur": "EUR", "gbp": "GBP", "cny": "CNY", "aed": "AED",
+                 "lbp": "LBP", "ngn": "NGN", "zar": "ZAR"}
+_CALENDAR_COLUMNS = {"year", "month", "week", "day", "quarter", "period", "fiscal_year"}
+
+
+def _is_blank(value: Any) -> bool:
+    """Empty for display: None, "", and Odoo's False for an unset field (stored as false/"false")."""
+    return value is None or value is False or (isinstance(value, str) and value.strip().lower() in ("", "false", "none", "null"))
+
+
+def _header(column: str) -> str:
+    words = [w for w in str(column).replace("-", "_").split("_") if w]
+    if not words:
+        return str(column)
+    pretty = [_HEADER_WORDS.get(w.lower(), w) for w in words]
+    first = pretty[0]
+    pretty[0] = first if first.isupper() or first == "%" else first[:1].upper() + first[1:]
+    return " ".join(pretty)
+
+
+def rows_for_display(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The same rows, prepared for a table the user reads.
+
+    - Internal id columns ("id", "product_id", ...) are dropped when other columns remain;
+      users never see database ids.
+    - Columns that are empty in every row (an unset Odoo field shows as "false") are dropped.
+    - Odoo's "false" placeholder is shown as an empty cell.
+    - Headers become readable: "total_quantity_sold" -> "Total quantity sold".
+    - Calendar numbers (year, month, ...) are kept as text so 2026 is not shown as "2,026".
+    The model still receives the raw rows; this only changes what is drawn on screen.
+    """
+    if not rows:
+        return rows
+    columns = list(rows[0].keys())
+    non_id = [c for c in columns if not (str(c).lower() == "id" or str(c).lower().endswith("_id"))]
+    keep = non_id or columns
+    keep = [c for c in keep if not all(_is_blank(r.get(c)) for r in rows)] or keep[:1]
+
+    out = []
+    for r in rows:
+        item = {}
+        for c in keep:
+            v = r.get(c)
+            if _is_blank(v):
+                v = ""
+            elif str(c).lower() in _CALENDAR_COLUMNS and isinstance(v, (int, float)) and not isinstance(v, bool):
+                v = str(int(v))
+            item[_header(c)] = v
+        out.append(item)
+    return out
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Self-correcting retry helpers
 # ──────────────────────────────────────────────────────────────────────────────
@@ -610,6 +667,7 @@ def _attempt_sql_correction(
         model=correction_model,
         max_tokens=2500,
         messages=[{"role": "user", "content": retry_prompt}],
+        **thinking_kwargs(correction_model),
     )
     return extract_sql_from_text(response_text(response))
 
@@ -628,6 +686,16 @@ def run_sql_agent(
     tenants = normalize_tenant_ids(tenant_ids)
     companies = normalize_company_ids(company_ids)
     question_lower = (user_question or "").lower()
+
+    # The query runs only against the caller's tenants. Without a tenant scope there is
+    # nothing it may read, so stop before spending an LLM call.
+    if not tenants:
+        return {
+            "success": False,
+            "message": "No tenant is selected for this request, so I cannot query the database.",
+            "sql": None,
+            "rows": [],
+        }
 
     # Refuse requests that plainly ask to change data before asking Claude to generate SQL.
     if _DESTRUCTIVE_REQUEST.search(question_lower):
@@ -693,6 +761,7 @@ def run_sql_agent(
                 "content": prompt,
             }
         ],
+        **thinking_kwargs(model),
     )
 
     first_text = response_text(first_response)
@@ -721,7 +790,7 @@ def run_sql_agent(
 
     for attempt in range(1, max_retries + 1):
         try:
-            rows = run_query(sql)
+            rows = run_scoped_query(sql, tenants, companies)
             logger.info(
                 f"SQL AGENT SUCCESS\n"
                 f"   Attempt: {attempt}/{max_retries}\n"
@@ -829,16 +898,25 @@ def run_sql_agent(
 
     final_response = client.messages.create(
         model=model,
-        max_tokens=1200,
+        max_tokens=2000,
         messages=[
             {
                 "role": "user",
                 "content": final_prompt,
             }
         ],
+        **thinking_kwargs(model),
     )
 
     final_text = response_text(final_response)
+    if not final_text.strip():
+        # The explanation came back empty (cut off or refused). The rows are still real, so
+        # never hand the user a blank message.
+        logger.warning(f"SQL AGENT: empty final answer (stop_reason={getattr(final_response, 'stop_reason', None)})")
+        final_text = (
+            "I ran the query but could not write a summary this time. "
+            f"It returned {len(rows):,} row(s); the data is shown below."
+        )
 
     result = {
         "success": True,

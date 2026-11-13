@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 import markdown
 
-from doova_one_view.api.agent.utils import make_report_url, get_project_logo_b64
+from doova_one_view.api.agent.utils import make_report_path, make_report_url, get_project_logo_b64
 from ._formatters import _highlight_negative_numbers_html
 from ._template_router import _get_reports_dir
 
@@ -83,7 +83,7 @@ def render_and_compile_pdf(
             'filename': filename,
         }
 
-    relative_path = f"/financial-advisor/reports/{filename}"
+    relative_path = make_report_path(filename)
     return {
         'tool_name': 'generate_report_tool',
         'status': 'success',

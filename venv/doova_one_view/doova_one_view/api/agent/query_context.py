@@ -113,11 +113,11 @@ def normalize_tenant_ids(tenant_ids: Any = None) -> List[str]:
     Returns:
       Sorted unique list of valid UUID strings. Discards null, none, all, and empty strings.
     """
-    if tenant_ids is None:
-        return []
-
     processed_ids: List[str] = []
-    items = list(tenant_ids) if isinstance(tenant_ids, (list, tuple, set)) else [tenant_ids]
+    if tenant_ids is None:
+        items = []
+    else:
+        items = list(tenant_ids) if isinstance(tenant_ids, (list, tuple, set)) else [tenant_ids]
 
     flattened = []
     for item in items:
@@ -145,7 +145,18 @@ def normalize_tenant_ids(tenant_ids: Any = None) -> List[str]:
         if clean:
             processed_ids.append(clean)
 
-    return sorted(list(set(processed_ids)))
+    result = sorted(list(set(processed_ids)))
+
+    # When the request has an authorized tenant set (established by the endpoint from the
+    # user's access rights), no tenant list may go beyond it: anything outside is dropped,
+    # and an empty list means "all of the caller's tenants", never "every tenant".
+    from .session_context import get_authorized_tenant_ids
+    allowed = get_authorized_tenant_ids()
+    if allowed is not None:
+        result = [t for t in result if t in allowed]
+        if not result:
+            result = sorted(allowed)
+    return result
 
 
 def resolve_company_ids_to_local(tenant_id: str, odoo_ids: List[int]) -> List[int]:

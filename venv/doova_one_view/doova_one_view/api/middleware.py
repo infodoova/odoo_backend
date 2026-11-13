@@ -4,6 +4,7 @@ Custom middleware for FastAPI including logging and Rate Limiting for Financial 
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
+import hashlib
 import logging
 import time
 from collections import defaultdict
@@ -14,10 +15,19 @@ logger = logging.getLogger(__name__)
 
 class RateLimiter:
     """Sliding-window rate limiter per client IP / tenant."""
+    # Upper bound on tracked keys so a client cannot grow memory by inventing identities.
+    MAX_KEYS = 20_000
+
     def __init__(self, requests_per_minute: int = 30):
         self.rpm = requests_per_minute
         self.requests = defaultdict(list)
         self.lock = Lock()
+
+    def _prune(self, now: float) -> None:
+        """Drop keys with no request in the last minute (called with the lock held)."""
+        window_start = now - 60.0
+        for key in [k for k, ts in self.requests.items() if not ts or ts[-1] <= window_start]:
+            del self.requests[key]
 
     def is_allowed(self, key: str) -> tuple[bool, int, int]:
         """
@@ -26,6 +36,8 @@ class RateLimiter:
         now = time.time()
         window_start = now - 60.0
         with self.lock:
+            if len(self.requests) >= self.MAX_KEYS:
+                self._prune(now)
             # Clean up timestamps older than 60 seconds
             timestamps = [t for t in self.requests[key] if t > window_start]
             self.requests[key] = timestamps
@@ -58,15 +70,16 @@ async def rate_limit_middleware(request: Request, call_next):
     """Rate-limiting middleware for /financial-advisor agent endpoints."""
     path = request.url.path
     if "/financial-advisor" in path:
-        # Build client key from Auth token / session / IP
+        # The key must be something the client cannot vary at will: a digest of the whole
+        # credential (so the limit follows the account, not a header value), or the network
+        # address when there is none. Request headers such as X-Tenant-Id are not part of it.
         auth_header = request.headers.get("Authorization", "")
-        tenant_header = request.headers.get("X-Tenant-Id", "")
         client_ip = request.client.host if request.client else "unknown_client"
-        
+
         if auth_header:
-            client_key = f"{auth_header[-16:]}:{tenant_header or client_ip}"
+            client_key = "tok:" + hashlib.sha256(auth_header.encode("utf-8")).hexdigest()[:24]
         else:
-            client_key = f"{client_ip}:{tenant_header}"
+            client_key = f"ip:{client_ip}"
 
         # Use separate limiters for heavy POST (chat) vs lightweight GET (sessions, history)
         is_write = request.method in ("POST", "PUT", "DELETE", "PATCH")

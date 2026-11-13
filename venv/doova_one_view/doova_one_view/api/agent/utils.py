@@ -154,11 +154,43 @@ def strip_json_chart_from_text(text: str) -> str:
 def get_public_base_url() -> str:
     return os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
+def _report_signature(filename: str) -> str:
+    """Keyed signature of a report file name (32 hex chars). Cannot be derived without SECRET_KEY."""
+    import hashlib
+    import hmac
+    from django.conf import settings
+    key = str(settings.SECRET_KEY).encode("utf-8")
+    return hmac.new(key, f"agent-report:{filename}".encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+
+
+def verify_signed_report_name(token: str) -> str | None:
+    """``"<signature>~<file name>"`` -> the file name when the signature is valid, else ``None``."""
+    import hmac
+    if not token or "~" not in token:
+        return None
+    signature, _, name = token.partition("~")
+    if not name or not hmac.compare_digest(signature, _report_signature(name)):
+        return None
+    return name
+
+
+def make_report_path(report_path_or_filename: str | None) -> str | None:
+    """Relative, signed download path ("/financial-advisor/reports/<signature>~<file>"), the same
+    shape as the old relative path the frontend already prefixes with the API base."""
+    if not report_path_or_filename:
+        return None
+    filename = Path(report_path_or_filename).name
+    return f"/financial-advisor/reports/{_report_signature(filename)}~{filename}"
+
+
 def make_report_url(report_path_or_filename: str | None) -> str | None:
+    """Download URL for a generated report. The link carries a signature so only someone who
+    was given the link can open it; the file name alone is not enough."""
     if not report_path_or_filename: return None
     filename = Path(report_path_or_filename).name
+    token = f"{_report_signature(filename)}~{filename}"
     public_base_url = get_public_base_url()
-    return f"{public_base_url}/api/v1/financial-advisor/reports/{filename}" if public_base_url else f"/api/v1/financial-advisor/reports/{filename}"
+    return f"{public_base_url}/api/v1/financial-advisor/reports/{token}" if public_base_url else f"/api/v1/financial-advisor/reports/{token}"
 
 def normalize_graph_for_frontend(graph_data):
     if not graph_data: return None
@@ -334,22 +366,22 @@ def get_tenant_currency(tenant_ids: Any = None, company_ids: Any = None) -> str:
 
 def fix_currency_symbols(text: str, currency: str) -> str:
     """
-    Ensure stray dollar signs (e.g. $100) use the tenant's base currency code when appropriate,
-    without overwriting legitimate currency codes (like USD, EUR) in multi-currency contexts.
+    Replace a stray dollar sign on the company's own amounts (e.g. "$100" written for an XAF
+    figure) with the tenant currency code.
+
+    It only relabels, it never converts, so it must not touch a real dollar amount:
+    - "US$750M", "C$10", "HK$5" (a letter right before "$") are left alone;
+    - an answer that talks about US dollars anywhere ("USD", "US$", "dollar") is left alone,
+      because there "$" is a genuine dollar figure;
+    - nothing changes when the tenant currency is USD.
     """
-    if not text or not currency:
+    if not text or not currency or currency.upper() == "USD":
+        return text
+    if re.search(r"\bUSD\b|US\$|\bdollars?\b", text, flags=re.IGNORECASE):
         return text
 
-    # Do NOT perform currency code replacement if multi-currency context is present
-    if any(kw in text.lower() for kw in ["multi-currency", "exchange rate", "base currency", "conversions"]):
-        if currency.upper() != "USD":
-            text = re.sub(r"\$\s*(\d+)", f"{currency} \\1", text)
-        return text
-
-    if currency.upper() != "USD":
-        text = re.sub(r"\$\s*(\d+)", f"{currency} \\1", text)
-        text = re.sub(r"(\d+)\s*\$", f"\\1 {currency}", text)
-        
+    text = re.sub(r"(?<![A-Za-z])\$\s*(\d)", f"{currency} \\1", text)
+    text = re.sub(r"(\d)\s*\$(?![A-Za-z])", f"\\1 {currency}", text)
     return text
 
 def replace_tenant_ids_with_names(text: str, tenant_ids: list[str] | None = None) -> str:

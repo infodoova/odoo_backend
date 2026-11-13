@@ -24,7 +24,7 @@ def get_purchase_summary_tool(
     """Total confirmed purchase spend, PO count, and average PO value."""
 
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
     params: dict = {}
     params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(company_ids)
@@ -519,7 +519,7 @@ def get_purchase_trend_tool(
     """Purchase spend time series broken down by period."""
 
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
     params: dict = {}
     params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(company_ids)

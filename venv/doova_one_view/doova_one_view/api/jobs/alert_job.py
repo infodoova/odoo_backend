@@ -502,7 +502,10 @@ class AlertJobManager:
 
         agent = DoovaLangChainAgent()
         try:
+            from doova_one_view.api.agent.session_context import run_in_scope
             result = await asyncio.to_thread(
+                run_in_scope,
+                tenant_ids,
                 agent.run,
                 full_prompt,
                 tenant_ids=tenant_ids,

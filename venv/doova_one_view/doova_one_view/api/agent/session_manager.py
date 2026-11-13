@@ -3,16 +3,22 @@
 from typing import Optional, Dict, Any, List
 from langchain_anthropic import ChatAnthropic
 from .config import AgentConfig
+from .llm_params import thinking_kwargs
 from .prompts import SESSION_TITLE_PROMPT
 from .logger import logger
 from odoo_app.models.agent import ChatSession, ChatMessage
 from django.db import transaction
+
+class SessionAccessDenied(PermissionError):
+    """The user does not own the session they asked for."""
+
 
 class SessionManager:
     def __init__(self):
         self.llm = ChatAnthropic(
             model=AgentConfig.ROUTER_MODEL,
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
+            **thinking_kwargs(AgentConfig.ROUTER_MODEL),
             model_kwargs={
                 "extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}
             }
@@ -53,15 +59,50 @@ class SessionManager:
                 return clean_message[:37] + "..."
             return clean_message or "New Conversation"
 
-    def get_or_create_session(self, session_id: str, tenant_id: str, first_message: str = None) -> ChatSession:
+    def get_or_create_session(
+        self,
+        session_id: str,
+        tenant_id: str,
+        first_message: str = None,
+        user=None,
+        accessible_tenants=None,
+    ) -> ChatSession:
+        """Fetch or create a session.
+
+        When ``user`` is given the session must belong to that user: a new session is
+        created for them, an existing one is returned only if they own it (or it is a legacy
+        session with no owner in a tenant they can access, which they then claim). Any other
+        session raises ``SessionAccessDenied`` so a caller cannot attach to someone else's
+        conversation by guessing its id.
+        """
         session, created = ChatSession.objects.get_or_create(session_id=session_id)
         if created:
             session.tenant_id = str(tenant_id)[:255] if tenant_id else None
+            if user is not None:
+                session.user_id = user.id
             if first_message:
                 raw_title = self.generate_title(first_message)
                 session.title = (raw_title or "New Chat")[:250]
             session.save()
+        elif user is not None:
+            self.authorize(session, user, accessible_tenants)
         return session
+
+    def authorize(self, session: ChatSession, user, accessible_tenants) -> ChatSession:
+        """Raise ``SessionAccessDenied`` unless ``user`` may use ``session``; claim legacy ones."""
+        from .access import user_can_access_session
+
+        if not user_can_access_session(session, user, accessible_tenants or ()):
+            raise SessionAccessDenied(session.session_id)
+        if session.user_id is None:
+            ChatSession.objects.filter(session_id=session.session_id, user_id__isnull=True).update(user_id=user.id)
+            session.user_id = user.id
+        return session
+
+    def get_session_for_user(self, session_id: str, user, accessible_tenants) -> ChatSession:
+        """Return an existing session the user may use; ``DoesNotExist``/``SessionAccessDenied`` otherwise."""
+        session = ChatSession.objects.get(session_id=session_id)
+        return self.authorize(session, user, accessible_tenants)
 
     def save_message(
         self,
@@ -105,10 +146,14 @@ class SessionManager:
         session = ChatSession.objects.filter(session_id=session_id).first()
         return session.active_date_window if session else None
 
-    def get_sessions(self, tenant_id: str = None):
-        if tenant_id:
-            return ChatSession.objects.filter(tenant_id=tenant_id)
-        return ChatSession.objects.all()
+    def get_sessions(self, tenant_id: str = None, user=None, accessible_tenants=None):
+        """List sessions. With ``user`` only that user's sessions (plus unowned legacy
+        sessions in tenants they can access) are returned."""
+        qs = ChatSession.objects.filter(tenant_id=tenant_id) if tenant_id else ChatSession.objects.all()
+        if user is not None:
+            from .access import sessions_visible_to
+            qs = sessions_visible_to(qs, user, accessible_tenants or ())
+        return qs
 
     def get_messages(self, session_id: str):
         return ChatMessage.objects.filter(session_id=session_id)

@@ -325,7 +325,10 @@ class WebSearchAgent:
                         block.text for block in response.content
                         if getattr(block, "type", None) == "text" and hasattr(block, "text")
                     ]
-                    final_text = "\n\n".join(text_parts).strip()
+                    # Cited answers arrive as consecutive pieces of ONE text (each cited span is its
+                    # own block, often mid-sentence). They must be concatenated as they are; joining
+                    # them with blank lines splits sentences into separate paragraphs.
+                    final_text = "".join(text_parts).strip()
                     break
 
                 # Handle pause_turn (Anthropic continuing long server-side search)
@@ -363,14 +366,18 @@ class WebSearchAgent:
                         block.text for block in response.content
                         if getattr(block, "type", None) == "text" and hasattr(block, "text")
                     ]
-                    final_text = "\n\n".join(text_parts).strip()
+                    # Cited answers arrive as consecutive pieces of ONE text (each cited span is its
+                    # own block, often mid-sentence). They must be concatenated as they are; joining
+                    # them with blank lines splits sentences into separate paragraphs.
+                    final_text = "".join(text_parts).strip()
                     break
 
             if not final_text:
                 final_text = "I completed the search and analysis but did not generate a final textual response."
 
-            # Post-process currency and tenant placeholders
-            final_text = fix_currency_symbols(final_text, currency)
+            # Tenant placeholders only. Currency symbols are NOT rewritten here: web answers quote
+            # outside sources in their own currency ("$1.02B of imports"), and turning "$" into the
+            # tenant currency relabels a dollar amount as XAF without converting it.
             final_text = replace_tenant_ids_with_names(final_text, resolved_tenant_ids)
             final_text = expand_table_markers(final_text)
             end_table_sink(sink_token)

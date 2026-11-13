@@ -303,7 +303,7 @@ class SqlFallbackTests(SimpleTestCase):
         rows = [{"id": 1, "name": "A"}, {"id": 4, "name": "CONATUS"}]
         with patch("doova_one_view.api.agent.sql_agent.get_database_schema", return_value="Table: dim_companies"), \
              patch("doova_one_view.api.agent.sql_agent.anthropic.Anthropic", return_value=client), \
-             patch("doova_one_view.api.agent.sql_agent.run_query", return_value=rows), \
+             patch("doova_one_view.api.agent.sql_agent.run_scoped_query", return_value=rows), \
              patch("doova_one_view.api.agent.utils.get_tenant_currency", return_value="XAF"), \
              patch("doova_one_view.api.kpi.service._get_rate_map", return_value={}), \
              patch("doova_one_view.api.agent.tools_refactored.common.get_per_tenant_exchange_rates", return_value={}):

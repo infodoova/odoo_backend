@@ -8,6 +8,7 @@ the active scope (date, tenant, company) across multi-turn conversational
 follow-ups.
 """
 
+from collections import OrderedDict
 from contextvars import ContextVar
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -23,6 +24,62 @@ _current_active_company_ids: ContextVar[Optional[List[int]]] = ContextVar("curre
 _session_windows: Dict[str, Dict[str, Any]] = {}
 _session_tenants: Dict[str, List[str]] = {}
 _session_companies: Dict[str, List[int]] = {}
+
+
+# ── Authorized tenants (server-side access decision) ──────────────────
+# The set of tenants the authenticated caller may read. It is established by the
+# endpoint (or background job) from the user's access rights, never from request text
+# or model output. normalize_tenant_ids() clips every tenant list to this set, so tools
+# and the SQL agent cannot be pointed at another tenant by a prompt or a tool argument.
+_current_authorized_tenant_ids: ContextVar[Optional[frozenset]] = ContextVar(
+    "current_authorized_tenant_ids", default=None
+)
+_session_authorized: "OrderedDict[str, frozenset]" = OrderedDict()
+_MAX_TRACKED_SESSIONS = 5000
+
+
+def set_authorized_tenant_ids(tenant_ids: Optional[List[str]], session_id: Optional[str] = None) -> None:
+    """Fix the tenants the current request/job may read. ``None`` removes the restriction."""
+    if tenant_ids is None:
+        _current_authorized_tenant_ids.set(None)
+        if session_id:
+            _session_authorized.pop(session_id, None)
+        return
+    allowed = frozenset(str(t) for t in tenant_ids)
+    _current_authorized_tenant_ids.set(allowed)
+    sid = session_id or _current_session_id.get()
+    if sid:
+        _session_authorized[sid] = allowed
+        _session_authorized.move_to_end(sid)
+        while len(_session_authorized) > _MAX_TRACKED_SESSIONS:
+            _session_authorized.popitem(last=False)
+
+
+def run_in_scope(tenant_ids: Optional[List[str]], fn, /, *args, **kwargs):
+    # Positional-only: the wrapped call (agent.run) takes its own tenant_ids keyword.
+    """Run ``fn`` with its tenant access limited to ``tenant_ids`` (a scheduled job's own tenants).
+
+    Meant to be the target of ``asyncio.to_thread`` so the restriction stays inside that
+    worker thread. An empty list leaves the call unrestricted, as before.
+    """
+    if tenant_ids:
+        from .query_context import normalize_tenant_ids
+        set_authorized_tenant_ids(None)
+        scoped = normalize_tenant_ids(tenant_ids)
+        if scoped:
+            set_authorized_tenant_ids(scoped)
+    return fn(*args, **kwargs)
+
+
+def get_authorized_tenant_ids() -> Optional[frozenset]:
+    """The authorized tenant set for this request, or ``None`` when no scope was set."""
+    allowed = _current_authorized_tenant_ids.get()
+    if allowed is not None:
+        return allowed
+    sid = _current_session_id.get()
+    if sid:
+        return _session_authorized.get(sid)
+    return None
 
 
 def set_session_context(
@@ -58,8 +115,11 @@ def set_session_context(
                     # ── Company IDs ───────────────────────────────────
                     if company_ids is None and sess.active_company_ids:
                         company_ids = sess.active_company_ids
-                    # Seed from legacy tenant_id field if nothing else
-                    if tenant_ids is None and sess.tenant_id:
+                    # Seed from legacy tenant_id field if nothing else. "default" is only the
+                    # placeholder stored for a chat started without a tenant; resolving it would
+                    # pick an arbitrary tenant ("the first one in the table"), so it is skipped and
+                    # the request falls back to all of the caller's tenants.
+                    if tenant_ids is None and sess.tenant_id and sess.tenant_id.strip().lower() != "default":
                         tenant_ids = [sess.tenant_id]
             except Exception:
                 pass

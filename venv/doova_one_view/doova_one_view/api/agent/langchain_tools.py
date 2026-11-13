@@ -6,7 +6,7 @@ from typing import Optional, Union, List, Any
 CompanyIdsType = Optional[Union[List[Union[int, str]], str]]
 TenantIdsType = Optional[Union[List[str], str]]
 from langchain_core.tools import tool
-from .sql_agent import run_sql_agent, rows_to_markdown
+from .sql_agent import run_sql_agent, rows_to_markdown, rows_for_display
 from .table_sink import register_table
 from .date_engine import resolve_period_dates, resolve_comparison_dates, normalize_iso_date, resolve_as_of_date
 
@@ -188,8 +188,9 @@ def ask_database_custom_question( question: str = None, company_ids: CompanyIdsT
     Use this when: a specialized tool returns an error, data is not available in pre-built tools,
     or the user asks a highly specific ad-hoc question. ALWAYS try the specialized tools first
     (for lists of orders, invoices or bills use list_records; for invoice totals use invoice_summary).
-    Returns the answer, the true row_count, up to 100 rows, and a table marker. If the user asked to see
-    the records, put the marker on its own line in your answer and do not retype the rows."""
+    Returns short plain findings ("answer"; facts only, write your own reply from them), the true
+    row_count, up to 100 rows, and a table marker. If the user asked to see the records, put the marker
+    on its own line in your answer and do not retype the rows as a list."""
     result = run_sql_agent(
         user_question=question,
         tenant_ids=_resolve_and_sync_tenant(tenant_ids),
@@ -205,7 +206,7 @@ def ask_database_custom_question( question: str = None, company_ids: CompanyIdsT
         "rows": rows,
     }
     if len(rows) > 1:
-        marker = register_table(rows_to_markdown(rows), always_show=False)
+        marker = register_table(rows_to_markdown(rows_for_display(rows)), always_show=False)
         if marker:
             reply["table"] = marker
             reply["display_instruction"] = (
@@ -960,6 +961,27 @@ def list_records(
 
 
 @tool
+def company_relationship(
+    company_name: str,
+    company_ids: CompanyIdsType = None,
+    tenant_ids: TenantIdsType = None,
+):
+    """Check whether this business already trades with a company, before you call it a competitor
+    (or when the user asks "do we work with X?"). Pass the company's name as you found it, e.g.
+    "CFAO Motors Guinea Ecuatorial"; the tool strips legal and generic words and matches the
+    distinctive part ("CFAO") against how the company is saved in the records ("cfao MOBILTY").
+    It returns whether it is a customer, supplier, both, a contact only, or not found, with the
+    orders, invoices, purchase orders and vendor bills behind that. One call per company.
+    A relationship is context, not a verdict: a company can supply you and still compete with you."""
+    from .tools_refactored.relationships import get_company_relationship_tool
+    return get_company_relationship_tool(
+        company_name=company_name,
+        tenant_ids=_resolve_and_sync_tenant(tenant_ids),
+        company_ids=_resolve_and_sync_company(company_ids),
+    )
+
+
+@tool
 def consult_strategic_advisor(
     problem_type: str = None,
     question: str = None,
@@ -979,7 +1001,7 @@ agent_tools = [
     # Discovery
     ask_database_custom_question, list_companies, tenant_profile,
     # Records & invoices
-    invoice_summary, list_records,
+    invoice_summary, list_records, company_relationship,
     # Sales
     sales_summary, top_products, sales_trend, variance_analysis, sales_forecast,
     salesperson_performance, sales_pipeline, discount_leakage, customer_lifetime_value, order_to_cash_cycle, revenue_by_category,

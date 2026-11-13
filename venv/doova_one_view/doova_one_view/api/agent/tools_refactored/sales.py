@@ -27,7 +27,7 @@ def get_sales_summary_tool(
         tenant_ids = [tenant_id]
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     selected_company_ids = normalize_company_ids(company_ids=company_ids)
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
     query = f"SELECT COALESCE(SUM({amount_col}), 0) AS total_revenue, COUNT(*) AS order_count, COALESCE(AVG({amount_col}), 0) AS average_order_value, COALESCE(MIN(date_order), NULL) AS first_order_date, COALESCE(MAX(date_order), NULL) AS last_order_date FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done')"
     params = {}
     params.update(t_params_def)
@@ -127,7 +127,7 @@ def get_time_series_data_tool(
     if tenant_id and not tenant_ids:
         tenant_ids = [tenant_id]
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
     params = {}
     params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(company_ids=company_ids)
@@ -170,7 +170,7 @@ def analyze_variance_tool(
     t_sql_def, t_params_def = build_tenant_filter_sql(tenant_ids=tenant_ids, column_name="tenant_id", prefix="t_def")
     selected_company_ids = normalize_company_ids(company_ids=company_ids)
     f_sql, f_params = build_company_filter_sql(company_ids=selected_company_ids)
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
     query = f"SELECT DATE_TRUNC('month', date_order) AS month, SUM({amount_col}) AS revenue FROM fact_sales_orders WHERE 1=1 {t_sql_def} AND state IN ('sale', 'done') {f_sql} GROUP BY month ORDER BY month DESC LIMIT 2"
     params = {}
     params.update(t_params_def)
@@ -195,7 +195,7 @@ def forecast_sales_tool(
     params.update(t_params_def)
     f_sql, f_params = build_company_filter_sql(company_ids=company_ids)
     params.update(f_params)
-    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency)
+    amount_col = build_currency_case_sql('amount_total', tenant_ids=tenant_ids, base_currency=base_currency, is_transaction_currency=True)
 
     rows = run_query(
         f"""SELECT DATE_TRUNC('month', date_order) AS month,

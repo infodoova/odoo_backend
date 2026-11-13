@@ -24,7 +24,7 @@ from doova_one_view.api.agent.query_context import (
     normalize_company_ids,
     build_company_filter_sql,
 )
-from doova_one_view.api.agent.utils import make_report_url, replace_tenant_ids_with_names, get_tenant_currency, get_project_logo_b64
+from doova_one_view.api.agent.utils import make_report_path, make_report_url, replace_tenant_ids_with_names, get_tenant_currency, get_project_logo_b64
 from doova_one_view.api.agent.db import run_query
 from ..common import get_companies_tool, build_currency_case_sql
 from ..sales import get_sales_summary_tool, get_time_series_data_tool, get_top_products_tool
@@ -450,7 +450,7 @@ def generate_report_tool(
                 'filename': filename,
             }
 
-        relative_path = f"/financial-advisor/reports/{filename}"
+        relative_path = make_report_path(filename)
         return {
             'tool_name': 'generate_report_tool',
             'status': 'success',
@@ -882,7 +882,7 @@ The organization generated **{_fmt_money(rev_val, currency)}** in total revenue 
             'filename': filename,
         }
 
-    relative_path = f"/financial-advisor/reports/{filename}"
+    relative_path = make_report_path(filename)
     return {
         'tool_name': 'generate_report_tool',
         'status': 'success',
@@ -927,7 +927,7 @@ def get_last_report_tool(
         
     files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     filename = files[0].name
-    relative_path = f"/financial-advisor/reports/{filename}"
+    relative_path = make_report_path(filename)
     return {
         'tool_name': 'get_last_report_tool',
         'filename': filename,

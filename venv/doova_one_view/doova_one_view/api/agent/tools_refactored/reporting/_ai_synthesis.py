@@ -6,6 +6,7 @@ import logging
 from typing import Optional, Dict, Any, Tuple
 
 from doova_one_view.api.agent.config import AgentConfig
+from doova_one_view.api.agent.llm_params import thinking_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ def _generate_ai_executive_summary_llm(
 
         llm = ChatAnthropic(
             model=AgentConfig.FAST_MODEL,
+            **thinking_kwargs(AgentConfig.FAST_MODEL),
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
             max_tokens=4096,
         )
@@ -115,6 +117,7 @@ def _generate_ai_domain_analysis(
 
         llm = ChatAnthropic(
             model=AgentConfig.FAST_MODEL,
+            **thinking_kwargs(AgentConfig.FAST_MODEL),
             anthropic_api_key=AgentConfig.ANTHROPIC_API_KEY,
             max_tokens=4096,
         )

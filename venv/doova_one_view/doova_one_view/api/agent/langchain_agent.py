@@ -3,6 +3,8 @@
 import time
 from datetime import datetime
 from langchain_anthropic import ChatAnthropic
+from .llm_params import thinking_kwargs
+from .llm_params import thinking_kwargs
 from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from .config import AgentConfig
 from .langchain_tools import agent_tools
@@ -319,10 +321,8 @@ class DoovaLangChainAgent:
         }
         
         use_thinking = enable_thinking if enable_thinking is not None else getattr(AgentConfig, "ENABLE_THINKING", True)
-        if use_thinking:
-            llm_kwargs["thinking"] = {"type": "adaptive"}
-        else:
-            llm_kwargs["thinking"] = {"type": "disabled"}
+        # "Thinking off" is spelled differently per model (see llm_params); a wrong value is a 400.
+        llm_kwargs.update(thinking_kwargs(self.model_name, bool(use_thinking)))
 
         self.llm = ThinkingSafeChatAnthropic(**llm_kwargs)
         

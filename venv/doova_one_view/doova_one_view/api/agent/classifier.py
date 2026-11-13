@@ -3,6 +3,7 @@
 import json
 import anthropic
 from .config import AgentConfig
+from .llm_params import thinking_kwargs
 
 class IntentClassifier:
     def __init__(self):
@@ -60,7 +61,8 @@ class IntentClassifier:
             response = self.client.messages.create(
                 model=AgentConfig.ROUTER_MODEL,
                 max_tokens=500,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
+                **thinking_kwargs(AgentConfig.ROUTER_MODEL),
             )
             from .sql_agent import response_text
             content = response_text(response)
